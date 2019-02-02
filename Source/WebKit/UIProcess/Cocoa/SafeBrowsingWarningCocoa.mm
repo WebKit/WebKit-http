@@ -149,16 +149,19 @@ static NSMutableAttributedString *safeBrowsingDetailsText(const URL& url, SSBSer
     return malwareOrUnwantedSoftwareDetails(WEB_UI_NSSTRING(@"Warnings are shown for websites where harmful software has been detected. You can check %the-status-of-site% on the %safeBrowsingProvider% diagnostic page.", "Unwanted software warning description"), @"%the-status-of-site%", false);
 }
 
-SafeBrowsingWarning::SafeBrowsingWarning(const URL& url, SSBServiceLookupResult *result)
-    : m_title(safeBrowsingTitleText(result))
+SafeBrowsingWarning::SafeBrowsingWarning(const URL& url, bool forMainFrameNavigation, SSBServiceLookupResult *result)
+    : m_url(url)
+    , m_title(safeBrowsingTitleText(result))
     , m_warning(safeBrowsingWarningText(result))
+    , m_forMainFrameNavigation(forMainFrameNavigation)
     , m_details(safeBrowsingDetailsText(url, result))
 {
 }
 #endif
 
-SafeBrowsingWarning::SafeBrowsingWarning(String&& title, String&& warning, RetainPtr<NSAttributedString>&& details)
-    : m_title(WTFMove(title))
+SafeBrowsingWarning::SafeBrowsingWarning(URL&& url, String&& title, String&& warning, RetainPtr<NSAttributedString>&& details)
+    : m_url(WTFMove(url))
+    , m_title(WTFMove(title))
     , m_warning(WTFMove(warning))
     , m_details(WTFMove(details))
 {

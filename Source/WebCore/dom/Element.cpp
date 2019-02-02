@@ -655,9 +655,9 @@ void Element::setHovered(bool flag)
 }
 
 // FIXME(webkit.org/b/161611): Take into account orientation/direction.
-inline ScrollAlignment toScrollAlignment(std::optional<ScrollLogicalPosition> position, bool isVertical)
+inline ScrollAlignment toScrollAlignment(Optional<ScrollLogicalPosition> position, bool isVertical)
 {
-    switch (position.value_or(isVertical ? ScrollLogicalPosition::Start : ScrollLogicalPosition::Nearest)) {
+    switch (position.valueOr(isVertical ? ScrollLogicalPosition::Start : ScrollLogicalPosition::Nearest)) {
     case ScrollLogicalPosition::Start:
         return isVertical ? ScrollAlignment::alignTopAlways : ScrollAlignment::alignLeftAlways;
     case ScrollLogicalPosition::Center:
@@ -672,7 +672,7 @@ inline ScrollAlignment toScrollAlignment(std::optional<ScrollLogicalPosition> po
     }
 }
 
-void Element::scrollIntoView(std::optional<Variant<bool, ScrollIntoViewOptions>>&& arg)
+void Element::scrollIntoView(Optional<Variant<bool, ScrollIntoViewOptions>>&& arg)
 {
     document().updateLayoutIgnorePendingStylesheets();
 
@@ -883,27 +883,77 @@ static double convertToNonSubpixelValueIfNeeded(double value, const Document& do
     return subpixelMetricsEnabled(document) ? value : roundStrategy == Round ? round(value) : floor(value);
 }
 
+static double adjustOffsetForZoomAndSubpixelLayout(RenderBoxModelObject* renderer, const LayoutUnit& offset)
+{
+    LayoutUnit offsetLeft = subpixelMetricsEnabled(renderer->document()) ? offset : LayoutUnit(roundToInt(offset));
+    double zoomFactor = 1;
+    double offsetLeftAdjustedWithZoom = adjustForLocalZoom(offsetLeft, *renderer, zoomFactor);
+    return convertToNonSubpixelValueIfNeeded(offsetLeftAdjustedWithZoom, renderer->document(), zoomFactor == 1 ? Floor : Round);
+}
+
+static HashSet<TreeScope*> collectAncestorTreeScopeAsHashSet(Node& node)
+{
+    HashSet<TreeScope*> ancestors;
+    for (auto* currentScope = &node.treeScope(); currentScope; currentScope = currentScope->parentTreeScope())
+        ancestors.add(currentScope);
+    return ancestors;
+}
+
+double Element::offsetLeftForBindings()
+{
+    auto offset = offsetLeft();
+
+    auto parent = makeRefPtr(offsetParent());
+    if (!parent || !parent->isInShadowTree())
+        return offset;
+
+    ASSERT(&parent->document() == &document());
+    if (&parent->treeScope() == &treeScope())
+        return offset;
+
+    auto ancestorTreeScopes = collectAncestorTreeScopeAsHashSet(*this);
+    while (parent && !ancestorTreeScopes.contains(&parent->treeScope())) {
+        offset += parent->offsetLeft();
+        parent = parent->offsetParent();
+    }
+
+    return offset;
+}
+
 double Element::offsetLeft()
 {
     document().updateLayoutIgnorePendingStylesheets();
-    if (RenderBoxModelObject* renderer = renderBoxModelObject()) {
-        LayoutUnit offsetLeft = subpixelMetricsEnabled(renderer->document()) ? renderer->offsetLeft() : LayoutUnit(roundToInt(renderer->offsetLeft()));
-        double zoomFactor = 1;
-        double offsetLeftAdjustedWithZoom = adjustForLocalZoom(offsetLeft, *renderer, zoomFactor);
-        return convertToNonSubpixelValueIfNeeded(offsetLeftAdjustedWithZoom, renderer->document(), zoomFactor == 1 ? Floor : Round);
-    }
+    if (RenderBoxModelObject* renderer = renderBoxModelObject())
+        return adjustOffsetForZoomAndSubpixelLayout(renderer, renderer->offsetLeft());
     return 0;
+}
+
+double Element::offsetTopForBindings()
+{
+    auto offset = offsetTop();
+
+    auto parent = makeRefPtr(offsetParent());
+    if (!parent || !parent->isInShadowTree())
+        return offset;
+
+    ASSERT(&parent->document() == &document());
+    if (&parent->treeScope() == &treeScope())
+        return offset;
+
+    auto ancestorTreeScopes = collectAncestorTreeScopeAsHashSet(*this);
+    while (parent && !ancestorTreeScopes.contains(&parent->treeScope())) {
+        offset += parent->offsetTop();
+        parent = parent->offsetParent();
+    }
+
+    return offset;
 }
 
 double Element::offsetTop()
 {
     document().updateLayoutIgnorePendingStylesheets();
-    if (RenderBoxModelObject* renderer = renderBoxModelObject()) {
-        LayoutUnit offsetTop = subpixelMetricsEnabled(renderer->document()) ? renderer->offsetTop() : LayoutUnit(roundToInt(renderer->offsetTop()));
-        double zoomFactor = 1;
-        double offsetTopAdjustedWithZoom = adjustForLocalZoom(offsetTop, *renderer, zoomFactor);
-        return convertToNonSubpixelValueIfNeeded(offsetTopAdjustedWithZoom, renderer->document(), zoomFactor == 1 ? Floor : Round);
-    }
+    if (RenderBoxModelObject* renderer = renderBoxModelObject())
+        return adjustOffsetForZoomAndSubpixelLayout(renderer, renderer->offsetTop());
     return 0;
 }
 
@@ -927,12 +977,14 @@ double Element::offsetHeight()
     return 0;
 }
 
-Element* Element::bindingsOffsetParent()
+Element* Element::offsetParentForBindings()
 {
     Element* element = offsetParent();
     if (!element || !element->isInShadowTree())
         return element;
-    return element->containingShadowRoot()->mode() == ShadowRootMode::UserAgent ? nullptr : element;
+    while (element && !isDescendantOrShadowDescendantOf(&element->rootNode()))
+        element = element->offsetParent();
+    return element;
 }
 
 Element* Element::offsetParent()
@@ -1270,7 +1322,7 @@ LayoutRect Element::absoluteEventHandlerBounds(bool& includesFixedPositionElemen
     return absoluteEventBoundsOfElementAndDescendants(includesFixedPositionElements);
 }
 
-static std::optional<std::pair<RenderObject*, LayoutRect>> listBoxElementBoundingBox(Element& element)
+static Optional<std::pair<RenderObject*, LayoutRect>> listBoxElementBoundingBox(Element& element)
 {
     HTMLSelectElement* selectElement;
     bool isGroup;
@@ -1281,13 +1333,13 @@ static std::optional<std::pair<RenderObject*, LayoutRect>> listBoxElementBoundin
         selectElement = downcast<HTMLOptGroupElement>(element).ownerSelectElement();
         isGroup = true;
     } else
-        return std::nullopt;
+        return WTF::nullopt;
 
     if (!selectElement || !selectElement->renderer() || !is<RenderListBox>(selectElement->renderer()))
-        return std::nullopt;
+        return WTF::nullopt;
 
     auto& renderer = downcast<RenderListBox>(*selectElement->renderer());
-    std::optional<LayoutRect> boundingBox;
+    Optional<LayoutRect> boundingBox;
     int optionIndex = 0;
     for (auto* item : selectElement->listItems()) {
         if (item == &element) {
@@ -1305,7 +1357,7 @@ static std::optional<std::pair<RenderObject*, LayoutRect>> listBoxElementBoundin
     }
 
     if (!boundingBox)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return std::pair<RenderObject*, LayoutRect> { &renderer, boundingBox.value() };
 }
@@ -1398,7 +1450,7 @@ const AtomicString& Element::getAttributeNS(const AtomicString& namespaceURI, co
 }
 
 // https://dom.spec.whatwg.org/#dom-element-toggleattribute
-ExceptionOr<bool> Element::toggleAttribute(const AtomicString& qualifiedName, std::optional<bool> force)
+ExceptionOr<bool> Element::toggleAttribute(const AtomicString& qualifiedName, Optional<bool> force)
 {
     if (!Document::isValidName(qualifiedName))
         return Exception { InvalidCharacterError };
@@ -3756,10 +3808,10 @@ void Element::didDetachRenderers()
     ASSERT(hasCustomStyleResolveCallbacks());
 }
 
-std::optional<ElementStyle> Element::resolveCustomStyle(const RenderStyle&, const RenderStyle*)
+Optional<ElementStyle> Element::resolveCustomStyle(const RenderStyle&, const RenderStyle*)
 {
     ASSERT(hasCustomStyleResolveCallbacks());
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 void Element::cloneAttributesFromElement(const Element& other)
@@ -4003,10 +4055,10 @@ Element* Element::findAnchorElementForLink(String& outAnchorName)
     return nullptr;
 }
 
-ExceptionOr<Ref<WebAnimation>> Element::animate(JSC::ExecState& state, JSC::Strong<JSC::JSObject>&& keyframes, std::optional<Variant<double, KeyframeAnimationOptions>>&& options)
+ExceptionOr<Ref<WebAnimation>> Element::animate(JSC::ExecState& state, JSC::Strong<JSC::JSObject>&& keyframes, Optional<Variant<double, KeyframeAnimationOptions>>&& options)
 {
     String id = "";
-    std::optional<Variant<double, KeyframeEffectOptions>> keyframeEffectOptions;
+    Optional<Variant<double, KeyframeEffectOptions>> keyframeEffectOptions;
     if (options) {
         auto optionsValue = options.value();
         Variant<double, KeyframeEffectOptions> keyframeEffectOptionsVariant;
@@ -4052,5 +4104,19 @@ Vector<RefPtr<WebAnimation>> Element::getAnimations()
     }
     return animations;
 }
+
+#if ENABLE(CSS_TYPED_OM)
+StylePropertyMap* Element::attributeStyleMap()
+{
+    if (!hasRareData())
+        return nullptr;
+    return elementRareData()->attributeStyleMap();
+}
+
+void Element::setAttributeStyleMap(Ref<StylePropertyMap>&& map)
+{
+    ensureElementRareData().setAttributeStyleMap(WTFMove(map));
+}
+#endif
 
 } // namespace WebCore

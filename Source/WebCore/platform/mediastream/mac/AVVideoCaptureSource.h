@@ -60,6 +60,7 @@ public:
     enum class InterruptionReason { None, VideoNotAllowedInBackground, AudioInUse, VideoInUse, VideoNotAllowedInSideBySide };
     void captureSessionBeginInterruption(RetainPtr<NSNotification>);
     void captureSessionEndInterruption(RetainPtr<NSNotification>);
+    void deviceDisconnected(RetainPtr<NSNotification>);
 
     AVCaptureSession* session() const { return m_session.get(); }
 
@@ -114,8 +115,8 @@ private:
     int m_deviceOrientation { 0 };
     MediaSample::VideoRotation m_sampleRotation { MediaSample::VideoRotation::None };
 
-    std::optional<RealtimeMediaSourceSettings> m_currentSettings;
-    std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
+    Optional<RealtimeMediaSourceSettings> m_currentSettings;
+    Optional<RealtimeMediaSourceCapabilities> m_capabilities;
     RetainPtr<WebCoreAVVideoCaptureSourceObserver> m_objcObserver;
     RetainPtr<AVCaptureSession> m_session;
     RetainPtr<AVCaptureDevice> m_device;
@@ -126,6 +127,7 @@ private:
     IntSize m_pendingSize;
     double m_pendingFrameRate;
     InterruptionReason m_interruption { InterruptionReason::None };
+    int m_framesToDropAtStartup { 0 };
     bool m_isRunning { false };
 };
 

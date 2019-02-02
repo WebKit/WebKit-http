@@ -262,7 +262,7 @@ public:
     Variant<JSBigInt*, int32_t> toBigIntOrInt32(ExecState*) const;
 
     // toNumber conversion if it can be done without side effects.
-    std::optional<double> toNumberFromPrimitive() const;
+    Optional<double> toNumberFromPrimitive() const;
 
     JSString* toString(ExecState*) const; // On exception, this returns the empty string.
     JSString* toStringOrNull(ExecState*) const; // On exception, this returns null, to make exception checks faster.
@@ -551,7 +551,7 @@ ALWAYS_INLINE JSValue jsNumber(double d)
     return JSValue(d);
 }
 
-ALWAYS_INLINE JSValue jsNumber(MediaTime t)
+ALWAYS_INLINE JSValue jsNumber(const MediaTime& t)
 {
     return jsNumber(t.toDouble());
 }

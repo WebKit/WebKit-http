@@ -29,6 +29,7 @@
 #include "ChildProcess.h"
 #include "DownloadManager.h"
 #include "NetworkContentRuleListManager.h"
+#include "NetworkHTTPSUpgradeChecker.h"
 #include "SandboxExtension.h"
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/FetchIdentifier.h>
@@ -149,10 +150,10 @@ public:
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID, const Vector<String>& domainsToBlock, uint64_t contextId);
-    void setAgeCapForClientSideCookies(PAL::SessionID, std::optional<Seconds>, uint64_t contextId);
+    void setAgeCapForClientSideCookies(PAL::SessionID, Optional<Seconds>, uint64_t contextId);
     void hasStorageAccessForFrame(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, uint64_t contextId);
     void getAllStorageAccessEntries(PAL::SessionID, uint64_t contextId);
-    void grantStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, std::optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId);
+    void grantStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId);
     void removeAllStorageAccess(PAL::SessionID, uint64_t contextId);
     void removePrevalentDomains(PAL::SessionID, const Vector<String>& domains);
     void setCacheMaxAgeCapForPrevalentResources(PAL::SessionID, Seconds, uint64_t contextId);
@@ -186,7 +187,7 @@ public:
 
 #if ENABLE(SERVICE_WORKER)
     WebSWServerToContextConnection* serverToContextConnectionForOrigin(const WebCore::SecurityOriginData&);
-    void createServerToContextConnection(const WebCore::SecurityOriginData&, std::optional<PAL::SessionID>);
+    void createServerToContextConnection(const WebCore::SecurityOriginData&, Optional<PAL::SessionID>);
     
     WebCore::SWServer& swServerForSession(PAL::SessionID);
     void registerSWServerConnection(WebSWServerConnection&);
@@ -202,6 +203,10 @@ public:
     bool parentProcessHasServiceWorkerEntitlement() const;
 #else
     bool parentProcessHasServiceWorkerEntitlement() const { return true; }
+#endif
+
+#if PLATFORM(COCOA)
+    NetworkHTTPSUpgradeChecker& networkHTTPSUpgradeChecker() { return m_networkHTTPSUpgradeChecker; }
 #endif
 
 private:
@@ -393,6 +398,9 @@ private:
     HashMap<WebCore::SWServerConnectionIdentifier, WebSWServerConnection*> m_swServerConnections;
 #endif
 
+#if PLATFORM(COCOA)
+    NetworkHTTPSUpgradeChecker m_networkHTTPSUpgradeChecker;
+#endif
 };
 
 } // namespace WebKit

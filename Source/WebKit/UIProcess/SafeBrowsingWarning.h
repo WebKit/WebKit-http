@@ -39,20 +39,22 @@ namespace WebKit {
 class SafeBrowsingWarning : public RefCounted<SafeBrowsingWarning> {
 public:
 #if HAVE(SAFE_BROWSING)
-    static Ref<SafeBrowsingWarning> create(const URL& url, SSBServiceLookupResult *result)
+    static Ref<SafeBrowsingWarning> create(const URL& url, bool forMainFrameNavigation, SSBServiceLookupResult *result)
     {
-        return adoptRef(*new SafeBrowsingWarning(url, result));
+        return adoptRef(*new SafeBrowsingWarning(url, forMainFrameNavigation, result));
     }
 #endif
 #if PLATFORM(COCOA)
-    static Ref<SafeBrowsingWarning> create(String&& title, String&& warning, RetainPtr<NSAttributedString>&& details)
+    static Ref<SafeBrowsingWarning> create(URL&& url, String&& title, String&& warning, RetainPtr<NSAttributedString>&& details)
     {
-        return adoptRef(*new SafeBrowsingWarning(WTFMove(title), WTFMove(warning), WTFMove(details)));
+        return adoptRef(*new SafeBrowsingWarning(WTFMove(url), WTFMove(title), WTFMove(warning), WTFMove(details)));
     }
 #endif
 
+    const URL& url() const { return m_url; }
     const String& title() const { return m_title; }
     const String& warning() const { return m_warning; }
+    bool forMainFrameNavigation() const { return m_forMainFrameNavigation; }
 #if PLATFORM(COCOA)
     RetainPtr<NSAttributedString> details() const { return m_details; }
 #endif
@@ -62,14 +64,16 @@ public:
     
 private:
 #if HAVE(SAFE_BROWSING)
-    SafeBrowsingWarning(const URL&, SSBServiceLookupResult *);
+    SafeBrowsingWarning(const URL&, bool, SSBServiceLookupResult *);
 #endif
 #if PLATFORM(COCOA)
-    SafeBrowsingWarning(String&&, String&&, RetainPtr<NSAttributedString>&&);
+    SafeBrowsingWarning(URL&&, String&&, String&&, RetainPtr<NSAttributedString>&&);
 #endif
 
+    URL m_url;
     String m_title;
     String m_warning;
+    bool m_forMainFrameNavigation { false };
 #if PLATFORM(COCOA)
     RetainPtr<NSAttributedString> m_details;
 #endif

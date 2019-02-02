@@ -54,10 +54,8 @@ function installDependenciesWithBrew {
 
     brew install autoconf \
          automake \
-         bison \
          cmake \
          enchant \
-         flex \
          gettext \
          gobject-introspection \
          intltool \
@@ -93,10 +91,8 @@ function installDependenciesWithApt {
         automake \
         autopoint \
         autotools-dev \
-        bison \
         bubblewrap \
         cmake \
-        flex \
         gawk \
         geoclue-2.0 \
         gnome-common \
@@ -199,6 +195,7 @@ function installDependenciesWithApt {
         libp11-kit-dev \
         libpciaccess-dev \
         libproxy-dev \
+        libpsl-dev \
         libssl-dev \
         libtiff5-dev \
         libv4l-dev \
@@ -242,14 +239,12 @@ function installDependenciesWithPacman {
         alsa-lib \
         autoconf \
         automake \
-        bison \
         bubblewrap \
         cmake \
         libedit \
         libffi \
         file \
         findutils \
-        flex \
         gawk \
         gcc \
         gettext \
@@ -355,6 +350,7 @@ function installDependenciesWithPacman {
         p11-kit \
         libpciaccess \
         libproxy \
+        libpsl \
         libtiff \
         libxfixes \
         libxfont2 \
@@ -416,12 +412,10 @@ function installDependenciesWithDnf {
         alsa-lib-devel \
         autoconf \
         automake \
-        bison \
         bubblewrap \
         cairo-devel \
         cmake \
         enchant-devel \
-        flex \
         gcc-c++ \
         geoclue2-devel \
         gettext-devel \
@@ -522,6 +516,7 @@ function installDependenciesWithDnf {
         libp11-devel \
         libpciaccess-devel \
         libproxy-devel \
+        libpsl-devel \
         libtiff-devel \
         libxcb-devel \
         libxkbfile-devel \

@@ -1,3 +1,229 @@
+2019-01-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] Merge WebEditCommandProxy::nameForEditAction and undoNameForEditAction into a single function
+        https://bugs.webkit.org/show_bug.cgi?id=193129
+
+        Reviewed by Tim Horton.
+
+        Remove undoNameForEditAction and use WebCore::nameForUndoRedo instead.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::registerUndoOrRedoStep):
+        (undoNameForEditAction): Deleted.
+
+2019-01-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add support for using the current text selection as the find string on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=193034
+        <rdar://problem/45138739>
+
+        Reviewed by Tim Horton.
+
+        Add a method stub for WebKitLegacy.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2019-01-01  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2019
+        https://bugs.webkit.org/show_bug.cgi?id=192811
+
+        Reviewed by Mark Lam.
+
+        * Info.plist:
+
+2018-12-20  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Use Ref<> as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=192808
+
+        Reviewed by Alex Christensen.
+
+        * DOM/DOM.mm:
+        (-[DOMNode getPreviewSnapshotImage:andRects:]):
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::instantiatePlugin):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::evaluateJavaScript):
+        (WebKit::NetscapePluginInstanceProxy::loadRequest):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView evaluateJavaScriptPluginRequest:]):
+        (-[WebNetscapePluginView loadRequest:inTarget:withNotifyData:sendNotification:]):
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::imageForCurrentSharingServicePickerItem):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::transitionToCommittedForNewPage):
+        * WebView/WebFrame.mm:
+        (-[WebFrame getDictationResultRanges:andMetadatas:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _writeSelectionWithPasteboardTypes:toPasteboard:cachedAttributedString:]):
+        * WebView/WebView.mm:
+        (+[WebView _addUserScriptToGroup:world:source:url:whitelist:blacklist:injectionTime:injectedFrames:]):
+        (+[WebView _addUserStyleSheetToGroup:world:source:url:whitelist:blacklist:injectedFrames:]):
+
+2018-12-21  Benjamin Poulain  <benjamin@webkit.org>
+
+        <rdar://problem/46194315> macOS: WebKit1 does not handle occlusion changes
+        https://bugs.webkit.org/show_bug.cgi?id=192821
+
+        Reviewed by Chris Dumez.
+
+        When a window becomes occluded, the window server informs the application.
+        This should be used to suspend any work that is not visible by the user.
+
+        WebKit2 handles it just fine, but WebKit1 did not handle the notification.
+        In some cases, that lead to performance impact (see radar).
+
+        This patch adds an observer for the occlusion notification. I tried to stick
+        with the same names used by WebKit2.
+
+        * WebView/WebView.mm:
+        (-[WebView _isViewVisible]):
+        (-[WebView addWindowObserversForWindow:]):
+        (-[WebView removeWindowObservers]):
+        (-[WebView _windowDidChangeOcclusionState:]):
+
+2018-12-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Add a runtime flag for local authenticator
+        https://bugs.webkit.org/show_bug.cgi?id=192792
+        <rdar://problem/46798738>
+
+        Reviewed by Brent Fulgham.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences webAuthenticationEnabled]): Deleted.
+        (-[WebPreferences setWebAuthenticationEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-12-20  Chris Dumez  <cdumez@apple.com>
+
+        Use Optional::valueOr() instead of Optional::value_or()
+        https://bugs.webkit.org/show_bug.cgi?id=192933
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        (-[WebSecurityOrigin port]):
+
+2018-12-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r239417.
+
+        Introduced two API test failures on macOS.
+
+        Reverted changeset:
+
+        "<rdar://problem/46194315> macOS: WebKit1 does not handle
+        occlusion changes"
+        https://bugs.webkit.org/show_bug.cgi?id=192821
+        https://trac.webkit.org/changeset/239417
+
+2018-12-20  Brent Fulgham  <bfulgham@apple.com>
+
+        WKWebView default UA doesn't freeze the build number
+        https://bugs.webkit.org/show_bug.cgi?id=192809
+        <rdar://problem/44687185>
+
+        Reviewed by Andy Estes.
+
+        Always reports the frozen build number.
+
+        * WebView/WebView.mm:
+        (-[WebView _setBrowserUserAgentProductVersion:buildVersion:bundleVersion:]): Do not report the
+        actual build number through this method call.
+        (-[WebView _setUIWebViewUserAgentWithBuildVersion:]): Ditto.
+
+2018-12-19  Chris Dumez  <cdumez@apple.com>
+
+        wtf/Optional.h: move-constructor and move-assignment operator should disengage the value being moved from
+        https://bugs.webkit.org/show_bug.cgi?id=192728
+        <rdar://problem/46746779>
+
+        Reviewed by Geoff Garen.
+
+        * DOM/*:
+        * Plugins/*:
+        * WebCoreSupport/*:
+        * WebView/*:
+
+2018-12-19  Benjamin Poulain  <benjamin@webkit.org>
+
+        <rdar://problem/46194315> macOS: WebKit1 does not handle occlusion changes
+        https://bugs.webkit.org/show_bug.cgi?id=192821
+
+        Reviewed by Chris Dumez.
+
+        When a window becomes occluded, the window server informs the application.
+        This should be used to suspend any work that is not visible by the user.
+
+        WebKit2 handles it just fine, but WebKit1 did not handle the notification.
+        In some cases, that lead to performance impact (see radar).
+
+        This patch adds an observer for the occlusion notification. I tried to stick
+        with the same names used by WebKit2.
+
+        * WebView/WebView.mm:
+        (-[WebView _isViewVisible]):
+        (-[WebView addWindowObserversForWindow:]):
+        (-[WebView removeWindowObservers]):
+        (-[WebView _windowDidChangeOcclusionState:]):
+
+2018-12-19  Megan Gardner  <megan_gardner@apple.com>
+
+        Allow clients to set the navigator platform
+        https://bugs.webkit.org/show_bug.cgi?id=192735
+
+        Reviewed by Tim Horton.
+
+        Add stubs to fill out the added functionality in FrameLoaderClient.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::navigatorPlatform):
+
+2018-12-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        offsetLeft and offsetParent should adjust across shadow boundaries
+        https://bugs.webkit.org/show_bug.cgi?id=157437
+        <rdar://problem/26154021>
+
+        Reviewed by Simon Fraser.
+
+        Use *forBindings variants of offsetLeft, offsetTop, and offsetParent.
+
+        * DOM/DOMElement.mm:
+        (-[DOMElement offsetLeft]):
+        (-[DOMElement offsetTop]):
+        (-[DOMElement offsetParent]):
+
+2018-12-17  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed build fix.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame getDictationResultRanges:andMetadatas:]):
+
+2018-12-15  Darin Adler  <darin@apple.com>
+
+        Use warning-ignoring macros more consistently and simply
+        https://bugs.webkit.org/show_bug.cgi?id=192743
+
+        Reviewed by Mark Lam.
+
+        * DOM/DOM.mm: Use IGNORE_WARNINGS_BEGIN/END instead of
+        IGNORE_CLANG_WARNINGS_BEGIN since there is no need to accomodate non-clang
+        compilers in Objective-C++ code.
+
+        * WebCoreSupport/WebAlternativeTextClient.h: Use IGNORE_WARNINGS_BEGIN/END
+        instead of IGNORE_CLANG_WARNINGS_BEGIN/END because there is no need to
+        accomodate non-clang compilers here. Also use #pragma once, add a missing
+        "explicit" and fix conditionals.
+
 2018-12-12  Ryosuke Niwa  <rniwa@webkit.org>
 
         Make TextInputController.legacyAttributedString take DOM nodes and offsets

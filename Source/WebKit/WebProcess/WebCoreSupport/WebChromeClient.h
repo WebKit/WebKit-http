@@ -252,10 +252,6 @@ private:
     RefPtr<WebCore::ScrollingCoordinator> createScrollingCoordinator(WebCore::Page&) const final;
 #endif
 
-#if PLATFORM(IOS_FAMILY)
-    void elementDidRefocus(WebCore::Element&) final;
-#endif
-
 #if (PLATFORM(IOS_FAMILY) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     bool supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) final;
     bool supportsVideoFullscreenStandby() final;
@@ -278,6 +274,7 @@ private:
 #if PLATFORM(COCOA)
     void elementDidFocus(WebCore::Element&) final;
     void elementDidBlur(WebCore::Element&) final;
+    void elementDidRefocus(WebCore::Element&) final;
 
     void makeFirstResponder() final;
     void assistiveTechnologyMakeFirstResponder() final;
@@ -298,7 +295,7 @@ private:
     void notifyScrollerThumbIsVisibleInRect(const WebCore::IntRect&) final;
     void recommendedScrollbarStyleDidChange(WebCore::ScrollbarStyle newStyle) final;
 
-    std::optional<WebCore::ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() final;
+    Optional<WebCore::ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() final;
 
     WebCore::Color underlayColor() const final;
 

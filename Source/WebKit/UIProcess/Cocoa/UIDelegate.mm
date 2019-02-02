@@ -55,7 +55,7 @@
 #import <wtf/BlockPtr.h>
 #import <wtf/URL.h>
 
-#if PLATFORM(IOS_FAMILY)
+#if HAVE(AUTHORIZATION_STATUS_FOR_MEDIA_TYPE)
 #import <AVFoundation/AVCaptureDevice.h>
 #import <AVFoundation/AVMediaFormat.h>
 #import <wtf/SoftLinking.h>
@@ -234,7 +234,7 @@ void UIDelegate::UIClient::createNewPage(WebPageProxy& page, Ref<API::FrameInfo>
 
     auto userInitiatedActivity = page.process().userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
     bool shouldOpenAppLinks = !hostsAreEqual(sourceFrameInfo->request().url(), request.url());
-    auto apiNavigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.ptr(), nullptr, std::nullopt, WTFMove(request), URL(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
+    auto apiNavigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.ptr(), nullptr, WTF::nullopt, WTFMove(request), URL(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
 
     auto apiWindowFeatures = API::WindowFeatures::create(windowFeatures);
 
@@ -717,6 +717,10 @@ static _WKAutoplayEventFlags toWKAutoplayEventFlags(OptionSet<WebCore::AutoplayE
     _WKAutoplayEventFlags wkFlags = _WKAutoplayEventFlagsNone;
     if (flags.contains(WebCore::AutoplayEventFlags::HasAudio))
         wkFlags |= _WKAutoplayEventFlagsHasAudio;
+    if (flags.contains(WebCore::AutoplayEventFlags::PlaybackWasPrevented))
+        wkFlags |= _WKAutoplayEventFlagsPlaybackWasPrevented;
+    if (flags.contains(WebCore::AutoplayEventFlags::MediaIsMainContent))
+        wkFlags |= _WKAutoplayEventFlagsMediaIsMainContent;
     
     return wkFlags;
 }
@@ -726,15 +730,15 @@ static _WKAutoplayEvent toWKAutoplayEvent(WebCore::AutoplayEvent event)
     switch (event) {
     case WebCore::AutoplayEvent::DidPreventMediaFromPlaying:
         return _WKAutoplayEventDidPreventFromAutoplaying;
-    case WebCore::AutoplayEvent::DidPlayMediaPreventedFromPlaying:
-        return _WKAutoplayEventDidPlayMediaPreventedFromAutoplaying;
+    case WebCore::AutoplayEvent::DidPlayMediaWithUserGesture:
+        return _WKAutoplayEventDidPlayMediaWithUserGesture;
     case WebCore::AutoplayEvent::DidAutoplayMediaPastThresholdWithoutUserInterference:
         return _WKAutoplayEventDidAutoplayMediaPastThresholdWithoutUserInterference;
     case WebCore::AutoplayEvent::UserDidInterfereWithPlayback:
         return _WKAutoplayEventUserDidInterfereWithPlayback;
     }
     ASSERT_NOT_REACHED();
-    return _WKAutoplayEventDidPlayMediaPreventedFromAutoplaying;
+    return _WKAutoplayEventDidPlayMediaWithUserGesture;
 }
 
 void UIDelegate::UIClient::toolbarsAreVisible(WebPageProxy&, Function<void(bool)>&& completionHandler)
@@ -912,7 +916,7 @@ bool UIDelegate::UIClient::decidePolicyForUserMediaPermissionRequest(WebPageProx
         return true;
     }
 
-#if PLATFORM(IOS_FAMILY)
+#if HAVE(AUTHORIZATION_STATUS_FOR_MEDIA_TYPE)
     bool usingMockCaptureDevices = page.preferences().mockCaptureDevicesEnabled();
     auto requestCameraAuthorization = makeBlockPtr([this, &frame, protectedRequest = makeRef(request), webView = RetainPtr<WKWebView>(m_uiDelegate.m_webView), usingMockCaptureDevices]() {
 

@@ -58,7 +58,7 @@ static CSSParserContext parserContextForElement(const Element& element)
     return result;
 }
 
-static std::optional<InlineStyleSheetCacheKey> makeInlineStyleSheetCacheKey(const String& text, const Element& element)
+static Optional<InlineStyleSheetCacheKey> makeInlineStyleSheetCacheKey(const String& text, const Element& element)
 {
     // Only cache for shadow trees. Main document inline stylesheets are generally unique and can't be shared between documents.
     // FIXME: This could be relaxed when a stylesheet does not contain document-relative URLs (or #urls).
@@ -172,12 +172,12 @@ void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
     if (!contentSecurityPolicy.allowInlineStyle(document.url(), m_startTextPosition.m_line, text, hasKnownNonce))
         return;
 
-    RefPtr<MediaQuerySet> mediaQueries = MediaQuerySet::create(m_media, MediaQueryParserContext(document));
+    auto mediaQueries = MediaQuerySet::create(m_media, MediaQueryParserContext(document));
 
     MediaQueryEvaluator screenEval("screen"_s, true);
     MediaQueryEvaluator printEval("print"_s, true);
     LOG(MediaQueries, "InlineStyleSheetOwner::createSheet evaluating queries");
-    if (!screenEval.evaluate(*mediaQueries) && !printEval.evaluate(*mediaQueries))
+    if (!screenEval.evaluate(mediaQueries.get()) && !printEval.evaluate(mediaQueries.get()))
         return;
 
     if (m_styleScope)
@@ -188,7 +188,7 @@ void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
         if (auto* cachedSheet = inlineStyleSheetCache().get(*cacheKey)) {
             ASSERT(cachedSheet->isCacheable());
             m_sheet = CSSStyleSheet::createInline(*cachedSheet, element, m_startTextPosition);
-            m_sheet->setMediaQueries(mediaQueries.releaseNonNull());
+            m_sheet->setMediaQueries(WTFMove(mediaQueries));
             if (!element.isInShadowTree())
                 m_sheet->setTitle(element.title());
 
@@ -203,7 +203,7 @@ void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
     auto contents = StyleSheetContents::create(String(), parserContextForElement(element));
 
     m_sheet = CSSStyleSheet::createInline(contents.get(), element, m_startTextPosition);
-    m_sheet->setMediaQueries(mediaQueries.releaseNonNull());
+    m_sheet->setMediaQueries(WTFMove(mediaQueries));
     if (!element.isInShadowTree())
         m_sheet->setTitle(element.title());
 

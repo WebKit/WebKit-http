@@ -44,6 +44,7 @@
 #include "MaxFrameExtentForSlowPathCall.h"
 #include "ModuleProgramCodeBlock.h"
 #include "PCToCodeOriginMap.h"
+#include "ProbeContext.h"
 #include "ProfilerDatabase.h"
 #include "ProgramCodeBlock.h"
 #include "ResultType.h"
@@ -269,6 +270,14 @@ void JIT::privateCompileMainPass()
             updateTopCallFrame();
 
         unsigned bytecodeOffset = m_bytecodeOffset;
+#if ENABLE(MASM_PROBE)
+        if (UNLIKELY(Options::traceBaselineJITExecution())) {
+            CodeBlock* codeBlock = m_codeBlock;
+            probe([=] (Probe::Context& ctx) {
+                dataLogLn("JIT [", bytecodeOffset, "] ", opcodeNames[opcodeID], " cfr ", RawPointer(ctx.fp()), " @ ", codeBlock);
+            });
+        }
+#endif
 
         switch (opcodeID) {
         DEFINE_SLOW_OP(in_by_val)
@@ -493,6 +502,17 @@ void JIT::privateCompileSlowCases()
         if (m_disassembler)
             m_disassembler->setForBytecodeSlowPath(m_bytecodeOffset, label());
 
+#if ENABLE(MASM_PROBE)
+        if (UNLIKELY(Options::traceBaselineJITExecution())) {
+            OpcodeID opcodeID = currentInstruction->opcodeID();
+            unsigned bytecodeOffset = m_bytecodeOffset;
+            CodeBlock* codeBlock = m_codeBlock;
+            probe([=] (Probe::Context& ctx) {
+                dataLogLn("JIT [", bytecodeOffset, "] SLOW ", opcodeNames[opcodeID], " cfr ", RawPointer(ctx.fp()), " @ ", codeBlock);
+            });
+        }
+#endif
+
         switch (currentInstruction->opcodeID()) {
         DEFINE_SLOWCASE_OP(op_add)
         DEFINE_SLOWCASE_OP(op_call)
@@ -709,7 +729,7 @@ void JIT::compileWithoutLinking(JITCompilationEffort effort)
     stackOverflow.link(this);
     m_bytecodeOffset = 0;
     if (maxFrameExtentForSlowPathCall)
-        addPtr(TrustedImm32(-maxFrameExtentForSlowPathCall), stackPointerRegister);
+        addPtr(TrustedImm32(-static_cast<int32_t>(maxFrameExtentForSlowPathCall)), stackPointerRegister);
     callOperationWithCallFrameRollbackOnException(operationThrowStackOverflowError, m_codeBlock);
 
     // If the number of parameters is 1, we never require arity fixup.
@@ -726,7 +746,7 @@ void JIT::compileWithoutLinking(JITCompilationEffort effort)
         m_bytecodeOffset = 0;
 
         if (maxFrameExtentForSlowPathCall)
-            addPtr(TrustedImm32(-maxFrameExtentForSlowPathCall), stackPointerRegister);
+            addPtr(TrustedImm32(-static_cast<int32_t>(maxFrameExtentForSlowPathCall)), stackPointerRegister);
         callOperationWithCallFrameRollbackOnException(m_codeBlock->m_isConstructor ? operationConstructArityCheck : operationCallArityCheck);
         if (maxFrameExtentForSlowPathCall)
             addPtr(TrustedImm32(maxFrameExtentForSlowPathCall), stackPointerRegister);

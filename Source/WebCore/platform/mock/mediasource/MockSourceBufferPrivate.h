@@ -41,7 +41,7 @@ class VideoTrackPrivate;
 
 class MockSourceBufferPrivate final : public SourceBufferPrivate {
 public:
-    static RefPtr<MockSourceBufferPrivate> create(MockMediaSourcePrivate*);
+    static Ref<MockSourceBufferPrivate> create(MockMediaSourcePrivate*);
     virtual ~MockSourceBufferPrivate();
 
     void clearMediaSource() { m_mediaSource = nullptr; }
@@ -49,7 +49,6 @@ public:
     bool hasVideo() const;
     bool hasAudio() const;
 
-    void seekToTime(const MediaTime&);
     MediaTime fastSeekTimeForMediaTime(const MediaTime&, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold);
 
 private:

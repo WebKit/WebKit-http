@@ -27,6 +27,7 @@
 
 #include "CacheModel.h"
 #include "SandboxExtension.h"
+#include "WebsiteDataStoreParameters.h"
 #include <WebCore/Cookie.h>
 #include <wtf/ProcessID.h>
 #include <wtf/Vector.h>
@@ -62,21 +63,15 @@ struct NetworkProcessCreationParameters {
 #if PLATFORM(MAC)
     Vector<uint8_t> uiProcessCookieStorageIdentifier;
 #endif
-    Vector<WebCore::Cookie> defaultSessionPendingCookies;
 #if PLATFORM(IOS_FAMILY)
     SandboxExtension::Handle cookieStorageDirectoryExtensionHandle;
     SandboxExtension::Handle containerCachesDirectoryExtensionHandle;
     SandboxExtension::Handle parentBundleDirectoryExtensionHandle;
-#if ENABLE(INDEXED_DATABASE)
-    SandboxExtension::Handle indexedDatabaseTempBlobDirectoryExtensionHandle;
-#endif
 #endif
     bool shouldSuppressMemoryPressureHandler { false };
     bool shouldUseTestingNetworkSession { false };
-    Seconds loadThrottleLatency;
 
     Vector<String> urlSchemesRegisteredForCustomProtocols;
-    ProcessID presentingApplicationPID { 0 };
 
 #if PLATFORM(COCOA)
     String uiProcessBundleIdentifier;
@@ -84,13 +79,13 @@ struct NetworkProcessCreationParameters {
 #if PLATFORM(IOS_FAMILY)
     String ctDataConnectionServiceType;
 #endif
-    String httpProxy;
-    String httpsProxy;
     RetainPtr<CFDataRef> networkATSContext;
     bool storageAccessAPIEnabled;
     bool suppressesConnectionTerminationOnSystemChange;
 #endif
 
+    WebsiteDataStoreParameters defaultDataStoreParameters;
+    
 #if USE(SOUP)
     String cookiePersistentStoragePath;
     uint32_t cookiePersistentStorageType { 0 };
@@ -98,8 +93,6 @@ struct NetworkProcessCreationParameters {
     bool ignoreTLSErrors { false };
     Vector<String> languages;
     WebCore::SoupNetworkProxySettings proxySettings;
-#elif USE(CURL)
-    String cookiePersistentStorageFile;
 #endif
 
     Vector<String> urlSchemesRegisteredAsSecure;
@@ -112,11 +105,6 @@ struct NetworkProcessCreationParameters {
 
 #if ENABLE(PROXIMITY_NETWORKING)
     unsigned wirelessContextIdentifier { 0 };
-#endif
-
-#if ENABLE(INDEXED_DATABASE)
-    String indexedDatabaseDirectory;
-    SandboxExtension::Handle indexedDatabaseDirectoryExtensionHandle;
 #endif
 
 #if ENABLE(SERVICE_WORKER)

@@ -30,16 +30,16 @@
 #import <Foundation/Foundation.h>
 #import "NSURLExtras.h"
 
-#import "CFURLExtras.h"
-#import "URLParser.h"
+#import <unicode/uchar.h>
+#import <unicode/uidna.h>
+#import <unicode/uscript.h>
 #import <wtf/Function.h>
 #import <wtf/HexNumber.h>
 #import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/URLParser.h>
 #import <wtf/Vector.h>
-#import <unicode/uchar.h>
-#import <unicode/uidna.h>
-#import <unicode/uscript.h>
+#import <wtf/cf/CFURLExtras.h>
 
 // Needs to be big enough to hold an IDN-encoded name.
 // For host names bigger than this, we won't do IDN encoding, which is almost certainly OK.
@@ -92,9 +92,7 @@ template<typename CharacterType> inline bool isASCIIDigitOrValidHostCharacter(Ch
     }
 }
 
-
-
-static BOOL isLookalikeCharacter(std::optional<UChar32> previousCodePoint, UChar32 charCode)
+static BOOL isLookalikeCharacter(Optional<UChar32> previousCodePoint, UChar32 charCode)
 {
     // This function treats the following as unsafe, lookalike characters:
     // any non-printable character, any character considered as whitespace,
@@ -115,9 +113,11 @@ static BOOL isLookalikeCharacter(std::optional<UChar32> previousCodePoint, UChar
         case 0x00BD: /* VULGAR FRACTION ONE HALF */
         case 0x00BE: /* VULGAR FRACTION THREE QUARTERS */
         case 0x00ED: /* LATIN SMALL LETTER I WITH ACUTE */
+        /* 0x0131 LATIN SMALL LETTER DOTLESS I is intentionally not considered a lookalike character because it is visually distinguishable from i and it has legitimate use in the Turkish language. */
         case 0x01C3: /* LATIN LETTER RETROFLEX CLICK */
         case 0x0251: /* LATIN SMALL LETTER ALPHA */
         case 0x0261: /* LATIN SMALL LETTER SCRIPT G */
+        case 0x027E: /* LATIN SMALL LETTER R WITH FISHHOOK */
         case 0x02D0: /* MODIFIER LETTER TRIANGULAR COLON */
         case 0x0335: /* COMBINING SHORT STROKE OVERLAY */
         case 0x0337: /* COMBINING SHORT SOLIDUS OVERLAY */
@@ -328,7 +328,7 @@ static BOOL allCharactersInIDNScriptWhiteList(const UChar *buffer, int32_t lengt
     });
     
     int32_t i = 0;
-    std::optional<UChar32> previousCodePoint;
+    Optional<UChar32> previousCodePoint;
     while (i < length) {
         UChar32 c;
         U16_NEXT(buffer, i, length, c)
@@ -1062,7 +1062,7 @@ static CFStringRef createStringWithEscapedUnsafeCharacters(CFStringRef string)
     
     Vector<UChar, URL_BYTES_BUFFER_LENGTH> outBuffer;
     
-    std::optional<UChar32> previousCodePoint;
+    Optional<UChar32> previousCodePoint;
     CFIndex i = 0;
     while (i < length) {
         UChar32 c;

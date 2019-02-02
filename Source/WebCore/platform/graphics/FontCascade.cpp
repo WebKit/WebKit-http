@@ -284,9 +284,9 @@ float FontCascade::glyphBufferForTextRun(CodePath codePathToUse, const TextRun& 
     return getGlyphsAndAdvancesForComplexText(run, from, to, glyphBuffer);
 }
 
-float FontCascade::drawText(GraphicsContext& context, const TextRun& run, const FloatPoint& point, unsigned from, std::optional<unsigned> to, CustomFontNotReadyAction customFontNotReadyAction) const
+float FontCascade::drawText(GraphicsContext& context, const TextRun& run, const FloatPoint& point, unsigned from, Optional<unsigned> to, CustomFontNotReadyAction customFontNotReadyAction) const
 {
-    unsigned destination = to.value_or(run.length());
+    unsigned destination = to.valueOr(run.length());
     GlyphBuffer glyphBuffer;
     float startX = point.x() + glyphBufferForTextRun(codePath(run, from, to), run, from, destination, glyphBuffer);
     // We couldn't generate any glyphs for the run. Give up.
@@ -298,22 +298,22 @@ float FontCascade::drawText(GraphicsContext& context, const TextRun& run, const 
     return startPoint.x() - startX;
 }
 
-void FontCascade::drawEmphasisMarks(GraphicsContext& context, const TextRun& run, const AtomicString& mark, const FloatPoint& point, unsigned from, std::optional<unsigned> to) const
+void FontCascade::drawEmphasisMarks(GraphicsContext& context, const TextRun& run, const AtomicString& mark, const FloatPoint& point, unsigned from, Optional<unsigned> to) const
 {
     if (isLoadingCustomFonts())
         return;
 
-    unsigned destination = to.value_or(run.length());
+    unsigned destination = to.valueOr(run.length());
     if (codePath(run, from, to) != Complex)
         drawEmphasisMarksForSimpleText(context, run, mark, point, from, destination);
     else
         drawEmphasisMarksForComplexText(context, run, mark, point, from, destination);
 }
 
-std::unique_ptr<DisplayList::DisplayList> FontCascade::displayListForTextRun(GraphicsContext& context, const TextRun& run, unsigned from, std::optional<unsigned> to, CustomFontNotReadyAction customFontNotReadyAction) const
+std::unique_ptr<DisplayList::DisplayList> FontCascade::displayListForTextRun(GraphicsContext& context, const TextRun& run, unsigned from, Optional<unsigned> to, CustomFontNotReadyAction customFontNotReadyAction) const
 {
     ASSERT(!context.paintingDisabled());
-    unsigned destination = to.value_or(run.length());
+    unsigned destination = to.valueOr(run.length());
     
     // FIXME: Use the fast code path once it handles partial runs with kerning and ligatures. See http://webkit.org/b/100050
     CodePath codePathToUse = codePath(run);
@@ -543,9 +543,9 @@ bool FontCascade::fastAverageCharWidthIfAvailable(float& width) const
     return success;
 }
 
-void FontCascade::adjustSelectionRectForText(const TextRun& run, LayoutRect& selectionRect, unsigned from, std::optional<unsigned> to) const
+void FontCascade::adjustSelectionRectForText(const TextRun& run, LayoutRect& selectionRect, unsigned from, Optional<unsigned> to) const
 {
-    unsigned destination = to.value_or(run.length());
+    unsigned destination = to.valueOr(run.length());
     if (codePath(run, from, to) != Complex)
         return adjustSelectionRectForSimpleText(run, selectionRect, from, destination);
 
@@ -595,6 +595,13 @@ bool FontCascade::shouldUseSmoothing()
     return shouldUseFontSmoothing;
 }
 
+#if !PLATFORM(COCOA)
+bool FontCascade::isSubpixelAntialiasingAvailable()
+{
+    return false;
+}
+#endif
+
 void FontCascade::setCodePath(CodePath p)
 {
     s_codePath = p;
@@ -605,14 +612,14 @@ FontCascade::CodePath FontCascade::codePath()
     return s_codePath;
 }
 
-FontCascade::CodePath FontCascade::codePath(const TextRun& run, std::optional<unsigned> from, std::optional<unsigned> to) const
+FontCascade::CodePath FontCascade::codePath(const TextRun& run, Optional<unsigned> from, Optional<unsigned> to) const
 {
     if (s_codePath != Auto)
         return s_codePath;
 
 #if !USE(FREETYPE)
     // FIXME: Use the fast code path once it handles partial runs with kerning and ligatures. See http://webkit.org/b/100050
-    if ((enableKerning() || requiresShaping()) && (from.value_or(0) || to.value_or(run.length()) != run.length()))
+    if ((enableKerning() || requiresShaping()) && (from.valueOr(0) || to.valueOr(run.length()) != run.length()))
         return Complex;
 #else
     UNUSED_PARAM(from);
@@ -1300,27 +1307,27 @@ static GlyphUnderlineType computeUnderlineType(const TextRun& textRun, const Gly
 
 // FIXME: This function may not work if the emphasis mark uses a complex script, but none of the
 // standard emphasis marks do so.
-std::optional<GlyphData> FontCascade::getEmphasisMarkGlyphData(const AtomicString& mark) const
+Optional<GlyphData> FontCascade::getEmphasisMarkGlyphData(const AtomicString& mark) const
 {
     if (mark.isEmpty())
-        return std::nullopt;
+        return WTF::nullopt;
 
     UChar32 character;
     if (!mark.is8Bit()) {
         SurrogatePairAwareTextIterator iterator(mark.characters16(), 0, mark.length(), mark.length());
         unsigned clusterLength;
         if (!iterator.consume(character, clusterLength))
-            return std::nullopt;
+            return WTF::nullopt;
     } else
         character = mark[0];
 
-    std::optional<GlyphData> glyphData(glyphDataForCharacter(character, false, EmphasisMarkVariant));
-    return glyphData.value().isValid() ? glyphData : std::nullopt;
+    Optional<GlyphData> glyphData(glyphDataForCharacter(character, false, EmphasisMarkVariant));
+    return glyphData.value().isValid() ? glyphData : WTF::nullopt;
 }
 
 int FontCascade::emphasisMarkAscent(const AtomicString& mark) const
 {
-    std::optional<GlyphData> markGlyphData = getEmphasisMarkGlyphData(mark);
+    Optional<GlyphData> markGlyphData = getEmphasisMarkGlyphData(mark);
     if (!markGlyphData)
         return 0;
 
@@ -1334,7 +1341,7 @@ int FontCascade::emphasisMarkAscent(const AtomicString& mark) const
 
 int FontCascade::emphasisMarkDescent(const AtomicString& mark) const
 {
-    std::optional<GlyphData> markGlyphData = getEmphasisMarkGlyphData(mark);
+    Optional<GlyphData> markGlyphData = getEmphasisMarkGlyphData(mark);
     if (!markGlyphData)
         return 0;
 
@@ -1348,7 +1355,7 @@ int FontCascade::emphasisMarkDescent(const AtomicString& mark) const
 
 int FontCascade::emphasisMarkHeight(const AtomicString& mark) const
 {
-    std::optional<GlyphData> markGlyphData = getEmphasisMarkGlyphData(mark);
+    Optional<GlyphData> markGlyphData = getEmphasisMarkGlyphData(mark);
     if (!markGlyphData)
         return 0;
 
@@ -1495,7 +1502,7 @@ inline static float offsetToMiddleOfGlyphAtIndex(const GlyphBuffer& glyphBuffer,
 
 void FontCascade::drawEmphasisMarks(GraphicsContext& context, const GlyphBuffer& glyphBuffer, const AtomicString& mark, const FloatPoint& point) const
 {
-    std::optional<GlyphData> markGlyphData = getEmphasisMarkGlyphData(mark);
+    Optional<GlyphData> markGlyphData = getEmphasisMarkGlyphData(mark);
     if (!markGlyphData)
         return;
 
@@ -1674,11 +1681,11 @@ struct GlyphIterationState {
     float maxX;
 };
 
-static std::optional<float> findIntersectionPoint(float y, FloatPoint p1, FloatPoint p2)
+static Optional<float> findIntersectionPoint(float y, FloatPoint p1, FloatPoint p2)
 {
     if ((p1.y() < y && p2.y() > y) || (p1.y() > y && p2.y() < y))
         return p1.x() + (y - p1.y()) * (p2.x() - p1.x()) / (p2.y() - p1.y());
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 static void updateX(GlyphIterationState& state, float x)

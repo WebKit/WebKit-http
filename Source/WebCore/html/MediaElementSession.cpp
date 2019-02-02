@@ -61,6 +61,7 @@ static const Seconds elementMainContentCheckInterval { 250_ms };
 
 static bool isElementRectMostlyInMainFrame(const HTMLMediaElement&);
 static bool isElementLargeEnoughForMainContent(const HTMLMediaElement&, MediaSessionMainContentPurpose);
+static bool isElementMainContentForPurposesOfAutoplay(const HTMLMediaElement&, bool shouldHitTestMainFrame);
 
 #if !RELEASE_LOG_DISABLED
 static String restrictionNames(MediaElementSession::BehaviorRestrictions restriction)
@@ -262,6 +263,10 @@ SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted() co
     }
 
     auto& document = m_element.document();
+    auto* page = document.page();
+    if (!page || page->mediaPlaybackIsSuspended())
+        return MediaPlaybackDenialReason::PageConsentRequired;
+
     if (document.isMediaDocument() && !document.ownerElement())
         return { };
 
@@ -516,6 +521,11 @@ bool MediaElementSession::canShowControlsManager(PlaybackControlsPurpose purpose
 bool MediaElementSession::isLargeEnoughForMainContent(MediaSessionMainContentPurpose purpose) const
 {
     return isElementLargeEnoughForMainContent(m_element, purpose);
+}
+
+bool MediaElementSession::isMainContentForPurposesOfAutoplayEvents() const
+{
+    return isElementMainContentForPurposesOfAutoplay(m_element, false);
 }
 
 MonotonicTime MediaElementSession::mostRecentUserInteractionTime() const
@@ -797,7 +807,7 @@ size_t MediaElementSession::maximumMediaSourceBufferSize(const SourceBuffer& buf
 }
 #endif
 
-static bool isMainContentForPurposesOfAutoplay(const HTMLMediaElement& element)
+static bool isElementMainContentForPurposesOfAutoplay(const HTMLMediaElement& element, bool shouldHitTestMainFrame)
 {
     Document& document = element.document();
     if (!document.hasLivingRenderTree() || document.activeDOMObjectsAreStopped() || element.isSuspended() || !element.hasAudio() || !element.hasVideo())
@@ -826,6 +836,9 @@ static bool isMainContentForPurposesOfAutoplay(const HTMLMediaElement& element)
     auto& mainFrame = document.frame()->mainFrame();
     if (!mainFrame.view() || !mainFrame.view()->renderView())
         return false;
+
+    if (!shouldHitTestMainFrame)
+        return true;
 
     RenderView& mainRenderView = *mainFrame.view()->renderView();
 
@@ -930,7 +943,7 @@ bool MediaElementSession::updateIsMainContent() const
         return false;
 
     bool wasMainContent = m_isMainContent;
-    m_isMainContent = isMainContentForPurposesOfAutoplay(m_element);
+    m_isMainContent = isElementMainContentForPurposesOfAutoplay(m_element, true);
 
     if (m_isMainContent != wasMainContent)
         m_element.updateShouldPlay();

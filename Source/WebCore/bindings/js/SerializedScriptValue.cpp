@@ -1262,7 +1262,7 @@ private:
         write(file.url());
         write(file.type());
         write(file.name());
-        write(static_cast<double>(file.lastModifiedOverride().value_or(-1)));
+        write(static_cast<double>(file.lastModifiedOverride().valueOr(-1)));
     }
 
 #if ENABLE(WEB_CRYPTO)
@@ -2066,7 +2066,7 @@ private:
         CachedStringRef name;
         if (!readStringData(name))
             return false;
-        std::optional<int64_t> optionalLastModified;
+        Optional<int64_t> optionalLastModified;
         if (m_version > 6) {
             double lastModified;
             if (!read(lastModified))
@@ -2629,17 +2629,17 @@ private:
         return toJSNewlyCreated(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), T::create(x, y, width, height));
     }
 
-    std::optional<DOMPointInit> readDOMPointInit()
+    Optional<DOMPointInit> readDOMPointInit()
     {
         DOMPointInit point;
         if (!read(point.x))
-            return std::nullopt;
+            return WTF::nullopt;
         if (!read(point.y))
-            return std::nullopt;
+            return WTF::nullopt;
         if (!read(point.z))
-            return std::nullopt;
+            return WTF::nullopt;
         if (!read(point.w))
-            return std::nullopt;
+            return WTF::nullopt;
 
         return WTFMove(point);
     }
@@ -2716,6 +2716,9 @@ private:
                 return JSValue();
             fingerprints.uncheckedAppend(RTCCertificate::DtlsFingerprint { algorithm->string(), value->string() });
         }
+
+        if (!m_isDOMGlobalObject)
+            return constructEmptyObject(m_exec, m_globalObject->objectPrototype());
 
         auto rtcCertificate = RTCCertificate::create(SecurityOrigin::createFromString(origin->string()), expires, WTFMove(fingerprints), certificate->takeString(), keyedMaterial->takeString());
         return toJSNewlyCreated(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), WTFMove(rtcCertificate));
@@ -2820,7 +2823,7 @@ private:
             }
             IntSize imageSize(width, height);
             RELEASE_ASSERT(!length || (imageSize.area() * 4).unsafeGet() <= length);
-            RefPtr<ImageData> result = ImageData::create(imageSize);
+            auto result = ImageData::create(imageSize);
             if (!result) {
                 fail();
                 return JSValue();
@@ -2955,7 +2958,7 @@ private:
             }
             
             RELEASE_ASSERT(m_sharedBuffers->at(index));
-            RefPtr<ArrayBuffer> buffer = ArrayBuffer::create(WTFMove(m_sharedBuffers->at(index)));
+            auto buffer = ArrayBuffer::create(WTFMove(m_sharedBuffers->at(index)));
             JSValue result = getJSValue(buffer.get());
             m_gcBuffer.appendWithCrashOnOverflow(result);
             return result;
@@ -3481,7 +3484,7 @@ RefPtr<SerializedScriptValue> SerializedScriptValue::create(JSContextRef originC
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     JSValue value = toJS(exec, apiValue);
-    RefPtr<SerializedScriptValue> serializedValue = SerializedScriptValue::create(*exec, value);
+    auto serializedValue = SerializedScriptValue::create(*exec, value);
     if (UNLIKELY(scope.exception())) {
         if (exception)
             *exception = toRef(exec, scope.exception()->value());

@@ -390,7 +390,7 @@ void FrameView::detachCustomScrollbars()
 void FrameView::recalculateScrollbarOverlayStyle()
 {
     ScrollbarOverlayStyle oldOverlayStyle = scrollbarOverlayStyle();
-    std::optional<ScrollbarOverlayStyle> clientOverlayStyle = frame().page() ? frame().page()->chrome().client().preferredScrollbarOverlayStyle() : ScrollbarOverlayStyleDefault;
+    Optional<ScrollbarOverlayStyle> clientOverlayStyle = frame().page() ? frame().page()->chrome().client().preferredScrollbarOverlayStyle() : ScrollbarOverlayStyleDefault;
     if (clientOverlayStyle) {
         if (clientOverlayStyle.value() != oldOverlayStyle)
             setScrollbarOverlayStyle(clientOverlayStyle.value());
@@ -905,7 +905,7 @@ uint64_t FrameView::scrollLayerID() const
     if (!backing)
         return 0;
 
-    return backing->scrollingNodeIDForRole(Scrolling);
+    return backing->scrollingNodeIDForRole(ScrollCoordinationRole::Scrolling);
 }
 
 ScrollableArea* FrameView::scrollableAreaForScrollLayerID(uint64_t nodeID) const
@@ -1659,7 +1659,7 @@ void FrameView::setBaseLayoutViewportOrigin(LayoutPoint origin, TriggerLayoutOrN
     }
 }
 
-void FrameView::setLayoutViewportOverrideRect(std::optional<LayoutRect> rect, TriggerLayoutOrNot layoutTriggering)
+void FrameView::setLayoutViewportOverrideRect(Optional<LayoutRect> rect, TriggerLayoutOrNot layoutTriggering)
 {
     if (rect == m_layoutViewportOverrideRect)
         return;
@@ -1671,13 +1671,13 @@ void FrameView::setLayoutViewportOverrideRect(std::optional<LayoutRect> rect, Tr
     if (oldRect.height() != layoutViewportRect().height())
         layoutTriggering = TriggerLayoutOrNot::Yes;
 
-    LOG_WITH_STREAM(Scrolling, stream << "\nFrameView " << this << " setLayoutViewportOverrideRect() - changing override layout viewport from " << oldRect << " to " << m_layoutViewportOverrideRect.value_or(LayoutRect()) << " layoutTriggering " << (layoutTriggering == TriggerLayoutOrNot::Yes ? "yes" : "no"));
+    LOG_WITH_STREAM(Scrolling, stream << "\nFrameView " << this << " setLayoutViewportOverrideRect() - changing override layout viewport from " << oldRect << " to " << m_layoutViewportOverrideRect.valueOr(LayoutRect()) << " layoutTriggering " << (layoutTriggering == TriggerLayoutOrNot::Yes ? "yes" : "no"));
 
     if (oldRect != layoutViewportRect() && layoutTriggering == TriggerLayoutOrNot::Yes)
         setViewportConstrainedObjectsNeedLayout();
 }
 
-void FrameView::setVisualViewportOverrideRect(std::optional<LayoutRect> rect)
+void FrameView::setVisualViewportOverrideRect(Optional<LayoutRect> rect)
 {
     m_visualViewportOverrideRect = rect;
 }
@@ -4566,7 +4566,7 @@ void FrameView::enableAutoSizeMode(bool enable, const IntSize& minSize, const In
     setNeedsLayout();
     layoutContext().scheduleLayout();
     if (m_shouldAutoSize) {
-        overrideViewportSizeForCSSViewportUnits({ minSize.width(), m_overrideViewportSize ? m_overrideViewportSize->height : std::nullopt });
+        overrideViewportSizeForCSSViewportUnits({ minSize.width(), m_overrideViewportSize ? m_overrideViewportSize->height : WTF::nullopt });
         return;
     }
 
@@ -4586,48 +4586,56 @@ void FrameView::forceLayout(bool allowSubtreeLayout)
 
 void FrameView::forceLayoutForPagination(const FloatSize& pageSize, const FloatSize& originalPageSize, float maximumShrinkFactor, AdjustViewSizeOrNot shouldAdjustViewSize)
 {
+    if (!renderView())
+        return;
+
+    Ref<FrameView> protectedThis(*this);
+    auto& renderView = *this->renderView();
+
     // Dumping externalRepresentation(frame().renderer()).ascii() is a good trick to see
     // the state of things before and after the layout
-    if (RenderView* renderView = this->renderView()) {
-        float pageLogicalWidth = renderView->style().isHorizontalWritingMode() ? pageSize.width() : pageSize.height();
-        float pageLogicalHeight = renderView->style().isHorizontalWritingMode() ? pageSize.height() : pageSize.width();
+    float pageLogicalWidth = renderView.style().isHorizontalWritingMode() ? pageSize.width() : pageSize.height();
+    float pageLogicalHeight = renderView.style().isHorizontalWritingMode() ? pageSize.height() : pageSize.width();
 
-        renderView->setPageLogicalSize({ floor(pageLogicalWidth), floor(pageLogicalHeight) });
-        renderView->setNeedsLayoutAndPrefWidthsRecalc();
+    renderView.setPageLogicalSize({ floor(pageLogicalWidth), floor(pageLogicalHeight) });
+    renderView.setNeedsLayoutAndPrefWidthsRecalc();
+    forceLayout();
+    if (hasOneRef())
+        return;
+
+    // If we don't fit in the given page width, we'll lay out again. If we don't fit in the
+    // page width when shrunk, we will lay out at maximum shrink and clip extra content.
+    // FIXME: We are assuming a shrink-to-fit printing implementation. A cropping
+    // implementation should not do this!
+    bool horizontalWritingMode = renderView.style().isHorizontalWritingMode();
+    const LayoutRect& documentRect = renderView.documentRect();
+    LayoutUnit docLogicalWidth = horizontalWritingMode ? documentRect.width() : documentRect.height();
+    if (docLogicalWidth > pageLogicalWidth) {
+        int expectedPageWidth = std::min<float>(documentRect.width(), pageSize.width() * maximumShrinkFactor);
+        int expectedPageHeight = std::min<float>(documentRect.height(), pageSize.height() * maximumShrinkFactor);
+        FloatSize maxPageSize = frame().resizePageRectsKeepingRatio(FloatSize(originalPageSize.width(), originalPageSize.height()), FloatSize(expectedPageWidth, expectedPageHeight));
+        pageLogicalWidth = horizontalWritingMode ? maxPageSize.width() : maxPageSize.height();
+        pageLogicalHeight = horizontalWritingMode ? maxPageSize.height() : maxPageSize.width();
+
+        renderView.setPageLogicalSize({ floor(pageLogicalWidth), floor(pageLogicalHeight) });
+        renderView.setNeedsLayoutAndPrefWidthsRecalc();
         forceLayout();
+        if (hasOneRef())
+            return;
 
-        // If we don't fit in the given page width, we'll lay out again. If we don't fit in the
-        // page width when shrunk, we will lay out at maximum shrink and clip extra content.
-        // FIXME: We are assuming a shrink-to-fit printing implementation.  A cropping
-        // implementation should not do this!
-        bool horizontalWritingMode = renderView->style().isHorizontalWritingMode();
-        const LayoutRect& documentRect = renderView->documentRect();
-        LayoutUnit docLogicalWidth = horizontalWritingMode ? documentRect.width() : documentRect.height();
-        if (docLogicalWidth > pageLogicalWidth) {
-            int expectedPageWidth = std::min<float>(documentRect.width(), pageSize.width() * maximumShrinkFactor);
-            int expectedPageHeight = std::min<float>(documentRect.height(), pageSize.height() * maximumShrinkFactor);
-            FloatSize maxPageSize = frame().resizePageRectsKeepingRatio(FloatSize(originalPageSize.width(), originalPageSize.height()), FloatSize(expectedPageWidth, expectedPageHeight));
-            pageLogicalWidth = horizontalWritingMode ? maxPageSize.width() : maxPageSize.height();
-            pageLogicalHeight = horizontalWritingMode ? maxPageSize.height() : maxPageSize.width();
+        const LayoutRect& updatedDocumentRect = renderView.documentRect();
+        LayoutUnit docLogicalHeight = horizontalWritingMode ? updatedDocumentRect.height() : updatedDocumentRect.width();
+        LayoutUnit docLogicalTop = horizontalWritingMode ? updatedDocumentRect.y() : updatedDocumentRect.x();
+        LayoutUnit docLogicalRight = horizontalWritingMode ? updatedDocumentRect.maxX() : updatedDocumentRect.maxY();
+        LayoutUnit clippedLogicalLeft;
+        if (!renderView.style().isLeftToRightDirection())
+            clippedLogicalLeft = docLogicalRight - pageLogicalWidth;
+        LayoutRect overflow(clippedLogicalLeft, docLogicalTop, pageLogicalWidth, docLogicalHeight);
 
-            renderView->setPageLogicalSize({ floor(pageLogicalWidth), floor(pageLogicalHeight) });
-            renderView->setNeedsLayoutAndPrefWidthsRecalc();
-            forceLayout();
-
-            const LayoutRect& updatedDocumentRect = renderView->documentRect();
-            LayoutUnit docLogicalHeight = horizontalWritingMode ? updatedDocumentRect.height() : updatedDocumentRect.width();
-            LayoutUnit docLogicalTop = horizontalWritingMode ? updatedDocumentRect.y() : updatedDocumentRect.x();
-            LayoutUnit docLogicalRight = horizontalWritingMode ? updatedDocumentRect.maxX() : updatedDocumentRect.maxY();
-            LayoutUnit clippedLogicalLeft;
-            if (!renderView->style().isLeftToRightDirection())
-                clippedLogicalLeft = docLogicalRight - pageLogicalWidth;
-            LayoutRect overflow(clippedLogicalLeft, docLogicalTop, pageLogicalWidth, docLogicalHeight);
-
-            if (!horizontalWritingMode)
-                overflow = overflow.transposedRect();
-            renderView->clearLayoutOverflow();
-            renderView->addLayoutOverflow(overflow); // This is how we clip in case we overflow again.
-        }
+        if (!horizontalWritingMode)
+            overflow = overflow.transposedRect();
+        renderView.clearLayoutOverflow();
+        renderView.addLayoutOverflow(overflow); // This is how we clip in case we overflow again.
     }
 
     if (shouldAdjustViewSize)
@@ -4820,30 +4828,30 @@ IntPoint FrameView::convertFromContainingView(const IntPoint& parentPoint) const
     return parentPoint;
 }
 
-float FrameView::documentToAbsoluteScaleFactor(std::optional<float> effectiveZoom) const
+float FrameView::documentToAbsoluteScaleFactor(Optional<float> effectiveZoom) const
 {
     // If effectiveZoom is passed, it already factors in pageZoomFactor(). 
-    return effectiveZoom.value_or(frame().pageZoomFactor()) * frame().frameScaleFactor();
+    return effectiveZoom.valueOr(frame().pageZoomFactor()) * frame().frameScaleFactor();
 }
 
-float FrameView::absoluteToDocumentScaleFactor(std::optional<float> effectiveZoom) const
+float FrameView::absoluteToDocumentScaleFactor(Optional<float> effectiveZoom) const
 {
     // If effectiveZoom is passed, it already factors in pageZoomFactor(). 
     return 1 / documentToAbsoluteScaleFactor(effectiveZoom);
 }
 
-FloatRect FrameView::absoluteToDocumentRect(FloatRect rect, std::optional<float> effectiveZoom) const
+FloatRect FrameView::absoluteToDocumentRect(FloatRect rect, Optional<float> effectiveZoom) const
 {
     rect.scale(absoluteToDocumentScaleFactor(effectiveZoom));
     return rect;
 }
 
-FloatPoint FrameView::absoluteToDocumentPoint(FloatPoint p, std::optional<float> effectiveZoom) const
+FloatPoint FrameView::absoluteToDocumentPoint(FloatPoint p, Optional<float> effectiveZoom) const
 {
     return p.scaled(absoluteToDocumentScaleFactor(effectiveZoom));
 }
 
-FloatRect FrameView::absoluteToClientRect(FloatRect rect, std::optional<float> effectiveZoom) const
+FloatRect FrameView::absoluteToClientRect(FloatRect rect, Optional<float> effectiveZoom) const
 {
     return documentToClientRect(absoluteToDocumentRect(rect, effectiveZoom));
 }
@@ -5303,7 +5311,7 @@ void FrameView::notifyWidgets(WidgetNotification notification)
         widget->notifyWidget(notification);
 }
 
-void FrameView::setViewExposedRect(std::optional<FloatRect> viewExposedRect)
+void FrameView::setViewExposedRect(Optional<FloatRect> viewExposedRect)
 {
     if (m_viewExposedRect == viewExposedRect)
         return;
@@ -5336,7 +5344,7 @@ void FrameView::clearViewportSizeOverrideForCSSViewportUnits()
     if (!m_overrideViewportSize)
         return;
 
-    m_overrideViewportSize = std::nullopt;
+    m_overrideViewportSize = WTF::nullopt;
     if (auto* document = frame().document())
         document->styleScope().didChangeStyleSheetEnvironment();
 }
@@ -5370,16 +5378,16 @@ IntSize FrameView::viewportSizeForCSSViewportUnits() const
 
     if (useFixedLayout()) {
         auto fixedLayoutSize = this->fixedLayoutSize();
-        viewportSize.width = viewportSize.width.value_or(fixedLayoutSize.width());
-        viewportSize.height = viewportSize.height.value_or(fixedLayoutSize.height());
+        viewportSize.width = viewportSize.width.valueOr(fixedLayoutSize.width());
+        viewportSize.height = viewportSize.height.valueOr(fixedLayoutSize.height());
         return { *viewportSize.width, *viewportSize.height };
     }
     
     // FIXME: the value returned should take into account the value of the overflow
     // property on the root element.
     auto visibleContentSizeIncludingScrollbars = visibleContentRectIncludingScrollbars().size();
-    viewportSize.width = viewportSize.width.value_or(visibleContentSizeIncludingScrollbars.width());
-    viewportSize.height = viewportSize.height.value_or(visibleContentSizeIncludingScrollbars.height());
+    viewportSize.width = viewportSize.width.valueOr(visibleContentSizeIncludingScrollbars.width());
+    viewportSize.height = viewportSize.height.valueOr(visibleContentSizeIncludingScrollbars.height());
     return { *viewportSize.width, *viewportSize.height };
 }
 

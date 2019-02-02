@@ -32,6 +32,7 @@
 #include "CSSPropertyParserHelpers.h"
 #include "CSSTokenizer.h"
 #include "Element.h"
+#include "InspectorInstrumentation.h"
 #include "IntersectionObserverCallback.h"
 #include "IntersectionObserverEntry.h"
 #include "Performance.h"
@@ -150,7 +151,7 @@ void IntersectionObserver::observe(Element& target)
     if (!trackingDocument() || !m_callback || m_observationTargets.contains(&target))
         return;
 
-    target.ensureIntersectionObserverData().registrations.append({ makeWeakPtr(this), std::nullopt });
+    target.ensureIntersectionObserverData().registrations.append({ makeWeakPtr(this), WTF::nullopt });
     bool hadObservationTargets = hasObservationTargets();
     m_observationTargets.append(&target);
     auto* document = trackingDocument();
@@ -256,8 +257,16 @@ void IntersectionObserver::notify()
         return;
     }
 
+    auto* context = m_callback->scriptExecutionContext();
+    if (!context)
+        return;
+
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willFireObserverCallback(*context, "IntersectionObserver"_s);
+
     auto takenRecords = takeRecords();
     m_callback->handleEvent(WTFMove(takenRecords.records), *this);
+
+    InspectorInstrumentation::didFireObserverCallback(cookie);
 }
 
 bool IntersectionObserver::hasPendingActivity() const

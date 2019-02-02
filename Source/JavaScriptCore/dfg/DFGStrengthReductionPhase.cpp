@@ -121,6 +121,15 @@ private:
             }
             break;
             
+        case ValueMul:
+        case ValueBitOr:
+        case ValueBitAnd:
+        case ValueBitXor: {
+            if (m_node->binaryUseKind() == BigIntUse)
+                handleCommutativity();
+            break;
+        }
+
         case ArithMul: {
             handleCommutativity();
             Edge& child2 = m_node->child2();
@@ -204,7 +213,7 @@ private:
             if (m_node->isBinaryUseKind(DoubleRepUse)
                 && m_node->child2()->isNumberConstant()) {
 
-                if (std::optional<double> reciprocal = safeReciprocalForDivByConst(m_node->child2()->asNumber())) {
+                if (Optional<double> reciprocal = safeReciprocalForDivByConst(m_node->child2()->asNumber())) {
                     Node* reciprocalNode = m_insertionSet.insertConstant(m_nodeIndex, m_node->origin, jsDoubleNumber(*reciprocal), DoubleConstant);
                     m_node->setOp(ArithMul);
                     m_node->child2() = Edge(reciprocalNode, DoubleRepUse);
@@ -363,7 +372,12 @@ private:
                 builder.append(rightString);
                 convertToLazyJSValue(m_node, LazyJSValue::newString(m_graph, builder.toString()));
                 m_changed = true;
+                break;
             }
+
+            if (m_node->binaryUseKind() == BigIntUse)
+                handleCommutativity();
+
             break;
         }
 

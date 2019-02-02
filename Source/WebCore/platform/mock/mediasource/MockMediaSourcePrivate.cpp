@@ -165,13 +165,10 @@ MediaTime MockMediaSourcePrivate::seekToTime(const MediaTime& targetTime, const 
             seekTime = sourceSeekTime;
     }
 
-    for (auto& buffer : m_activeSourceBuffers)
-        buffer->seekToTime(seekTime);
-
     return seekTime;
 }
 
-std::optional<VideoPlaybackQualityMetrics> MockMediaSourcePrivate::videoPlaybackQualityMetrics()
+Optional<VideoPlaybackQualityMetrics> MockMediaSourcePrivate::videoPlaybackQualityMetrics()
 {
     return VideoPlaybackQualityMetrics {
         m_totalVideoFrames,

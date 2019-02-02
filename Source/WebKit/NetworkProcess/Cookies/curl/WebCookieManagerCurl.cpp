@@ -26,14 +26,9 @@
 #include "config.h"
 #include "WebCookieManager.h"
 
-#include "ChildProcess.h"
-#include <WebCore/CookieJarDB.h>
-#include <WebCore/NetworkStorageSession.h>
-#include <wtf/text/CString.h>
+namespace WebKit {
 
 using namespace WebCore;
-
-namespace WebKit {
 
 void WebCookieManager::platformSetHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy)
 {
@@ -42,12 +37,6 @@ void WebCookieManager::platformSetHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy)
 HTTPCookieAcceptPolicy WebCookieManager::platformGetHTTPCookieAcceptPolicy()
 {
     return HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
-}
-
-void WebCookieManager::setCookiePersistentStorage(const String& storagePath)
-{
-    auto& storageSession = NetworkStorageSession::defaultStorageSession();
-    storageSession.setCookieDatabase(makeUniqueRef<CookieJarDB>(storagePath));
 }
 
 } // namespace WebKit

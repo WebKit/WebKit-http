@@ -95,7 +95,7 @@ void KeyframeAnimation::computeLayoutDependency()
         }
         if (keyframeStyle->hasTransform()) {
             auto& transformOperations = keyframeStyle->transform();
-            for (auto operation : transformOperations.operations()) {
+            for (const auto& operation : transformOperations.operations()) {
                 if (operation->isTranslateTransformOperationType()) {
                     auto translation = downcast<TranslateTransformOperation>(operation.get());
                     if (translation->x().isPercent() || translation->y().isPercent()) {
@@ -245,22 +245,29 @@ bool KeyframeAnimation::computeExtentOfTransformAnimation(LayoutRect& bounds) co
     if (!is<RenderBox>(renderer()))
         return true; // Non-boxes don't get transformed;
 
-    RenderBox& box = downcast<RenderBox>(*renderer());
-    FloatRect rendererBox = snapRectToDevicePixels(box.borderBoxRect(), box.document().deviceScaleFactor());
+    auto& box = downcast<RenderBox>(*renderer());
+    auto rendererBox = snapRectToDevicePixels(box.borderBoxRect(), box.document().deviceScaleFactor());
 
-    FloatRect cumulativeBounds = bounds;
+    auto cumulativeBounds = bounds;
 
     for (auto& keyframe : m_keyframes.keyframes()) {
-        if (!keyframe.containsProperty(CSSPropertyTransform))
-            continue;
+        const RenderStyle* keyframeStyle = keyframe.style();
 
-        LayoutRect keyframeBounds = bounds;
+        if (!keyframe.containsProperty(CSSPropertyTransform)) {
+            // If the first keyframe is missing transform style, use the current style.
+            if (!keyframe.key())
+                keyframeStyle = &box.style();
+            else
+                continue;
+        }
+
+        auto keyframeBounds = bounds;
         
         bool canCompute;
         if (transformFunctionListsMatch())
-            canCompute = computeTransformedExtentViaTransformList(rendererBox, *keyframe.style(), keyframeBounds);
+            canCompute = computeTransformedExtentViaTransformList(rendererBox, *keyframeStyle, keyframeBounds);
         else
-            canCompute = computeTransformedExtentViaMatrix(rendererBox, *keyframe.style(), keyframeBounds);
+            canCompute = computeTransformedExtentViaMatrix(rendererBox, *keyframeStyle, keyframeBounds);
         
         if (!canCompute)
             return false;
@@ -268,7 +275,7 @@ bool KeyframeAnimation::computeExtentOfTransformAnimation(LayoutRect& bounds) co
         cumulativeBounds.unite(keyframeBounds);
     }
 
-    bounds = LayoutRect(cumulativeBounds);
+    bounds = cumulativeBounds;
     return true;
 }
 
@@ -499,9 +506,9 @@ void KeyframeAnimation::checkForMatchingColorFilterFunctionLists()
     });
 }
 
-std::optional<Seconds> KeyframeAnimation::timeToNextService()
+Optional<Seconds> KeyframeAnimation::timeToNextService()
 {
-    std::optional<Seconds> t = AnimationBase::timeToNextService();
+    Optional<Seconds> t = AnimationBase::timeToNextService();
     if (!t || t.value() != 0_s || preActive())
         return t;
 

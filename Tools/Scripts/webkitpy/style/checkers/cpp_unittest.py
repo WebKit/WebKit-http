@@ -5081,6 +5081,29 @@ class WebKitStyleTest(CppStyleTestBase):
             "  [runtime/wtf_move] [4]",
             'foo.mm')
 
+    def test_wtf_optional(self):
+        self.assert_lint(
+             'Optional<int> a;',
+             '',
+             'foo.cpp')
+
+        self.assert_lint(
+             'WTF::Optional<int> a;',
+             '',
+             'foo.cpp')
+
+        self.assert_lint(
+            'std::optional<int> a;',
+            "Use 'WTF::Optional<>' instead of 'std::optional<>'."
+            "  [runtime/wtf_optional] [4]",
+            'foo.cpp')
+
+        self.assert_lint(
+            'optional<int> a;',
+            "Use 'WTF::Optional<>' instead of 'std::optional<>'."
+            "  [runtime/wtf_optional] [4]",
+            'foo.cpp')
+
     def test_ctype_fucntion(self):
         self.assert_lint(
             'int i = isascii(8);',
@@ -5527,6 +5550,16 @@ class WebKitStyleTest(CppStyleTestBase):
         self.assert_lint('WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA))', '')  # WK_MAC_TBA and WK_IOS_TBA are OK.
         self.assert_lint('WK_API_AVAILABLE(macosx(WK_IOS_TBA), ios(3.4.5))', 'WK_IOS_TBA is neither a version number nor WK_MAC_TBA  [build/wk_api_available] [5]')
         self.assert_lint('WK_API_AVAILABLE(macosx(1.2.3), ios(WK_MAC_TBA))', 'WK_MAC_TBA is neither a version number nor WK_IOS_TBA  [build/wk_api_available] [5]')
+
+    def test_os_version_checks(self):
+        self.assert_lint('#if PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000', 'Misplaced OS version check. Please use a named macro in wtf/Platform.h or wtf/FeatureDefines.h.  [build/version_check] [5]')
+        self.assert_lint('#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300', 'Misplaced OS version check. Please use a named macro in wtf/Platform.h or wtf/FeatureDefines.h.  [build/version_check] [5]')
+        self.assert_lint('#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300', '', 'Source/WTF/wtf/Platform.h')
+        self.assert_lint('#if PLATFORM(MAC) && __IPHONE_OS_VERSION_MIN_REQUIRED > 120000', '', 'Source/WTF/wtf/Platform.h')
+        self.assert_lint('#if PLATFORM(MAC) && __IPHONE_OS_VERSION_MIN_REQUIRED > 120400', 'Incorrect OS version check. VERSION_MIN_REQUIRED values never include a minor version. You may be looking for a combination of VERSION_MIN_REQUIRED for target OS version check and VERSION_MAX_ALLOWED for SDK check.  [build/version_check] [5]', 'Source/WTF/wtf/Platform.h')
+        self.assert_lint('#if !TARGET_OS_SIMULATOR && __WATCH_OS_VERSION_MIN_REQUIRED < 50000', 'Misplaced OS version check. Please use a named macro in wtf/Platform.h or wtf/FeatureDefines.h.  [build/version_check] [5]')
+        self.assert_lint('#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101304)', ['Incorrect OS version check. VERSION_MIN_REQUIRED values never include a minor version. You may be looking for a combination of VERSION_MIN_REQUIRED for target OS version check and VERSION_MAX_ALLOWED for SDK check.  [build/version_check] [5]', 'Misplaced OS version check. Please use a named macro in wtf/Platform.h or wtf/FeatureDefines.h.  [build/version_check] [5]'])
+        self.assert_lint('#define FOO ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101302 && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300))', 'Misplaced OS version check. Please use a named macro in wtf/Platform.h or wtf/FeatureDefines.h.  [build/version_check] [5]')
 
     def test_other(self):
         # FIXME: Implement this.

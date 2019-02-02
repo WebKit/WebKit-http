@@ -345,7 +345,7 @@ public:
     void getNetworkProcessConnection(WebProcessProxy&, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
 
 #if ENABLE(SERVICE_WORKER)
-    void establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy&, WebCore::SecurityOriginData&&, std::optional<PAL::SessionID>);
+    void establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy&, WebCore::SecurityOriginData&&, Optional<PAL::SessionID>);
     ServiceWorkerProcessProxy* serviceWorkerProcessProxyFromPageID(uint64_t pageID) const;
     const HashMap<WebCore::SecurityOriginData, ServiceWorkerProcessProxy*>& serviceWorkerProxies() const { return m_serviceWorkerProcesses; }
     void setAllowsAnySSLCertificateForServiceWorker(bool allows) { m_allowsAnySSLCertificateForServiceWorker = allows; }
@@ -467,6 +467,7 @@ public:
     void resetMockMediaDevices();
 
     void sendDisplayConfigurationChangedMessageForTesting();
+    void clearCurrentModifierStateForTesting();
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
     void setSandboxEnabled(bool enabled) { m_sandboxEnabled = enabled; };
@@ -486,8 +487,8 @@ private:
     WebProcessProxy& createNewWebProcess(WebsiteDataStore&, WebProcessProxy::IsPrewarmed = WebProcessProxy::IsPrewarmed::No);
     void initializeNewWebProcess(WebProcessProxy&, WebsiteDataStore&);
 
-    void requestWebContentStatistics(StatisticsRequest*);
-    void requestNetworkingStatistics(StatisticsRequest*);
+    void requestWebContentStatistics(StatisticsRequest&);
+    void requestNetworkingStatistics(StatisticsRequest&);
 
     void platformInitializeNetworkProcess(NetworkProcessCreationParameters&);
 
@@ -559,7 +560,7 @@ private:
     bool m_allowsAnySSLCertificateForServiceWorker { false };
     bool m_shouldDisableServiceWorkerProcessTerminationDelay { false };
     String m_serviceWorkerUserAgent;
-    std::optional<WebPreferencesStore> m_serviceWorkerPreferences;
+    Optional<WebPreferencesStore> m_serviceWorkerPreferences;
     HashMap<String, bool> m_mayHaveRegisteredServiceWorkers;
 #endif
 

@@ -72,7 +72,7 @@ bool StringObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName,
 
     if (propertyName == vm.propertyNames->length)
         return typeError(exec, scope, slot.isStrictMode(), ReadonlyPropertyWriteError);
-    if (std::optional<uint32_t> index = parseIndex(propertyName)) 
+    if (Optional<uint32_t> index = parseIndex(propertyName)) 
         RELEASE_AND_RETURN(scope, putByIndex(cell, exec, index.value(), value, slot.isStrictMode()));
     RELEASE_AND_RETURN(scope, JSObject::put(cell, exec, propertyName, value, slot));
 }
@@ -93,7 +93,7 @@ static bool isStringOwnProperty(ExecState* exec, StringObject* object, PropertyN
     VM& vm = exec->vm();
     if (propertyName == vm.propertyNames->length)
         return true;
-    if (std::optional<uint32_t> index = parseIndex(propertyName)) {
+    if (Optional<uint32_t> index = parseIndex(propertyName)) {
         if (object->internalValue()->canGetIndex(index.value()))
             return true;
     }
@@ -114,7 +114,8 @@ bool StringObject::defineOwnProperty(JSObject* object, ExecState* exec, Property
         // https://tc39.github.io/ecma262/#sec-string-exotic-objects-getownproperty-p
         PropertyDescriptor current;
         bool isCurrentDefined = thisObject->getOwnPropertyDescriptor(exec, propertyName, current);
-        ASSERT(isCurrentDefined);
+        EXCEPTION_ASSERT(!scope.exception() == isCurrentDefined);
+        RETURN_IF_EXCEPTION(scope, false);
         bool isExtensible = thisObject->isExtensible(exec);
         RETURN_IF_EXCEPTION(scope, false);
         RELEASE_AND_RETURN(scope, validateAndApplyPropertyDescriptor(exec, nullptr, propertyName, isExtensible, descriptor, isCurrentDefined, current, throwException));
@@ -129,7 +130,7 @@ bool StringObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName pr
     StringObject* thisObject = jsCast<StringObject*>(cell);
     if (propertyName == vm.propertyNames->length)
         return false;
-    std::optional<uint32_t> index = parseIndex(propertyName);
+    Optional<uint32_t> index = parseIndex(propertyName);
     if (index && thisObject->internalValue()->canGetIndex(index.value()))
         return false;
     return JSObject::deleteProperty(thisObject, exec, propertyName);

@@ -384,9 +384,9 @@ void PageClientImpl::startDrag(const WebCore::DragItem& item, const ShareableBit
 
 void PageClientImpl::setPromisedDataForImage(const String& pasteboardName, Ref<SharedBuffer>&& imageBuffer, const String& filename, const String& extension, const String& title, const String& url, const String& visibleURL, RefPtr<SharedBuffer>&& archiveBuffer)
 {
-    RefPtr<Image> image = BitmapImage::create();
+    auto image = BitmapImage::create();
     image->setData(WTFMove(imageBuffer), true);
-    m_impl->setPromisedDataForImage(image.get(), filename, extension, title, url, visibleURL, archiveBuffer.get(), pasteboardName);
+    m_impl->setPromisedDataForImage(image.ptr(), filename, extension, title, url, visibleURL, archiveBuffer.get(), pasteboardName);
 }
 
 void PageClientImpl::updateSecureInputState()
@@ -499,6 +499,11 @@ void PageClientImpl::showSafeBrowsingWarning(const SafeBrowsingWarning& warning,
 void PageClientImpl::clearSafeBrowsingWarning()
 {
     m_impl->clearSafeBrowsingWarning();
+}
+
+void PageClientImpl::clearSafeBrowsingWarningIfForMainFrameNavigation()
+{
+    m_impl->clearSafeBrowsingWarningIfForMainFrameNavigation();
 }
 
 void PageClientImpl::setTextIndicator(Ref<TextIndicator> textIndicator, WebCore::TextIndicatorWindowLifetime lifetime)

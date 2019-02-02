@@ -275,7 +275,6 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     WTF::setProcessPrivileges({ ProcessPrivilege::CanAccessRawCookies, ProcessPrivilege::CanAccessCredentials });
 #endif
     WebCore::NetworkStorageSession::permitProcessToUseCookieAPI(true);
-    WebCore::setPresentingApplicationPID(parameters.presentingApplicationPID);
     platformInitializeNetworkProcess(parameters);
 
     WTF::Thread::setCurrentThreadIsUserInitiated();
@@ -299,10 +298,11 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     if (parameters.shouldUseTestingNetworkSession)
         NetworkStorageSession::switchToNewTestingSession();
 
-    SessionTracker::setSession(PAL::SessionID::defaultSessionID(), NetworkSession::create(NetworkSessionCreationParameters()));
+    auto sessionID = parameters.defaultDataStoreParameters.networkSessionParameters.sessionID;
+    SessionTracker::setSession(sessionID, NetworkSession::create(WTFMove(parameters.defaultDataStoreParameters.networkSessionParameters)));
 
 #if ENABLE(INDEXED_DATABASE)
-    addIndexedDatabaseSession(PAL::SessionID::defaultSessionID(), parameters.indexedDatabaseDirectory, parameters.indexedDatabaseDirectoryExtensionHandle);
+    addIndexedDatabaseSession(sessionID, parameters.defaultDataStoreParameters.indexedDatabaseDirectory, parameters.defaultDataStoreParameters.indexedDatabaseDirectoryExtensionHandle);
 #endif
 
 #if ENABLE(SERVICE_WORKER)
@@ -317,7 +317,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 #endif
 
     auto* defaultSession = SessionTracker::networkSession(PAL::SessionID::defaultSessionID());
-    for (const auto& cookie : parameters.defaultSessionPendingCookies)
+    for (const auto& cookie : parameters.defaultDataStoreParameters.pendingCookies)
         defaultSession->networkStorageSession().setCookie(cookie);
 
     for (auto& supplement : m_supplements.values())
@@ -484,7 +484,7 @@ void NetworkProcess::updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID sess
     parentProcessConnection()->send(Messages::NetworkProcessProxy::DidUpdateBlockCookies(contextId), 0);
 }
 
-void NetworkProcess::setAgeCapForClientSideCookies(PAL::SessionID sessionID, std::optional<Seconds> seconds, uint64_t contextId)
+void NetworkProcess::setAgeCapForClientSideCookies(PAL::SessionID sessionID, Optional<Seconds> seconds, uint64_t contextId)
 {
     if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
         networkStorageSession->setAgeCapForClientSideCookies(seconds);
@@ -507,7 +507,7 @@ void NetworkProcess::getAllStorageAccessEntries(PAL::SessionID sessionID, uint64
         ASSERT_NOT_REACHED();
 }
 
-void NetworkProcess::grantStorageAccess(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, std::optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId)
+void NetworkProcess::grantStorageAccess(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId)
 {
     bool isStorageGranted = false;
     if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID)) {
@@ -1201,7 +1201,7 @@ void NetworkProcess::connectionToContextProcessWasClosed(Ref<WebSWServerToContex
     
     if (needsServerToContextConnectionForOrigin(securityOrigin)) {
         RELEASE_LOG(ServiceWorker, "Connection to service worker process was closed but is still needed, relaunching it");
-        createServerToContextConnection(securityOrigin, std::nullopt);
+        createServerToContextConnection(securityOrigin, WTF::nullopt);
     }
 }
 
@@ -1249,7 +1249,7 @@ WebSWServerToContextConnection* NetworkProcess::serverToContextConnectionForOrig
     return m_serverToContextConnections.get(securityOrigin);
 }
 
-void NetworkProcess::createServerToContextConnection(const SecurityOriginData& securityOrigin, std::optional<PAL::SessionID> sessionID)
+void NetworkProcess::createServerToContextConnection(const SecurityOriginData& securityOrigin, Optional<PAL::SessionID> sessionID)
 {
     if (m_waitingForServerToContextProcessConnection)
         return;

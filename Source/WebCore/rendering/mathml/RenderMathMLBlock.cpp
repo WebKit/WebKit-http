@@ -102,7 +102,7 @@ int RenderMathMLBlock::baselinePosition(FontBaseline baselineType, bool firstLin
     if (linePositionMode == PositionOfInteriorLineBoxes)
         return 0;
 
-    return firstLineBaseline().value_or(RenderBlock::baselinePosition(baselineType, firstLine, direction, linePositionMode));
+    return firstLineBaseline().valueOr(RenderBlock::baselinePosition(baselineType, firstLine, direction, linePositionMode));
 }
 
 #if ENABLE(DEBUG_MATH_LAYOUT)
@@ -178,11 +178,11 @@ LayoutUnit toUserUnits(const MathMLElement::Length& length, const RenderStyle& s
     }
 }
 
-std::optional<int> RenderMathMLTable::firstLineBaseline() const
+Optional<int> RenderMathMLTable::firstLineBaseline() const
 {
     // By default the vertical center of <mtable> is aligned on the math axis.
     // This is different than RenderTable::firstLineBoxBaseline, which returns the baseline of the first row of a <table>.
-    return std::optional<int>(logicalHeight() / 2 + axisHeight(style()));
+    return Optional<int>(logicalHeight() / 2 + axisHeight(style()));
 }
 
 void RenderMathMLBlock::layoutItems(bool relayoutChildren)

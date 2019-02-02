@@ -644,14 +644,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case InByVal:
     case InById:
     case HasOwnProperty:
-    case ValueBitAnd:
-    case ValueBitXor:
-    case ValueBitOr:
     case ValueNegate:
-    case ValueAdd:
-    case ValueSub:
-    case ValueMul:
-    case ValueDiv:
     case SetFunctionName:
     case GetDynamicVar:
     case PutDynamicVar:
@@ -672,6 +665,35 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(World);
         write(Heap);
         return;
+
+    case ValueBitAnd:
+    case ValueBitXor:
+    case ValueBitOr:
+    case ValueAdd:
+    case ValueSub:
+    case ValueMul:
+    case ValueDiv:
+        if (node->isBinaryUseKind(BigIntUse)) {
+            def(PureValue(node));
+            return;
+        }
+        read(World);
+        write(Heap);
+        return;
+
+    case ObjectToString:
+        switch (node->child1().useKind()) {
+        case OtherUse:
+            def(PureValue(node));
+            return;
+        case UntypedUse:
+            read(World);
+            write(Heap);
+            return;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            return;
+        }
 
     case AtomicsAdd:
     case AtomicsAnd:

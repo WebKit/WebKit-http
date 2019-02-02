@@ -72,6 +72,7 @@ public:
     void setCachedPropertyNameEnumerator(VM&, JSPropertyNameEnumerator*);
 
     JSImmutableButterfly* cachedOwnKeys() const;
+    JSImmutableButterfly* cachedOwnKeysIgnoringSentinel() const;
     JSImmutableButterfly* cachedOwnKeysConcurrently() const;
     void setCachedOwnKeys(VM&, JSImmutableButterfly*);
 
@@ -79,6 +80,13 @@ public:
     const Box<InlineWatchpointSet>& sharedPolyProtoWatchpoint() const { return m_polyProtoWatchpoint; }
     void setSharedPolyProtoWatchpoint(Box<InlineWatchpointSet>&& sharedPolyProtoWatchpoint) { m_polyProtoWatchpoint = WTFMove(sharedPolyProtoWatchpoint); }
     bool hasSharedPolyProtoWatchpoint() const { return static_cast<bool>(m_polyProtoWatchpoint); }
+
+    static ptrdiff_t offsetOfObjectToStringValue()
+    {
+        return OBJECT_OFFSETOF(StructureRareData, m_objectToStringValue);
+    }
+
+    static JSImmutableButterfly* cachedOwnKeysSentinel() { return bitwise_cast<JSImmutableButterfly*>(static_cast<uintptr_t>(1)); }
 
     static ptrdiff_t offsetOfCachedOwnKeys()
     {

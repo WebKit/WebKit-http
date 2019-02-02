@@ -1451,6 +1451,10 @@
 #endif
 #endif
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#define HAVE_CG_FONT_RENDERING_GET_FONT_SMOOTHING_DISABLED 1
+#endif
+
 #ifdef __APPLE__
 #define HAVE_FUNC_USLEEP 1
 #endif
@@ -1485,4 +1489,16 @@
 /* FIXME: This is a USE style macro, as it triggers the use of CFURLConnection framework stubs. */
 /* FIXME: Is this still necessary? CFURLConnection isn't used on Cocoa platforms any more. */
 #define ENABLE_SEC_ITEM_SHIM 1
+#endif
+
+#if (PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400))
+#define HAVE_ACCESSIBILITY_SUPPORT 1
+#endif
+
+#if PLATFORM(MAC)
+#define ENABLE_FULL_KEYBOARD_ACCESS 1
+#endif
+
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400)
+#define HAVE_AUTHORIZATION_STATUS_FOR_MEDIA_TYPE 1
 #endif

@@ -316,7 +316,7 @@ MediaStreamTrack::TrackCapabilities MediaStreamTrack::getCapabilities() const
     return result;
 }
 
-static MediaConstraints createMediaConstraints(const std::optional<MediaTrackConstraints>& constraints)
+static MediaConstraints createMediaConstraints(const Optional<MediaTrackConstraints>& constraints)
 {
     if (!constraints) {
         MediaConstraints validConstraints;
@@ -326,7 +326,7 @@ static MediaConstraints createMediaConstraints(const std::optional<MediaTrackCon
     return createMediaConstraints(constraints.value());
 }
 
-void MediaStreamTrack::applyConstraints(const std::optional<MediaTrackConstraints>& constraints, DOMPromiseDeferred<void>&& promise)
+void MediaStreamTrack::applyConstraints(const Optional<MediaTrackConstraints>& constraints, DOMPromiseDeferred<void>&& promise)
 {
     m_promise = WTFMove(promise);
 
@@ -340,7 +340,7 @@ void MediaStreamTrack::applyConstraints(const std::optional<MediaTrackConstraint
         if (!weakThis || !weakThis->m_promise)
             return;
         weakThis->m_promise->resolve();
-        weakThis->m_constraints = constraints.value_or(MediaTrackConstraints { });
+        weakThis->m_constraints = constraints.valueOr(MediaTrackConstraints { });
     };
     m_private->applyConstraints(createMediaConstraints(constraints), WTFMove(successHandler), WTFMove(failureHandler));
 }

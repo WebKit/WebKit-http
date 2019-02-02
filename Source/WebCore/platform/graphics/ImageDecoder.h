@@ -55,13 +55,14 @@ public:
     virtual size_t bytesDecodedToDetermineProperties() const = 0;
 
     virtual EncodedDataStatus encodedDataStatus() const = 0;
+    virtual void setEncodedDataStatusChangeCallback(WTF::Function<void(EncodedDataStatus)>&&) { }
     virtual bool isSizeAvailable() const { return encodedDataStatus() >= EncodedDataStatus::SizeAvailable; }
     virtual IntSize size() const = 0;
     virtual size_t frameCount() const = 0;
     virtual RepetitionCount repetitionCount() const = 0;
     virtual String uti() const { return emptyString(); }
     virtual String filenameExtension() const = 0;
-    virtual std::optional<IntPoint> hotSpot() const = 0;
+    virtual Optional<IntPoint> hotSpot() const = 0;
 
     virtual IntSize frameSizeAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default) const = 0;
     virtual bool frameIsCompleteAtIndex(size_t) const = 0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include "NetworkCORSPreflightChecker.h"
 #include "NetworkProcess.h"
 #include <WebCore/ContentSecurityPolicy.h>
+#include <WebCore/CrossOriginAccessControl.h>
 #include <WebCore/CrossOriginPreflightResultCache.h>
 #include <WebCore/SchemeRegistry.h>
 #include <wtf/Scope.h>
@@ -45,7 +46,7 @@ static inline bool isSameOrigin(const URL& url, const SecurityOrigin* origin)
     return url.protocolIsData() || url.protocolIsBlob() || !origin || origin->canRequest(url);
 }
 
-NetworkLoadChecker::NetworkLoadChecker(FetchOptions&& options, PAL::SessionID sessionID, uint64_t pageID, uint64_t frameID, HTTPHeaderMap&& originalRequestHeaders, URL&& url, RefPtr<SecurityOrigin>&& sourceOrigin, PreflightPolicy preflightPolicy, String&& referrer, bool shouldCaptureExtraNetworkLoadMetrics, LoadType requestLoadType)
+NetworkLoadChecker::NetworkLoadChecker(FetchOptions&& options, PAL::SessionID sessionID, uint64_t pageID, uint64_t frameID, HTTPHeaderMap&& originalRequestHeaders, URL&& url, RefPtr<SecurityOrigin>&& sourceOrigin, PreflightPolicy preflightPolicy, String&& referrer, bool isHTTPSUpgradeEnabled, bool shouldCaptureExtraNetworkLoadMetrics, LoadType requestLoadType)
     : m_options(WTFMove(options))
     , m_sessionID(sessionID)
     , m_pageID(pageID)
@@ -56,6 +57,7 @@ NetworkLoadChecker::NetworkLoadChecker(FetchOptions&& options, PAL::SessionID se
     , m_preflightPolicy(preflightPolicy)
     , m_referrer(WTFMove(referrer))
     , m_shouldCaptureExtraNetworkLoadMetrics(shouldCaptureExtraNetworkLoadMetrics)
+    , m_isHTTPSUpgradeEnabled(isHTTPSUpgradeEnabled)
     , m_requestLoadType(requestLoadType)
 {
     m_isSameOriginRequest = isSameOrigin(m_url, m_origin.get());
@@ -82,19 +84,7 @@ void NetworkLoadChecker::check(ResourceRequest&& request, ContentSecurityPolicyC
         m_loadInformation.request = request;
 
     m_firstRequestHeaders = request.httpHeaderFields();
-    // FIXME: We should not get this information from the request but directly from some NetworkProcess setting.
-    m_dntHeaderValue = m_firstRequestHeaders.get(HTTPHeaderName::DNT);
-    if (m_dntHeaderValue.isNull() && m_sessionID.isEphemeral()) {
-        m_dntHeaderValue = "1";
-        request.setHTTPHeaderField(HTTPHeaderName::DNT, m_dntHeaderValue);
-    }
     checkRequest(WTFMove(request), client, WTFMove(handler));
-}
-
-void NetworkLoadChecker::prepareRedirectedRequest(ResourceRequest& request)
-{
-    if (!m_dntHeaderValue.isNull())
-        request.setHTTPHeaderField(HTTPHeaderName::DNT, m_dntHeaderValue);
 }
 
 static inline NetworkLoadChecker::RedirectionRequestOrError redirectionError(const ResourceResponse& redirectResponse, String&& errorMessage)
@@ -190,72 +180,79 @@ auto NetworkLoadChecker::accessControlErrorForValidationHandler(String&& message
     return ResourceError { String { }, 0, m_url, WTFMove(message), ResourceError::Type::AccessControl };
 }
 
-#if ENABLE(HTTPS_UPGRADE)
-void NetworkLoadChecker::applyHTTPSUpgradeIfNeeded(ResourceRequest& request) const
+void NetworkLoadChecker::applyHTTPSUpgradeIfNeeded(ResourceRequest&& request, CompletionHandler<void(ResourceRequest&&)>&& handler) const
 {
-    if (m_requestLoadType != LoadType::MainFrame)
+#if PLATFORM(COCOA)
+    if (!m_isHTTPSUpgradeEnabled || m_requestLoadType != LoadType::MainFrame) {
+        handler(WTFMove(request));
         return;
-
-    // Use dummy list for now.
-    static NeverDestroyed<HashSet<String>> upgradableHosts = std::initializer_list<String> {
-        "www.bbc.com"_s, // (source: https://whynohttps.com)
-        "www.speedtest.net"_s, // (source: https://whynohttps.com)
-        "www.bea.gov"_s // (source: https://pulse.cio.gov/data/domains/https.csv)
-    };
+    }
 
     auto& url = request.url();
 
     // Only upgrade http urls.
-    if (!url.protocolIs("http"))
+    if (!url.protocolIs("http")) {
+        handler(WTFMove(request));
         return;
+    }
 
-    if (!upgradableHosts.get().contains(url.host().toString()))
+    auto& httpsUpgradeChecker = NetworkProcess::singleton().networkHTTPSUpgradeChecker();
+
+    // Do not wait for httpsUpgradeChecker to complete its setup.
+    if (!httpsUpgradeChecker.didSetupCompleteSuccessfully()) {
+        handler(WTFMove(request));
         return;
+    }
 
-    auto newURL = url;
-    newURL.setProtocol("https"_s);
-    request.setURL(newURL);
+    httpsUpgradeChecker.query(url.host().toString(), m_sessionID, [request = WTFMove(request), handler = WTFMove(handler)] (bool foundHost) mutable {
+        if (foundHost) {
+            auto newURL = request.url();
+            newURL.setProtocol("https"_s);
+            request.setURL(newURL);
+        }
 
-    RELEASE_LOG_IF_ALLOWED("applyHTTPSUpgradeIfNeeded - Upgrade URL from HTTP to HTTPS");
+        handler(WTFMove(request));
+    });
+#else
+    handler(WTFMove(request));
+#endif
 }
-#endif // ENABLE(HTTPS_UPGRADE)
 
 void NetworkLoadChecker::checkRequest(ResourceRequest&& request, ContentSecurityPolicyClient* client, ValidationHandler&& handler)
 {
     ResourceRequest originalRequest = request;
 
-#if ENABLE(HTTPS_UPGRADE)
-    applyHTTPSUpgradeIfNeeded(request);
-#endif // ENABLE(HTTPS_UPGRADE)
+    applyHTTPSUpgradeIfNeeded(WTFMove(request), [this, client, handler = WTFMove(handler), originalRequest = WTFMove(originalRequest)](auto request) mutable {
 
-    if (auto* contentSecurityPolicy = this->contentSecurityPolicy()) {
-        if (isRedirected()) {
-            auto type = m_options.mode == FetchOptions::Mode::Navigate ? ContentSecurityPolicy::InsecureRequestType::Navigation : ContentSecurityPolicy::InsecureRequestType::Load;
-            contentSecurityPolicy->upgradeInsecureRequestIfNeeded(request, type);
+        if (auto* contentSecurityPolicy = this->contentSecurityPolicy()) {
+            if (this->isRedirected()) {
+                auto type = m_options.mode == FetchOptions::Mode::Navigate ? ContentSecurityPolicy::InsecureRequestType::Navigation : ContentSecurityPolicy::InsecureRequestType::Load;
+                contentSecurityPolicy->upgradeInsecureRequestIfNeeded(request, type);
+            }
+            if (!this->isAllowedByContentSecurityPolicy(request, client)) {
+                handler(this->accessControlErrorForValidationHandler("Blocked by Content Security Policy."_s));
+                return;
+            }
         }
-        if (!isAllowedByContentSecurityPolicy(request, client)) {
-            handler(accessControlErrorForValidationHandler("Blocked by Content Security Policy."_s));
-            return;
-        }
-    }
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    processContentExtensionRulesForLoad(WTFMove(request), [this, handler = WTFMove(handler), originalRequest = WTFMove(originalRequest)](auto result) mutable {
-        if (!result.has_value()) {
-            ASSERT(result.error().isCancellation());
-            handler(WTFMove(result.error()));
-            return;
-        }
-        if (result.value().status.blockedLoad) {
-            handler(this->accessControlErrorForValidationHandler("Blocked by content extension"_s));
-            return;
-        }
+        processContentExtensionRulesForLoad(WTFMove(request), [this, handler = WTFMove(handler), originalRequest = WTFMove(originalRequest)](auto result) mutable {
+            if (!result.has_value()) {
+                ASSERT(result.error().isCancellation());
+                handler(WTFMove(result.error()));
+                return;
+            }
+            if (result.value().status.blockedLoad) {
+                handler(this->accessControlErrorForValidationHandler("Blocked by content extension"_s));
+                return;
+            }
 
-        continueCheckingRequestOrDoSyntheticRedirect(WTFMove(originalRequest), WTFMove(result.value().request), WTFMove(handler));
-    });
+            continueCheckingRequestOrDoSyntheticRedirect(WTFMove(originalRequest), WTFMove(result.value().request), WTFMove(handler));
+        });
 #else
-    continueCheckingRequestOrDoSyntheticRedirect(WTFMove(originalRequest), WTFMove(request), WTFMove(handler));
+        this->continueCheckingRequestOrDoSyntheticRedirect(WTFMove(originalRequest), WTFMove(request), WTFMove(handler));
 #endif
+    });
 }
 
 void NetworkLoadChecker::continueCheckingRequestOrDoSyntheticRedirect(ResourceRequest&& originalRequest, ResourceRequest&& currentRequest, ValidationHandler&& handler)

@@ -77,32 +77,38 @@
     </branch>
   </meson>
 
-  <autotools id="glib-networking"
-             autogen-sh="configure">
+  <meson id="glib-networking">
     <dependencies>
       <dep package="glib"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/glib-networking/2.54/glib-networking-2.54.1.tar.xz" version="2.54.1"
+    <branch module="/pub/GNOME/sources/glib-networking/2.58/glib-networking-${version}.tar.xz" version="2.58.0"
             repo="ftp.gnome.org"
-            hash="sha256:eaa787b653015a0de31c928e9a17eb57b4ce23c8cf6f277afaec0d685335012f"/>
+            hash="sha256:bdfa0255e031b8ee003cc283002536b77ee76450105f1dc6ab066b9bf4330068"/>
+  </meson>
+
+  <autotools id="libpsl">
+    <branch module="rockdaboot/libpsl/releases/download/libpsl-${version}/libpsl-${version}.tar.gz"
+            version="0.20.2"
+            repo="github-tarball"
+            hash="sha256:f8fd0aeb66252dfcc638f14d9be1e2362fdaf2ca86bde0444ff4d5cc961b560f"/>
   </autotools>
 
   <autotools id="libsoup"
              autogen-sh="configure"
-             autogenargs="--without-gnome --disable-introspection">
+             autogenargs="--disable-introspection">
     <dependencies>
       <dep package="glib-networking"/>
+      <dep package="libpsl"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/libsoup/2.60/libsoup-2.60.3.tar.xz" version="2.60.3"
+    <branch module="/pub/GNOME/sources/libsoup/2.64/libsoup-${version}.tar.xz" version="2.64.2"
             repo="ftp.gnome.org"
-            hash="sha256:1b0dc762f23abe4e0d29b77370e539fd35f31d8e8e0318d6ddccff395be68a22">
-          <patch file="libsoup-soup-socket-fix-critical-warning-when-the-peer-certi.patch" strip="1"/>
+            hash="sha256:75ddc194a5b1d6f25033bb9d355f04bfe5c03e0e1c71ed0774104457b3a786c6">
     </branch>
   </autotools>
 
   <autotools id="fonts" supports-non-srcdir-builds="no"
              skip-autogen="true">
-    <branch repo="github.com" module="WebKitGTK/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.6"/>
+    <branch repo="github.com" module="WebKitGTK/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.8"/>
   </autotools>
 
   <autotools id="dicts" supports-non-srcdir-builds="no"
@@ -166,8 +172,8 @@
   </autotools>
 
   <cmake id="libwpe">
-      <branch repo="wpewebkit" module="libwpe-1.0.0.tar.xz" version="1.0.0"
-              hash="sha256:aff11612123f9ab85a8b9a4bcdfb3a7503eba0a0d2d96f2cdecd30e911091719" />
+      <branch repo="wpewebkit" module="libwpe-1.1.0.tar.xz" version="1.1.0"
+              hash="sha256:72e34ad754be11abd1a438cfe195d8d644c52105ab2b1c3b39dec6228bc776ce"/>
   </cmake>
 
   <cmake id="wpebackend-fdo">
@@ -175,8 +181,8 @@
       <dep package="libwpe"/>
       <dep package="glib"/>
     </dependencies>
-    <branch repo="wpewebkit" module="wpebackend-fdo-1.0.0.tar.xz" version="1.0.0"
-            hash="sha256:7a747f87a1ae46d30144369050e3ce348b58986d04e1a139ba75c198fa636729"/>
+    <branch repo="wpewebkit" module="wpebackend-fdo-1.1.0.tar.xz" version="1.1.0"
+            hash="sha256:f6c72130d16e50860cb83eb0f6e109c76f1826d2c6bee39025fb3651941761e7"/>
   </cmake>
 
   <autotools id="libgpg-error" autogen-sh="configure">

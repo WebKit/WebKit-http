@@ -89,9 +89,9 @@ public:
         String name;
         String hash;
         String namedCurve;
-        std::optional<uint32_t> modulusLength;
+        Optional<uint32_t> modulusLength;
         RefPtr<Uint8Array> publicExponent;
-        std::optional<double> expires;
+        Optional<double> expires;
     };
 
     using AlgorithmIdentifier = Variant<JSC::Strong<JSC::JSObject>, String>;
@@ -128,11 +128,10 @@ public:
     void addInternalTransceiver(Ref<RTCRtpTransceiver>&& transceiver) { m_transceiverSet->append(WTFMove(transceiver)); }
 
     // 5.1 RTCPeerConnection extensions
-    const Vector<std::reference_wrapper<RTCRtpSender>>& getSenders() const;
-    const Vector<std::reference_wrapper<RTCRtpReceiver>>& getReceivers() const;
+    Vector<std::reference_wrapper<RTCRtpSender>> getSenders() const;
+    Vector<std::reference_wrapper<RTCRtpReceiver>> getReceivers() const;
     const Vector<RefPtr<RTCRtpTransceiver>>& getTransceivers() const;
 
-    const Vector<std::reference_wrapper<RTCRtpSender>>& currentSenders() const { return m_transceiverSet->senders(); }
     const Vector<RefPtr<RTCRtpTransceiver>>& currentTransceivers() const { return m_transceiverSet->list(); }
 
     ExceptionOr<Ref<RTCRtpSender>> addTrack(Ref<MediaStreamTrack>&&, const Vector<std::reference_wrapper<MediaStream>>&);

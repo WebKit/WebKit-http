@@ -32,6 +32,8 @@
 #include "ApplyStyleCommand.h"
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSPropertyNames.h"
+#include "CSSValueList.h"
+#include "CSSValuePool.h"
 #include "CachedResourceLoader.h"
 #include "ChangeListTypeCommand.h"
 #include "ClipboardEvent.h"
@@ -63,8 +65,10 @@
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "HTMLOListElement.h"
 #include "HTMLQuoteElement.h"
 #include "HTMLSpanElement.h"
+#include "HTMLUListElement.h"
 #include "HitTestResult.h"
 #include "IndentOutdentCommand.h"
 #include "InputEvent.h"
@@ -198,7 +202,7 @@ using namespace HTMLNames;
 using namespace WTF;
 using namespace Unicode;
 
-TemporarySelectionChange::TemporarySelectionChange(Frame& frame, std::optional<VisibleSelection> temporarySelection, OptionSet<TemporarySelectionOption> options)
+TemporarySelectionChange::TemporarySelectionChange(Frame& frame, Optional<VisibleSelection> temporarySelection, OptionSet<TemporarySelectionOption> options)
     : m_frame(frame)
     , m_options(options)
     , m_wasIgnoringSelectionChanges(frame.editor().ignoreSelectionChanges())
@@ -1795,9 +1799,9 @@ void Editor::setBaseWritingDirection(WritingDirection direction)
         return;
     }
 
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyDirection, direction == WritingDirection::LeftToRight ? "ltr" : direction == WritingDirection::RightToLeft ? "rtl" : "inherit", false);
-    applyParagraphStyleToSelection(style.get(), EditAction::SetWritingDirection);
+    applyParagraphStyleToSelection(style.ptr(), EditAction::SetWritingDirection);
 }
 
 WritingDirection Editor::baseWritingDirectionForSelectionStart() const
@@ -2023,8 +2027,8 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
 
             unsigned start = std::min(baseOffset + selectionStart, extentOffset);
             unsigned end = std::min(std::max(start, baseOffset + selectionEnd), extentOffset);
-            RefPtr<Range> selectedRange = Range::create(baseNode->document(), baseNode, start, baseNode, end);
-            m_frame.selection().setSelectedRange(selectedRange.get(), DOWNSTREAM, FrameSelection::ShouldCloseTyping::No);
+            auto selectedRange = Range::create(baseNode->document(), baseNode, start, baseNode, end);
+            m_frame.selection().setSelectedRange(selectedRange.ptr(), DOWNSTREAM, FrameSelection::ShouldCloseTyping::No);
         }
     }
 
@@ -3768,7 +3772,7 @@ bool Editor::selectionStartHasMarkerFor(DocumentMarker::MarkerType markerType, i
 
     unsigned int startOffset = static_cast<unsigned int>(from);
     unsigned int endOffset = static_cast<unsigned int>(from + length);
-    Vector<RenderedDocumentMarker*> markers = document().markers().markersFor(node);
+    Vector<RenderedDocumentMarker*> markers = document().markers().markersFor(*node);
     for (auto* marker : markers) {
         if (marker->startOffset() <= startOffset && endOffset <= marker->endOffset() && marker->type() == markerType)
             return true;
@@ -4090,7 +4094,7 @@ void Editor::notifyClientOfAttachmentUpdates()
     }
 }
 
-void Editor::insertAttachment(const String& identifier, std::optional<uint64_t>&& fileSize, const String& fileName, const String& contentType)
+void Editor::insertAttachment(const String& identifier, Optional<uint64_t>&& fileSize, const String& fileName, const String& contentType)
 {
     auto attachment = HTMLAttachmentElement::create(HTMLNames::attachmentTag, document());
     attachment->setUniqueIdentifier(identifier);
@@ -4254,6 +4258,12 @@ String Editor::clientReplacementURLForResource(Ref<SharedBuffer>&& resourceData,
 RefPtr<HTMLImageElement> Editor::insertEditableImage()
 {
     return InsertEditableImageCommand::insertEditableImage(document());
+}
+
+bool Editor::canCopyExcludingStandaloneImages() const
+{
+    auto& selection = m_frame.selection().selection();
+    return selection.isRange() && !selection.isInPasswordField();
 }
 
 } // namespace WebCore

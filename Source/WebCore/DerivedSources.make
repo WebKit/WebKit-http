@@ -375,6 +375,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WebGPU.idl \
     $(WebCore)/Modules/webgpu/WebGPUAdapter.idl \
     $(WebCore)/Modules/webgpu/WebGPUAdapterDescriptor.idl \
+    $(WebCore)/Modules/webgpu/WebGPUBindGroupLayout.idl \
+    $(WebCore)/Modules/webgpu/WebGPUBindGroupLayoutBinding.idl \
+    $(WebCore)/Modules/webgpu/WebGPUBindGroupLayoutDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUBuffer.idl \
     $(WebCore)/Modules/webgpu/WebGPUBufferDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUBufferUsage.idl \
@@ -386,6 +389,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WebGPUInputStepMode.idl \
     $(WebCore)/Modules/webgpu/WebGPUQueue.idl \
     $(WebCore)/Modules/webgpu/WebGPUPipelineDescriptorBase.idl \
+    $(WebCore)/Modules/webgpu/WebGPUPipelineLayout.idl \
+    $(WebCore)/Modules/webgpu/WebGPUPipelineLayoutDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUPipelineStageDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUProgrammablePassEncoder.idl \
     $(WebCore)/Modules/webgpu/WebGPURenderPassColorAttachmentDescriptor.idl \
@@ -396,6 +401,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WebGPURenderingContext.idl \
     $(WebCore)/Modules/webgpu/WebGPUShaderModule.idl \
     $(WebCore)/Modules/webgpu/WebGPUShaderModuleDescriptor.idl \
+    $(WebCore)/Modules/webgpu/WebGPUShaderStageBit.idl \
     $(WebCore)/Modules/webgpu/WebGPUSwapChain.idl \
     $(WebCore)/Modules/webgpu/WebGPUTexture.idl \
     $(WebCore)/Modules/webgpu/WebGPUTextureFormatEnum.idl \
@@ -510,6 +516,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/StyleMedia.idl \
     $(WebCore)/css/StyleSheet.idl \
     $(WebCore)/css/StyleSheetList.idl \
+    $(WebCore)/css/typedom/StylePropertyMap.idl \
     $(WebCore)/css/typedom/StylePropertyMapReadOnly.idl \
 	$(WebCore)/css/typedom/TypedOMCSSImageValue.idl \
     $(WebCore)/css/typedom/TypedOMCSSNumericValue.idl \

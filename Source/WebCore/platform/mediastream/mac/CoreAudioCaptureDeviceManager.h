@@ -44,15 +44,14 @@ public:
     static CoreAudioCaptureDeviceManager& singleton();
 
     const Vector<CaptureDevice>& captureDevices() final;
-    std::optional<CaptureDevice> captureDeviceWithPersistentID(CaptureDevice::DeviceType, const String&);
+    Optional<CaptureDevice> captureDeviceWithPersistentID(CaptureDevice::DeviceType, const String&);
 
-    std::optional<CoreAudioCaptureDevice> coreAudioDeviceWithUID(const String&);
+    Optional<CoreAudioCaptureDevice> coreAudioDeviceWithUID(const String&);
 
 private:
     CoreAudioCaptureDeviceManager() = default;
     ~CoreAudioCaptureDeviceManager() = default;
     
-    static OSStatus devicesChanged(AudioObjectID, UInt32, const AudioObjectPropertyAddress*, void*);
     Vector<CoreAudioCaptureDevice>& coreAudioCaptureDevices();
 
     enum NotifyIfDevicesHaveChanged { Notify, DoNotNotify };
@@ -60,6 +59,8 @@ private:
 
     Vector<CaptureDevice> m_devices;
     Vector<CoreAudioCaptureDevice> m_coreAudioCaptureDevices;
+
+    AudioObjectPropertyListenerBlock m_listenerBlock;
 };
 
 } // namespace WebCore

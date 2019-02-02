@@ -117,25 +117,25 @@ void DeclarativeAnimation::syncPropertiesWithBackingAnimation()
 {
 }
 
-std::optional<double> DeclarativeAnimation::startTime() const
+Optional<double> DeclarativeAnimation::startTime() const
 {
     flushPendingStyleChanges();
     return WebAnimation::startTime();
 }
 
-void DeclarativeAnimation::setStartTime(std::optional<double> startTime)
+void DeclarativeAnimation::setStartTime(Optional<double> startTime)
 {
     flushPendingStyleChanges();
     return WebAnimation::setStartTime(startTime);
 }
 
-std::optional<double> DeclarativeAnimation::bindingsCurrentTime() const
+Optional<double> DeclarativeAnimation::bindingsCurrentTime() const
 {
     flushPendingStyleChanges();
     return WebAnimation::bindingsCurrentTime();
 }
 
-ExceptionOr<void> DeclarativeAnimation::setBindingsCurrentTime(std::optional<double> currentTime)
+ExceptionOr<void> DeclarativeAnimation::setBindingsCurrentTime(Optional<double> currentTime)
 {
     flushPendingStyleChanges();
     return WebAnimation::setBindingsCurrentTime(currentTime);
@@ -199,7 +199,7 @@ void DeclarativeAnimation::cancel()
 {
     auto cancelationTime = 0_s;
     if (auto animationEffect = effect())
-        cancelationTime = animationEffect->activeTime().value_or(0_s);
+        cancelationTime = animationEffect->activeTime().valueOr(0_s);
 
     WebAnimation::cancel();
 
@@ -236,7 +236,7 @@ void DeclarativeAnimation::invalidateDOMEvents(Seconds elapsedTime)
     if (isPending && m_wasPending)
         return;
 
-    auto iteration = animationEffect ? animationEffect->currentIteration().value_or(0) : 0;
+    auto iteration = animationEffect ? animationEffect->currentIteration().valueOr(0) : 0;
     auto currentPhase = animationEffect ? animationEffect->phase() : phaseWithoutEffect();
 
     bool wasActive = m_previousPhase == AnimationEffect::Phase::Active;

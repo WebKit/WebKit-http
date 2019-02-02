@@ -346,6 +346,12 @@ window.UIHelper = class UIHelper {
         });
     }
 
+    static zoomToScale(scale)
+    {
+        const uiScript = `uiController.zoomToScale(${scale}, () => uiController.uiScriptComplete())`;
+        return new Promise(resolve => testRunner.runUIScript(uiScript, resolve));
+    }
+
     static typeCharacter(characterString)
     {
         if (!this.isWebKit2() || !this.isIOS()) {
@@ -441,6 +447,19 @@ window.UIHelper = class UIHelper {
             return Promise.resolve();
 
         return new Promise(resolve => testRunner.runUIScript(`uiController.drawSquareInEditableImage()`, resolve));
+    }
+
+    static stylusTapAt(x, y)
+    {
+        if (!this.isWebKit2())
+            return Promise.resolve();
+
+        return new Promise((resolve) => {
+            testRunner.runUIScript(`
+                uiController.stylusTapAtPoint(${x}, ${y}, 2, 1, 0.5, function() {
+                    uiController.uiScriptComplete('Done');
+                });`, resolve);
+        });
     }
 
     static numberOfStrokesInEditableImage()

@@ -35,6 +35,13 @@ PluginsEnabled:
   type: bool
   defaultValue: false
 
+HTTPSUpgradeEnabled:
+   type: bool
+   defaultValue: false
+   humanReadableName: "Automatic HTTPS upgrade"
+   humanReadableDescription: "Automatic HTTPS upgrade for known supported sites"
+   category: experimental
+
 JavaEnabled:
   type: bool
   defaultValue: false
@@ -746,6 +753,14 @@ WebAuthenticationEnabled:
   category: experimental
   condition: ENABLE(WEB_AUTHN)
 
+WebAuthenticationLocalAuthenticatorEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Web Authentication Local Authenticator"
+  humanReadableDescription: "Enable Web Authentication local authenticator support"
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_AUTHN)
+
 ModernMediaControlsEnabled:
   type: bool
   defaultValue: DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED
@@ -1097,10 +1112,7 @@ ShouldAllowUserInstalledFonts:
 
 MediaCapabilitiesEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
-  humanReadableName: "Media Capabilities API"
-  humanReadableDescription: "Media Capabilities API"
-  category: experimental
+  defaultValue: true
 
 SystemPreviewEnabled:
   type: bool
@@ -1120,11 +1132,6 @@ ConstantPropertiesEnabled:
 SubresourceIntegrityEnabled:
   type: bool
   defaultValue: true
-
-RestrictedHTTPResponseAccess:
-  type: bool
-  defaultValue: true
-  webcoreBinding: RuntimeEnabledFeatures
 
 CrossOriginResourcePolicyEnabled:
   type: bool
@@ -1506,3 +1513,11 @@ CaptureVideoInUIProcessEnabled:
   category: internal
   webcoreBinding: none
   condition: ENABLE(MEDIA_STREAM)
+
+RestrictedHTTPResponseAccess:
+  type: bool
+  defaultValue: true
+  humanReadableName: "Filter HTTP Response for WebProcesses"
+  humanReadableDescription: "Enable HTTP Response filtering for WebProcesses"
+  category: internal
+  webcoreBinding: RuntimeEnabledFeatures

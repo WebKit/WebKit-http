@@ -591,15 +591,15 @@ sub GenerateNamedGetterLambda
     #       dependant on the IDL type). This is based on the assumption that no named getter will
     #       ever actually want to return null as an actual return value, which seems like an ok
     #       assumption to make (should it turn out this doesn't hold in the future, we have lots
-    #       of options; do two lookups, add an extra layer of std::optional, etc.).
+    #       of options; do two lookups, add an extra layer of Optional, etc.).
     
     my $resultType = "typename ${IDLType}::ImplementationType";
     $resultType = "ExceptionOr<" . $resultType . ">" if $namedGetterOperation->extendedAttributes->{MayThrowException};
-    my $returnType = "std::optional<" . $resultType . ">";
+    my $returnType = "Optional<" . $resultType . ">";
 
     push(@$outputArray, "    auto getterFunctor = [] (auto& thisObject, auto propertyName) -> ${returnType} {\n");
 
-    my @arguments = GenerateCallWithUsingReferences($namedGetterOperation->extendedAttributes->{CallWith}, $outputArray, "std::nullopt", "thisObject", "        ");
+    my @arguments = GenerateCallWithUsingReferences($namedGetterOperation->extendedAttributes->{CallWith}, $outputArray, "WTF::nullopt", "thisObject", "        ");
     push(@arguments, "propertyNameToAtomicString(propertyName)");
 
     push(@$outputArray, "        auto result = thisObject.wrapped().${namedGetterFunctionName}(" . join(", ", @arguments) . ");\n");
@@ -609,11 +609,11 @@ sub GenerateNamedGetterLambda
         push(@$outputArray, "            return ${resultType} { result.releaseException() };\n");
         push(@$outputArray, "        if (!${IDLType}::isNullValue(result.returnValue()))\n");
         push(@$outputArray, "            return ${resultType} { ${IDLType}::extractValueFromNullable(result.releaseReturnValue()) };\n");
-        push(@$outputArray, "        return std::nullopt;\n");
+        push(@$outputArray, "        return WTF::nullopt;\n");
     } else {
         push(@$outputArray, "        if (!${IDLType}::isNullValue(result))\n");
         push(@$outputArray, "            return ${resultType} { ${IDLType}::extractValueFromNullable(result) };\n");
-        push(@$outputArray, "        return std::nullopt;\n");
+        push(@$outputArray, "        return WTF::nullopt;\n");
     }
     push(@$outputArray, "    };\n");
 }
@@ -2090,7 +2090,7 @@ sub GenerateEnumerationImplementationContent
     # FIXME: Change to take VM& instead of ExecState&.
     # FIXME: Consider using toStringOrNull to make exception checking faster.
     # FIXME: Consider finding a more efficient way to match against all the strings quickly.
-    $result .= "template<> std::optional<$className> parseEnumeration<$className>(ExecState& state, JSValue value)\n";
+    $result .= "template<> Optional<$className> parseEnumeration<$className>(ExecState& state, JSValue value)\n";
     $result .= "{\n";
     $result .= "    auto stringValue = value.toWTFString(&state);\n";
     foreach my $value (@{$enumeration->values}) {
@@ -2102,7 +2102,7 @@ sub GenerateEnumerationImplementationContent
         }
         $result .= "        return ${className}::${enumerationValueName};\n";
     }
-    $result .= "    return std::nullopt;\n";
+    $result .= "    return WTF::nullopt;\n";
     $result .= "}\n\n";
 
     $result .= "template<> const char* expectedEnumerationValues<$className>()\n";
@@ -2143,7 +2143,7 @@ sub GenerateEnumerationHeaderContent
 
     $result .= "${exportMacro}String convertEnumerationToString($className);\n";
     $result .= "template<> ${exportMacro}JSC::JSString* convertEnumerationToJS(JSC::ExecState&, $className);\n\n";
-    $result .= "template<> ${exportMacro}std::optional<$className> parseEnumeration<$className>(JSC::ExecState&, JSC::JSValue);\n";
+    $result .= "template<> ${exportMacro}Optional<$className> parseEnumeration<$className>(JSC::ExecState&, JSC::JSValue);\n";
     $result .= "template<> ${exportMacro}const char* expectedEnumerationValues<$className>();\n\n";
     $result .= "#endif\n\n" if $conditionalString;
     
@@ -2202,7 +2202,7 @@ sub GenerateDefaultValue
         # FIXME: Would be nice to report an error if the value is not one of the enumeration values.
         if ($defaultValue eq "null") {
             die if !$type->isNullable;
-            return "std::nullopt";
+            return "WTF::nullopt";
         }
         my $className = GetEnumerationClassName($type, $typeScope);
         my $enumerationValueName = GetEnumerationValueName(substr($defaultValue, 1, -1));
@@ -2210,7 +2210,7 @@ sub GenerateDefaultValue
     }
     if ($defaultValue eq "null") {
         if ($type->isUnion) {
-            return "std::nullopt" if $type->isNullable;
+            return "WTF::nullopt" if $type->isNullable;
 
             my $IDLType = GetIDLType($typeScope, $type);
             return "convert<${IDLType}>(state, jsNull());";
@@ -2219,7 +2219,7 @@ sub GenerateDefaultValue
         return "jsNull()" if $type->name eq "any";
         return "nullptr" if $codeGenerator->IsWrapperType($type) || $codeGenerator->IsBufferSourceType($type);
         return "String()" if $codeGenerator->IsStringType($type);
-        return "std::nullopt";
+        return "WTF::nullopt";
     }
 
     if ($defaultValue eq "[]") {
@@ -2835,11 +2835,11 @@ sub GenerateHeader
     # structure flags
     if (%structureFlags) {
         push(@headerContent, "public:\n");
-        push(@headerContent, "    static const unsigned StructureFlags = ");
+        push(@headerContent, "    static const unsigned StructureFlags = Base::StructureFlags");
         foreach my $structureFlag (sort (keys %structureFlags)) {
-            push(@headerContent, $structureFlag . " | ");
+            push(@headerContent, " | " . $structureFlag);
         }
-        push(@headerContent, "Base::StructureFlags;\n");
+        push(@headerContent, ";\n");
     }
 
     push(@headerContent, "protected:\n");
@@ -3057,6 +3057,7 @@ sub GeneratePropertiesHashTable
     foreach my $attribute (@attributes) {
         next if ($attribute->isStatic);
         next if AttributeShouldBeOnInstance($interface, $attribute) != $isInstance;
+        next if ($attribute->extendedAttributes->{PrivateIdentifier} and not $attribute->extendedAttributes->{PublicIdentifier});
 
         # Global objects add RuntimeEnabled attributes after creation so do not add them to the static table.
         if ($isInstance && NeedsRuntimeCheck($interface, $attribute)) {
@@ -4191,17 +4192,28 @@ sub GenerateImplementation
 
         my @runtimeEnabledProperties = @runtimeEnabledOperations;
         push(@runtimeEnabledProperties, @runtimeEnabledAttributes);
+
+        if (@runtimeEnabledProperties) {
+            push(@implContent, "    bool hasDisabledRuntimeProperties = false;\n");
+        }
+
         foreach my $operationOrAttribute (@runtimeEnabledProperties) {
             my $conditionalString = $codeGenerator->GenerateConditionalString($operationOrAttribute);
             push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
             my $runtimeEnableConditionalString = GenerateRuntimeEnableConditionalString($interface, $operationOrAttribute);
             my $name = $operationOrAttribute->name;
             push(@implContent, "    if (!${runtimeEnableConditionalString}) {\n");
+            push(@implContent, "        hasDisabledRuntimeProperties = true;\n");
             push(@implContent, "        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>(\"$name\"), strlen(\"$name\"));\n");
             push(@implContent, "        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);\n");
             push(@implContent, "        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);\n");
             push(@implContent, "    }\n");
             push(@implContent, "#endif\n") if $conditionalString;
+        }
+
+        if (@runtimeEnabledProperties) {
+            push(@implContent, "    if (hasDisabledRuntimeProperties && structure()->isDictionary())\n");
+            push(@implContent, "        flattenDictionaryObject(vm);\n");
         }
 
         foreach my $operation (@{$interface->operations}) {
@@ -4524,7 +4536,10 @@ sub GenerateImplementation
         if ($numCachedAttributes > 0) {
             foreach my $attribute (@{$interface->attributes}) {
                 if ($attribute->extendedAttributes->{CachedAttribute}) {
+                    my $conditionalString = $codeGenerator->GenerateConditionalString($attribute);
+                    push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
                     push(@implContent, "    visitor.append(thisObject->m_" . $attribute->name . ");\n");
+                    push(@implContent, "#endif\n") if $conditionalString;
                 }
             }
         }
@@ -5740,8 +5755,8 @@ sub GenerateParametersCheck
                     if ($codeGenerator->IsPromiseType($argument->type)) {
                         $defaultValue = "nullptr";
                     } else {
-                        $defaultValue = "std::optional<Converter<$argumentIDLType>::ReturnType>()";
-                        $nativeValueCastFunction = "std::optional<Converter<$argumentIDLType>::ReturnType>";
+                        $defaultValue = "Optional<Converter<$argumentIDLType>::ReturnType>()";
+                        $nativeValueCastFunction = "Optional<Converter<$argumentIDLType>::ReturnType>";
                     }
 
                     $optionalCheck = "state->argument($argumentIndex).isUndefined() ? $defaultValue : ";
@@ -7046,11 +7061,11 @@ sub GeneratePrototypeDeclaration
     # structure flags
     if (%structureFlags) {
         push(@$outputArray, "public:\n");
-        push(@$outputArray, "    static const unsigned StructureFlags = ");
+        push(@$outputArray, "    static const unsigned StructureFlags = Base::StructureFlags");
         foreach my $structureFlag (sort (keys %structureFlags)) {
-            push(@$outputArray, $structureFlag . " | ");
+            push(@$outputArray, " | " . $structureFlag);
         }
-        push(@$outputArray, "Base::StructureFlags;\n");
+        push(@$outputArray, ";\n");
     }
 
     push(@$outputArray, "};\n\n");
@@ -7340,9 +7355,7 @@ sub NeedsConstructorProperty
 {
     my $interface = shift;
     
-    # FIXME: This condition makes little sense. It should not be possible to have a constructor at all if you have
-    # no interface object. This seems to be only used by the ReadableStreams code.
-    return !$interface->extendedAttributes->{NoInterfaceObject} || $interface->extendedAttributes->{CustomConstructor};
+    return !$interface->extendedAttributes->{NoInterfaceObject};
 }
 
 sub IsConstructable

@@ -135,6 +135,7 @@ protected:
 public:
     typedef Parent Base;
     static const unsigned StructureFlags = Base::StructureFlags | ProhibitsPropertyCaching | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | ImplementsHasInstance | OverridesGetPropertyNames | OverridesGetCallData;
+    static_assert(!(StructureFlags & ImplementsDefaultHasInstance), "using customHasInstance");
 
     ~JSCallbackObject();
 
@@ -186,6 +187,7 @@ public:
 
 private:
     static String className(const JSObject*, VM&);
+    static String toStringName(const JSObject*, ExecState*);
 
     static JSValue defaultValue(const JSObject*, ExecState*, PreferredPrimitiveType);
 

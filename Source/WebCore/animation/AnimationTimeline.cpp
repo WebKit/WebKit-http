@@ -80,11 +80,11 @@ void AnimationTimeline::removeAnimation(WebAnimation& animation)
     }
 }
 
-std::optional<double> AnimationTimeline::bindingsCurrentTime()
+Optional<double> AnimationTimeline::bindingsCurrentTime()
 {
     auto time = currentTime();
     if (!time)
-        return std::nullopt;
+        return WTF::nullopt;
     return secondsToWebAnimationsAPITime(*time);
 }
 
@@ -365,7 +365,7 @@ void AnimationTimeline::updateCSSTransitionsForElement(Element& element, const R
 
     auto numberOfProperties = CSSPropertyAnimation::getNumProperties();
     for (int propertyIndex = 0; propertyIndex < numberOfProperties; ++propertyIndex) {
-        std::optional<bool> isShorthand;
+        Optional<bool> isShorthand;
         auto property = CSSPropertyAnimation::getPropertyAtIndex(propertyIndex, isShorthand);
         if (isShorthand && *isShorthand)
             continue;
@@ -460,7 +460,7 @@ void AnimationTimeline::updateCSSTransitionsForElement(Element& element, const R
                 auto& reversingAdjustedStartStyle = previouslyRunningTransition->targetStyle();
                 double transformedProgress = 1;
                 if (auto* effect = previouslyRunningTransition->effect())
-                    transformedProgress = effect->iterationProgress().value_or(transformedProgress);
+                    transformedProgress = effect->iterationProgress().valueOr(transformedProgress);
                 auto reversingShorteningFactor = std::max(std::min(((transformedProgress * previouslyRunningTransition->reversingShorteningFactor()) + (1 - previouslyRunningTransition->reversingShorteningFactor())), 1.0), 0.0);
                 auto delay = matchingBackingAnimation->delay() < 0 ? Seconds(matchingBackingAnimation->delay()) * reversingShorteningFactor : Seconds(matchingBackingAnimation->delay());
                 auto duration = Seconds(matchingBackingAnimation->duration()) * reversingShorteningFactor;

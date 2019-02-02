@@ -338,7 +338,7 @@ bool WebVTTParser::checkAndStoreRegion(const String& line)
     if (!m_currentRegion->id().isEmpty()) {
         // If the text track list of regions regions contains a region
         // with the same region identifier value as region, remove that region.
-        for (auto region : m_regionList) {
+        for (const auto& region : m_regionList) {
             if (region->id() == m_currentRegion->id()) {
                 m_regionList.removeFirst(region);
                 break;
@@ -502,14 +502,14 @@ Ref<DocumentFragment> WebVTTParser::createDocumentFragmentFromCueText(Document& 
 
 void WebVTTParser::createNewCue()
 {
-    RefPtr<WebVTTCueData> cue = WebVTTCueData::create();
+    auto cue = WebVTTCueData::create();
     cue->setStartTime(m_currentStartTime);
     cue->setEndTime(m_currentEndTime);
     cue->setContent(m_currentContent.toString());
     cue->setId(m_currentId);
     cue->setSettings(m_currentSettings);
 
-    m_cuelist.append(cue);
+    m_cuelist.append(WTFMove(cue));
     if (m_client)
         m_client->newCuesParsed();
 }

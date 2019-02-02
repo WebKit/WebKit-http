@@ -66,7 +66,7 @@ static std::unique_ptr<PeerConnectionBackend> createLibWebRTCPeerConnectionBacke
 
 CreatePeerConnectionBackend PeerConnectionBackend::create = createLibWebRTCPeerConnectionBackend;
 
-std::optional<RTCRtpCapabilities> PeerConnectionBackend::receiverCapabilities(ScriptExecutionContext& context, const String& kind)
+Optional<RTCRtpCapabilities> PeerConnectionBackend::receiverCapabilities(ScriptExecutionContext& context, const String& kind)
 {
     auto* page = downcast<Document>(context).page();
     if (!page)
@@ -74,7 +74,7 @@ std::optional<RTCRtpCapabilities> PeerConnectionBackend::receiverCapabilities(Sc
     return page->libWebRTCProvider().receiverCapabilities(kind);
 }
 
-std::optional<RTCRtpCapabilities> PeerConnectionBackend::senderCapabilities(ScriptExecutionContext& context, const String& kind)
+Optional<RTCRtpCapabilities> PeerConnectionBackend::senderCapabilities(ScriptExecutionContext& context, const String& kind)
 {
     auto* page = downcast<Document>(context).page();
     if (!page)
@@ -385,10 +385,11 @@ RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::remoteDescription(
     return m_endpoint->remoteDescription();
 }
 
-static inline RefPtr<RTCRtpSender> findExistingSender(const Vector<std::reference_wrapper<RTCRtpSender>>& senders, LibWebRTCRtpSenderBackend& senderBackend)
+static inline RefPtr<RTCRtpSender> findExistingSender(const Vector<RefPtr<RTCRtpTransceiver>>& transceivers, LibWebRTCRtpSenderBackend& senderBackend)
 {
     ASSERT(senderBackend.rtcSender());
-    for (RTCRtpSender& sender : senders) {
+    for (auto& transceiver : transceivers) {
+        auto& sender = transceiver->sender();
         if (!sender.isStopped() && senderBackend.rtcSender() == backendFromRTPSender(sender).rtcSender())
             return makeRef(sender);
     }
@@ -402,7 +403,7 @@ ExceptionOr<Ref<RTCRtpSender>> LibWebRTCPeerConnectionBackend::addTrack(MediaStr
         if (!m_endpoint->addTrack(*senderBackend, track, mediaStreamIds))
             return Exception { TypeError, "Unable to add track"_s };
 
-        if (auto sender = findExistingSender(m_peerConnection.currentSenders(), *senderBackend)) {
+        if (auto sender = findExistingSender(m_peerConnection.currentTransceivers(), *senderBackend)) {
             backendFromRTPSender(*sender).takeSource(*senderBackend);
             sender->setTrack(makeRef(track));
             sender->setMediaStreamIds(WTFMove(mediaStreamIds));

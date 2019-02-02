@@ -143,7 +143,7 @@ void InlineFormattingContext::splitInlineRunIfNeeded(const InlineRun& inlineRun,
         const InlineItem* lastInlineItem { nullptr };
         unsigned length { 0 };
     };
-    std::optional<Uncommitted> uncommitted;
+    Optional<Uncommitted> uncommitted;
 
     auto commit = [&] {
         if (!uncommitted)
@@ -264,7 +264,7 @@ void InlineFormattingContext::appendContentToLine(Line& line, const InlineRunPro
     line.appendContent(run, runSize);
 
     if (root().style().textAlign() == TextAlignMode::Justify)
-        Geometry::computeExpansionOpportunities(line, run, lastRunType.value_or(InlineRunProvider::Run::Type::NonWhitespace));
+        Geometry::computeExpansionOpportunities(line, run, lastRunType.valueOr(InlineRunProvider::Run::Type::NonWhitespace));
 }
 
 void InlineFormattingContext::layoutInlineContent(const InlineRunProvider& inlineRunProvider) const
@@ -342,8 +342,8 @@ void InlineFormattingContext::computeWidthAndMargin(const Box& layoutBox) const
 
     auto& displayBox = layoutState.displayBoxForLayoutBox(layoutBox);
     displayBox.setContentBoxWidth(widthAndMargin.width);
-    displayBox.setHorizontalMargin(widthAndMargin.margin);
-    displayBox.setHorizontalNonComputedMargin(widthAndMargin.nonComputedMargin);
+    displayBox.setHorizontalMargin(widthAndMargin.usedMargin);
+    displayBox.setHorizontalComputedMargin(widthAndMargin.computedMargin);
 }
 
 void InlineFormattingContext::computeHeightAndMargin(const Box& layoutBox) const
@@ -362,8 +362,7 @@ void InlineFormattingContext::computeHeightAndMargin(const Box& layoutBox) const
 
     auto& displayBox = layoutState.displayBoxForLayoutBox(layoutBox);
     displayBox.setContentBoxHeight(heightAndMargin.height);
-    displayBox.setVerticalNonCollapsedMargin(heightAndMargin.nonCollapsedMargin);
-    displayBox.setVerticalMargin(heightAndMargin.usedMarginValues());
+    displayBox.setVerticalMargin(heightAndMargin.margin);
 }
 
 void InlineFormattingContext::layoutFormattingContextRoot(const Box& root) const
@@ -412,11 +411,11 @@ void InlineFormattingContext::placeInFlowPositionedChildren(unsigned fistRunInde
 
         auto positionOffset = [&](auto& layoutBox) {
             // FIXME: Need to figure out whether in-flow offset should stick. This might very well be temporary.
-            std::optional<LayoutSize> offset;
+            Optional<LayoutSize> offset;
             for (auto* box = &layoutBox; box != &root(); box = box->parent()) {
                 if (!box->isInFlowPositioned())
                     continue;
-                offset = offset.value_or(LayoutSize()) + Geometry::inFlowPositionedPositionOffset(layoutState(), *box);
+                offset = offset.valueOr(LayoutSize()) + Geometry::inFlowPositionedPositionOffset(layoutState(), *box);
             }
             return offset;
         };
@@ -443,10 +442,10 @@ void InlineFormattingContext::collectInlineContentForSubtree(const Box& root, In
         createAndAppendInlineItem();
         auto& inlineRun = *inlineFormattingState.inlineContent().last();
 
-        auto horizontalMargins = Geometry::computedNonCollapsedHorizontalMarginValue(layoutState(), root);
+        auto horizontalMargin = Geometry::computedHorizontalMargin(layoutState(), root);
         inlineRun.addDetachingRule({ InlineItem::DetachingRule::BreakAtStart, InlineItem::DetachingRule::BreakAtEnd });
-        inlineRun.addNonBreakableStart(horizontalMargins.left);
-        inlineRun.addNonBreakableEnd(horizontalMargins.right);
+        inlineRun.addNonBreakableStart(horizontalMargin.start.valueOr(0));
+        inlineRun.addNonBreakableEnd(horizontalMargin.end.valueOr(0));
         // Skip formatting root subtree. They are not part of this inline formatting context.
         return;
     }
@@ -466,7 +465,7 @@ void InlineFormattingContext::collectInlineContentForSubtree(const Box& root, In
     // FIXME: Revisit this when we figured out how inline boxes fit the display tree.
     auto padding = Geometry::computedPadding(layoutState(), root);
     auto border = Geometry::computedBorder(layoutState(), root);
-    auto horizontalMargins = Geometry::computedNonCollapsedHorizontalMarginValue(layoutState(), root);
+    auto horizontalMargin = Geometry::computedHorizontalMargin(layoutState(), root);
     // Setup breaking boundaries for this subtree.
     auto* lastDescendantInlineBox = inlineFormattingState.lastInlineItem();
     // Empty container?
@@ -476,13 +475,13 @@ void InlineFormattingContext::collectInlineContentForSubtree(const Box& root, In
     auto rootBreaksAtStart = [&] {
         if (&root == &(this->root()))
             return false;
-        return (padding && padding->horizontal.left) || border.horizontal.left || horizontalMargins.left || root.isPositioned();
+        return (padding && padding->horizontal.left) || border.horizontal.left || horizontalMargin.start || root.isPositioned();
     };
 
     auto rootBreaksAtEnd = [&] {
         if (&root == &(this->root()))
             return false;
-        return (padding && padding->horizontal.right) || border.horizontal.right || horizontalMargins.right || root.isPositioned();
+        return (padding && padding->horizontal.right) || border.horizontal.right || horizontalMargin.end || root.isPositioned();
     };
 
     if (rootBreaksAtStart()) {
@@ -497,7 +496,7 @@ void InlineFormattingContext::collectInlineContentForSubtree(const Box& root, In
 
         ASSERT(firstDescendantInlineBox);
         firstDescendantInlineBox->addDetachingRule(InlineItem::DetachingRule::BreakAtStart);
-        auto startOffset = border.horizontal.left + horizontalMargins.left;
+        auto startOffset = border.horizontal.left + horizontalMargin.start.valueOr(0);
         if (padding)
             startOffset += padding->horizontal.left;
         firstDescendantInlineBox->addNonBreakableStart(startOffset);
@@ -505,7 +504,7 @@ void InlineFormattingContext::collectInlineContentForSubtree(const Box& root, In
 
     if (rootBreaksAtEnd()) {
         lastDescendantInlineBox->addDetachingRule(InlineItem::DetachingRule::BreakAtEnd);
-        auto endOffset = border.horizontal.right + horizontalMargins.right;
+        auto endOffset = border.horizontal.right + horizontalMargin.end.valueOr(0);
         if (padding)
             endOffset += padding->horizontal.right;
         lastDescendantInlineBox->addNonBreakableEnd(endOffset);

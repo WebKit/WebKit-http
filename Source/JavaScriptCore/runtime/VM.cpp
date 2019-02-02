@@ -448,7 +448,6 @@ VM::VM(VMType vmType, HeapType heapType)
 
     sentinelSetBucket.set(*this, JSSet::BucketType::createSentinel(*this));
     sentinelMapBucket.set(*this, JSMap::BucketType::createSentinel(*this));
-    sentinelImmutableButterfly.set(*this, JSImmutableButterfly::createSentinel(*this));
 
     smallStrings.initializeCommonStrings(*this);
 
@@ -1128,8 +1127,11 @@ void VM::queueMicrotask(JSGlobalObject& globalObject, Ref<Microtask>&& task)
 
 void VM::drainMicrotasks()
 {
-    while (!m_microtaskQueue.isEmpty())
+    while (!m_microtaskQueue.isEmpty()) {
         m_microtaskQueue.takeFirst()->run();
+        if (m_onEachMicrotaskTick)
+            m_onEachMicrotaskTick(*this);
+    }
 }
 
 void QueuedTask::run()

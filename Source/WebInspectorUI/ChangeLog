@@ -1,3 +1,711 @@
+2019-01-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add a Setting Toggle for Source Maps
+        https://bugs.webkit.org/show_bug.cgi?id=193148
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.downloadSourceMap):
+        Don't download source maps if the setting is disabled.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView):
+        Settings toggle for source maps. Enabled by default.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include `globalThis` in default JavaScript completions
+        https://bugs.webkit.org/show_bug.cgi?id=193147
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        Add `globalThis` which is a new global value.
+
+2019-01-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: conic-gradient color picker doesn't accurately show color when saturation value is not 100%
+        https://bugs.webkit.org/show_bug.cgi?id=192729
+        <rdar://problem/46746815>
+
+        Reviewed by Joseph Pecoraro.
+
+        Rework `WI.ColorWheel` to use similar canvas drawing logic as `WI.LegacyColorWheel` so that
+        it's able to adjust the saturation value as the pixels gets closer to the center.
+
+        * UserInterface/Models/Color.js:
+        (WI.Color.rgb2hsl): Added.
+        (WI.Color.hsl2rgb): Added.
+        (WI.Color.cmyk2rgb):
+        (WI.Color.prototype.isKeyword):
+        (WI.Color.prototype._toRGBString):
+        (WI.Color.prototype._toRGBAString):
+        (WI.Color.prototype._toHSLString):
+        (WI.Color.prototype._toHSLAString):
+        (WI.Color.prototype._rgbaToHSLA):
+        (WI.Color.prototype._hslaToRGBA):
+        (WI.Color.rgb2hsv): Deleted.
+        (WI.Color.hsv2rgb): Deleted.
+        (WI.Color.prototype._rgbToHSL): Deleted.
+        (WI.Color.prototype._hslToRGB): Deleted.
+        Adjust the conversion functions of `WI.Color` to be more accurate.
+
+        * UserInterface/Views/ColorWheel.js:
+        (WI.ColorWheel):
+        (WI.ColorWheel.prototype.set dimension):
+        (WI.ColorWheel.prototype.set brightness):
+        (WI.ColorWheel.prototype.get tintedColor):
+        (WI.ColorWheel.prototype.set tintedColor):
+        (WI.ColorWheel.prototype._updateColorForMouseEvent):
+        (WI.ColorWheel.prototype._updateCanvas): Added.
+        (WI.ColorWheel.prototype._updateGradient): Deleted.
+        * UserInterface/Views/ColorWheel.css:
+        (.color-wheel > canvas): Added.
+        (.color-wheel > .gradient): Deleted.
+
+        * UserInterface/Views/ColorPicker.js:
+        (WI.ColorPicker):
+        (WI.ColorPicker.prototype.set color):
+        (WI.ColorPicker.prototype.sliderValueDidChange):
+        (WI.ColorPicker.prototype._updateSliders):
+        (WI.ColorPicker.prototype._showColorComponentInputs):
+        (WI.ColorPicker.supportsConicGradient): Deleted.
+
+        * UserInterface/Main.html:
+
+        * UserInterface/Views/LegacyColorWheel.js: Removed.
+
+2019-01-02  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: selection lost when inspector is blurred
+        https://bugs.webkit.org/show_bug.cgi?id=192124
+        <rdar://problem/46800965>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (body:matches(.window-docked-inactive, .window-inactive) .spreadsheet-style-declaration-editor .property.selected):
+        Selection should be gray when Web Inspector window isn't focused.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+
+2019-01-02  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: it shouldn't be possible to delete read-only properties
+        https://bugs.webkit.org/show_bug.cgi?id=193099
+        <rdar://problem/47016335>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        Drive-by: Forward Delete should work the same way as Delete (Backspace).
+
+2019-01-02  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Implement `queryObjects` Command Line API
+        https://bugs.webkit.org/show_bug.cgi?id=176766
+        <rdar://problem/34890689>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WI.JavaScriptRuntimeCompletionProvider.completionControllerCompletionsNeeded.receivedPropertyNames):
+        Add `queryObjects` to the list of command line functions.
+
+2018-12-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Styles Redesign: remove unused CSS style icons
+        https://bugs.webkit.org/show_bug.cgi?id=192999
+        <rdar://problem/46912094>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/StyleRuleIcons.css: Removed.
+        * UserInterface/Images/StyleRule.svg: Removed.
+        * UserInterface/Images/StyleRuleInheritedElement.svg: Removed.
+        * UserInterface/Images/StyleRulePseudoElement.svg: Removed.
+
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+
+2018-12-21  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: editing focus lost when inspector is blurred
+        https://bugs.webkit.org/show_bug.cgi?id=192123
+        <rdar://problem/46800966>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SpreadsheetSelectorField.js:
+        (WI.SpreadsheetSelectorField.prototype._handleBlur):
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField.prototype._handleBlur):
+
+2018-12-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Settings: experimental setting editors are misaligned in other locales
+        https://bugs.webkit.org/show_bug.cgi?id=192971
+        <rdar://problem/46718451>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings > .settings-view > .container):
+        (.content-view.settings > .settings-view > .container > .title):
+
+2018-12-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: update scroll position when revealing a virtualized WI.DataGridNode
+        https://bugs.webkit.org/show_bug.cgi?id=192992
+        <rdar://problem/46886427>
+
+        Reviewed by Joseph Pecoraro.
+
+        When `reveal`ing a `WI.DataGridNode`, if it is not currently in the DOM tree (e.g. it's been
+        virtualized by it's owner `WI.DataGrid`), we need to scroll to it's position so that it gets
+        added to the DOM tree before it can be revealed/selected.
+
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid.prototype.layout):
+        (WI.DataGrid.prototype.updateVisibleRows):
+        (WI.DataGrid.prototype._updateVisibleRows): Deleted.
+
+        * UserInterface/Views/DataGridNode.js:
+        (WI.DataGridNode.prototype.reveal):
+
+2018-12-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: Type profiler popovers have black text on dark background
+        https://bugs.webkit.org/show_bug.cgi?id=192916
+        <rdar://problem/46863518>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.popover .debugger-popover-content > .body):
+        * UserInterface/Views/TypeTreeElement.css:
+        (.item.type-tree-element.prototype):
+        (.item.type-tree-element.prototype:hover,):
+        * UserInterface/Views/TypeTreeView.css:
+        (.type-tree):
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+2018-12-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Pressing Esc when editing name/value should select entire property
+        https://bugs.webkit.org/show_bug.cgi?id=192919
+
+        Reviewed by Devin Rousso.
+
+        - Esc still hides the completion popover.
+        - Esc still discards changes.
+        - When there's no completion popover, Esc selects outer scope.
+          I.e., it goes from editing name/value to selecting the entire property.
+        - Pressing Esc for newly added properties discards those properties.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyRemoved):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyDidPressEsc):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidPressEsc):
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField.prototype._discardChange):
+        (WI.SpreadsheetTextField.prototype._handleKeyDown):
+
+2018-12-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Charles Proxy errors opening har files exported from Safari (invalid startedDateTime)
+        https://bugs.webkit.org/show_bug.cgi?id=192959
+        <rdar://problem/46863411>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.tableCellContextMenuClicked):
+        (WI.NetworkTableContentView.prototype._updateExportButton):
+        (WI.NetworkTableContentView.prototype._canExportHAR):
+        Disallow HAR export if we don't have load data, such as the requestSentDate for
+        the main resource or sub-resources.
+
+        (WI.NetworkTableContentView.prototype._HARResources):
+        Only export resources that have load data.
+
+2018-12-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Autoformat doesn't work on icloud.com (javascript-packed.js)
+        https://bugs.webkit.org/show_bug.cgi?id=192946
+        <rdar://problem/42546126>
+
+        Rubber-stamped by Devin Rousso.
+
+        * UserInterface/Base/Utilities.js:
+        (whitespaceRatio):
+        (isTextLikelyMinified):
+        Check the first 2500 and the last 2500 characters whitespace ratio.
+        If either is below 20% then treat as minified.
+
+2018-12-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ITMLKit Inspector: Elements tab does not show DOM Tree
+        https://bugs.webkit.org/show_bug.cgi?id=192910
+        <rdar://problem/46680585>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.Connection.prototype._dispatchEvent):
+        Better logging for errors.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Controllers/AppController.js:
+        (WI.AppController.prototype.activateExtraDomains):
+        Let Targets get a chance to activate extra domains.
+        Perform a little more work in these cases.
+
+        * UserInterface/Protocol/Target.js:
+        (WI.Target):
+        (WI.Target.prototype.activateExtraDomain):
+        Expose agents for domains that are active.
+        Expose agents for extra domains when they are activated.
+
+2018-12-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ITMLKit Inspector: Computed Style Box Model section throws exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=192911
+        <rdar://problem/46861112>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/BoxModelDetailsSectionRow.js:
+        (WI.BoxModelDetailsSectionRow.prototype._updateMetrics.createBoxPartElement):
+        (WI.BoxModelDetailsSectionRow.prototype._updateMetrics.createContentAreaElement):
+        (WI.BoxModelDetailsSectionRow.prototype._updateMetrics):
+        ITMLKit doesn't always provide a display/position/width/height etc properties.
+        Protect against this, and just show an empty message in the box model section
+        if those properties do not exist.
+
+2018-12-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: UIString should take an optional key and description to aid localization
+        https://bugs.webkit.org/show_bug.cgi?id=153962
+        <rdar://problem/24542505>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/LoadLocalizedStrings.js:
+        (WI.UIString):
+
+        * UserInterface/Test/Test.js:
+        (WI.UIString):
+
+        * UserInterface/Views/AuditTestGroupContentView.js:
+        (WI.AuditTestGroupContentView.prototype.initialLayout):
+
+2018-12-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audits: don't cache default audits
+        https://bugs.webkit.org/show_bug.cgi?id=192918
+        <rdar://problem/46626543>
+
+        Reviewed by Brian Burg.
+
+        Instead of adding the default audits to the "audits" `WI.ObjectStore`, which preserves them
+        across WebInspector sessions, load them every time WebInspector is opened (unless there are
+        existing audits) so that the localized strings are able to respond to locale changes.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.removeTest):
+        (WI.AuditManager.prototype.addDefaultTestsIfNeeded):
+
+2018-12-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Dark Mode: unreadable background color for tables containing object previews
+        https://bugs.webkit.org/show_bug.cgi?id=192887
+        <rdar://problem/46855270>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-messages:focus .console-item .data-grid tr.selected td:not(:last-child)): Added.
+        (@media (prefers-dark-interface) .console-item .data-grid tr.selected): Added.
+        (@media (prefers-dark-interface) .console-messages:focus .console-item.selected .data-grid tr.selected): Added.
+        (@media (prefers-dark-interface) .console-messages:focus .console-item .data-grid tr.selected td:not(:last-child)): Added.
+
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.css:
+        (.content-view.indexed-database-object-store > .data-grid tr.selected):
+        (.content-view.indexed-database-object-store > .data-grid:focus tr.selected): Added.
+        (@media (prefers-dark-interface) .content-view.indexed-database-object-store > .data-grid tr.selected): Added.
+        (@media (prefers-dark-interface) .content-view.indexed-database-object-store > .data-grid:focus tr.selected): Added.
+        (@media (prefers-dark-interface) .content-view.indexed-database-object-store > .data-grid:focus tr.selected td:not(:last-child)): Added.
+
+2018-12-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: fix descriptions for default tests
+        https://bugs.webkit.org/show_bug.cgi?id=192764
+        <rdar://problem/46729437>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.addDefaultTestsIfNeeded):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-12-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: "E" icon on debugger dashboard is too close to current function name
+        https://bugs.webkit.org/show_bug.cgi?id=192915
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DebuggerDashboardView.css:
+        (.dashboard.debugger > .location):
+        (body[dir=ltr] .dashboard.debugger > .location :matches(.function-icon, .event-listener-icon)):
+        (body[dir=rtl] .dashboard.debugger > .location :matches(.function-icon, .event-listener-icon)):
+        (.dashboard.debugger > .location .function-icon): Deleted.
+        (body[dir=ltr] .dashboard.debugger > .location .function-icon): Deleted.
+        (body[dir=rtl] .dashboard.debugger > .location .function-icon): Deleted.
+
+2018-12-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: ThreadTreeElement status icon is hard to see when hovered
+        https://bugs.webkit.org/show_bug.cgi?id=192097
+        <rdar://problem/46318421>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ThreadTreeElement.css:
+        (.tree-outline > .item.thread .status-button.resume):
+        (.tree-outline > .item.thread .status-button.resume:active):
+
+2018-12-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: TypeError: null is not an object (evaluating 'effectiveDOMNode.enabledPseudoClasses')
+        https://bugs.webkit.org/show_bug.cgi?id=192783
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._forcedPseudoClassCheckboxChanged):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._updatePseudoClassCheckboxes):
+
+2018-12-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION (r237195): Timelines: selecting a rendering frame row moves the time selection
+        https://bugs.webkit.org/show_bug.cgi?id=192773
+        <rdar://problem/46782446>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview.prototype._recordSelected):
+        The Frames timeline uses `frameIndex` instead of `startTime`/`endTime`, so when trying to
+        ensure that the selected record is within the filtered range, use `frameIndex` instead.
+        The associated `WI.TimelineRuler` will already be using an index-based approach for
+        selection, so this will match.
+
+2018-12-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: the recording auto-capture input shouldn't start focused
+        https://bugs.webkit.org/show_bug.cgi?id=192454
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView.prototype._updateRecordingAutoCaptureCheckboxLabel):
+        (WI.CanvasOverviewContentView.prototype._handleCanvasRecordingAutoCaptureFrameCountChanged):
+
+2018-12-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: shift-clicking a color-swatch to change formats starts editing the color
+        https://bugs.webkit.org/show_bug.cgi?id=192784
+        <rdar://problem/46801028>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._createInlineSwatch):
+
+2018-12-19  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Elements tab: arrow key after undoing a DOM node delete selects the wrong element
+        https://bugs.webkit.org/show_bug.cgi?id=192871
+        <rdar://problem/46849060>
+
+        Reviewed by Devin Rousso.
+
+        Undoing a DOM node removal reinserts the node into the DOMTreeOutline.
+        When the reinserted node precedes the selected node in the tree, the
+        SelectionController should update `_lastSelectedIndex`.
+
+        * UserInterface/Controllers/SelectionController.js:
+        (WI.SelectionController.prototype.didInsertItem):
+
+2018-12-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: provide localization support for % pass display
+        https://bugs.webkit.org/show_bug.cgi?id=192870
+        <rdar://problem/46779245>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/AuditTestGroupContentView.js:
+        (WI.AuditTestGroupContentView.prototype.initialLayout):
+        (WI.AuditTestGroupContentView.prototype.layout):
+        * UserInterface/Views/AuditTestGroupContentView.css:
+        (.content-view.audit-test-group > header > .percentage-pass):
+        (.content-view.audit-test-group > header > .percentage-pass > span): Added.
+        (@media (prefers-dark-interface) .content-view.audit-test-group > header > .percentage-pass): Added.
+        (@media (prefers-dark-interface) .content-view.audit-test-group > header > .percentage-pass > span): Added.
+        (.content-view.audit-test-group > header > .percentage-pass:not(:empty)::after): Deleted.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-12-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Computed: make UI more usable when the panel is narrow
+        https://bugs.webkit.org/show_bug.cgi?id=192578
+        <rdar://problem/46615753>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ComputedStyleSection.css:
+        (.computed-style-section .computed-property-item .property-traces):
+        (.computed-style-section .computed-property-item.expanded .disclosure-button):
+        (.computed-style-section .computed-property-item .property-trace-item):
+        (.computed-style-section .computed-property-item .property-trace-item::before):
+        (.computed-style-section .computed-property-item .property):
+        (.computed-style-section .computed-property-item .property-trace-item .selector):
+        Allow CSS property values and selectors to take more than one line.
+
+        (.computed-style-section .property-trace-item .property .name,):
+        * UserInterface/Views/ComputedStyleSection.js:
+        (WI.ComputedStyleSection.prototype._createTrace):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.update):
+
+2018-12-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Web Inspector: Timelines: correctly label Intersection Observer callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=192669
+        <rdar://problem/46702490>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add InspectorInstrumentation::willFireObserverCallback() and use it to wrap calls
+        to Intersection Observer, Performance Observer and Mutation Observer callbacks so 
+        that they get correctly labeled in the Inspector timeline.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype._processRecord):
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WI.ScriptTimelineRecord.EventType.displayName):
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView.iconClassNameForRecord):
+
+2018-12-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: "Clear Filters" button gets clipped when window is vertically small
+        https://bugs.webkit.org/show_bug.cgi?id=192868
+        <rdar://problem/46780400>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Main.css:
+        (.message-text-view):
+
+2018-12-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Dark Mode: selected text is too light when Inspector window is inactive
+        https://bugs.webkit.org/show_bug.cgi?id=190542
+        <rdar://problem/45238712>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (.CodeMirror .CodeMirror-selected):
+
+2018-12-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: column sort controls in Layers tab sidebar don't render correctly in dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=192845
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DataGrid.css:
+        (@media (prefers-dark-interface)):
+        (.data-grid th.sortable:active):
+        Drive-by: replace obnoxiously light background of the pressed header with a more subtle gray.
+
+        (.data-grid th.sort-ascending > div:first-child::after, .data-grid th.sort-descending > div:first-child::after):
+        Invert colors of the arrow glyph.
+
+2018-12-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Layers: increase default column width for other localizations
+        https://bugs.webkit.org/show_bug.cgi?id=192812
+        <rdar://problem/46628625>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/LayerDetailsSidebarPanel.js:
+        (WI.LayerDetailsSidebarPanel.prototype._buildDataGrid):
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WI.LayerTreeDetailsSidebarPanel.prototype._buildDataGridSection):
+
+2018-12-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: m3u8 content not shown, it should be text
+        https://bugs.webkit.org/show_bug.cgi?id=192731
+        <rdar://problem/46747728>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/MIMETypeUtilities.js:
+        (WI.shouldTreatMIMETypeAsText):
+        Support m3u8/m3u files as text.
+
+2018-12-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: path view is misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=192761
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/RecordingContentView.css:
+        (.content-view:not(.tab).recording :matches(img, canvas)):
+        (.content-view:not(.tab).recording canvas.path):
+
+2018-12-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: add plural result strings
+        https://bugs.webkit.org/show_bug.cgi?id=192769
+        <rdar://problem/46628680>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/AuditTestContentView.js:
+        (WI.AuditTestContentView.prototype.showNoResultDataPlaceholder):
+
+        * UserInterface/Views/AuditTestGroupContentView.js:
+        (WI.AuditTestGroupContentView.prototype.layout):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-12-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Settings: add singular "space" UIString
+        https://bugs.webkit.org/show_bug.cgi?id=192766
+        <rdar://problem/46776948>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/SettingEditor.js:
+        (WI.SettingEditor):
+        (WI.SettingEditor.prototype.get label):
+        (WI.SettingEditor.prototype.set label): Added.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView):
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView.addSpacesSetting): Added.
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView.addSpacesSetting.updateLabel): Added.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2018-12-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: toggling selected properties may cause data corruption
+        https://bugs.webkit.org/show_bug.cgi?id=192396
+        <rdar://problem/46478383>
+
+        Reviewed by Devin Rousso.
+
+        Uncommenting a property after a commented out property used to insert an unnecessary semicolon,
+        and not updating ranges of the following properties.
+
+        For example:
+
+            /* color: red; */
+            /* font-size: 12px */
+
+        Uncommenting `font-size` would result in something like this:
+
+            /* color: red; */; font-size: 12px
+                             ^
+                             unnecessary semicolon
+
+        Now the semicolon doesn't get inserted and the white space is preserved better:
+
+            /* color: red; */
+            font-size: 12px
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype._updateOwnerStyleText):
+        (WI.CSSProperty.prototype._appendSemicolonIfNeeded): Removed.
+        (WI.CSSProperty.prototype._prependSemicolonIfNeeded): Added.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.remove):
+        (WI.SpreadsheetStyleProperty.prototype.update):
+        (WI.SpreadsheetStyleProperty.prototype._handleNameChange):
+        (WI.SpreadsheetStyleProperty.prototype._handleValueChange):
+        Style declaration should be locked while editing. Add asserts to ensure this.
+
+2018-12-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION(r238599): Uncaught Exception: TypeError: null is not an object (evaluating 'treeElement.listItemElement.classList')
+        https://bugs.webkit.org/show_bug.cgi?id=192090
+        <rdar://problem/46318614>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.selectionControllerSelectionDidChange):
+        Check that `listItemElement` is valid before accessing it to update class
+        names. The selection can change before the TreeElement has been attached.
+
+2018-12-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cookies view should use model objects instead of raw payload data
+        https://bugs.webkit.org/show_bug.cgi?id=189533
+        <rdar://problem/44364183>
+
+        Reviewed by Joseph Pecoraro and Devin Rousso.
+
+        * UserInterface/Models/Cookie.js:
+        (WI.Cookie):
+        (WI.Cookie.fromPayload):
+        (WI.Cookie.parseSetCookieResponseHeader):
+        (WI.Cookie.prototype.get type):
+        (WI.Cookie.prototype.get name):
+        (WI.Cookie.prototype.get value):
+        (WI.Cookie.prototype.get header):
+        (WI.Cookie.prototype.get expires):
+        (WI.Cookie.prototype.get maxAge):
+        (WI.Cookie.prototype.get path):
+        (WI.Cookie.prototype.get domain):
+        (WI.Cookie.prototype.get secure):
+        (WI.Cookie.prototype.get httpOnly):
+        (WI.Cookie.prototype.get sameSite):
+        (WI.Cookie.prototype.get size):
+        (WI.Cookie.prototype.get url):
+        (WI.Cookie.prototype.expirationDate):
+        Cleanup Cookie object; add pubic getters for data, `url` property,
+        static `fromPayload` method, and calculate `_size` if missing.
+
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WI.CookieStorageContentView.prototype.tableDidRemoveRows):
+        (WI.CookieStorageContentView.prototype._reloadCookies):
+        Create Cookie objects from the payload instead of using raw payload data.
+
 2018-12-13  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: remove DOM.BackendNodeId and associated commands/events

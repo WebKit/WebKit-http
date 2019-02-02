@@ -95,8 +95,6 @@ list(APPEND WebKit_SOURCES
     Shared/API/c/mac/WKWebArchive.cpp
     Shared/API/c/mac/WKWebArchiveResource.cpp
 
-    Shared/Authentication/mac/AuthenticationManager.mac.mm
-
     Shared/Cocoa/APIDataCocoa.mm
     Shared/Cocoa/APIObject.mm
     Shared/Cocoa/ChildProcessCocoa.mm
@@ -137,7 +135,6 @@ list(APPEND WebKit_SOURCES
     Shared/mac/ChildProcessMac.mm
     Shared/mac/CodeSigning.mm
     Shared/mac/ColorSpaceData.mm
-    Shared/mac/CookieStorageShimLibrary.cpp
     Shared/mac/HangDetectionDisablerMac.mm
     Shared/mac/NativeWebGestureEventMac.mm
     Shared/mac/NativeWebKeyboardEventMac.mm
@@ -256,21 +253,19 @@ list(APPEND WebKit_SOURCES
     UIProcess/Cocoa/UIDelegate.mm
     UIProcess/Cocoa/VersionChecks.mm
     UIProcess/Cocoa/ViewGestureController.cpp
+    UIProcess/Cocoa/WKFullKeyboardAccessWatcher.mm
     UIProcess/Cocoa/WKReloadFrameErrorRecoveryAttempter.mm
     UIProcess/Cocoa/WKWebViewContentProviderRegistry.mm
     UIProcess/Cocoa/WebPageProxyCocoa.mm
     UIProcess/Cocoa/WebPasteboardProxyCocoa.mm
     UIProcess/Cocoa/WebProcessPoolCocoa.mm
     UIProcess/Cocoa/WebProcessProxyCocoa.mm
-    UIProcess/Cocoa/WebResourceLoadStatisticsStoreCocoa.mm
     UIProcess/Cocoa/WebURLSchemeHandlerCocoa.mm
     UIProcess/Cocoa/WebViewImpl.mm
 
     UIProcess/Launcher/mac/ProcessLauncherMac.mm
 
     UIProcess/Network/CustomProtocols/LegacyCustomProtocolManagerProxy.cpp
-
-    UIProcess/Network/mac/NetworkProcessProxyMac.mm
 
     UIProcess/Plugins/mac/PluginInfoStoreMac.mm
     UIProcess/Plugins/mac/PluginProcessManagerMac.mm
@@ -296,7 +291,6 @@ list(APPEND WebKit_SOURCES
     UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.mm
     UIProcess/mac/ViewGestureControllerMac.mm
     UIProcess/mac/ViewSnapshotStore.mm
-    UIProcess/mac/WKFullKeyboardAccessWatcher.mm
     UIProcess/mac/WKFullScreenWindowController.mm
     UIProcess/mac/WKImmediateActionController.mm
     UIProcess/mac/WKInspectorViewController.mm

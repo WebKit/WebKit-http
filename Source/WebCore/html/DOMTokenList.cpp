@@ -132,7 +132,7 @@ ExceptionOr<void> DOMTokenList::remove(const AtomicString& token)
     return removeInternal(&token.string(), 1);
 }
 
-ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, std::optional<bool> force)
+ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, Optional<bool> force)
 {
     auto result = validateToken(token);
     if (result.hasException())
@@ -141,7 +141,7 @@ ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, std::optional<
     auto& tokens = this->tokens();
 
     if (tokens.contains(token)) {
-        if (!force.value_or(false)) {
+        if (!force.valueOr(false)) {
             tokens.removeFirst(token);
             updateAssociatedAttributeFromTokens();
             return false;

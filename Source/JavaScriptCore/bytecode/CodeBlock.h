@@ -239,7 +239,7 @@ public:
     void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot,
         int& startOffset, int& endOffset, unsigned& line, unsigned& column) const;
 
-    std::optional<unsigned> bytecodeOffsetFromCallSiteIndex(CallSiteIndex);
+    Optional<unsigned> bytecodeOffsetFromCallSiteIndex(CallSiteIndex);
 
     void getICStatusMap(const ConcurrentJSLocker&, ICStatusMap& result);
     void getICStatusMap(ICStatusMap& result);
@@ -464,14 +464,8 @@ public:
 
     bool couldTakeSpecialFastCase(InstructionStream::Offset bytecodeOffset);
 
-    unsigned numberOfArrayProfiles() const { return m_arrayProfiles.size(); }
-    const ArrayProfileVector& arrayProfiles() { return m_arrayProfiles; }
-    ArrayProfile* addArrayProfile(const ConcurrentJSLocker&, unsigned bytecodeOffset);
-    ArrayProfile* addArrayProfile(unsigned bytecodeOffset);
     ArrayProfile* getArrayProfile(const ConcurrentJSLocker&, unsigned bytecodeOffset);
     ArrayProfile* getArrayProfile(unsigned bytecodeOffset);
-    ArrayProfile* getOrAddArrayProfile(const ConcurrentJSLocker&, unsigned bytecodeOffset);
-    ArrayProfile* getOrAddArrayProfile(unsigned bytecodeOffset);
 
     // Exception handling support
 
@@ -851,7 +845,7 @@ public:
 
 #if ENABLE(JIT)
     void setPCToCodeOriginMap(std::unique_ptr<PCToCodeOriginMap>&&);
-    std::optional<CodeOrigin> findPC(void* pc);
+    Optional<CodeOrigin> findPC(void* pc);
 #endif
 
     bool hasTailCalls() const { return m_unlinkedCode->hasTailCalls(); }
@@ -987,7 +981,6 @@ private:
     RefCountedArray<ValueProfile> m_argumentValueProfiles;
     Vector<std::unique_ptr<ValueProfileAndOperandBuffer>> m_catchProfiles;
     SegmentedVector<RareCaseProfile, 8> m_rareCaseProfiles;
-    ArrayProfileVector m_arrayProfiles;
 
     // Constant Pool
     COMPILE_ASSERT(sizeof(Register) == sizeof(WriteBarrier<Unknown>), Register_must_be_same_size_as_WriteBarrier_Unknown);

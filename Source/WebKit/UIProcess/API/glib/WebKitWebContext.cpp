@@ -321,6 +321,7 @@ static inline Ref<WebsiteDataStoreConfiguration> websiteDataStoreConfigurationFo
     configuration->setNetworkCacheDirectory(String(processPoolconfigurarion.diskCacheDirectory()));
     configuration->setWebSQLDatabaseDirectory(String(processPoolconfigurarion.webSQLDatabaseDirectory()));
     configuration->setLocalStorageDirectory(String(processPoolconfigurarion.localStorageDirectory()));
+    configuration->setDeviceIdHashSaltsStorageDirectory(String(processPoolconfigurarion.deviceIdHashSaltsStorageDirectory()));
     configuration->setMediaKeysStorageDirectory(String(processPoolconfigurarion.mediaKeysStorageDirectory()));
     return configuration;
 }
@@ -1159,9 +1160,9 @@ void webkit_web_context_register_uri_scheme(WebKitWebContext* context, const cha
  *
  * This is only implemented on Linux and is a no-op otherwise.
  *
- * If you read from `$XDG_CONFIG_HOME/g_get_prgname()` or `$XDG_CACHE_HOME/g_get_prgname()`
- * in your WebProcess you must ensure it exists before subprocesses are created.
- * This behavior may change in the future.
+ * The web process is granted read-only access to the subdirectory matching g_get_prgname()
+ * in `$XDG_CONFIG_HOME`, `$XDG_CACHE_HOME`, and `$XDG_DATA_HOME` if it exists before the
+ * process is created. This behavior may change in the future.
  *
  * Since: 2.24
  */
@@ -1455,8 +1456,8 @@ void webkit_web_context_allow_tls_certificate_for_host(WebKitWebContext* context
     g_return_if_fail(G_IS_TLS_CERTIFICATE(certificate));
     g_return_if_fail(host);
 
-    RefPtr<WebCertificateInfo> webCertificateInfo = WebCertificateInfo::create(WebCore::CertificateInfo(certificate, static_cast<GTlsCertificateFlags>(0)));
-    context->priv->processPool->allowSpecificHTTPSCertificateForHost(webCertificateInfo.get(), String::fromUTF8(host));
+    auto webCertificateInfo = WebCertificateInfo::create(WebCore::CertificateInfo(certificate, static_cast<GTlsCertificateFlags>(0)));
+    context->priv->processPool->allowSpecificHTTPSCertificateForHost(webCertificateInfo.ptr(), String::fromUTF8(host));
 }
 
 /**

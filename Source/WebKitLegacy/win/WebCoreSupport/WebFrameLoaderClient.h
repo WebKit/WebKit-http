@@ -49,10 +49,10 @@ public:
     void setWebFrame(WebFrame* webFrame) { m_webFrame = webFrame; }
     WebFrame* webFrame() const { return m_webFrame; }
 
-    void dispatchDidFailToStartPlugin(const WebCore::PluginView*) const;
+    void dispatchDidFailToStartPlugin(const WebCore::PluginView&) const;
 
-    std::optional<uint64_t> pageID() const final;
-    std::optional<uint64_t> frameID() const final;
+    Optional<uint64_t> pageID() const final;
+    Optional<uint64_t> frameID() const final;
     PAL::SessionID sessionID() const final;
 
     bool hasWebView() const override;
@@ -93,7 +93,7 @@ public:
     void dispatchWillClose() override;
     void dispatchDidStartProvisionalLoad(CompletionHandler<void()>&&) override;
     void dispatchDidReceiveTitle(const WebCore::StringWithDirection&) override;
-    void dispatchDidCommitLoad(std::optional<WebCore::HasInsecureContent>) override;
+    void dispatchDidCommitLoad(Optional<WebCore::HasInsecureContent>) override;
     void dispatchDidFailProvisionalLoad(const WebCore::ResourceError&) override;
     void dispatchDidFailLoad(const WebCore::ResourceError&) override;
     void dispatchDidFinishDocumentLoad() override;

@@ -23,7 +23,8 @@
 from buildbot.process import buildstep, logobserver, properties
 from buildbot.process.results import Results, SUCCESS, FAILURE, WARNINGS, SKIPPED, EXCEPTION, RETRY
 from buildbot.steps import master, shell, transfer
-from buildbot.steps.source import svn
+from buildbot.steps.source import git
+from buildbot.steps.worker import CompositeStepMixin
 from twisted.internet import defer
 
 import re
@@ -90,15 +91,43 @@ class ConfigureBuild(buildstep.BuildStep):
         return '{}show_bug.cgi?id={}'.format(BUG_SERVER_URL, bug_id)
 
 
-class CheckOutSource(svn.SVN):
+class CheckOutSource(git.Git):
+    name = 'clean-and-update-working-directory'
     CHECKOUT_DELAY_AND_MAX_RETRIES_PAIR = (0, 2)
 
     def __init__(self, **kwargs):
-        self.repourl = 'https://svn.webkit.org/repository/webkit/trunk'
+        self.repourl = 'https://git.webkit.org/git/WebKit.git'
         super(CheckOutSource, self).__init__(repourl=self.repourl,
                                                 retry=self.CHECKOUT_DELAY_AND_MAX_RETRIES_PAIR,
-                                                preferLastChangedRev=True,
+                                                timeout=2 * 60 * 60,
+                                                alwaysUseLatest=True,
+                                                progress=True,
                                                 **kwargs)
+
+
+class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
+    name = 'apply-patch'
+    description = ['applying-patch']
+    descriptionDone = ['apply-patch']
+    flunkOnFailure = True
+    haltOnFailure = True
+    command = ['Tools/Scripts/svn-apply', '--force', '.buildbot-diff']
+
+    def _get_patch(self):
+        sourcestamp = self.build.getSourceStamp(self.getProperty('codebase', ''))
+        if not sourcestamp or not sourcestamp.patch:
+            return None
+        return sourcestamp.patch[1]
+
+    def start(self):
+        patch = self._get_patch()
+        if not patch:
+            self.finished(FAILURE)
+            return None
+
+        d = self.downloadFileContentToWorker('.buildbot-diff', patch)
+        d.addCallback(lambda _: self.downloadFileContentToWorker('.buildbot-patched', 'patched\n'))
+        d.addCallback(lambda res: shell.ShellCommand.start(self))
 
 
 class CheckPatchRelevance(buildstep.BuildStep):
@@ -188,15 +217,12 @@ class CheckPatchRelevance(buildstep.BuildStep):
         self._addToLog('stdio', 'This patch does not have relevant changes.')
         self.finished(FAILURE)
         self.build.results = SKIPPED
-        self.build.buildFinished(['Patch doesn\'t have relevant changes'], SKIPPED)
+        self.build.buildFinished(['Patch {} doesn\'t have relevant changes'.format(self.getProperty('patch_id', ''))], SKIPPED)
         return None
 
 
 class UnApplyPatchIfRequired(CheckOutSource):
     name = 'unapply-patch'
-
-    def __init__(self, **kwargs):
-        super(UnApplyPatchIfRequired, self).__init__(alwaysUseLatest=True, **kwargs)
 
     def doStepIf(self, step):
         return self.getProperty('patchFailedToBuild') or self.getProperty('patchFailedJSCTests')

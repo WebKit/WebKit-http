@@ -134,14 +134,14 @@ void InspectorTimelineAgent::setInstruments(ErrorString& errorString, const JSON
     Vector<Protocol::Timeline::Instrument> newInstruments;
     newInstruments.reserveCapacity(instruments.length());
 
-    for (auto instrumentValue : instruments) {
+    for (const auto& instrumentValue : instruments) {
         String enumValueString;
         if (!instrumentValue->asString(enumValueString)) {
             errorString = "Unexpected type in instruments list, should be string"_s;
             return;
         }
 
-        std::optional<Protocol::Timeline::Instrument> instrumentType = Protocol::InspectorHelpers::parseEnumValueFromString<Protocol::Timeline::Instrument>(enumValueString);
+        Optional<Protocol::Timeline::Instrument> instrumentType = Protocol::InspectorHelpers::parseEnumValueFromString<Protocol::Timeline::Instrument>(enumValueString);
         if (!instrumentType) {
             errorString = makeString("Unexpected enum value: ", enumValueString);
             return;
@@ -597,6 +597,16 @@ void InspectorTimelineAgent::didFireAnimationFrame()
     didCompleteCurrentRecord(TimelineRecordType::FireAnimationFrame);
 }
 
+void InspectorTimelineAgent::willFireObserverCallback(const String& callbackType, Frame* frame)
+{
+    pushCurrentRecord(TimelineRecordFactory::createObserverCallbackData(callbackType), TimelineRecordType::ObserverCallback, false, frame);
+}
+
+void InspectorTimelineAgent::didFireObserverCallback()
+{
+    didCompleteCurrentRecord(TimelineRecordType::ObserverCallback);
+}
+
 // ScriptDebugListener
 
 void InspectorTimelineAgent::breakpointActionProbe(JSC::ExecState& state, const Inspector::ScriptBreakpointAction& action, unsigned /*batchId*/, unsigned sampleId, JSC::JSValue)
@@ -654,6 +664,9 @@ static Inspector::Protocol::Timeline::EventType toProtocol(TimelineRecordType ty
         return Inspector::Protocol::Timeline::EventType::CancelAnimationFrame;
     case TimelineRecordType::FireAnimationFrame:
         return Inspector::Protocol::Timeline::EventType::FireAnimationFrame;
+
+    case TimelineRecordType::ObserverCallback:
+        return Inspector::Protocol::Timeline::EventType::ObserverCallback;
     }
 
     return Inspector::Protocol::Timeline::EventType::TimeStamp;

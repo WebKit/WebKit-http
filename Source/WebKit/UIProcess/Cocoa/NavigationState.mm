@@ -549,6 +549,8 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
             }
             if (!apiWebsitePolicies->customUserAgent().isNull() && subframeNavigation)
                 [NSException raise:NSInvalidArgumentException format:@"_WKWebsitePolicies.customUserAgent must be nil for subframe navigations."];
+            if (!apiWebsitePolicies->customNavigatorPlatform().isNull() && subframeNavigation)
+                [NSException raise:NSInvalidArgumentException format:@"_WKWebsitePolicies.customNavigatorPlatform must be nil for subframe navigations."];
         }
 
         switch (actionPolicy) {
@@ -740,9 +742,9 @@ void NavigationState::NavigationClient::didCancelClientRedirect(WebPageProxy& pa
 
 static RetainPtr<NSError> createErrorWithRecoveryAttempter(WKWebView *webView, WebFrameProxy& webFrameProxy, NSError *originalError)
 {
-    RefPtr<API::FrameHandle> frameHandle = API::FrameHandle::create(webFrameProxy.frameID());
+    auto frameHandle = API::FrameHandle::create(webFrameProxy.frameID());
 
-    auto recoveryAttempter = adoptNS([[WKReloadFrameErrorRecoveryAttempter alloc] initWithWebView:webView frameHandle:wrapper(*frameHandle) urlString:originalError.userInfo[NSURLErrorFailingURLStringErrorKey]]);
+    auto recoveryAttempter = adoptNS([[WKReloadFrameErrorRecoveryAttempter alloc] initWithWebView:webView frameHandle:wrapper(frameHandle.get()) urlString:originalError.userInfo[NSURLErrorFailingURLStringErrorKey]]);
 
     auto userInfo = adoptNS([[NSMutableDictionary alloc] initWithObjectsAndKeys:recoveryAttempter.get(), _WKRecoveryAttempterErrorKey, nil]);
 

@@ -47,7 +47,7 @@ IDBDatabaseInfo::IDBDatabaseInfo(const IDBDatabaseInfo& other, IsolatedCopyTag)
     , m_version(other.m_version)
     , m_maxObjectStoreID(other.m_maxObjectStoreID)
 {
-    for (auto entry : other.m_objectStoreMap)
+    for (const auto& entry : other.m_objectStoreMap)
         m_objectStoreMap.set(entry.key, entry.value.isolatedCopy());
 }
 
@@ -66,7 +66,7 @@ bool IDBDatabaseInfo::hasObjectStore(const String& name) const
     return false;
 }
 
-IDBObjectStoreInfo IDBDatabaseInfo::createNewObjectStore(const String& name, std::optional<IDBKeyPath>&& keyPath, bool autoIncrement)
+IDBObjectStoreInfo IDBDatabaseInfo::createNewObjectStore(const String& name, Optional<IDBKeyPath>&& keyPath, bool autoIncrement)
 {
     IDBObjectStoreInfo info(++m_maxObjectStoreID, name, WTFMove(keyPath), autoIncrement);
     m_objectStoreMap.set(info.identifier(), info);
@@ -164,7 +164,7 @@ String IDBDatabaseInfo::loggingString() const
     builder.appendLiteral(" version ");
     builder.appendNumber(m_version);
     builder.append('\n');
-    for (auto objectStore : m_objectStoreMap.values()) {
+    for (const auto& objectStore : m_objectStoreMap.values()) {
         builder.append(objectStore.loggingString(1));
         builder.append('\n');
     }

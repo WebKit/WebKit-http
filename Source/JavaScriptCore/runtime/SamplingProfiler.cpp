@@ -172,7 +172,8 @@ protected:
             uint8_t* stackLimit = static_cast<uint8_t*>(thread->stack().end());
             RELEASE_ASSERT(stackBase);
             RELEASE_ASSERT(stackLimit);
-            if (fpCast <= stackBase && fpCast >= stackLimit)
+            RELEASE_ASSERT(stackLimit <= stackBase);
+            if (fpCast < stackBase && fpCast >= stackLimit)
                 return true;
         }
         return false;
@@ -605,7 +606,7 @@ void SamplingProfiler::processUnverifiedStackTraces()
                 }
             } else {
 #if ENABLE(JIT)
-                if (std::optional<CodeOrigin> codeOrigin = topCodeBlock->findPC(unprocessedStackTrace.topPC)) {
+                if (Optional<CodeOrigin> codeOrigin = topCodeBlock->findPC(unprocessedStackTrace.topPC)) {
                     appendCodeOrigin(topCodeBlock, *codeOrigin);
                     storeCalleeIntoLastFrame(unprocessedStackTrace.frames[0].unverifiedCallee);
                     startIndex = 1;
@@ -1044,7 +1045,7 @@ void SamplingProfiler::reportTopBytecodes(PrintStream& out)
 
         StackFrame& frame = stackTrace.frames.first();
         String frameDescription = makeString(frame.displayName(m_vm), descriptionForLocation(frame.semanticLocation));
-        if (std::optional<std::pair<StackFrame::CodeLocation, CodeBlock*>> machineLocation = frame.machineLocation) {
+        if (Optional<std::pair<StackFrame::CodeLocation, CodeBlock*>> machineLocation = frame.machineLocation) {
             frameDescription = makeString(frameDescription, " <-- ",
                 machineLocation->second->inferredName().data(), descriptionForLocation(machineLocation->first));
         }

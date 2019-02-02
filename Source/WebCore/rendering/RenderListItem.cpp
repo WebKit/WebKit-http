@@ -232,7 +232,7 @@ void RenderListItem::updateValueNow() const
 void RenderListItem::updateValue()
 {
     if (!m_valueWasSetExplicitly) {
-        m_value = std::nullopt;
+        m_value = WTF::nullopt;
         if (m_marker)
             m_marker->setNeedsLayoutAndPrefWidthsRecalc();
     }
@@ -398,7 +398,7 @@ void RenderListItem::explicitValueChanged()
         item->updateValue();
 }
 
-void RenderListItem::setExplicitValue(std::optional<int> value)
+void RenderListItem::setExplicitValue(Optional<int> value)
 {
     if (!value) {
         if (!m_valueWasSetExplicitly)
@@ -407,7 +407,7 @@ void RenderListItem::setExplicitValue(std::optional<int> value)
         if (m_valueWasSetExplicitly && m_value == value)
             return;
     }
-    m_valueWasSetExplicitly = value.has_value();
+    m_valueWasSetExplicitly = value.hasValue();
     m_value = value;
     explicitValueChanged();
 }

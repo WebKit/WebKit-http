@@ -405,7 +405,7 @@ void SpeculativeJIT::runSlowPathGenerators(PCToCodeOriginMapBuilder& pcToCodeOri
         m_outOfLineStreamIndex = slowPathLambda.streamIndex;
         pcToCodeOriginMapBuilder.appendItem(m_jit.labelIgnoringWatchpoints(), currentNode->origin.semantic);
         slowPathLambda.generator();
-        m_outOfLineStreamIndex = std::nullopt;
+        m_outOfLineStreamIndex = WTF::nullopt;
     }
 }
 
@@ -3561,8 +3561,8 @@ void SpeculativeJIT::emitUntypedBitOp(Node* node)
         return;
     }
 
-    std::optional<JSValueOperand> left;
-    std::optional<JSValueOperand> right;
+    Optional<JSValueOperand> left;
+    Optional<JSValueOperand> right;
 
     JSValueRegs leftRegs;
     JSValueRegs rightRegs;
@@ -3743,8 +3743,8 @@ void SpeculativeJIT::emitUntypedRightShiftBitOp(Node* node)
         return;
     }
 
-    std::optional<JSValueOperand> left;
-    std::optional<JSValueOperand> right;
+    Optional<JSValueOperand> left;
+    Optional<JSValueOperand> right;
 
     JSValueRegs leftRegs;
     JSValueRegs rightRegs;
@@ -3966,8 +3966,8 @@ void SpeculativeJIT::compileMathIC(Node* node, JITBinaryMathIC<Generator>* mathI
     Edge& leftChild = node->child1();
     Edge& rightChild = node->child2();
 
-    std::optional<JSValueOperand> left;
-    std::optional<JSValueOperand> right;
+    Optional<JSValueOperand> left;
+    Optional<JSValueOperand> right;
 
     JSValueRegs leftRegs;
     JSValueRegs rightRegs;
@@ -3980,14 +3980,14 @@ void SpeculativeJIT::compileMathIC(Node* node, JITBinaryMathIC<Generator>* mathI
     GPRReg scratchGPR = InvalidGPRReg;
     FPRReg scratchFPR = InvalidFPRReg;
 
-    std::optional<FPRTemporary> fprScratch;
+    Optional<FPRTemporary> fprScratch;
     if (needsScratchFPRReg) {
         fprScratch.emplace(this);
         scratchFPR = fprScratch->fpr();
     }
 
 #if USE(JSVALUE64)
-    std::optional<GPRTemporary> gprScratch;
+    Optional<GPRTemporary> gprScratch;
     if (needsScratchGPRReg) {
         gprScratch.emplace(this);
         scratchGPR = gprScratch->gpr();
@@ -4696,7 +4696,7 @@ template <typename Generator, typename RepatchingFunction, typename NonRepatchin
 void SpeculativeJIT::compileMathIC(Node* node, JITUnaryMathIC<Generator>* mathIC, bool needsScratchGPRReg, RepatchingFunction repatchingFunction, NonRepatchingFunction nonRepatchingFunction)
 {
     GPRReg scratchGPR = InvalidGPRReg;
-    std::optional<GPRTemporary> gprScratch;
+    Optional<GPRTemporary> gprScratch;
     if (needsScratchGPRReg) {
         gprScratch.emplace(this);
         scratchGPR = gprScratch->gpr();
@@ -5021,8 +5021,8 @@ void SpeculativeJIT::compileValueDiv(Node* node)
         return;
     }
 
-    std::optional<JSValueOperand> left;
-    std::optional<JSValueOperand> right;
+    Optional<JSValueOperand> left;
+    Optional<JSValueOperand> right;
 
     JSValueRegs leftRegs;
     JSValueRegs rightRegs;
@@ -6313,7 +6313,7 @@ void SpeculativeJIT::compilePeepHoleSymbolEquality(Node* node, Node* branchNode)
 void SpeculativeJIT::compileStringEquality(
     Node* node, GPRReg leftGPR, GPRReg rightGPR, GPRReg lengthGPR, GPRReg leftTempGPR,
     GPRReg rightTempGPR, GPRReg leftTemp2GPR, GPRReg rightTemp2GPR,
-    JITCompiler::JumpList fastTrue, JITCompiler::JumpList fastFalse)
+    const JITCompiler::JumpList& fastTrue, const JITCompiler::JumpList& fastFalse)
 {
     JITCompiler::JumpList trueCase;
     JITCompiler::JumpList falseCase;
@@ -9314,7 +9314,7 @@ void SpeculativeJIT::compileCallDOMGetter(Node* node)
     SpeculateCellOperand base(this, baseEdge);
     regs.append(SnippetParams::Value(base.gpr(), m_state.forNode(baseEdge).value()));
 
-    std::optional<SpeculateCellOperand> globalObject;
+    Optional<SpeculateCellOperand> globalObject;
     if (snippet->requireGlobalObject) {
         Edge& globalObjectEdge = node->child2();
         globalObject.emplace(this, globalObjectEdge);
@@ -12395,8 +12395,8 @@ void SpeculativeJIT::compileObjectKeys(Node* node)
 
             m_jit.loadPtr(CCallHelpers::Address(scratchGPR, StructureRareData::offsetOfCachedOwnKeys()), scratchGPR);
 
-            slowCases.append(m_jit.branchTestPtr(CCallHelpers::Zero, scratchGPR));
-            slowCases.append(m_jit.branchPtr(CCallHelpers::Equal, scratchGPR, TrustedImmPtr::weakPointer(m_jit.graph(), m_jit.vm()->sentinelImmutableButterfly.get())));
+            ASSERT(bitwise_cast<uintptr_t>(StructureRareData::cachedOwnKeysSentinel()) == 1);
+            slowCases.append(m_jit.branchPtr(CCallHelpers::BelowOrEqual, scratchGPR, TrustedImmPtr(bitwise_cast<void*>(StructureRareData::cachedOwnKeysSentinel()))));
 
             MacroAssembler::JumpList slowButArrayBufferCases;
 
@@ -12450,6 +12450,63 @@ void SpeculativeJIT::compileObjectKeys(Node* node)
     default:
         RELEASE_ASSERT_NOT_REACHED();
         break;
+    }
+}
+
+void SpeculativeJIT::compileObjectToString(Node* node)
+{
+    switch (node->child1().useKind()) {
+    case OtherUse: {
+        JSValueOperand source(this, node->child1(), ManualOperandSpeculation);
+        GPRTemporary result(this);
+
+        JSValueRegs sourceRegs = source.jsValueRegs();
+        GPRReg resultGPR = result.gpr();
+
+        speculateOther(node->child1(), sourceRegs);
+
+        auto isUndefined = m_jit.branchIfUndefined(sourceRegs);
+        m_jit.move(TrustedImmPtr::weakPointer(m_jit.graph(), m_jit.vm()->smallStrings.nullObjectString()), resultGPR);
+        auto done = m_jit.jump();
+        isUndefined.link(&m_jit);
+        m_jit.move(TrustedImmPtr::weakPointer(m_jit.graph(), m_jit.vm()->smallStrings.undefinedObjectString()), resultGPR);
+        done.link(&m_jit);
+
+        cellResult(resultGPR, node);
+        return;
+    }
+    case UntypedUse: {
+        JSValueOperand source(this, node->child1());
+
+        JSValueRegs sourceRegs = source.jsValueRegs();
+
+        GPRTemporary structure(this);
+        GPRTemporary scratch(this);
+
+        GPRReg structureGPR = structure.gpr();
+        GPRReg scratchGPR = scratch.gpr();
+
+        CCallHelpers::JumpList slowCases;
+        slowCases.append(m_jit.branchIfNotCell(sourceRegs));
+        slowCases.append(m_jit.branchIfNotObject(sourceRegs.payloadGPR()));
+
+        m_jit.emitLoadStructure(*m_jit.vm(), sourceRegs.payloadGPR(), structureGPR, scratchGPR);
+        m_jit.loadPtr(CCallHelpers::Address(structureGPR, Structure::previousOrRareDataOffset()), scratchGPR);
+
+        slowCases.append(m_jit.branchTestPtr(CCallHelpers::Zero, scratchGPR));
+        slowCases.append(m_jit.branch32(CCallHelpers::Equal, CCallHelpers::Address(scratchGPR, JSCell::structureIDOffset()), TrustedImm32(bitwise_cast<int32_t>(m_jit.vm()->structureStructure->structureID()))));
+
+        m_jit.loadPtr(CCallHelpers::Address(scratchGPR, StructureRareData::offsetOfObjectToStringValue()), scratchGPR);
+        slowCases.append(m_jit.branchTestPtr(CCallHelpers::Zero, scratchGPR));
+
+        addSlowPathGenerator(slowPathCall(slowCases, this, operationObjectToString, scratchGPR, sourceRegs));
+
+        cellResult(scratchGPR, node);
+        return;
+    }
+    default:
+        DFG_CRASH(m_graph, node, "Bad use kind");
+        return;
     }
 }
 

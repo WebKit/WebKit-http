@@ -415,7 +415,7 @@ public:
     void setViewportArguments(const ViewportArguments& viewportArguments) { m_viewportArguments = viewportArguments; }
     ViewportArguments viewportArguments() const { return m_viewportArguments; }
 
-    WEBCORE_EXPORT void setOverrideViewportArguments(const std::optional<ViewportArguments>&);
+    WEBCORE_EXPORT void setOverrideViewportArguments(const Optional<ViewportArguments>&);
 
     OptionSet<DisabledAdaptations> disabledAdaptations() const { return m_disabledAdaptations; }
 #ifndef NDEBUG
@@ -423,7 +423,7 @@ public:
 #endif
 
     void setReferrerPolicy(ReferrerPolicy);
-    ReferrerPolicy referrerPolicy() const { return m_referrerPolicy.value_or(ReferrerPolicy::NoReferrerWhenDowngrade); }
+    ReferrerPolicy referrerPolicy() const { return m_referrerPolicy.valueOr(ReferrerPolicy::NoReferrerWhenDowngrade); }
 
     WEBCORE_EXPORT DocumentType* doctype() const;
 
@@ -929,7 +929,7 @@ public:
     WEBCORE_EXPORT String domain() const;
     ExceptionOr<void> setDomain(const String& newDomain);
 
-    void overrideLastModified(const std::optional<WallTime>&);
+    void overrideLastModified(const Optional<WallTime>&);
     WEBCORE_EXPORT String lastModified() const;
 
     // The cookieURL is used to query the cookie database for this document's
@@ -1050,7 +1050,7 @@ public:
     void setHasNodesWithMissingStyle() { m_hasNodesWithMissingStyle = true; }
 
     // Extension for manipulating canvas drawing contexts for use in CSS
-    std::optional<RenderingContext> getCSSCanvasContext(const String& type, const String& name, int width, int height);
+    Optional<RenderingContext> getCSSCanvasContext(const String& type, const String& name, int width, int height);
     HTMLCanvasElement* getCSSCanvasElement(const String& name);
     String nameForCSSCanvasElement(const HTMLCanvasElement&) const;
 
@@ -1119,6 +1119,10 @@ public:
     void registerForAllowsMediaDocumentInlinePlaybackChangedCallbacks(HTMLMediaElement&);
     void unregisterForAllowsMediaDocumentInlinePlaybackChangedCallbacks(HTMLMediaElement&);
     void allowsMediaDocumentInlinePlaybackChanged();
+
+    void stopAllMediaPlayback();
+    void suspendAllMediaPlayback();
+    void resumeAllMediaPlayback();
 #endif
 
     WEBCORE_EXPORT void setShouldCreateRenderers(bool);
@@ -1229,6 +1233,7 @@ public:
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS_FAMILY)
     DeviceMotionController* deviceMotionController() const;
     DeviceOrientationController* deviceOrientationController() const;
+    WEBCORE_EXPORT void simulateDeviceOrientationChange(double alpha, double beta, double gamma);
 #endif
 
     const DocumentTiming& timing() const { return m_documentTiming; }
@@ -1844,7 +1849,7 @@ private:
     Timer m_loadEventDelayTimer;
 
     ViewportArguments m_viewportArguments;
-    std::optional<ViewportArguments> m_overrideViewportArguments;
+    Optional<ViewportArguments> m_overrideViewportArguments;
     OptionSet<DisabledAdaptations> m_disabledAdaptations;
 
     DocumentTiming m_documentTiming;
@@ -1931,7 +1936,7 @@ private:
 
     String m_cachedDOMCookies;
 
-    std::optional<WallTime> m_overrideLastModified;
+    Optional<WallTime> m_overrideLastModified;
 
     HashSet<RefPtr<Element>> m_associatedFormControls;
     unsigned m_disabledFieldsetElementsCount { 0 };
@@ -1959,7 +1964,7 @@ private:
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
     bool m_userHasInteractedWithMediaElement { false };
     PageCacheState m_pageCacheState { NotInPageCache };
-    std::optional<ReferrerPolicy> m_referrerPolicy;
+    Optional<ReferrerPolicy> m_referrerPolicy;
     ReadyState m_readyState { Complete };
 
     MutationObserverOptions m_mutationObserverTypes { 0 };

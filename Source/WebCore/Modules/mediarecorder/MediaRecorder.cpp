@@ -66,8 +66,10 @@ std::unique_ptr<MediaRecorderPrivate> MediaRecorder::getPrivateImpl(const MediaS
     
 #if PLATFORM(COCOA)
     return MediaRecorderPrivateAVFImpl::create(stream);
-#endif
+#else
+    UNUSED_PARAM(stream);
     return nullptr;
+#endif
 }
 
 MediaRecorder::MediaRecorder(Document& document, Ref<MediaStream>&& stream, std::unique_ptr<MediaRecorderPrivate>&& privateImpl, Options&& option)
@@ -104,7 +106,7 @@ bool MediaRecorder::canSuspendForDocumentSuspension() const
     return false; // FIXME: We should do better here as this prevents entering PageCache.
 }
 
-ExceptionOr<void> MediaRecorder::startRecording(std::optional<int> timeslice)
+ExceptionOr<void> MediaRecorder::startRecording(Optional<int> timeslice)
 {
     UNUSED_PARAM(timeslice);
     if (state() != RecordingState::Inactive)
@@ -161,8 +163,9 @@ void MediaRecorder::didAddOrRemoveTrack()
     scheduleDeferredTask([this] {
         if (!m_isActive || state() == RecordingState::Inactive)
             return;
+        stopRecordingInternal();
         auto event = MediaRecorderErrorEvent::create(eventNames().errorEvent, Exception { UnknownError, "Track cannot be added to or removed from the MediaStream while recording is happening"_s });
-        setNewRecordingState(RecordingState::Inactive, WTFMove(event));
+        dispatchEvent(WTFMove(event));
     });
 }
 
@@ -185,12 +188,6 @@ void MediaRecorder::sampleBufferUpdated(MediaStreamTrackPrivate& track, MediaSam
 void MediaRecorder::audioSamplesAvailable(MediaStreamTrackPrivate& track, const MediaTime& mediaTime, const PlatformAudioData& audioData, const AudioStreamDescription& description, size_t sampleCount)
 {
     m_private->audioSamplesAvailable(track, mediaTime, audioData, description, sampleCount);
-}
-
-void MediaRecorder::setNewRecordingState(RecordingState newState, Ref<Event>&& event)
-{
-    m_state = newState;
-    dispatchEvent(WTFMove(event));
 }
 
 void MediaRecorder::scheduleDeferredTask(Function<void()>&& function)

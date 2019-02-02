@@ -261,11 +261,17 @@ public:
     bool userContentExtensionsEnabled() const { return m_userContentExtensionsEnabled; }
     void setUserContentExtensionsEnabled(bool enabled) { m_userContentExtensionsEnabled = enabled; }
 
+    bool deviceOrientationEventEnabled() const { return m_deviceOrientationEventEnabled; }
+    void setDeviceOrientationEventEnabled(bool enabled) { m_deviceOrientationEventEnabled = enabled; }
+
     AutoplayPolicy autoplayPolicy() const { return m_autoplayPolicy; }
     void setAutoplayPolicy(AutoplayPolicy policy) { m_autoplayPolicy = policy; }
 
     void setCustomUserAgent(const String& customUserAgent) { m_customUserAgent = customUserAgent; }
     const String& customUserAgent() const { return m_customUserAgent; }
+        
+    void setCustomNavigatorPlatform(const String& customNavigatorPlatform) { m_customNavigatorPlatform = customNavigatorPlatform; }
+    const String& customNavigatorPlatform() const { return m_customNavigatorPlatform; }
 
     OptionSet<AutoplayQuirk> allowedAutoplayQuirks() const { return m_allowedAutoplayQuirks; }
     void setAllowedAutoplayQuirks(OptionSet<AutoplayQuirk> allowedQuirks) { m_allowedAutoplayQuirks = allowedQuirks; }
@@ -345,7 +351,7 @@ private:
     Document* document() const;
 
 #if ENABLE(SERVICE_WORKER)
-    void matchRegistration(const URL&, CompletionHandler<void(std::optional<ServiceWorkerRegistrationData>&&)>&&);
+    void matchRegistration(const URL&, CompletionHandler<void(Optional<ServiceWorkerRegistrationData>&&)>&&);
 #endif
     void registerTemporaryServiceWorkerClient(const URL&);
     void unregisterTemporaryServiceWorkerClient();
@@ -387,7 +393,7 @@ private:
     bool tryLoadingSubstituteData();
     bool tryLoadingRedirectRequestFromApplicationCache(const ResourceRequest&);
 #if ENABLE(SERVICE_WORKER)
-    void restartLoadingDueToServiceWorkerRegistrationChange(ResourceRequest&&, std::optional<ServiceWorkerRegistrationData>&&);
+    void restartLoadingDueToServiceWorkerRegistrationChange(ResourceRequest&&, Optional<ServiceWorkerRegistrationData>&&);
 #endif
     void continueAfterContentPolicy(PolicyAction);
 
@@ -413,7 +419,7 @@ private:
     void notifyFinishedLoadingIcon(uint64_t callbackIdentifier, SharedBuffer*);
 
 #if ENABLE(APPLICATION_MANIFEST)
-    void notifyFinishedLoadingApplicationManifest(uint64_t callbackIdentifier, std::optional<ApplicationManifest>);
+    void notifyFinishedLoadingApplicationManifest(uint64_t callbackIdentifier, Optional<ApplicationManifest>);
 #endif
 
     // ContentSecurityPolicyClient
@@ -536,18 +542,20 @@ private:
     HashMap<String, Vector<std::pair<String, uint32_t>>> m_pendingContentExtensionDisplayNoneSelectors;
 #endif
     String m_customUserAgent;
+    String m_customNavigatorPlatform;
     bool m_userContentExtensionsEnabled { true };
+    bool m_deviceOrientationEventEnabled { true };
     AutoplayPolicy m_autoplayPolicy { AutoplayPolicy::Default };
     OptionSet<AutoplayQuirk> m_allowedAutoplayQuirks;
     PopUpPolicy m_popUpPolicy { PopUpPolicy::Default };
 
 #if ENABLE(SERVICE_WORKER)
-    std::optional<ServiceWorkerRegistrationData> m_serviceWorkerRegistrationData;
+    Optional<ServiceWorkerRegistrationData> m_serviceWorkerRegistrationData;
     struct TemporaryServiceWorkerClient {
         DocumentIdentifier documentIdentifier;
         Ref<SWClientConnection> serviceWorkerConnection;
     };
-    std::optional<TemporaryServiceWorkerClient> m_temporaryServiceWorkerClient;
+    Optional<TemporaryServiceWorkerClient> m_temporaryServiceWorkerClient;
 #endif
 
 #ifndef NDEBUG

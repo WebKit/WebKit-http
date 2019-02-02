@@ -110,7 +110,7 @@ Shared/API/Cocoa/WKRemoteObjectCoder.mm
 
 Shared/APIWebArchive.mm
 Shared/APIWebArchiveResource.mm
-Shared/AssistedNodeInformation.cpp
+Shared/FocusedElementInformation.cpp
 Shared/VisibleContentRectUpdateInfo.cpp
 Shared/WebSQLiteDatabaseTracker.cpp
 
@@ -317,6 +317,7 @@ UIProcess/Cocoa/DiagnosticLoggingClient.mm
 UIProcess/Cocoa/DownloadClient.mm
 UIProcess/Cocoa/FindClient.mm
 UIProcess/Cocoa/FullscreenClient.mm
+UIProcess/Cocoa/GlobalFindInPageState.mm
 UIProcess/Cocoa/IconLoadingDelegate.mm
 UIProcess/Cocoa/LegacyCustomProtocolManagerClient.mm
 UIProcess/Cocoa/NavigationState.mm
@@ -338,6 +339,8 @@ UIProcess/Cocoa/WebProcessPoolCocoa.mm
 UIProcess/Cocoa/WebProcessProxyCocoa.mm
 UIProcess/Cocoa/WebURLSchemeHandlerCocoa.mm
 UIProcess/Cocoa/WebViewImpl.mm
+UIProcess/Cocoa/WKEditCommand.mm
+UIProcess/Cocoa/WKFullKeyboardAccessWatcher.mm
 UIProcess/Cocoa/WKReloadFrameErrorRecoveryAttempter.mm
 UIProcess/Cocoa/WKWebViewContentProviderRegistry.mm
 
@@ -386,10 +389,11 @@ UIProcess/ios/WKActionSheetAssistant.mm
 UIProcess/ios/WKApplicationStateTrackingView.mm
 UIProcess/ios/WKContentView.mm @no-unify
 UIProcess/ios/WKContentViewInteraction.mm @no-unify
+UIProcess/ios/WKDrawingCoordinator.mm
 UIProcess/ios/WKDrawingView.mm
 UIProcess/ios/WKGeolocationProviderIOS.mm
 UIProcess/ios/WKGeolocationProviderIOSObjCSecurityOrigin.mm
-UIProcess/ios/WKInkPickerControl.mm
+UIProcess/ios/WKInkPickerView.mm
 UIProcess/ios/WKInspectorNodeSearchGestureRecognizer.mm
 UIProcess/ios/WKKeyboardScrollingAnimator.mm
 UIProcess/ios/WKLegacyPDFView.mm
@@ -425,7 +429,6 @@ UIProcess/mac/WebPopupMenuProxyMac.mm
 UIProcess/mac/WebPreferencesMac.mm
 UIProcess/mac/WebProcessProxyMac.mm
 UIProcess/mac/WindowServerConnection.mm
-UIProcess/mac/WKFullKeyboardAccessWatcher.mm
 UIProcess/mac/WKFullScreenWindowController.mm
 UIProcess/mac/WKImmediateActionController.mm
 UIProcess/mac/WKInspectorViewController.mm

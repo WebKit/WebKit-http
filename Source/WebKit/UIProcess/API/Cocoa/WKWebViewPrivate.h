@@ -190,10 +190,13 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 - (_WKAttachment *)_insertAttachmentWithFileWrapper:(NSFileWrapper *)fileWrapper contentType:(NSString *)contentType completion:(void(^)(BOOL success))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 - (_WKAttachment *)_attachmentForIdentifier:(NSString *)identifier WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
+- (void)_simulateDeviceOrientationChangeWithAlpha:(double)alpha beta:(double)beta gamma:(double)gamma WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+
 + (BOOL)_handlesSafeBrowsing WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 + (NSURL *)_confirmMalwareSentinel WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 + (NSURL *)_visitUnsafeWebsiteSentinel WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 - (void)_showSafeBrowsingWarningWithTitle:(NSString *)title warning:(NSString *)warning details:(NSAttributedString *)details completionHandler:(void(^)(BOOL))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_showSafeBrowsingWarningWithURL:(NSURL *)url title:(NSString *)title warning:(NSString *)warning details:(NSAttributedString *)details completionHandler:(void(^)(BOOL))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 - (void)_isJITEnabled:(void(^)(BOOL))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 - (void)_removeDataDetectedLinks:(dispatch_block_t)completion WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
@@ -214,6 +217,9 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 - (IBAction)_changeListType:(id)sender WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 - (IBAction)_pasteAsQuotation:(id)sender WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 - (IBAction)_pasteAndMatchStyle:(id)sender WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (IBAction)_takeFindStringFromSelection:(id)sender WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+
+@property (class, nonatomic, copy, setter=_setStringForFind:) NSString *_stringForFind WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 #if TARGET_OS_IPHONE
 
@@ -399,25 +405,14 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 @property (nonatomic, readonly) BOOL _isPictureInPictureActive;
 - (void)_updateMediaPlaybackControlsManager;
 - (void)_togglePictureInPicture;
-
+- (void)_stopAllMediaPlayback;
+- (void)_suspendAllMediaPlayback;
+- (void)_resumeAllMediaPlayback;
 @end
 
 #if TARGET_OS_IPHONE
 
 @interface WKWebView () <UIResponderStandardEditActions>
-// FIXME: Remove these once internal clients have moved to the underscore-prefixed versions.
-- (void)alignCenter:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)alignJustified:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)alignLeft:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)alignRight:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)indent:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)insertOrderedList:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)insertUnorderedList:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)outdent:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)toggleStrikeThrough:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)setFont:(UIFont *)font sender:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)setFontSize:(CGFloat)fontSize sender:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)setTextColor:(UIColor *)color sender:(id)sender WK_API_AVAILABLE(ios(WK_IOS_TBA));
 @end
 
 #else

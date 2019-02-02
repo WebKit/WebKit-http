@@ -256,6 +256,8 @@ Modules/webaudio/WaveShaperProcessor.cpp
 Modules/webauthn/AuthenticatorCoordinator.cpp
 Modules/webauthn/AuthenticatorCoordinatorClient.cpp
 Modules/webauthn/PublicKeyCredential.cpp
+Modules/webauthn/apdu/ApduCommand.cpp
+Modules/webauthn/apdu/ApduResponse.cpp
 Modules/webauthn/cbor/CBORReader.cpp
 Modules/webauthn/cbor/CBORValue.cpp
 Modules/webauthn/cbor/CBORWriter.cpp
@@ -301,12 +303,15 @@ Modules/websockets/WebSocketHandshake.cpp
 Modules/websockets/WorkerThreadableWebSocketChannel.cpp
 
 Modules/webgpu/DOMWindowWebGPU.cpp
+Modules/webgpu/WHLSL/WHLSLLexer.cpp
 Modules/webgpu/WebGPU.cpp
 Modules/webgpu/WebGPUAdapter.cpp
+Modules/webgpu/WebGPUBindGroupLayout.cpp
 Modules/webgpu/WebGPUBuffer.cpp
 Modules/webgpu/WebGPUCommandBuffer.cpp
 Modules/webgpu/WebGPUDevice.cpp
 Modules/webgpu/WebGPUQueue.cpp
+Modules/webgpu/WebGPUPipelineLayout.cpp
 Modules/webgpu/WebGPUProgrammablePassEncoder.cpp
 Modules/webgpu/WebGPURenderingContext.cpp
 Modules/webgpu/WebGPURenderPassEncoder.cpp
@@ -464,7 +469,6 @@ bindings/js/JSPerformanceObserverCustom.cpp
 bindings/js/JSPluginElementFunctions.cpp
 bindings/js/JSPopStateEventCustom.cpp
 bindings/js/JSPromiseRejectionEventCustom.cpp
-bindings/js/JSReadableStreamPrivateConstructors.cpp
 bindings/js/JSReadableStreamSourceCustom.cpp
 bindings/js/JSRemoteDOMWindowBase.cpp
 bindings/js/JSRemoteDOMWindowCustom.cpp
@@ -721,6 +725,8 @@ css/parser/MediaQueryParser.cpp
 css/parser/SizesAttributeParser.cpp
 css/parser/SizesCalcParser.cpp
 
+css/typedom/StylePropertyMapReadOnly.cpp
+
 cssjit/SelectorCompiler.cpp
 
 dom/AbortController.cpp
@@ -907,6 +913,7 @@ editing/DeleteFromTextNodeCommand.cpp
 editing/DeleteSelectionCommand.cpp
 editing/DictationAlternative.cpp
 editing/DictationCommand.cpp
+editing/EditAction.cpp
 editing/EditCommand.cpp
 editing/Editing.cpp
 editing/EditingStyle.cpp
@@ -1740,6 +1747,7 @@ platform/graphics/filters/SourceGraphic.cpp
 platform/graphics/filters/SpotLightSource.cpp
 
 platform/graphics/gpu/GPUDevice.cpp
+platform/graphics/gpu/GPUPipelineLayout.cpp
 platform/graphics/gpu/legacy/GPULegacyBuffer.cpp
 platform/graphics/gpu/legacy/GPULegacyCommandBuffer.cpp
 platform/graphics/gpu/legacy/GPULegacyCommandQueue.cpp
@@ -3184,6 +3192,7 @@ JSStorage.cpp
 JSStorageEvent.cpp
 JSStringCallback.cpp
 JSStyleMedia.cpp
+JSStylePropertyMap.cpp
 JSStylePropertyMapReadOnly.cpp
 JSStyleSheet.cpp
 JSStyleSheetList.cpp
@@ -3222,6 +3231,9 @@ JSWebAnimation.cpp
 JSWebGPU.cpp
 JSWebGPUAdapter.cpp
 JSWebGPUAdapterDescriptor.cpp
+JSWebGPUBindGroupLayout.cpp
+JSWebGPUBindGroupLayoutBinding.cpp
+JSWebGPUBindGroupLayoutDescriptor.cpp
 JSWebGPUBuffer.cpp
 JSWebGPUBufferDescriptor.cpp
 JSWebGPUBufferUsage.cpp
@@ -3233,6 +3245,8 @@ JSWebGPUInputStateDescriptor.cpp
 JSWebGPUInputStepMode.cpp
 JSWebGPUQueue.cpp
 JSWebGPUPipelineDescriptorBase.cpp
+JSWebGPUPipelineLayout.cpp
+JSWebGPUPipelineLayoutDescriptor.cpp
 JSWebGPUPipelineStageDescriptor.cpp
 JSWebGPUProgrammablePassEncoder.cpp
 JSWebGPURenderingContext.cpp
@@ -3243,6 +3257,7 @@ JSWebGPURenderPipeline.cpp
 JSWebGPURenderPipelineDescriptor.cpp
 JSWebGPUShaderModule.cpp
 JSWebGPUShaderModuleDescriptor.cpp
+JSWebGPUShaderStageBit.cpp
 JSWebGPUSwapChain.cpp
 JSWebGPUTexture.cpp
 JSWebGPUTextureFormatEnum.cpp

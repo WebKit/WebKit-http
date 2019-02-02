@@ -65,7 +65,7 @@ public:
 
     void didClearStringData(const String& type);
     void didSetStringData(const String& type);
-    bool hasItems() const { return m_items.has_value(); }
+    bool hasItems() const { return m_items.hasValue(); }
     const Vector<Ref<DataTransferItem>>& items() const
     {
         ASSERT(m_items);
@@ -76,7 +76,7 @@ private:
     Vector<Ref<DataTransferItem>>& ensureItems() const;
 
     DataTransfer& m_dataTransfer;
-    mutable std::optional<Vector<Ref<DataTransferItem>>> m_items;
+    mutable Optional<Vector<Ref<DataTransferItem>>> m_items;
 };
 
 } // namespace WebCore

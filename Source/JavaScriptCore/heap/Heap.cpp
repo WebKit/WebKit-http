@@ -190,7 +190,7 @@ SimpleStats& timingStats(const char* name, CollectionScope scope)
 
 class TimingScope {
 public:
-    TimingScope(std::optional<CollectionScope> scope, const char* name)
+    TimingScope(Optional<CollectionScope> scope, const char* name)
         : m_scope(scope)
         , m_name(name)
     {
@@ -203,7 +203,7 @@ public:
     {
     }
     
-    void setScope(std::optional<CollectionScope> scope)
+    void setScope(Optional<CollectionScope> scope)
     {
         m_scope = scope;
     }
@@ -224,7 +224,7 @@ public:
         }
     }
 private:
-    std::optional<CollectionScope> m_scope;
+    Optional<CollectionScope> m_scope;
     MonotonicTime m_before;
     const char* m_name;
 };
@@ -306,8 +306,8 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_lastEdenGCLength(0.01)
     , m_fullActivityCallback(GCActivityCallback::tryCreateFullTimer(this))
     , m_edenActivityCallback(GCActivityCallback::tryCreateEdenTimer(this))
-    , m_sweeper(adoptRef(new IncrementalSweeper(this)))
-    , m_stopIfNecessaryTimer(adoptRef(new StopIfNecessaryTimer(vm)))
+    , m_sweeper(adoptRef(*new IncrementalSweeper(this)))
+    , m_stopIfNecessaryTimer(adoptRef(*new StopIfNecessaryTimer(vm)))
     , m_deferralDepth(0)
 #if USE(FOUNDATION)
     , m_delayedReleaseRecursionCount(0)
@@ -2313,7 +2313,7 @@ void Heap::didFinishCollection()
 
     RELEASE_ASSERT(m_collectionScope);
     m_lastCollectionScope = m_collectionScope;
-    m_collectionScope = std::nullopt;
+    m_collectionScope = WTF::nullopt;
 
     for (auto* observer : m_observers)
         observer->didGarbageCollect(scope);
@@ -2339,7 +2339,7 @@ GCActivityCallback* Heap::edenActivityCallback()
 
 IncrementalSweeper& Heap::sweeper()
 {
-    return *m_sweeper;
+    return m_sweeper.get();
 }
 
 void Heap::setGarbageCollectionTimerEnabled(bool enable)
@@ -2822,7 +2822,7 @@ void Heap::notifyIsSafeToCollect()
                     {
                         LockHolder locker(*m_threadLock);
                         if (m_requests.isEmpty()) {
-                            m_requests.append(std::nullopt);
+                            m_requests.append(WTF::nullopt);
                             m_lastGrantedTicket++;
                             m_threadCondition->notifyOne(locker);
                         }

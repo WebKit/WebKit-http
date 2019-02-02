@@ -55,14 +55,14 @@ public:
     void disableSendingDirection();
 
     RTCRtpTransceiverDirection direction() const;
-    std::optional<RTCRtpTransceiverDirection> currentDirection() const;
+    Optional<RTCRtpTransceiverDirection> currentDirection() const;
     void setDirection(RTCRtpTransceiverDirection);
     String mid() const;
 
     RTCRtpSender& sender() { return m_sender.get(); }
     RTCRtpReceiver& receiver() { return m_receiver.get(); }
 
-    bool stopped() const { return m_stopped; }
+    bool stopped() const;
     void stop();
 
     // FIXME: Temporary solution to keep track of ICE states for this transceiver. Later, each
@@ -91,14 +91,11 @@ public:
     const Vector<RefPtr<RTCRtpTransceiver>>& list() const { return m_transceivers; }
     void append(Ref<RTCRtpTransceiver>&&);
 
-    const Vector<std::reference_wrapper<RTCRtpSender>>& senders() const { return m_senders; }
-    const Vector<std::reference_wrapper<RTCRtpReceiver>>& receivers() const { return m_receivers; }
+    Vector<std::reference_wrapper<RTCRtpSender>> senders() const;
+    Vector<std::reference_wrapper<RTCRtpReceiver>> receivers() const;
 
 private:
     Vector<RefPtr<RTCRtpTransceiver>> m_transceivers;
-
-    Vector<std::reference_wrapper<RTCRtpSender>> m_senders;
-    Vector<std::reference_wrapper<RTCRtpReceiver>> m_receivers;
 };
 
 } // namespace WebCore

@@ -48,7 +48,7 @@ static bool isQuirkContainer(const Box& layoutBox)
     return layoutBox.isBodyBox() || layoutBox.isDocumentBox() || layoutBox.isTableCell();
 }
 
-static bool hasMarginTopQuirkValue(const Box& layoutBox)
+static bool hasMarginBeforeQuirkValue(const Box& layoutBox)
 {
     return layoutBox.style().hasMarginBeforeQuirk();
 }
@@ -73,43 +73,43 @@ HeightAndMargin BlockFormattingContext::Quirks::stretchedHeight(const LayoutStat
     auto& documentBox = layoutBox.isDocumentBox() ? layoutBox : *layoutBox.parent();
     auto& documentBoxDisplayBox = layoutState.displayBoxForLayoutBox(documentBox);
     auto documentBoxVerticalBorders = documentBoxDisplayBox.borderTop() + documentBoxDisplayBox.borderBottom();
-    auto documentBoxVerticalPaddings = documentBoxDisplayBox.paddingTop().value_or(0) + documentBoxDisplayBox.paddingBottom().value_or(0);
+    auto documentBoxVerticalPaddings = documentBoxDisplayBox.paddingTop().valueOr(0) + documentBoxDisplayBox.paddingBottom().valueOr(0);
 
     auto strechedHeight = layoutState.displayBoxForLayoutBox(initialContainingBlock(layoutBox)).contentBoxHeight();
     strechedHeight -= documentBoxVerticalBorders + documentBoxVerticalPaddings;
 
-    LayoutUnit totalVerticalMargins;
+    LayoutUnit totalVerticalMargin;
     if (layoutBox.isDocumentBox()) {
-        auto verticalMargins = heightAndMargin.usedMarginValues();
+        auto verticalMargin = heightAndMargin.margin.usedValues();
         // Document box's margins do not collapse.
-        ASSERT(!heightAndMargin.collapsedMargin);
-        totalVerticalMargins = verticalMargins.top + verticalMargins.bottom;
+        ASSERT(!heightAndMargin.margin.collapsedValues());
+        totalVerticalMargin = verticalMargin.before + verticalMargin.after;
     } else if (layoutBox.isBodyBox()) {
         // Here is the quirky part for body box:
         // Stretch the body using the initial containing block's height and shrink it with document box's margin/border/padding.
         // This looks extremely odd when html has non-auto height.
-        auto verticalMargins = Geometry::estimatedMarginTop(layoutState, documentBox) + Geometry::estimatedMarginBottom(layoutState, documentBox);
-        strechedHeight -= verticalMargins;
+        auto verticalMargin = Geometry::estimatedMarginBefore(layoutState, documentBox) + Geometry::estimatedMarginAfter(layoutState, documentBox);
+        strechedHeight -= verticalMargin;
 
         // This quirk happens when the body height is 0 which means its vertical margins collapse through (top and bottom margins are adjoining).
         // However now that we stretch the body they don't collapse through anymore, so we need to use the non-collapsed values instead.
-        auto bodyBoxVerticalMargins = heightAndMargin.height ? heightAndMargin.usedMarginValues() : heightAndMargin.nonCollapsedMargin;
-        totalVerticalMargins = bodyBoxVerticalMargins.top + bodyBoxVerticalMargins.bottom;
+        auto bodyBoxVerticalMargin = heightAndMargin.height ? heightAndMargin.margin.usedValues() : heightAndMargin.margin.nonCollapsedValues();
+        totalVerticalMargin = bodyBoxVerticalMargin.before + bodyBoxVerticalMargin.after;
     }
 
     // Stretch but never overstretch with the margins.
-    if (heightAndMargin.height + totalVerticalMargins < strechedHeight)
-        heightAndMargin.height = strechedHeight - totalVerticalMargins;
+    if (heightAndMargin.height + totalVerticalMargin < strechedHeight)
+        heightAndMargin.height = strechedHeight - totalVerticalMargin;
 
     return heightAndMargin;
 }
 
-bool BlockFormattingContext::Quirks::shouldIgnoreMarginTop(const LayoutState& layoutState, const Box& layoutBox)
+bool BlockFormattingContext::Quirks::shouldIgnoreMarginBefore(const LayoutState& layoutState, const Box& layoutBox)
 {
     if (!layoutBox.parent())
         return false;
 
-    return layoutState.inQuirksMode() && isQuirkContainer(*layoutBox.parent()) && hasMarginTopQuirkValue(layoutBox);
+    return layoutState.inQuirksMode() && isQuirkContainer(*layoutBox.parent()) && hasMarginBeforeQuirkValue(layoutBox);
 }
 
 }

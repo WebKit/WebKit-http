@@ -231,7 +231,7 @@ const auto WebEventMouseDown = NSEventTypeLeftMouseDown;
 - (void)forwardContextMenuAction:(id)sender;
 @end
 
-static std::optional<ContextMenuAction> toAction(NSInteger tag)
+static Optional<ContextMenuAction> toAction(NSInteger tag)
 {
     if (tag >= ContextMenuItemBaseCustomTag && tag <= ContextMenuItemLastCustomTag) {
         // Just pass these through.
@@ -406,14 +406,14 @@ static std::optional<ContextMenuAction> toAction(NSInteger tag)
     case WebMenuItemTagDictationAlternative:
         return ContextMenuItemTagDictationAlternative;
     }
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-static std::optional<NSInteger> toTag(ContextMenuAction action)
+static Optional<NSInteger> toTag(ContextMenuAction action)
 {
     switch (action) {
     case ContextMenuItemTagNoAction:
-        return std::nullopt;
+        return WTF::nullopt;
 
     case ContextMenuItemTagOpenLinkInNewWindow:
         return WebMenuItemTagOpenLinkInNewWindow;
@@ -596,7 +596,7 @@ static std::optional<NSInteger> toTag(ContextMenuAction action)
         ASSERT_NOT_REACHED();
     }
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 @implementation WebMenuTarget
@@ -1348,7 +1348,7 @@ static NSControlStateValue kit(TriState state)
 {
     // Put HTML on the pasteboard.
     if ([types containsObject:WebArchivePboardType]) {
-        if (RefPtr<LegacyWebArchive> coreArchive = LegacyWebArchive::createFromSelection(core([self _frame]))) {
+        if (auto coreArchive = LegacyWebArchive::createFromSelection(core([self _frame]))) {
             if (RetainPtr<CFDataRef> data = coreArchive ? coreArchive->rawDataRepresentation() : 0)
                 [pasteboard setData:(__bridge NSData *)data.get() forType:WebArchivePboardType];
         }

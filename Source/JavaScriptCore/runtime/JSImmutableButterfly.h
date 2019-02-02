@@ -67,11 +67,6 @@ public:
         return array;
     }
 
-    static JSImmutableButterfly* createSentinel(VM& vm)
-    {
-        return create(vm, CopyOnWriteArrayWithContiguous, 0);
-    }
-
     unsigned publicLength() const { return m_header.publicLength(); }
     unsigned vectorLength() const { return m_header.vectorLength(); }
     unsigned length() const { return m_header.publicLength(); }
@@ -125,6 +120,10 @@ private:
     {
         m_header.setVectorLength(length);
         m_header.setPublicLength(length);
+        if (hasContiguous(indexingType())) {
+            for (unsigned index = 0; index < length; ++index)
+                toButterfly()->contiguous().at(this, index).setStartingValue(JSValue());
+        }
     }
 
     IndexingHeader m_header;

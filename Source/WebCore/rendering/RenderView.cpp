@@ -234,7 +234,7 @@ void RenderView::layout()
     if (!needsLayout())
         return;
 
-    LayoutStateMaintainer statePusher(*this, { }, false, m_pageLogicalSize.value_or(LayoutSize()).height(), m_pageLogicalHeightChanged);
+    LayoutStateMaintainer statePusher(*this, { }, false, m_pageLogicalSize.valueOr(LayoutSize()).height(), m_pageLogicalHeightChanged);
 
     m_pageLogicalHeightChanged = false;
 
@@ -577,7 +577,7 @@ LayoutRect RenderView::visualOverflowRect() const
     return RenderBlockFlow::visualOverflowRect();
 }
 
-std::optional<LayoutRect> RenderView::computeVisibleRectInContainer(const LayoutRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
+Optional<LayoutRect> RenderView::computeVisibleRectInContainer(const LayoutRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
 {
     // If a container was specified, and was not nullptr or the RenderView,
     // then we should have found it by now.

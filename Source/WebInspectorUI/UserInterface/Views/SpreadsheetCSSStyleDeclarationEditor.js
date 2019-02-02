@@ -480,13 +480,21 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
         for (let index = 0; index < this._propertyViews.length; index++)
             this._propertyViews[index].index = index;
 
-        this._focused = false;
+        this.focused = false;
     }
 
     spreadsheetStylePropertyShowProperty(propertyView, property)
     {
         if (this._delegate.spreadsheetCSSStyleDeclarationEditorShowProperty)
             this._delegate.spreadsheetCSSStyleDeclarationEditorShowProperty(this, property);
+    }
+
+    spreadsheetStylePropertyDidPressEsc(propertyView)
+    {
+        let index = this._propertyViews.indexOf(propertyView);
+        console.assert(index !== -1, `Can't find StyleProperty to select (${propertyView.property.name})`);
+        if (index !== -1)
+            this.selectProperties(index, index);
     }
 
     stylePropertyInlineSwatchActivated()
@@ -525,7 +533,10 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
                 event.stop();
                 property.startEditingName();
             }
-        } else if (event.key === "Backspace") {
+        } else if (event.key === "Backspace" || event.key === "Delete") {
+            if (!this.style.editable)
+                return;
+
             let [startIndex, endIndex] = this.selectionRange;
 
             let propertyIndexToSelect = NaN;

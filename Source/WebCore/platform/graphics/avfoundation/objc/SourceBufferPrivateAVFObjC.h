@@ -79,7 +79,7 @@ public:
 
 class SourceBufferPrivateAVFObjC final : public SourceBufferPrivate {
 public:
-    static RefPtr<SourceBufferPrivateAVFObjC> create(MediaSourcePrivateAVFObjC*);
+    static Ref<SourceBufferPrivateAVFObjC> create(MediaSourcePrivateAVFObjC*);
     virtual ~SourceBufferPrivateAVFObjC();
 
     void clearMediaSource() { m_mediaSource = nullptr; }
@@ -102,8 +102,7 @@ public:
     void trackDidChangeEnabled(AudioTrackPrivateMediaSourceAVFObjC*);
 
     void willSeek();
-    void seekToTime(MediaTime);
-    MediaTime fastSeekTimeForMediaTime(MediaTime, MediaTime negativeThreshold, MediaTime positiveThreshold);
+    MediaTime fastSeekTimeForMediaTime(const MediaTime&, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold);
     FloatSize naturalSize();
 
     int protectedTrackID() const { return m_protectedTrackID; }
@@ -188,7 +187,7 @@ private:
     Vector<Ref<SharedBuffer>> m_keyIDs;
 #endif
 
-    std::optional<FloatSize> m_cachedSize;
+    Optional<FloatSize> m_cachedSize;
     FloatSize m_currentSize;
     bool m_parsingSucceeded { true };
     bool m_parserStateWasReset { false };

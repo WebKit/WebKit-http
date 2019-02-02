@@ -107,11 +107,6 @@ enum ShouldApplyRootOffsetToFragments {
     IgnoreRootOffsetForFragments
 };
 
-enum LayerScrollCoordinationRole {
-    ViewportConstrained = 1 << 0,
-    Scrolling           = 1 << 1
-};
-
 enum class RequestState {
     Unknown,
     DontCare,
@@ -413,7 +408,7 @@ public:
     void scrollToXPosition(int x, ScrollClamping = ScrollClamping::Clamped);
     void scrollToYPosition(int y, ScrollClamping = ScrollClamping::Clamped);
 
-    void setPostLayoutScrollPosition(std::optional<ScrollPosition>);
+    void setPostLayoutScrollPosition(Optional<ScrollPosition>);
     void applyPostLayoutScrollPositionIfNeeded();
 
     ScrollOffset scrollOffset() const { return scrollOffsetFromPosition(m_scrollPosition); }
@@ -1243,7 +1238,7 @@ private:
     IntSize m_layerSize;
 
     ScrollPosition m_scrollPosition;
-    std::optional<ScrollPosition> m_postLayoutScrollPosition;
+    Optional<ScrollPosition> m_postLayoutScrollPosition;
 
     // The width/height of our scrolled area.
     IntSize m_scrollSize;

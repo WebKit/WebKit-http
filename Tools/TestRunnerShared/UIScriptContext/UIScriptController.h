@@ -156,8 +156,8 @@ public:
     double minimumZoomScale() const;
     double maximumZoomScale() const;
     
-    std::optional<bool> stableStateOverride() const;
-    void setStableStateOverride(std::optional<bool>);
+    Optional<bool> stableStateOverride() const;
+    void setStableStateOverride(Optional<bool>);
 
     JSObjectRef contentVisibleRect() const;
     
@@ -228,7 +228,7 @@ private:
 
     UIScriptContext* m_context;
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     bool m_capsLockOn { false };
 #endif
 };

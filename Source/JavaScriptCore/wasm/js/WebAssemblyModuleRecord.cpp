@@ -269,8 +269,8 @@ void WebAssemblyModuleRecord::link(ExecState* exec, JSValue, JSObject* importObj
             if (actualInitial < expectedInitial)
                 return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "Table import", "provided an 'initial' that is too small")));
 
-            if (std::optional<uint32_t> expectedMaximum = moduleInformation.tableInformation.maximum()) {
-                std::optional<uint32_t> actualMaximum = table->maximum();
+            if (Optional<uint32_t> expectedMaximum = moduleInformation.tableInformation.maximum()) {
+                Optional<uint32_t> actualMaximum = table->maximum();
                 if (!actualMaximum)
                     return exception(createJSWebAssemblyLinkError(exec, vm, importFailMessage(import, "Table import", "does not have a 'maximum' but the module requires that it does")));
                 if (*actualMaximum > *expectedMaximum)
@@ -412,7 +412,7 @@ void WebAssemblyModuleRecord::link(ExecState* exec, JSValue, JSObject* importObj
 
     bool hasStart = !!moduleInformation.startFunctionIndexSpace;
     if (hasStart) {
-        auto startFunctionIndexSpace = moduleInformation.startFunctionIndexSpace.value_or(0);
+        auto startFunctionIndexSpace = moduleInformation.startFunctionIndexSpace.valueOr(0);
         Wasm::SignatureIndex signatureIndex = module->signatureIndexFromFunctionIndexSpace(startFunctionIndexSpace);
         const Wasm::Signature& signature = Wasm::SignatureInformation::get(signatureIndex);
         // The start function must not take any arguments or return anything. This is enforced by the parser.
@@ -449,7 +449,7 @@ JSValue WebAssemblyModuleRecord::evaluate(ExecState* exec)
 
     const Vector<Wasm::Segment::Ptr>& data = moduleInformation.data;
     
-    std::optional<JSValue> exception;
+    Optional<JSValue> exception;
 
     auto forEachElement = [&] (auto fn) {
         for (const Wasm::Element& element : moduleInformation.elements) {

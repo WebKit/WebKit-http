@@ -78,7 +78,7 @@ public:
     static void clearMediaCache(const String&, WallTime modifiedSince);
     static void clearMediaCacheForOrigins(const String&, const HashSet<RefPtr<SecurityOrigin>>&);
 
-    void setAsset(RetainPtr<id>);
+    void setAsset(RetainPtr<id>&&);
     void tracksChanged() override;
 
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
@@ -106,14 +106,14 @@ public:
     void playbackBufferEmptyDidChange(bool);
     void playbackBufferFullWillChange();
     void playbackBufferFullDidChange(bool);
-    void loadedTimeRangesDidChange(RetainPtr<NSArray>);
-    void seekableTimeRangesDidChange(RetainPtr<NSArray>);
-    void tracksDidChange(RetainPtr<NSArray>);
+    void loadedTimeRangesDidChange(RetainPtr<NSArray>&&);
+    void seekableTimeRangesDidChange(RetainPtr<NSArray>&&);
+    void tracksDidChange(const RetainPtr<NSArray>&);
     void hasEnabledAudioDidChange(bool);
     void presentationSizeDidChange(FloatSize);
     void durationDidChange(const MediaTime&);
     void rateDidChange(double);
-    void metadataDidArrive(RetainPtr<NSArray>, const MediaTime&);
+    void metadataDidArrive(const RetainPtr<NSArray>&, const MediaTime&);
     void firstFrameAvailableDidChange(bool);
     void trackEnabledDidChange(bool);
     void canPlayFastReverseDidChange(bool);
@@ -232,7 +232,7 @@ private:
     void updateVideoLayerGravity() override;
 
     bool didPassCORSAccessCheck() const override;
-    std::optional<bool> wouldTaintOrigin(const SecurityOrigin&) const final;
+    Optional<bool> wouldTaintOrigin(const SecurityOrigin&) const final;
 
 
     MediaTime getStartDate() const override;
@@ -324,7 +324,7 @@ private:
 
     void setShouldDisableSleep(bool) override;
 
-    std::optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() final;
+    Optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() final;
 
 #if !RELEASE_LOG_DISABLED
     const char* logClassName() const final { return "MediaPlayerPrivateAVFoundationObjC"; }
@@ -428,7 +428,7 @@ private:
     bool m_cachedCanPlayFastForward;
     bool m_cachedCanPlayFastReverse;
     bool m_muted { false };
-    mutable std::optional<bool> m_tracksArePlayable;
+    mutable Optional<bool> m_tracksArePlayable;
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     mutable bool m_allowsWirelessVideoPlayback;
     bool m_shouldPlayToPlaybackTarget { false };

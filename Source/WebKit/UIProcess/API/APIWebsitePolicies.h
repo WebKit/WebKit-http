@@ -50,6 +50,9 @@ public:
 
     bool contentBlockersEnabled() const { return m_contentBlockersEnabled; }
     void setContentBlockersEnabled(bool enabled) { m_contentBlockersEnabled = enabled; }
+
+    bool deviceOrientationEventEnabled() const { return m_deviceOrientationEventEnabled; }
+    void setDeviceOrientationEventEnabled(bool enabled) { m_deviceOrientationEventEnabled = enabled; }
     
     OptionSet<WebKit::WebsiteAutoplayQuirk> allowedAutoplayQuirks() const { return m_allowedAutoplayQuirks; }
     void setAllowedAutoplayQuirks(OptionSet<WebKit::WebsiteAutoplayQuirk> quirks) { m_allowedAutoplayQuirks = quirks; }
@@ -71,17 +74,22 @@ public:
 
     void setCustomUserAgent(const WTF::String& customUserAgent) { m_customUserAgent = customUserAgent; }
     const WTF::String& customUserAgent() const { return m_customUserAgent; }
+    
+    void setCustomNavigatorPlatform(const WTF::String& customNavigatorPlatform) { m_customNavigatorPlatform = customNavigatorPlatform; }
+    const WTF::String& customNavigatorPlatform() const { return m_customNavigatorPlatform; }
 
 private:
     WebsitePolicies(bool contentBlockersEnabled, OptionSet<WebKit::WebsiteAutoplayQuirk>, WebKit::WebsiteAutoplayPolicy, Vector<WebCore::HTTPHeaderField>&&, WebKit::WebsitePopUpPolicy, RefPtr<WebsiteDataStore>&&);
 
     bool m_contentBlockersEnabled { true };
+    bool m_deviceOrientationEventEnabled { true };
     OptionSet<WebKit::WebsiteAutoplayQuirk> m_allowedAutoplayQuirks;
     WebKit::WebsiteAutoplayPolicy m_autoplayPolicy { WebKit::WebsiteAutoplayPolicy::Default };
     Vector<WebCore::HTTPHeaderField> m_customHeaderFields;
     WebKit::WebsitePopUpPolicy m_popUpPolicy { WebKit::WebsitePopUpPolicy::Default };
     RefPtr<WebsiteDataStore> m_websiteDataStore;
     WTF::String m_customUserAgent;
+    WTF::String m_customNavigatorPlatform;
 };
 
 } // namespace API

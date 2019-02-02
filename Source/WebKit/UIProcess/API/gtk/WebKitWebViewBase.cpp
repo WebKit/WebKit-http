@@ -460,6 +460,8 @@ static void webkitWebViewBaseContainerRemove(GtkContainer* container, GtkWidget*
         priv->inspectorViewSize = 0;
     } else if (priv->dialog == widget) {
         priv->dialog = nullptr;
+        if (gtk_widget_get_visible(widgetContainer))
+            gtk_widget_grab_focus(widgetContainer);
     } else {
         ASSERT(priv->children.contains(widget));
         priv->children.remove(widget);
@@ -808,12 +810,12 @@ static gboolean webkitWebViewBaseButtonReleaseEvent(GtkWidget* widget, GdkEventB
     return GDK_EVENT_STOP;
 }
 
-static void webkitWebViewBaseHandleWheelEvent(WebKitWebViewBase* webViewBase, GdkEvent* event, std::optional<WebWheelEvent::Phase> phase = std::nullopt, std::optional<WebWheelEvent::Phase> momentum = std::nullopt)
+static void webkitWebViewBaseHandleWheelEvent(WebKitWebViewBase* webViewBase, GdkEvent* event, Optional<WebWheelEvent::Phase> phase = WTF::nullopt, Optional<WebWheelEvent::Phase> momentum = WTF::nullopt)
 {
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
     ASSERT(!priv->dialog);
     if (phase)
-        priv->pageProxy->handleWheelEvent(NativeWebWheelEvent(event, phase.value(), momentum.value_or(WebWheelEvent::Phase::PhaseNone)));
+        priv->pageProxy->handleWheelEvent(NativeWebWheelEvent(event, phase.value(), momentum.valueOr(WebWheelEvent::Phase::PhaseNone)));
     else
         priv->pageProxy->handleWheelEvent(NativeWebWheelEvent(event));
 }

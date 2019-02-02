@@ -113,7 +113,7 @@ using CueInterval = CueIntervalTree::IntervalType;
 using CueList = Vector<CueInterval>;
 #endif
 
-using MediaProvider = std::optional<Variant<
+using MediaProvider = Optional<Variant<
 #if ENABLE(MEDIA_STREAM)
     RefPtr<MediaStream>,
 #endif
@@ -412,7 +412,7 @@ public:
     void setShouldPlayToPlaybackTarget(bool) override;
 #endif
     bool isPlayingToWirelessPlaybackTarget() const override { return m_isPlayingToWirelessTarget; };
-    bool webkitCurrentPlaybackTargetIsWireless() const { return m_isPlayingToWirelessTarget; }
+    bool webkitCurrentPlaybackTargetIsWireless() const;
 
     void setPlayingOnSecondScreen(bool value);
     bool isPlayingOnSecondScreen() const override { return m_playingOnSecondScreen; }
@@ -553,7 +553,7 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     void mediaStreamCaptureStarted() { resumeAutoplaying(); }
-    bool hasMediaStreamSrcObject() const { return !!m_mediaStreamSrcObject; }
+    bool hasMediaStreamSrcObject() const { return m_mediaProvider && WTF::holds_alternative<RefPtr<MediaStream>>(*m_mediaProvider); }
 #endif
 
     bool supportsSeeking() const override;
@@ -571,7 +571,7 @@ public:
     WEBCORE_EXPORT void didBecomeFullscreenElement() override;
     WEBCORE_EXPORT void willExitFullscreen();
 
-    enum class PlaybackWithoutUserGesture { None, Started, Prevented };
+    enum class AutoplayEventPlaybackState { None, PreventedAutoplay, StartedWithUserGesture, StartedWithoutUserGesture };
 
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
@@ -822,7 +822,7 @@ private:
     void dispatchPlayPauseEventsIfNeedsQuirks();
     SuccessOr<MediaPlaybackDenialReason> canTransitionFromAutoplayToPlay() const;
 
-    void setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture);
+    void setAutoplayEventPlaybackState(AutoplayEventPlaybackState);
     void userDidInterfereWithAutoplay();
     void handleAutoplayEvent(AutoplayEvent);
 
@@ -1110,20 +1110,18 @@ private:
 
     bool m_isScrubbingRemotely : 1;
     bool m_waitingToEnterFullscreen : 1;
-    bool m_shouldUnpauseInternalOnResume : 1;
 
 #if ENABLE(VIDEO_TRACK)
     bool m_tracksAreReady : 1;
     bool m_haveVisibleTextTrack : 1;
     bool m_processingPreferenceChange : 1;
 
-    PlaybackWithoutUserGesture m_playbackWithoutUserGesture { PlaybackWithoutUserGesture::None };
-    std::optional<MediaTime> m_playbackWithoutUserGestureStartedTime;
+    AutoplayEventPlaybackState m_autoplayEventPlaybackState { AutoplayEventPlaybackState::None };
 
     String m_subtitleTrackLanguage;
     MediaTime m_lastTextTrackUpdateTime { -1, 1 };
 
-    std::optional<CaptionUserPreferences::CaptionDisplayMode> m_captionDisplayMode;
+    Optional<CaptionUserPreferences::CaptionDisplayMode> m_captionDisplayMode;
 
     RefPtr<AudioTrackList> m_audioTracks;
     RefPtr<TextTrackList> m_textTracks;
@@ -1197,15 +1195,15 @@ private:
     bool m_playingOnSecondScreen { false };
 };
 
-String convertEnumerationToString(HTMLMediaElement::PlaybackWithoutUserGesture);
+String convertEnumerationToString(HTMLMediaElement::AutoplayEventPlaybackState);
 
 } // namespace WebCore
 
 namespace WTF {
 
 template <>
-struct LogArgument<WebCore::HTMLMediaElement::PlaybackWithoutUserGesture> {
-    static String toString(const WebCore::HTMLMediaElement::PlaybackWithoutUserGesture reason)
+struct LogArgument<WebCore::HTMLMediaElement::AutoplayEventPlaybackState> {
+    static String toString(const WebCore::HTMLMediaElement::AutoplayEventPlaybackState reason)
     {
         return convertEnumerationToString(reason);
     }

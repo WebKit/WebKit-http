@@ -199,7 +199,7 @@ std::unique_ptr<Page> createPageForSanitizingWebContent()
     return page;
 }
 
-String sanitizeMarkup(const String& rawHTML, MSOListQuirks msoListQuirks, std::optional<WTF::Function<void(DocumentFragment&)>> fragmentSanitizer)
+String sanitizeMarkup(const String& rawHTML, MSOListQuirks msoListQuirks, Optional<WTF::Function<void(DocumentFragment&)>> fragmentSanitizer)
 {
     auto page = createPageForSanitizingWebContent();
     Document* stagingDocument = page->mainFrame().document();
@@ -764,9 +764,9 @@ static RefPtr<EditingStyle> styleFromMatchedRulesAndInlineDecl(Node& node)
         return nullptr;
 
     auto& element = downcast<HTMLElement>(node);
-    RefPtr<EditingStyle> style = EditingStyle::create(element.inlineStyle());
+    auto style = EditingStyle::create(element.inlineStyle());
     style->mergeStyleFromRules(element);
-    return style;
+    return WTFMove(style);
 }
 
 static bool isElementPresentational(const Node* node)
@@ -816,18 +816,6 @@ static Node* highestAncestorToWrapMarkup(const Position& start, const Position& 
         specialCommonAncestor = enclosingAnchor;
 
     return specialCommonAncestor;
-}
-
-static RefPtr<Node> commonShadowIncludingAncestor(const Position& a, const Position& b)
-{
-    TreeScope* commonScope = commonTreeScope(a.containerNode(), b.containerNode());
-    if (!commonScope)
-        return nullptr;
-    auto* nodeA = commonScope->ancestorNodeInThisScope(a.containerNode());
-    ASSERT(nodeA);
-    auto* nodeB = commonScope->ancestorNodeInThisScope(b.containerNode());
-    ASSERT(nodeB);
-    return Range::commonAncestorContainer(nodeA, nodeB);
 }
 
 static String serializePreservingVisualAppearanceInternal(const Position& start, const Position& end, Vector<Node*>* nodes, ResolveURLs urlsToResolve, SerializeComposedTree serializeComposedTree,
@@ -1223,8 +1211,8 @@ RefPtr<DocumentFragment> createFragmentForTransformToFragment(Document& outputDo
         // Based on the documentation I can find, it looks like we want to start parsing the fragment in the InBody insertion mode.
         // Unfortunately, that's an implementation detail of the parser.
         // We achieve that effect here by passing in a fake body element as context for the fragment.
-        RefPtr<HTMLBodyElement> fakeBody = HTMLBodyElement::create(outputDoc);
-        fragment->parseHTML(sourceString, fakeBody.get());
+        auto fakeBody = HTMLBodyElement::create(outputDoc);
+        fragment->parseHTML(sourceString, fakeBody.ptr());
     } else if (sourceMIMEType == "text/plain")
         fragment->parserAppendChild(Text::create(outputDoc, sourceString));
     else {

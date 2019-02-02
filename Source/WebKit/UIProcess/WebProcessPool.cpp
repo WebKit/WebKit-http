@@ -476,7 +476,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     NetworkProcessCreationParameters parameters;
 
     if (m_websiteDataStore) {
-        parameters.defaultSessionPendingCookies = copyToVector(m_websiteDataStore->websiteDataStore().pendingCookies());
+        parameters.defaultDataStoreParameters.pendingCookies = copyToVector(m_websiteDataStore->websiteDataStore().pendingCookies());
         m_websiteDataStore->websiteDataStore().clearPendingCookies();
     }
 
@@ -510,12 +510,11 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
         SandboxExtension::createHandle(parentBundleDirectory, SandboxExtension::Type::ReadOnly, parameters.parentBundleDirectoryExtensionHandle);
 
 #if ENABLE(INDEXED_DATABASE)
-    SandboxExtension::createHandleForTemporaryFile(emptyString(), SandboxExtension::Type::ReadWrite, parameters.indexedDatabaseTempBlobDirectoryExtensionHandle);
+    SandboxExtension::createHandleForTemporaryFile(emptyString(), SandboxExtension::Type::ReadWrite, parameters.defaultDataStoreParameters.indexedDatabaseTempBlobDirectoryExtensionHandle);
 #endif
 #endif
 
     parameters.shouldUseTestingNetworkSession = m_shouldUseTestingNetworkSession;
-    parameters.presentingApplicationPID = m_configuration->presentingApplicationPID();
 
     parameters.urlSchemesRegisteredAsSecure = copyToVector(m_schemesToRegisterAsSecure);
     parameters.urlSchemesRegisteredAsBypassingContentSecurityPolicy = copyToVector(m_schemesToRegisterAsBypassingContentSecurityPolicy);
@@ -529,11 +528,11 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     // *********
     // IMPORTANT: Do not change the directory structure for indexed databases on disk without first consulting a reviewer from Apple (<rdar://problem/17454712>)
     // *********
-    parameters.indexedDatabaseDirectory = m_configuration->indexedDBDatabaseDirectory();
-    if (parameters.indexedDatabaseDirectory.isEmpty())
-        parameters.indexedDatabaseDirectory = API::WebsiteDataStore::defaultDataStore()->websiteDataStore().parameters().indexedDatabaseDirectory;
+    parameters.defaultDataStoreParameters.indexedDatabaseDirectory = m_configuration->indexedDBDatabaseDirectory();
+    if (parameters.defaultDataStoreParameters.indexedDatabaseDirectory.isEmpty())
+        parameters.defaultDataStoreParameters.indexedDatabaseDirectory = API::WebsiteDataStore::defaultDataStore()->websiteDataStore().parameters().indexedDatabaseDirectory;
     
-    SandboxExtension::createHandleForReadWriteDirectory(parameters.indexedDatabaseDirectory, parameters.indexedDatabaseDirectoryExtensionHandle);
+    SandboxExtension::createHandleForReadWriteDirectory(parameters.defaultDataStoreParameters.indexedDatabaseDirectory, parameters.defaultDataStoreParameters.indexedDatabaseDirectoryExtensionHandle);
 #endif
 
 #if ENABLE(SERVICE_WORKER)
@@ -618,7 +617,7 @@ void WebProcessPool::getNetworkProcessConnection(WebProcessProxy& webProcessProx
 }
 
 #if ENABLE(SERVICE_WORKER)
-void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy& proxy, SecurityOriginData&& securityOrigin, std::optional<PAL::SessionID> sessionID)
+void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy& proxy, SecurityOriginData&& securityOrigin, Optional<PAL::SessionID> sessionID)
 {
     ASSERT_UNUSED(proxy, &proxy == m_networkProcess.get());
 
@@ -1713,7 +1712,7 @@ void WebProcessPool::getStatistics(uint32_t statisticsMask, Function<void (API::
         return;
     }
 
-    RefPtr<StatisticsRequest> request = StatisticsRequest::create(DictionaryCallback::create(WTFMove(callbackFunction)));
+    auto request = StatisticsRequest::create(DictionaryCallback::create(WTFMove(callbackFunction)));
 
     if (statisticsMask & StatisticsRequestTypeWebContent)
         requestWebContentStatistics(request.get());
@@ -1722,20 +1721,20 @@ void WebProcessPool::getStatistics(uint32_t statisticsMask, Function<void (API::
         requestNetworkingStatistics(request.get());
 }
 
-void WebProcessPool::requestWebContentStatistics(StatisticsRequest* request)
+void WebProcessPool::requestWebContentStatistics(StatisticsRequest& request)
 {
     // FIXME (Multi-WebProcess) <rdar://problem/13200059>: Make getting statistics from multiple WebProcesses work.
 }
 
-void WebProcessPool::requestNetworkingStatistics(StatisticsRequest* request)
+void WebProcessPool::requestNetworkingStatistics(StatisticsRequest& request)
 {
     if (!m_networkProcess) {
         LOG_ERROR("Attempt to get NetworkProcess statistics but the NetworkProcess is unavailable");
         return;
     }
 
-    uint64_t requestID = request->addOutstandingRequest();
-    m_statisticsRequests.set(requestID, request);
+    uint64_t requestID = request.addOutstandingRequest();
+    m_statisticsRequests.set(requestID, &request);
     m_networkProcess->send(Messages::NetworkProcess::GetNetworkProcessStatistics(requestID), 0);
 }
 
@@ -2173,25 +2172,18 @@ void WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API:
     if (navigation.hasOpenedFrames())
         return completionHandler(page.process(), nullptr, "Browsing context has opened other windows"_s);
 
-    if (auto* backForwardListItem = navigation.targetItem()) {
-        if (auto* suspendedPage = backForwardListItem->suspendedPage()) {
+    if (auto* targetItem = navigation.targetItem()) {
+        if (auto* suspendedPage = targetItem->suspendedPage()) {
             return suspendedPage->waitUntilReadyToUnsuspend([createNewProcess = WTFMove(createNewProcess), completionHandler = WTFMove(completionHandler)](SuspendedPageProxy* suspendedPage) mutable {
                 if (!suspendedPage)
-                    return completionHandler(createNewProcess(), nullptr, "Using new process because target back/forward item's process failed to suspend"_s);
+                    return completionHandler(createNewProcess(), nullptr, "Using new process because target back/forward item's suspended page is not reusable"_s);
                 Ref<WebProcessProxy> process = suspendedPage->process();
-                completionHandler(WTFMove(process), suspendedPage, "Using target back/forward item's process"_s);
+                completionHandler(WTFMove(process), suspendedPage, "Using target back/forward item's process and suspended page"_s);
             });
         }
 
-        // If the target back/forward item and the current back/forward item originated
-        // in the same WebProcess then we should reuse the current WebProcess.
-        if (auto* fromItem = navigation.fromItem()) {
-            auto uiProcessIdentifier = Process::identifier();
-            // In case of session restore, the item's process identifier is the UIProcess' identifier, in which case we do not want to do this check
-            // or we'd never swap after a session restore.
-            if (fromItem->itemID().processIdentifier == backForwardListItem->itemID().processIdentifier && backForwardListItem->itemID().processIdentifier != uiProcessIdentifier)
-                return completionHandler(page.process(), nullptr, "Source and target back/forward item originated in the same process"_s);
-        }
+        if (auto* process = WebProcessProxy::processForIdentifier(targetItem->itemID().processIdentifier))
+            return completionHandler(*process, nullptr, "Using target back/forward item's process"_s);
     }
 
     if (navigation.treatAsSameOriginNavigation())
@@ -2257,6 +2249,9 @@ void WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API:
 
 void WebProcessPool::addSuspendedPage(std::unique_ptr<SuspendedPageProxy>&& suspendedPage)
 {
+    if (!m_maxSuspendedPageCount)
+        return;
+
     if (m_suspendedPages.size() >= m_maxSuspendedPageCount)
         m_suspendedPages.removeFirst();
 
@@ -2356,6 +2351,11 @@ void WebProcessPool::tryPrewarmWithDomainInformation(WebProcessProxy& process, c
     if (!prewarmInformation)
         return;
     process.send(Messages::WebProcess::PrewarmWithDomainInformation(*prewarmInformation), 0);
+}
+
+void WebProcessPool::clearCurrentModifierStateForTesting()
+{
+    sendToAllProcesses(Messages::WebProcess::ClearCurrentModifierStateForTesting());
 }
 
 } // namespace WebKit

@@ -903,10 +903,8 @@ JSArray* ownPropertyKeys(ExecState* exec, JSObject* object, PropertyNameMode pro
     if (isObjectKeys) {
         if (LIKELY(!globalObject->isHavingABadTime())) {
             if (auto* immutableButterfly = object->structure(vm)->cachedOwnKeys()) {
-                if (immutableButterfly != vm.sentinelImmutableButterfly.get()) {
-                    Structure* arrayStructure = globalObject->originalArrayStructureForIndexingType(immutableButterfly->indexingMode());
-                    return JSArray::createWithButterfly(vm, nullptr, arrayStructure, immutableButterfly->toButterfly());
-                }
+                Structure* arrayStructure = globalObject->originalArrayStructureForIndexingType(immutableButterfly->indexingMode());
+                return JSArray::createWithButterfly(vm, nullptr, arrayStructure, immutableButterfly->toButterfly());
             }
         }
     }
@@ -936,9 +934,8 @@ JSArray* ownPropertyKeys(ExecState* exec, JSObject* object, PropertyNameMode pro
                 if (isObjectKeys) {
                     Structure* structure = object->structure(vm);
                     if (structure->canCacheOwnKeys()) {
-                        auto* cachedButterfly = structure->cachedOwnKeys();
-                        if (cachedButterfly == vm.sentinelImmutableButterfly.get()) {
-                            // Cache the immutable butterfly!
+                        auto* cachedButterfly = structure->cachedOwnKeysIgnoringSentinel();
+                        if (cachedButterfly == StructureRareData::cachedOwnKeysSentinel()) {
                             size_t numProperties = properties.size();
                             auto* newButterfly = JSImmutableButterfly::create(vm, CopyOnWriteArrayWithContiguous, numProperties);
                             for (size_t i = 0; i < numProperties; i++) {
@@ -953,7 +950,7 @@ JSArray* ownPropertyKeys(ExecState* exec, JSObject* object, PropertyNameMode pro
                         }
 
                         if (cachedButterfly == nullptr)
-                            structure->setCachedOwnKeys(vm, jsCast<JSImmutableButterfly*>(vm.sentinelImmutableButterfly.get()));
+                            structure->setCachedOwnKeys(vm, StructureRareData::cachedOwnKeysSentinel());
                     }
                 }
 

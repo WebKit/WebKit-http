@@ -55,7 +55,6 @@
 #import "WebNSAttributedStringExtras.h"
 #import "markup.h"
 #import <AppKit/AppKit.h>
-#import <pal/system/Sound.h>
 #import <wtf/cocoa/NSURLExtras.h>
 
 namespace WebCore {
@@ -96,27 +95,6 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, OptionSet<PasteOption> 
         pasteAsFragment(fragment.releaseNonNull(), canSmartReplaceWithPasteboard(*pasteboard), false, options.contains(PasteOption::IgnoreMailBlockquote) ? MailBlockquoteHandling::IgnoreBlockquote : MailBlockquoteHandling::RespectBlockquote );
 
     client()->setInsertionPasteboard(String());
-}
-
-bool Editor::canCopyExcludingStandaloneImages()
-{
-    const VisibleSelection& selection = m_frame.selection().selection();
-    return selection.isRange() && !selection.isInPasswordField();
-}
-
-void Editor::takeFindStringFromSelection()
-{
-    if (!canCopyExcludingStandaloneImages()) {
-        PAL::systemBeep();
-        return;
-    }
-
-    Vector<String> types;
-    types.append(String(legacyStringPasteboardType()));
-    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-    platformStrategies()->pasteboardStrategy()->setTypes(types, NSFindPboard);
-    platformStrategies()->pasteboardStrategy()->setStringForType(m_frame.displayStringModifiedByEncoding(selectedTextForDataTransfer()), legacyStringPasteboardType(), NSFindPboard);
-    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 void Editor::readSelectionFromPasteboard(const String& pasteboardName)
@@ -160,8 +138,8 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
         return;
 
     Ref<Frame> protector(m_frame);
-    RefPtr<Range> range = Range::create(node->document(), Position(node, Position::PositionIsBeforeAnchor), Position(node, Position::PositionIsAfterAnchor));
-    m_frame.selection().setSelection(VisibleSelection(*range), FrameSelection::DoNotSetFocus);
+    auto range = Range::create(node->document(), Position(node, Position::PositionIsBeforeAnchor), Position(node, Position::PositionIsAfterAnchor));
+    m_frame.selection().setSelection(VisibleSelection(range.get()), FrameSelection::DoNotSetFocus);
 
     Pasteboard pasteboard(pasteboardName);
 
@@ -176,9 +154,9 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
     ALLOW_DEPRECATED_DECLARATIONS_END
 
     bool chosePlainText;
-    if (RefPtr<DocumentFragment> fragment = webContentFromPasteboard(pasteboard, *range, true, chosePlainText)) {
+    if (RefPtr<DocumentFragment> fragment = webContentFromPasteboard(pasteboard, range.get(), true, chosePlainText)) {
         maybeCopyNodeAttributesToFragment(*node, *fragment);
-        if (shouldInsertFragment(*fragment, range.get(), EditorInsertAction::Pasted))
+        if (shouldInsertFragment(*fragment, range.ptr(), EditorInsertAction::Pasted))
             pasteAsFragment(fragment.releaseNonNull(), canSmartReplaceWithPasteboard(pasteboard), false, MailBlockquoteHandling::IgnoreBlockquote);
     }
 
@@ -187,7 +165,7 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
 
 RefPtr<SharedBuffer> Editor::imageInWebArchiveFormat(Element& imageElement)
 {
-    RefPtr<LegacyWebArchive> archive = LegacyWebArchive::create(imageElement);
+    auto archive = LegacyWebArchive::create(imageElement);
     if (!archive)
         return nullptr;
     return SharedBuffer::create(archive->rawDataRepresentation().get());

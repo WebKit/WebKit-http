@@ -720,8 +720,8 @@ void MediaPlayerPrivateGStreamerMSE::trackDetected(RefPtr<AppendPipeline> append
     GST_DEBUG("track ID: %s, caps: %" GST_PTR_FORMAT, newTrack->id().string().latin1().data(), caps);
 
     if (doCapsHaveType(caps, GST_VIDEO_CAPS_TYPE_PREFIX)) {
-        std::optional<FloatSize> size = getVideoResolutionFromCaps(caps);
-        if (size.has_value())
+        Optional<FloatSize> size = getVideoResolutionFromCaps(caps);
+        if (size.hasValue())
             m_videoSize = size.value();
     }
 

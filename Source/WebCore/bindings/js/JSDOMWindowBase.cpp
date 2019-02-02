@@ -209,8 +209,8 @@ void JSDOMWindowBase::queueTaskToEventLoop(JSGlobalObject& object, Ref<JSC::Micr
 {
     JSDOMWindowBase& thisObject = static_cast<JSDOMWindowBase&>(object);
 
-    RefPtr<JSMicrotaskCallback> callback = JSMicrotaskCallback::create(thisObject, WTFMove(task));
-    auto microtask = std::make_unique<ActiveDOMCallbackMicrotask>(MicrotaskQueue::mainThreadQueue(), *thisObject.scriptExecutionContext(), [callback]() mutable {
+    auto callback = JSMicrotaskCallback::create(thisObject, WTFMove(task));
+    auto microtask = std::make_unique<ActiveDOMCallbackMicrotask>(MicrotaskQueue::mainThreadQueue(), *thisObject.scriptExecutionContext(), [callback = WTFMove(callback)]() mutable {
         callback->call();
     });
 
@@ -312,11 +312,14 @@ JSC::Identifier JSDOMWindowBase::moduleLoaderResolve(JSC::JSGlobalObject* global
 
 JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderFetch(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSModuleLoader* moduleLoader, JSC::JSValue moduleKey, JSC::JSValue parameters, JSC::JSValue scriptFetcher)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
     if (RefPtr<Document> document = thisObject->wrapped().document())
-        return document->moduleLoader()->fetch(globalObject, exec, moduleLoader, moduleKey, parameters, scriptFetcher);
-    JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::create(exec, globalObject);
-    return deferred->reject(exec, jsUndefined());
+        RELEASE_AND_RETURN(scope, document->moduleLoader()->fetch(globalObject, exec, moduleLoader, moduleKey, parameters, scriptFetcher));
+    JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::tryCreate(exec, globalObject);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    RELEASE_AND_RETURN(scope, deferred->reject(exec, jsUndefined()));
 }
 
 JSC::JSValue JSDOMWindowBase::moduleLoaderEvaluate(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSModuleLoader* moduleLoader, JSC::JSValue moduleKey, JSC::JSValue moduleRecord, JSC::JSValue scriptFetcher)
@@ -329,11 +332,14 @@ JSC::JSValue JSDOMWindowBase::moduleLoaderEvaluate(JSC::JSGlobalObject* globalOb
 
 JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderImportModule(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSModuleLoader* moduleLoader, JSC::JSString* moduleName, JSC::JSValue parameters, const JSC::SourceOrigin& sourceOrigin)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
     if (RefPtr<Document> document = thisObject->wrapped().document())
-        return document->moduleLoader()->importModule(globalObject, exec, moduleLoader, moduleName, parameters, sourceOrigin);
-    JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::create(exec, globalObject);
-    return deferred->reject(exec, jsUndefined());
+        RELEASE_AND_RETURN(scope, document->moduleLoader()->importModule(globalObject, exec, moduleLoader, moduleName, parameters, sourceOrigin));
+    JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::tryCreate(exec, globalObject);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    RELEASE_AND_RETURN(scope, deferred->reject(exec, jsUndefined()));
 }
 
 JSC::JSObject* JSDOMWindowBase::moduleLoaderCreateImportMetaProperties(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSModuleLoader* moduleLoader, JSC::JSValue moduleKey, JSC::JSModuleRecord* moduleRecord, JSC::JSValue scriptFetcher)
@@ -345,12 +351,12 @@ JSC::JSObject* JSDOMWindowBase::moduleLoaderCreateImportMetaProperties(JSC::JSGl
 }
 
 #if ENABLE(WEBASSEMBLY)
-static std::optional<Vector<uint8_t>> tryAllocate(JSC::ExecState* exec, JSC::JSPromiseDeferred* promise, const char* data, size_t byteSize)
+static Optional<Vector<uint8_t>> tryAllocate(JSC::ExecState* exec, JSC::JSPromiseDeferred* promise, const char* data, size_t byteSize)
 {
     Vector<uint8_t> arrayBuffer;
     if (!arrayBuffer.tryReserveCapacity(byteSize)) {
         promise->reject(exec, createOutOfMemoryError(exec));
-        return std::nullopt;
+        return WTF::nullopt;
     }
 
     arrayBuffer.grow(byteSize);

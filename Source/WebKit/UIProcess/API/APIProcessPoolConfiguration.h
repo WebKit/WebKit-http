@@ -61,7 +61,7 @@ public:
 
     bool isAutomaticProcessWarmingEnabled() const
     {
-        return m_isAutomaticProcessWarmingEnabledByClient.value_or(m_clientWouldBenefitFromAutomaticProcessPrewarming);
+        return m_isAutomaticProcessWarmingEnabledByClient.valueOr(m_clientWouldBenefitFromAutomaticProcessPrewarming);
     }
 
     bool wasAutomaticProcessWarmingSetByClient() const { return !!m_isAutomaticProcessWarmingEnabledByClient; }
@@ -95,6 +95,9 @@ public:
 
     const WTF::String& localStorageDirectory() const { return m_localStorageDirectory; }
     void setLocalStorageDirectory(const WTF::String& localStorageDirectory) { m_localStorageDirectory = localStorageDirectory; }
+
+    const WTF::String& deviceIdHashSaltsStorageDirectory() const { return m_deviceIdHashSaltsStorageDirectory; }
+    void setDeviceIdHashSaltsStorageDirectory(const WTF::String& directory) { m_deviceIdHashSaltsStorageDirectory = directory; }
 
     const WTF::String& webSQLDatabaseDirectory() const { return m_webSQLDatabaseDirectory; }
     void setWebSQLDatabaseDirectory(const WTF::String& webSQLDatabaseDirectory) { m_webSQLDatabaseDirectory = webSQLDatabaseDirectory; }
@@ -157,7 +160,7 @@ public:
 
     bool processSwapsOnNavigation() const
     {
-        return m_processSwapsOnNavigationFromClient.value_or(m_processSwapsOnNavigationFromExperimentalFeatures);
+        return m_processSwapsOnNavigationFromClient.valueOr(m_processSwapsOnNavigationFromExperimentalFeatures);
     }
     void setProcessSwapsOnNavigation(bool swaps) { m_processSwapsOnNavigationFromClient = swaps; }
     void setProcessSwapsOnNavigationFromExperimentalFeatures(bool swaps) { m_processSwapsOnNavigationFromExperimentalFeatures = swaps; }
@@ -195,6 +198,7 @@ private:
     WTF::String m_indexedDBDatabaseDirectory;
     WTF::String m_injectedBundlePath;
     WTF::String m_localStorageDirectory;
+    WTF::String m_deviceIdHashSaltsStorageDirectory;
     WTF::String m_webSQLDatabaseDirectory;
     WTF::String m_mediaKeysStorageDirectory;
     WTF::String m_resourceLoadStatisticsDirectory;
@@ -212,11 +216,11 @@ private:
     bool m_shouldCaptureVideoInUIProcess { false };
     bool m_shouldCaptureDisplayInUIProcess { DEFAULT_CAPTURE_DISPLAY_IN_UI_PROCESS };
     ProcessID m_presentingApplicationPID { getCurrentProcessID() };
-    std::optional<bool> m_processSwapsOnNavigationFromClient;
+    Optional<bool> m_processSwapsOnNavigationFromClient;
     bool m_processSwapsOnNavigationFromExperimentalFeatures { false };
     bool m_alwaysKeepAndReuseSwappedProcesses { false };
     bool m_processSwapsOnWindowOpenWithOpener { false };
-    std::optional<bool> m_isAutomaticProcessWarmingEnabledByClient;
+    Optional<bool> m_isAutomaticProcessWarmingEnabledByClient;
     bool m_clientWouldBenefitFromAutomaticProcessPrewarming { false };
     WTF::String m_customWebContentServiceBundleIdentifier;
     bool m_isJITEnabled { true };

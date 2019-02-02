@@ -46,9 +46,9 @@ enum class UserGestureType { EscapeKey, Other };
 
 class UserGestureToken : public RefCounted<UserGestureToken> {
 public:
-    static RefPtr<UserGestureToken> create(ProcessingUserGestureState state, UserGestureType gestureType)
+    static Ref<UserGestureToken> create(ProcessingUserGestureState state, UserGestureType gestureType)
     {
-        return adoptRef(new UserGestureToken(state, gestureType));
+        return adoptRef(*new UserGestureToken(state, gestureType));
     }
 
     WEBCORE_EXPORT ~UserGestureToken();
@@ -85,7 +85,7 @@ public:
 
     // If a document is provided, its last known user gesture timestamp is updated.
     enum class ProcessInteractionStyle { Immediate, Delayed };
-    WEBCORE_EXPORT explicit UserGestureIndicator(std::optional<ProcessingUserGestureState>, Document* = nullptr, UserGestureType = UserGestureType::Other, ProcessInteractionStyle = ProcessInteractionStyle::Immediate);
+    WEBCORE_EXPORT explicit UserGestureIndicator(Optional<ProcessingUserGestureState>, Document* = nullptr, UserGestureType = UserGestureType::Other, ProcessInteractionStyle = ProcessInteractionStyle::Immediate);
     WEBCORE_EXPORT explicit UserGestureIndicator(RefPtr<UserGestureToken>);
     WEBCORE_EXPORT ~UserGestureIndicator();
 

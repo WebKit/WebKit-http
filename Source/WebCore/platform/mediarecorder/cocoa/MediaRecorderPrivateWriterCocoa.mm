@@ -31,6 +31,7 @@
 #include "AudioStreamDescription.h"
 #include "FileSystem.h"
 #include "Logging.h"
+#include "MediaStreamTrackPrivate.h"
 #include "WebAudioBufferList.h"
 #include <AVFoundation/AVAssetWriter.h>
 #include <AVFoundation/AVAssetWriterInput.h>
@@ -86,6 +87,41 @@ namespace WebCore {
 
 using namespace PAL;
 
+RefPtr<MediaRecorderPrivateWriter> MediaRecorderPrivateWriter::create(const MediaStreamTrackPrivate* audioTrack, const MediaStreamTrackPrivate* videoTrack)
+{
+    NSString *directory = FileSystem::createTemporaryDirectory(@"videos");
+    NSString *filename = [NSString stringWithFormat:@"/%lld.mp4", CMClockGetTime(CMClockGetHostTimeClock()).value];
+    NSString *path = [directory stringByAppendingString:filename];
+
+    NSURL *outputURL = [NSURL fileURLWithPath:path];
+    String filePath = [path UTF8String];
+    NSError *error = nil;
+    auto avAssetWriter = adoptNS([allocAVAssetWriterInstance() initWithURL:outputURL fileType:AVFileTypeMPEG4 error:&error]);
+    if (error) {
+        RELEASE_LOG_ERROR(MediaStream, "create AVAssetWriter instance failed with error code %ld", (long)error.code);
+        return nullptr;
+    }
+
+    auto writer = adoptRef(*new MediaRecorderPrivateWriter(WTFMove(avAssetWriter), WTFMove(filePath)));
+
+    if (audioTrack && !writer->setAudioInput())
+        return nullptr;
+
+    if (videoTrack) {
+        auto& settings = videoTrack->settings();
+        if (!writer->setVideoInput(settings.width(), settings.height()))
+            return nullptr;
+    }
+
+    return WTFMove(writer);
+}
+
+MediaRecorderPrivateWriter::MediaRecorderPrivateWriter(RetainPtr<AVAssetWriter>&& avAssetWriter, String&& filePath)
+    : m_writer(WTFMove(avAssetWriter))
+    , m_path(WTFMove(filePath))
+{
+}
+
 MediaRecorderPrivateWriter::~MediaRecorderPrivateWriter()
 {
     clear();
@@ -103,26 +139,6 @@ void MediaRecorderPrivateWriter::clear()
     }
     if (m_writer)
         m_writer.clear();
-}
-
-bool MediaRecorderPrivateWriter::setupWriter()
-{
-    ASSERT(!m_writer);
-    
-    NSString *directory = FileSystem::createTemporaryDirectory(@"videos");
-    NSString *filename = [NSString stringWithFormat:@"/%lld.mp4", CMClockGetTime(CMClockGetHostTimeClock()).value];
-    NSString *path = [directory stringByAppendingString:filename];
-
-    NSURL *outputURL = [NSURL fileURLWithPath:path];
-    m_path = [path UTF8String];
-    NSError *error = nil;
-    m_writer = adoptNS([allocAVAssetWriterInstance() initWithURL:outputURL fileType:AVFileTypeMPEG4 error:&error]);
-    if (error) {
-        RELEASE_LOG_ERROR(MediaStream, "create AVAssetWriter instance failed with error code %ld", (long)error.code);
-        m_writer = nullptr;
-        return false;
-    }
-    return true;
 }
 
 bool MediaRecorderPrivateWriter::setVideoInput(int width, int height)
@@ -180,7 +196,7 @@ bool MediaRecorderPrivateWriter::setAudioInput()
     return true;
 }
 
-static inline CMSampleBufferRef copySampleBufferWithCurrentTimeStamp(CMSampleBufferRef originalBuffer)
+static inline RetainPtr<CMSampleBufferRef> copySampleBufferWithCurrentTimeStamp(CMSampleBufferRef originalBuffer)
 {
     CMTime startTime = CMClockGetTime(CMClockGetHostTimeClock());
     CMItemCount count = 0;
@@ -194,9 +210,11 @@ static inline CMSampleBufferRef copySampleBufferWithCurrentTimeStamp(CMSampleBuf
         timeInfo[i].presentationTimeStamp = startTime;
     }
     
-    CMSampleBufferRef newBuffer;
-    CMSampleBufferCreateCopyWithNewTiming(kCFAllocatorDefault, originalBuffer, count, timeInfo.data(), &newBuffer);
-    return newBuffer;
+    CMSampleBufferRef newBuffer = nullptr;
+    auto error = CMSampleBufferCreateCopyWithNewTiming(kCFAllocatorDefault, originalBuffer, count, timeInfo.data(), &newBuffer);
+    if (error)
+        return nullptr;
+    return adoptCF(newBuffer);
 }
 
 void MediaRecorderPrivateWriter::appendVideoSampleBuffer(CMSampleBufferRef sampleBuffer)
@@ -233,9 +251,32 @@ void MediaRecorderPrivateWriter::appendVideoSampleBuffer(CMSampleBufferRef sampl
         }];
         return;
     }
-    CMSampleBufferRef bufferWithCurrentTime = copySampleBufferWithCurrentTimeStamp(sampleBuffer);
+    auto bufferWithCurrentTime = copySampleBufferWithCurrentTimeStamp(sampleBuffer);
+    if (!bufferWithCurrentTime)
+        return;
+
     auto locker = holdLock(m_videoLock);
-    m_videoBufferPool.append(retainPtr(bufferWithCurrentTime));
+    m_videoBufferPool.append(WTFMove(bufferWithCurrentTime));
+}
+
+static inline RetainPtr<CMFormatDescriptionRef> createAudioFormatDescription(const AudioStreamDescription& description)
+{
+    auto basicDescription = WTF::get<const AudioStreamBasicDescription*>(description.platformDescription().description);
+    CMFormatDescriptionRef format = nullptr;
+    auto error = CMAudioFormatDescriptionCreate(kCFAllocatorDefault, basicDescription, 0, NULL, 0, NULL, NULL, &format);
+    if (error)
+        return nullptr;
+    return adoptCF(format);
+}
+
+static inline RetainPtr<CMSampleBufferRef> createAudioSampleBufferWithPacketDescriptions(CMFormatDescriptionRef format, size_t sampleCount)
+{
+    CMTime startTime = CMClockGetTime(CMClockGetHostTimeClock());
+    CMSampleBufferRef sampleBuffer = nullptr;
+    auto error = CMAudioSampleBufferCreateWithPacketDescriptions(kCFAllocatorDefault, NULL, false, NULL, NULL, format, sampleCount, startTime, NULL, &sampleBuffer);
+    if (error)
+        return nullptr;
+    return adoptCF(sampleBuffer);
 }
 
 void MediaRecorderPrivateWriter::appendAudioSampleBuffer(const PlatformAudioData& data, const AudioStreamDescription& description, const WTF::MediaTime&, size_t sampleCount)
@@ -243,11 +284,9 @@ void MediaRecorderPrivateWriter::appendAudioSampleBuffer(const PlatformAudioData
     ASSERT(m_audioInput);
     if ((!m_hasStartedWriting && m_videoInput) || m_isStopped)
         return;
-    CMSampleBufferRef sampleBuffer;
-    CMFormatDescriptionRef format;
-    OSStatus error;
-    auto& basicDescription = *WTF::get<const AudioStreamBasicDescription*>(description.platformDescription().description);
-    error = CMAudioFormatDescriptionCreate(kCFAllocatorDefault, &basicDescription, 0, NULL, 0, NULL, NULL, &format);
+    auto format = createAudioFormatDescription(description);
+    if (!format)
+        return;
     if (m_isFirstAudioSample) {
         if (!m_videoInput) {
             // audio-only recording.
@@ -260,7 +299,7 @@ void MediaRecorderPrivateWriter::appendAudioSampleBuffer(const PlatformAudioData
         }
         m_isFirstAudioSample = false;
         RefPtr<MediaRecorderPrivateWriter> protectedThis = this;
-        [m_audioInput requestMediaDataWhenReadyOnQueue:m_audioPullQueue usingBlock:[this, protectedThis] {
+        [m_audioInput requestMediaDataWhenReadyOnQueue:m_audioPullQueue usingBlock:[this, protectedThis = WTFMove(protectedThis)] {
             do {
                 if (![m_audioInput isReadyForMoreMediaData])
                     break;
@@ -277,17 +316,16 @@ void MediaRecorderPrivateWriter::appendAudioSampleBuffer(const PlatformAudioData
             }
         }];
     }
-    CMTime startTime = CMClockGetTime(CMClockGetHostTimeClock());
 
-    error = CMAudioSampleBufferCreateWithPacketDescriptions(kCFAllocatorDefault, NULL, false, NULL, NULL, format, sampleCount, startTime, NULL, &sampleBuffer);
-    if (error)
+    auto sampleBuffer = createAudioSampleBufferWithPacketDescriptions(format.get(), sampleCount);
+    if (!sampleBuffer)
         return;
-    error = CMSampleBufferSetDataBufferFromAudioBufferList(sampleBuffer, kCFAllocatorDefault, kCFAllocatorDefault, 0, downcast<WebAudioBufferList>(data).list());
+    auto error = CMSampleBufferSetDataBufferFromAudioBufferList(sampleBuffer.get(), kCFAllocatorDefault, kCFAllocatorDefault, 0, downcast<WebAudioBufferList>(data).list());
     if (error)
         return;
 
     auto locker = holdLock(m_audioLock);
-    m_audioBufferPool.append(retainPtr(sampleBuffer));
+    m_audioBufferPool.append(WTFMove(sampleBuffer));
 }
 
 void MediaRecorderPrivateWriter::stopRecording()

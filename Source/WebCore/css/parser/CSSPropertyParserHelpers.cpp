@@ -77,7 +77,6 @@ CSSParserTokenRange consumeFunction(CSSParserTokenRange& range)
 
 // FIXME: consider pulling in the parsing logic from CSSCalculationValue.cpp.
 class CalcParser {
-
 public:
     explicit CalcParser(CSSParserTokenRange& range, CalculationCategory destinationCategory, ValueRange valueRange = ValueRangeAll)
         : m_sourceRange(range)
@@ -139,6 +138,10 @@ RefPtr<CSSPrimitiveValue> consumeInteger(CSSParserTokenRange& range, double mini
             return nullptr;
         return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), CSSPrimitiveValue::UnitType::CSS_NUMBER);
     }
+
+    if (token.type() != FunctionToken)
+        return nullptr;
+
     CalcParser calcParser(range, CalculationCategory::Number);
     if (const CSSCalcValue* calculation = calcParser.value()) {
         if (calculation->category() != CalculationCategory::Number || !calculation->isInt())
@@ -148,6 +151,7 @@ RefPtr<CSSPrimitiveValue> consumeInteger(CSSParserTokenRange& range, double mini
             return nullptr;
         return calcParser.consumeNumber();
     }
+
     return nullptr;
 }
 
@@ -165,16 +169,25 @@ bool consumePositiveIntegerRaw(CSSParserTokenRange& range, int& result)
         result = range.consumeIncludingWhitespace().numericValue();
         return true;
     }
+
+    if (token.type() != FunctionToken)
+        return false;
+
     CalcParser calcParser(range, CalculationCategory::Number);
     return calcParser.consumePositiveIntegerRaw(result);
 }
     
 bool consumeNumberRaw(CSSParserTokenRange& range, double& result)
 {
-    if (range.peek().type() == NumberToken) {
+    const CSSParserToken& token = range.peek();
+    if (token.type() == NumberToken) {
         result = range.consumeIncludingWhitespace().numericValue();
         return true;
     }
+
+    if (token.type() != FunctionToken)
+        return false;
+
     CalcParser calcParser(range, CalculationCategory::Number, ValueRangeAll);
     return calcParser.consumeNumberRaw(result);
 }
@@ -188,6 +201,10 @@ RefPtr<CSSPrimitiveValue> consumeNumber(CSSParserTokenRange& range, ValueRange v
             return nullptr;
         return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), token.unitType());
     }
+
+    if (token.type() != FunctionToken)
+        return nullptr;
+
     CalcParser calcParser(range, CalculationCategory::Number, ValueRangeAll);
     if (const CSSCalcValue* calculation = calcParser.value()) {
         // FIXME: Calcs should not be subject to parse time range checks.
@@ -196,6 +213,7 @@ RefPtr<CSSPrimitiveValue> consumeNumber(CSSParserTokenRange& range, ValueRange v
             return nullptr;
         return calcParser.consumeNumber();
     }
+
     return nullptr;
 }
 
@@ -216,6 +234,9 @@ RefPtr<CSSPrimitiveValue> consumeFontWeightNumber(CSSParserTokenRange& range)
 #endif
     )
         return consumeNumber(range, ValueRangeAll);
+
+    if (token.type() != FunctionToken)
+        return nullptr;
 
     // "[For calc()], the used value resulting from an expression must be clamped to the range allowed in the target context."
     CalcParser calcParser(range, CalculationCategory::Number, ValueRangeAll);
@@ -280,9 +301,14 @@ RefPtr<CSSPrimitiveValue> consumeLength(CSSParserTokenRange& range, CSSParserMod
         CSSPrimitiveValue::UnitType unitType = CSSPrimitiveValue::UnitType::CSS_PX;
         return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), unitType);
     }
+
+    if (token.type() != FunctionToken)
+        return nullptr;
+
     CalcParser calcParser(range, CalculationCategory::Length, valueRange);
     if (calcParser.value() && calcParser.value()->category() == CalculationCategory::Length)
         return calcParser.consumeValue();
+
     return nullptr;
 }
 
@@ -294,6 +320,10 @@ RefPtr<CSSPrimitiveValue> consumePercent(CSSParserTokenRange& range, ValueRange 
             return nullptr;
         return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), CSSPrimitiveValue::UnitType::CSS_PERCENTAGE);
     }
+
+    if (token.type() != FunctionToken)
+        return nullptr;
+
     CalcParser calcParser(range, CalculationCategory::Percent, valueRange);
     if (const CSSCalcValue* calculation = calcParser.value()) {
         if (calculation->category() == CalculationCategory::Percent)
@@ -323,6 +353,10 @@ RefPtr<CSSPrimitiveValue> consumeLengthOrPercent(CSSParserTokenRange& range, CSS
         return consumeLength(range, cssParserMode, valueRange, unitless);
     if (token.type() == PercentageToken)
         return consumePercent(range, valueRange);
+
+    if (token.type() != FunctionToken)
+        return nullptr;
+
     CalcParser calcParser(range, CalculationCategory::Length, valueRange);
     if (const CSSCalcValue* calculation = calcParser.value()) {
         if (canConsumeCalcValue(calculation->category(), cssParserMode))
@@ -345,9 +379,12 @@ RefPtr<CSSPrimitiveValue> consumeAngle(CSSParserTokenRange& range, CSSParserMode
             return nullptr;
         }
     }
-    if (token.type() == NumberToken && shouldAcceptUnitlessValue(token.numericValue(), cssParserMode, unitless)) {
+
+    if (token.type() == NumberToken && shouldAcceptUnitlessValue(token.numericValue(), cssParserMode, unitless))
         return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), CSSPrimitiveValue::UnitType::CSS_DEG);
-    }
+
+    if (token.type() != FunctionToken)
+        return nullptr;
 
     CalcParser calcParser(range, CalculationCategory::Angle, ValueRangeAll);
     if (const CSSCalcValue* calculation = calcParser.value()) {
@@ -373,17 +410,26 @@ static RefPtr<CSSPrimitiveValue> consumeAngleOrPercent(CSSParserTokenRange& rang
     }
     if (token.type() == NumberToken && shouldAcceptUnitlessValue(token.numericValue(), cssParserMode, unitless))
         return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), CSSPrimitiveValue::UnitType::CSS_DEG);
+
     if (token.type() == PercentageToken)
         return consumePercent(range, valueRange);
 
-    CalcParser calcParser(range, CalculationCategory::Angle, valueRange);
-    if (const CSSCalcValue* calculation = calcParser.value()) {
+     if (token.type() != FunctionToken)
+         return nullptr;
+
+    CalcParser angleCalcParser(range, CalculationCategory::Angle, valueRange);
+    if (const CSSCalcValue* calculation = angleCalcParser.value()) {
         if (calculation->category() == CalculationCategory::Angle)
-            return calcParser.consumeValue();
+            return angleCalcParser.consumeValue();
+    }
+
+    CalcParser percentCalcParser(range, CalculationCategory::Percent, valueRange);
+    if (const CSSCalcValue* calculation = percentCalcParser.value()) {
+        if (calculation->category() == CalculationCategory::Percent)
+            return percentCalcParser.consumeValue();
     }
     return nullptr;
 }
-
 
 RefPtr<CSSPrimitiveValue> consumeTime(CSSParserTokenRange& range, CSSParserMode cssParserMode, ValueRange valueRange, UnitlessQuirk unitless)
 {
@@ -399,6 +445,10 @@ RefPtr<CSSPrimitiveValue> consumeTime(CSSParserTokenRange& range, CSSParserMode 
             return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), unit);
         return nullptr;
     }
+
+    if (token.type() != FunctionToken)
+        return nullptr;
+
     CalcParser calcParser(range, CalculationCategory::Time, valueRange);
     if (const CSSCalcValue* calculation = calcParser.value()) {
         if (calculation->category() == CalculationCategory::Time)
@@ -483,46 +533,76 @@ RefPtr<CSSPrimitiveValue> consumeUrl(CSSParserTokenRange& range)
 static int clampRGBComponent(const CSSPrimitiveValue& value)
 {
     double result = value.doubleValue();
-    // FIXME: Multiply by 2.55 and round instead of floor.
     if (value.isPercentage())
-        result *= 2.56;
-    return clampTo<int>(result, 0, 255);
+        result = result / 100.0 * 255.0;
+
+    return clampTo<int>(round(result), 0, 255);
 }
 
-static Color parseRGBParameters(CSSParserTokenRange& range, bool parseAlpha)
+static Color parseRGBParameters(CSSParserTokenRange& range)
 {
     ASSERT(range.peek().functionId() == CSSValueRgb || range.peek().functionId() == CSSValueRgba);
     Color result;
     CSSParserTokenRange args = consumeFunction(range);
-    RefPtr<CSSPrimitiveValue> colorParameter = consumeInteger(args);
+    RefPtr<CSSPrimitiveValue> colorParameter = consumeNumber(args, ValueRangeAll);
     if (!colorParameter)
         colorParameter = consumePercent(args, ValueRangeAll);
     if (!colorParameter)
         return Color();
+
     const bool isPercent = colorParameter->isPercentage();
+
+    enum class ColorSyntax {
+        Commas,
+        WhitespaceSlash,
+    };
+
+    ColorSyntax syntax = ColorSyntax::Commas;
+    auto consumeSeparator = [&] {
+        if (syntax == ColorSyntax::Commas)
+            return consumeCommaIncludingWhitespace(args);
+        
+        return true;
+    };
+
     int colorArray[3];
     colorArray[0] = clampRGBComponent(*colorParameter);
     for (int i = 1; i < 3; i++) {
-        if (!consumeCommaIncludingWhitespace(args))
+        if (i == 1)
+            syntax = consumeCommaIncludingWhitespace(args) ? ColorSyntax::Commas : ColorSyntax::WhitespaceSlash;
+        else if (!consumeSeparator())
             return Color();
-        colorParameter = isPercent ? consumePercent(args, ValueRangeAll) : consumeInteger(args);
+
+        colorParameter = isPercent ? consumePercent(args, ValueRangeAll) : consumeNumber(args, ValueRangeAll);
         if (!colorParameter)
             return Color();
         colorArray[i] = clampRGBComponent(*colorParameter);
     }
-    if (parseAlpha) {
-        if (!consumeCommaIncludingWhitespace(args))
-            return Color();
+
+    // Historically, alpha was only parsed for rgba(), but css-color-4 specifies that rgba() is a simple alias for rgb().
+    auto consumeAlphaSeparator = [&] {
+        if (syntax == ColorSyntax::Commas)
+            return consumeCommaIncludingWhitespace(args);
+        
+        return consumeSlashIncludingWhitespace(args);
+    };
+
+    int alphaComponent = 255;
+    if (consumeAlphaSeparator()) {
         double alpha;
-        if (!consumeNumberRaw(args, alpha))
-            return Color();
+        if (!consumeNumberRaw(args, alpha)) {
+            auto alphaPercent = consumePercent(args, ValueRangeAll);
+            if (!alphaPercent)
+                return Color();
+            alpha = alphaPercent->doubleValue() / 100.0;
+        }
+
         // Convert the floating pointer number of alpha to an integer in the range [0, 256),
         // with an equal distribution across all 256 values.
-        int alphaComponent = static_cast<int>(clampTo<double>(alpha, 0.0, 1.0) * nextafter(256.0, 0.0));
-        result = Color(makeRGBA(colorArray[0], colorArray[1], colorArray[2], alphaComponent));
-    } else {
-        result = Color(makeRGB(colorArray[0], colorArray[1], colorArray[2]));
-    }
+        alphaComponent = static_cast<int>(clampTo<double>(alpha, 0.0, 1.0) * nextafter(256.0, 0.0));
+    };
+
+    result = Color(makeRGBA(colorArray[0], colorArray[1], colorArray[2], alphaComponent));
 
     if (!args.atEnd())
         return Color();
@@ -669,7 +749,7 @@ static Color parseColorFunction(CSSParserTokenRange& range, CSSParserMode cssPar
     switch (functionId) {
     case CSSValueRgb:
     case CSSValueRgba:
-        color = parseRGBParameters(colorRange, functionId == CSSValueRgba);
+        color = parseRGBParameters(colorRange);
         break;
     case CSSValueHsl:
     case CSSValueHsla:
@@ -681,7 +761,8 @@ static Color parseColorFunction(CSSParserTokenRange& range, CSSParserMode cssPar
     default:
         return Color();
     }
-    range = colorRange;
+    if (color.isValid())
+        range = colorRange;
     return color;
 }
 
@@ -966,7 +1047,7 @@ static bool consumeGradientColorStops(CSSParserTokenRange& range, CSSParserMode 
 {
     bool supportsColorHints = gradient.gradientType() == CSSLinearGradient || gradient.gradientType() == CSSRadialGradient || gradient.gradientType() == CSSConicGradient;
     
-    bool isAngularGradient = gradient.gradientType() == CSSConicGradient;
+    bool isConicGradient = gradient.gradientType() == CSSConicGradient;
 
     // The first color stop cannot be a color hint.
     bool previousStopWasColorHint = true;
@@ -982,7 +1063,7 @@ static bool consumeGradientColorStops(CSSParserTokenRange& range, CSSParserMode 
         // FIXME-NEWPARSER: This boolean could be removed. Null checking color would be sufficient.
         stop.isMidpoint = !stop.m_color;
 
-        if (isAngularGradient)
+        if (isConicGradient)
             stop.m_position = consumeAngleOrPercent(range, cssParserMode, ValueRangeAll, UnitlessQuirk::Forbid);
         else
             stop.m_position = consumeLengthOrPercent(range, cssParserMode, ValueRangeAll);
@@ -993,7 +1074,7 @@ static bool consumeGradientColorStops(CSSParserTokenRange& range, CSSParserMode 
         
         // See if there is a second color hint, which is optional.
         CSSGradientColorStop secondStop;
-        if (isAngularGradient)
+        if (isConicGradient)
             secondStop.m_position = consumeAngleOrPercent(range, cssParserMode, ValueRangeAll, UnitlessQuirk::Forbid);
         else
             secondStop.m_position = consumeLengthOrPercent(range, cssParserMode, ValueRangeAll);

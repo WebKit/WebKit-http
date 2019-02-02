@@ -246,10 +246,10 @@ static bool outputMismatchingBlockBoxInformationIfNeeded(TextStream& stream, con
         auto borderBox = displayBox.borderBox();
 
         return Display::Box::Rect {
-            borderBox.top() - displayBox.nonCollapsedMarginTop(),
-            borderBox.left() - displayBox.nonComputedMarginLeft(),
-            displayBox.nonComputedMarginLeft() + borderBox.width() + displayBox.nonComputedMarginRight(),
-            displayBox.nonCollapsedMarginTop() + borderBox.height() + displayBox.nonCollapsedMarginBottom()
+            borderBox.top() - displayBox.nonCollapsedMarginBefore(),
+            borderBox.left() - displayBox.computedMarginStart().valueOr(0),
+            displayBox.computedMarginStart().valueOr(0) + borderBox.width() + displayBox.computedMarginEnd().valueOr(0),
+            displayBox.nonCollapsedMarginBefore() + borderBox.height() + displayBox.nonCollapsedMarginAfter()
         };
     };
 

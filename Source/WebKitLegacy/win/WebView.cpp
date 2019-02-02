@@ -229,7 +229,6 @@ SOFT_LINK_OPTIONAL(Uxtheme, EndPanningFeedback, BOOL, WINAPI, (HWND, BOOL));
 SOFT_LINK_OPTIONAL(Uxtheme, UpdatePanningFeedback, BOOL, WINAPI, (HWND, LONG, LONG, BOOL));
 
 using namespace WebCore;
-using namespace std;
 using JSC::JSLock;
 
 static String webKitVersionString();
@@ -355,7 +354,7 @@ HRESULT PreferencesChangedOrRemovedObserver::notifyPreferencesChanged(WebCacheMo
         hr = WebPreferences::sharedStandardPreferences()->cacheModel(&sharedPreferencesCacheModel);
         if (FAILED(hr))
             return hr;
-        WebView::setCacheModel(max(sharedPreferencesCacheModel, WebView::maxCacheModelInAnyInstance()));
+        WebView::setCacheModel(std::max(sharedPreferencesCacheModel, WebView::maxCacheModelInAnyInstance()));
     }
 
     return hr;
@@ -370,7 +369,7 @@ HRESULT PreferencesChangedOrRemovedObserver::notifyPreferencesRemoved(WebCacheMo
         hr = WebPreferences::sharedStandardPreferences()->cacheModel(&sharedPreferencesCacheModel);
         if (FAILED(hr))
             return hr;
-        WebView::setCacheModel(max(sharedPreferencesCacheModel, WebView::maxCacheModelInAnyInstance()));
+        WebView::setCacheModel(std::max(sharedPreferencesCacheModel, WebView::maxCacheModelInAnyInstance()));
     }
 
     return hr;
@@ -643,7 +642,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
 
         // This code is here to avoid a PLT regression. We can remove it if we
         // can prove that the overall system gain would justify the regression.
-        cacheMaxDeadCapacity = max(24u, cacheMaxDeadCapacity);
+        cacheMaxDeadCapacity = std::max(24u, cacheMaxDeadCapacity);
 
         deadDecodedDataDeletionInterval = 60_s;
 
@@ -685,7 +684,7 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
 
 #if USE(CFURLCONNECTION)
     // Don't shrink a big disk cache, since that would cause churn.
-    cacheDiskCapacity = max(cacheDiskCapacity, CFURLCacheDiskCapacity(cfurlCache.get()));
+    cacheDiskCapacity = std::max(cacheDiskCapacity, CFURLCacheDiskCapacity(cfurlCache.get()));
 
     CFURLCacheSetMemoryCapacity(cfurlCache.get(), cacheMemoryCapacity);
     CFURLCacheSetDiskCapacity(cfurlCache.get(), cacheDiskCapacity);
@@ -721,7 +720,7 @@ WebCacheModel WebView::maxCacheModelInAnyInstance()
         if (FAILED(pref->cacheModel(&prefCacheModel)))
             continue;
 
-        cacheModel = max(cacheModel, prefCacheModel);
+        cacheModel = std::max(cacheModel, prefCacheModel);
     }
 
     return cacheModel;
@@ -6913,8 +6912,6 @@ HRESULT WebView::addUserScriptToGroup(_In_ BSTR groupName, _In_opt_ IWebScriptWo
         return E_FAIL;
 
     auto viewGroup = WebViewGroup::getOrCreate(group, String());
-    if (!viewGroup)
-        return E_FAIL;
 
     if (!iWorld)
         return E_POINTER;
@@ -6942,8 +6939,6 @@ HRESULT WebView::addUserStyleSheetToGroup(_In_ BSTR groupName, _In_opt_ IWebScri
         return E_FAIL;
 
     auto viewGroup = WebViewGroup::getOrCreate(group, String());
-    if (!viewGroup)
-        return E_FAIL;
 
     if (!iWorld)
         return E_POINTER;

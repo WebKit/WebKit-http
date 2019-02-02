@@ -26,17 +26,22 @@
 #include "config.h"
 #include "NetworkSessionCurl.h"
 
+#include "NetworkProcess.h"
 #include "NetworkSessionCreationParameters.h"
+#include "WebCookieManager.h"
+#include <WebCore/CookieJarDB.h>
 #include <WebCore/CurlContext.h>
 #include <WebCore/NetworkStorageSession.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+
+using namespace WebCore;
 
 NetworkSessionCurl::NetworkSessionCurl(NetworkSessionCreationParameters&& parameters)
     : NetworkSession(parameters.sessionID)
 {
+    if (!parameters.cookiePersistentStorageFile.isEmpty())
+        networkStorageSession().setCookieDatabase(makeUniqueRef<CookieJarDB>(parameters.cookiePersistentStorageFile));
     networkStorageSession().setProxySettings(WTFMove(parameters.proxySettings));
 }
 

@@ -35,9 +35,9 @@
 #include <WebCore/ResourceResponse.h>
 #include <wtf/text/CString.h>
 
-using namespace WebCore;
-
 namespace IPC {
+
+using namespace WebCore;
 
 void ArgumentCoder<ResourceRequest>::encodePlatformData(Encoder& encoder, const ResourceRequest& resourceRequest)
 {
@@ -190,22 +190,22 @@ void ArgumentCoder<CurlProxySettings>::encode(Encoder& encoder, const CurlProxyS
     encoder << settings.ignoreHosts();
 }
 
-std::optional<CurlProxySettings> ArgumentCoder<CurlProxySettings>::decode(Decoder& decoder)
+Optional<CurlProxySettings> ArgumentCoder<CurlProxySettings>::decode(Decoder& decoder)
 {
     CurlProxySettings::Mode mode;
     if (!decoder.decode(mode))
-        return std::nullopt;
+        return WTF::nullopt;
 
     if (mode != CurlProxySettings::Mode::Custom)
         return CurlProxySettings { mode };
 
     URL url;
     if (!decoder.decode(url))
-        return std::nullopt;
+        return WTF::nullopt;
 
     String ignoreHosts;
     if (!decoder.decode(ignoreHosts))
-        return std::nullopt;
+        return WTF::nullopt;
 
     return CurlProxySettings { WTFMove(url), WTFMove(ignoreHosts) };
 }

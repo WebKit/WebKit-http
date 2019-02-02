@@ -58,9 +58,7 @@ function installDependenciesWithApt {
         automake \
         autopoint \
         autotools-dev \
-        bison \
         cmake \
-        flex \
         g++ \
         gawk \
         gcc \
@@ -119,6 +117,7 @@ function installDependenciesWithApt {
         libopus-dev \
         liborc-0.4-dev \
         libproxy-dev \
+        libpsl-dev \
         libpulse-dev \
         libsrtp0-dev \
         libtheora-dev \
@@ -147,11 +146,9 @@ function installDependenciesWithPacman {
         alsa-lib \
         autoconf \
         automake \
-        bison \
         cmake \
         file \
         findutils \
-        flex \
         gawk \
         gcc \
         gnutls \
@@ -210,6 +207,7 @@ function installDependenciesWithPacman {
         git \
         gsettings-desktop-schemas \
         libproxy \
+        libpsl \
         libpulse \
         libsrtp \
         libtheora \
@@ -246,9 +244,7 @@ function installDependenciesWithDnf {
         autoconf \
         automake \
         alsa-lib-devel \
-        bison \
         cmake \
-        flex \
         gcc-c++ \
         gnutls-devel \
         gperf \
@@ -301,6 +297,7 @@ function installDependenciesWithDnf {
         gsettings-desktop-schemas-devel \
         libmount-devel \
         libproxy-devel \
+        libpsl-devel \
         libsrtp-devel \
         libtheora-devel \
         libv4l-devel \

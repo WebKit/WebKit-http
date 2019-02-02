@@ -1,3 +1,397 @@
+2019-01-04  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Baseline version of get_by_id may corrupt metadata
+        https://bugs.webkit.org/show_bug.cgi?id=193085
+        <rdar://problem/23453006>
+
+        Reviewed by Saam Barati.
+
+        * stress/get-by-id-change-mode.js: Added.
+        (forEach):
+
+2019-01-02  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Optimize Object.prototype.toString
+        https://bugs.webkit.org/show_bug.cgi?id=193031
+
+        Reviewed by Saam Barati.
+
+        * stress/object-tostring-changed-proto.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-tostring-changed.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-tostring-misc.js: Added.
+        (shouldBe):
+        (test):
+        (i.switch):
+        * stress/object-tostring-other.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-tostring-untyped.js: Added.
+        (shouldBe):
+        (test):
+        (i.switch):
+
+2019-01-03  Ross Kirsling  <ross.kirsling@sony.com>
+
+        test262-runner misbehaves when test file YAML has a trailing space
+        https://bugs.webkit.org/show_bug.cgi?id=193053
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/expectations.yaml:
+        Mark two dozen tests as passing (and correct the output of another).
+
+2018-12-30  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, JSTests gardening with memoryLimited
+
+        * stress/string-overflow-createError.js:
+
+2018-12-30  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Identifier validity should be based on ID_Start / ID_Continue properties
+        https://bugs.webkit.org/show_bug.cgi?id=193050
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+        * test262/expectations.yaml:
+        Mark 16 tests as passing.
+
+2018-12-13  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [BigInt] Support BigInt in JSON.stringify
+        https://bugs.webkit.org/show_bug.cgi?id=192624
+
+        Reviewed by Saam Barati.
+
+        * stress/big-int-json-stringify-to-json.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (BigInt.prototype.toJSON):
+        (shouldBe.JSON.stringify):
+        * stress/big-int-json-stringify.js: Added.
+        (shouldBe):
+        (shouldThrow):
+
+2018-12-20  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Implement "well-formed JSON.stringify" proposal
+        https://bugs.webkit.org/show_bug.cgi?id=191677
+
+        Reviewed by Darin Adler.
+
+        * stress/json-surrogate-pair.js: Added.
+        (shouldBe):
+        * test262/expectations.yaml:
+
+2018-12-20  Keith Miller  <keith_miller@apple.com>
+
+        Add support for globalThis
+        https://bugs.webkit.org/show_bug.cgi?id=165171
+
+        Reviewed by Mark Lam.
+
+        * test262/config.yaml:
+
+2018-12-19  Keith Miller  <keith_miller@apple.com>
+
+        Update test262 configuration to not run tests dependent on ICU version.
+        https://bugs.webkit.org/show_bug.cgi?id=192920
+
+        Reviewed by Saam Barati.
+
+        * test262/expectations.yaml:
+
+2018-12-20  Mark Lam  <mark.lam@apple.com>
+
+        Fix a typo in slow_path_construct_arityCheck and operationConstructArityCheck.
+        https://bugs.webkit.org/show_bug.cgi?id=192939
+        <rdar://problem/46869516>
+
+        Reviewed by Keith Miller.
+
+        * stress/stack-overflow-frame-for-construct-arityCheck-should-use-construct-codeBlock.js: Added.
+
+2018-12-20  Tadeu Zagallo  <tzagallo@apple.com>
+
+        WTF::String and StringImpl overflow MaxLength
+        https://bugs.webkit.org/show_bug.cgi?id=192853
+        <rdar://problem/45726906>
+
+        Reviewed by Mark Lam.
+
+        * stress/string-16bit-repeat-overflow.js: Added.
+        (catch):
+
+2018-12-19  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed follow-up to r192914.
+
+        * test262/expectations.yaml:
+        Add the last 20 missing expectations.
+
+2018-12-19  Keith Miller  <keith_miller@apple.com>
+
+        Fix test262 expectations
+        https://bugs.webkit.org/show_bug.cgi?id=192914
+
+        Unreviewed, when I imported the latest round of test262 tests I must have failed to update the test expectations.
+
+        * test262/expectations.yaml:
+
+2018-12-19  Keith Miller  <keith_miller@apple.com>
+
+        Update test262 tests.
+        https://bugs.webkit.org/show_bug.cgi?id=192907
+
+        Rubber stamped by Mark Lam.
+
+        * test262/*: Omitted because prepare-changelog crashes.
+
+2018-12-19  Mark Lam  <mark.lam@apple.com>
+
+        JSPropertyNameEnumerator should cache the iterated object's structure only after getting its property names.
+        https://bugs.webkit.org/show_bug.cgi?id=192464
+        <rdar://problem/46519455>
+
+        Reviewed by Saam Barati.
+
+        This patch is about a 10% speed up on the new for-in-on-object-with-lazily-materialized-properties.js
+        microbenchmark.
+
+        * microbenchmarks/for-in-on-object-with-lazily-materialized-properties.js: Added.
+        * stress/property-name-enumerator-should-cache-structure-after-getting-property-names.js: Added.
+
+2018-12-19  Tadeu Zagallo  <tzagallo@apple.com>
+
+        String overflow in JSC::createError results in ASSERT in WTF::makeString
+        https://bugs.webkit.org/show_bug.cgi?id=192833
+        <rdar://problem/45706868>
+
+        Reviewed by Mark Lam.
+
+        * stress/string-overflow-createError.js: Added.
+
+2018-12-18  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Error message for `-x ** y` contains a typo.
+        https://bugs.webkit.org/show_bug.cgi?id=192832
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore/test/UnitTestFramework/UnitTestFramework.js:
+        (assert.assert.return.throws):
+        * stress/pow-expects-update-expression-on-lhs.js:
+        (throw.new.Error):
+        Update test expectations which match against the exact error message.
+
+2018-12-18  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: test options fix.
+        https://bugs.webkit.org/show_bug.cgi?id=192822
+
+        Unreviewed.
+
+        * stress/json-stringify-string-builder-overflow.js:
+
+2018-12-18  Mark Lam  <mark.lam@apple.com>
+
+        JSON.stringify() should throw OOM on StringBuilder overflows.
+        https://bugs.webkit.org/show_bug.cgi?id=192822
+        <rdar://problem/46670577>
+
+        Reviewed by Saam Barati.
+
+        * stress/json-stringify-string-builder-overflow.js: Added.
+
+2018-12-18  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Redeclaration of var over let/const/class should be a syntax error.
+        https://bugs.webkit.org/show_bug.cgi?id=192298
+
+        Reviewed by Keith Miller.
+
+        * test262.yaml:
+        * test262/expectations.yaml:
+        Mark 46 tests as passing.
+
+        * stress/block-scope-redeclarations.js:
+        Add some new tests.
+
+        * stress/for-in-invalidate-context-weird-assignments.js:
+        * stress/for-in-tests.js:
+        Replace tests for outdated behavior with tests for SyntaxError.
+
+        * ChakraCore/test/LetConst/defer3.baseline-jsc:
+        * ChakraCore/test/LetConst/letvar.baseline-jsc:
+        Update expectations.
+
+2018-12-18  Mark Lam  <mark.lam@apple.com>
+
+        Skip the stress/elidable-new-object-roflcopter-then-exit.js test on 32-bit.
+        https://bugs.webkit.org/show_bug.cgi?id=191374
+        <rdar://problem/46525447>
+
+        Reviewed by Yusuke Suzuki.
+
+        This test runs too slow on 32-bit, and is not relevant for non-JIT builds.
+
+        * stress/elidable-new-object-roflcopter-then-exit.js:
+
+2018-12-17  Mark Lam  <mark.lam@apple.com>
+
+        Skip the stress/materialized-regexp-has-correct-last-index-set-by-match.js test on 32-bit.
+        https://bugs.webkit.org/show_bug.cgi?id=192019
+        <rdar://problem/46525456>
+
+        Reviewed by Yusuke Suzuki.
+
+        The test runs too slow on 32-bit.
+
+        * stress/materialized-regexp-has-correct-last-index-set-by-match.js:
+
+2018-12-17  Mark Lam  <mark.lam@apple.com>
+
+        Skip the stress/materialize-regexp-cyclic-regexp.js test on 32-bit.
+        https://bugs.webkit.org/show_bug.cgi?id=191373
+        <rdar://problem/46525458>
+
+        Reviewed by Yusuke Suzuki.
+
+        The test is already slow running with a JIT on 64-bit.  It will always timeout
+        on 32-bit without a JIT.
+
+        * stress/materialize-regexp-cyclic-regexp.js:
+
+2018-12-17  Mark Lam  <mark.lam@apple.com>
+
+        Array unshift/shift should not race against the AI in the compiler thread.
+        https://bugs.webkit.org/show_bug.cgi?id=192795
+        <rdar://problem/46724263>
+
+        Reviewed by Saam Barati.
+
+        * stress/array-unshift-should-not-race-against-compiler-thread.js: Added.
+
+2018-12-16  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Optimize Object.keys by caching own keys results in StructureRareData
+        https://bugs.webkit.org/show_bug.cgi?id=190047
+
+        Reviewed by Saam Barati.
+
+        * stress/object-keys-cached-zero.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-keys-changed-attribute.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-keys-changed-index.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-keys-changed.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-keys-indexed-non-cache.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-keys-overrides-get-property-names.js: Added.
+        (shouldBe):
+        (test):
+        (noInline):
+
+2018-12-17  Mark Lam  <mark.lam@apple.com>
+
+        SamplingProfiler's isValidFramePointer() should reject address at stack origin.
+        https://bugs.webkit.org/show_bug.cgi?id=192779
+        <rdar://problem/46775869>
+
+        Reviewed by Saam Barati.
+
+        * stress/sampling-profiler-should-not-sample-beyond-stack-bounds.js: Added.
+
+2018-12-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, address a syntax error in a new test.
+
+        * stress/out-of-frame-stack-accesses-due-to-probe-based-osr-exits.js:
+
+2018-12-17  Mark Lam  <mark.lam@apple.com>
+
+        Suppress ASAN on valid stack accesses in Probe-based OSRExit::executeOSRExit().
+        https://bugs.webkit.org/show_bug.cgi?id=192776
+        <rdar://problem/46772368>
+
+        Reviewed by Keith Miller.
+
+        * stress/out-of-frame-stack-accesses-due-to-probe-based-osr-exits.js: Added.
+
+2018-12-17  Mark Lam  <mark.lam@apple.com>
+
+        Fix stale assertion in attemptToForceStringArrayModeByToStringConversion().
+        https://bugs.webkit.org/show_bug.cgi?id=192770
+        <rdar://problem/46449037>
+
+        Reviewed by Keith Miller.
+
+        * stress/force-string-arrayMode-on-originalNonArray-array-class.js: Added.
+
+2018-12-14  Mark Lam  <mark.lam@apple.com>
+
+        CallFrame::convertToStackOverflowFrame() needs to keep the top CodeBlock alive.
+        https://bugs.webkit.org/show_bug.cgi?id=192717
+        <rdar://problem/46660677>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-192717.js: Added.
+
+2018-12-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239153, r239154, and r239155.
+        https://bugs.webkit.org/show_bug.cgi?id=192715
+
+        Caused flaky GC-related crashes seen with layout tests
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[JSC] Optimize Object.keys by caching own keys results in
+        StructureRareData"
+        https://bugs.webkit.org/show_bug.cgi?id=190047
+        https://trac.webkit.org/changeset/239153
+
+        "Unreviewed, build fix after r239153"
+        https://bugs.webkit.org/show_bug.cgi?id=190047
+        https://trac.webkit.org/changeset/239154
+
+        "Unreviewed, build fix after r239153, part 2"
+        https://bugs.webkit.org/show_bug.cgi?id=190047
+        https://trac.webkit.org/changeset/239155
+
+2018-12-14  Keith Miller  <keith_miller@apple.com>
+
+        Callers of JSString::getIndex should check for OOM exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=192709
+
+        Reviewed by Mark Lam.
+
+        * stress/StringObject-define-length-getter-rope-string-oom.js: Added.
+
+2018-12-13  Mark Lam  <mark.lam@apple.com>
+
+        Add a missing exception check.
+        https://bugs.webkit.org/show_bug.cgi?id=192626
+        <rdar://problem/46662163>
+
+        Reviewed by Keith Miller.
+
+        * stress/regress-192626.js: Added.
+
 2018-12-13  Caio Lima  <ticaiolima@gmail.com>
 
         [BigInt] Add ValueDiv into DFG

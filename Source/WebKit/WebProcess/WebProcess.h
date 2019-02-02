@@ -399,6 +399,8 @@ private:
 #endif
 #endif
 
+    void clearCurrentModifierStateForTesting();
+
     RefPtr<WebConnectionToUIProcess> m_webConnection;
 
     HashMap<uint64_t, RefPtr<WebPage>> m_pageMap;
@@ -465,7 +467,7 @@ private:
     bool m_suppressMemoryPressureHandler { false };
 #if PLATFORM(MAC)
     std::unique_ptr<WebCore::CPUMonitor> m_cpuMonitor;
-    std::optional<double> m_cpuLimit;
+    Optional<double> m_cpuLimit;
 
     enum class ProcessType { Inspector, ServiceWorker, PrewarmedWebContent, WebContent };
     ProcessType m_processType { ProcessType::WebContent };

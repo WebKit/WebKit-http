@@ -103,7 +103,7 @@ void InspectorCanvas::resetRecordingData()
     m_recordingName = { };
     m_bufferLimit = 100 * 1024 * 1024;
     m_bufferUsed = 0;
-    m_frameCount = std::nullopt;
+    m_frameCount = WTF::nullopt;
     m_framesCaptured = 0;
 
     m_context.setCallTracingActive(false);
@@ -221,7 +221,7 @@ void InspectorCanvas::setFrameCount(long frameCount)
     if (frameCount > 0)
         m_frameCount = std::min<long>(frameCount, std::numeric_limits<int>::max());
     else
-        m_frameCount = std::nullopt;
+        m_frameCount = WTF::nullopt;
 }
 
 bool InspectorCanvas::overFrameCount() const
@@ -274,7 +274,7 @@ Ref<Inspector::Protocol::Canvas::Canvas> InspectorCanvas::buildObjectForCanvas(b
     }
 #if ENABLE(WEBGL)
     else if (is<WebGLRenderingContextBase>(m_context)) {
-        if (std::optional<WebGLContextAttributes> attributes = downcast<WebGLRenderingContextBase>(m_context).getContextAttributes()) {
+        if (Optional<WebGLContextAttributes> attributes = downcast<WebGLRenderingContextBase>(m_context).getContextAttributes()) {
             auto contextAttributes = Inspector::Protocol::Canvas::ContextAttributes::create()
                 .release();
             contextAttributes->setAlpha(attributes->alpha);
@@ -475,7 +475,7 @@ Ref<Inspector::Protocol::Recording::InitialState> InspectorCanvas::buildInitialS
     if (is<CanvasRenderingContext2D>(m_context)) {
         auto& context2d = downcast<CanvasRenderingContext2D>(m_context);
         for (auto& state : context2d.stateStack()) {
-            RefPtr<JSON::Object> statePayload = JSON::Object::create();
+            auto statePayload = JSON::Object::create();
 
             statePayload->setArray(stringIndexForKey("setTransform"_s), buildArrayForAffineTransform(state.transform));
             statePayload->setDouble(stringIndexForKey("globalAlpha"_s), context2d.globalAlpha());
@@ -532,8 +532,8 @@ Ref<Inspector::Protocol::Recording::InitialState> InspectorCanvas::buildInitialS
 #if ENABLE(WEBGL)
     else if (is<WebGLRenderingContextBase>(m_context)) {
         WebGLRenderingContextBase& contextWebGLBase = downcast<WebGLRenderingContextBase>(m_context);
-        if (std::optional<WebGLContextAttributes> webGLContextAttributes = contextWebGLBase.getContextAttributes()) {
-            RefPtr<JSON::Object> webGLContextAttributesPayload = JSON::Object::create();
+        if (Optional<WebGLContextAttributes> webGLContextAttributes = contextWebGLBase.getContextAttributes()) {
+            auto webGLContextAttributesPayload = JSON::Object::create();
             webGLContextAttributesPayload->setBoolean("alpha"_s, webGLContextAttributes->alpha);
             webGLContextAttributesPayload->setBoolean("depth"_s, webGLContextAttributes->depth);
             webGLContextAttributesPayload->setBoolean("stencil"_s, webGLContextAttributes->stencil);
@@ -582,12 +582,12 @@ Ref<JSON::ArrayOf<JSON::Value>> InspectorCanvas::buildAction(const String& name,
             [&] (CanvasTextBaseline value) { addParameter(indexForData(convertEnumerationToString(value)), RecordingSwizzleTypes::String); },
             [&] (const DOMMatrix2DInit& value) {
                 auto array = JSON::ArrayOf<double>::create();
-                array->addItem(value.a.value_or(1));
-                array->addItem(value.b.value_or(0));
-                array->addItem(value.c.value_or(0));
-                array->addItem(value.d.value_or(1));
-                array->addItem(value.e.value_or(0));
-                array->addItem(value.f.value_or(0));
+                array->addItem(value.a.valueOr(1));
+                array->addItem(value.b.valueOr(0));
+                array->addItem(value.c.valueOr(0));
+                array->addItem(value.d.valueOr(1));
+                array->addItem(value.e.valueOr(0));
+                array->addItem(value.f.valueOr(0));
                 addParameter(array.ptr(), RecordingSwizzleTypes::DOMMatrix);
             },
             [&] (const Element*) {
@@ -643,8 +643,8 @@ Ref<JSON::ArrayOf<JSON::Value>> InspectorCanvas::buildAction(const String& name,
     action->addItem(WTFMove(parametersData));
     action->addItem(WTFMove(swizzleTypes));
 
-    RefPtr<ScriptCallStack> trace = Inspector::createScriptCallStack(JSExecState::currentState(), Inspector::ScriptCallStack::maxCallStackSizeToCapture);
-    action->addItem(indexForData(WTFMove(trace)));
+    auto trace = Inspector::createScriptCallStack(JSExecState::currentState(), Inspector::ScriptCallStack::maxCallStackSizeToCapture);
+    action->addItem(indexForData(trace.ptr()));
 
     return action;
 }

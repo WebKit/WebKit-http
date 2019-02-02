@@ -62,7 +62,7 @@ public:
         unsigned mainFrameProtocolHash = StringHash::hash(m_mainFrameOrigin.protocol);
         unsigned mainFrameHostHash = StringHash::hash(m_mainFrameOrigin.host);
         
-        unsigned hashCodes[8] = { nameHash, sessionIDHash, openingProtocolHash, openingHostHash, m_openingOrigin.port.value_or(0), mainFrameProtocolHash, mainFrameHostHash, m_mainFrameOrigin.port.value_or(0) };
+        unsigned hashCodes[8] = { nameHash, sessionIDHash, openingProtocolHash, openingHostHash, m_openingOrigin.port.valueOr(0), mainFrameProtocolHash, mainFrameHostHash, m_mainFrameOrigin.port.valueOr(0) };
         return StringHasher::hashMemory<sizeof(hashCodes)>(hashCodes);
     }
 
@@ -91,7 +91,7 @@ public:
     static String databaseDirectoryRelativeToRoot(const SecurityOriginData& topLevelOrigin, const SecurityOriginData& openingOrigin, const String& rootDirectory);
 
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<IDBDatabaseIdentifier> decode(Decoder&);
+    template<class Decoder> static Optional<IDBDatabaseIdentifier> decode(Decoder&);
 
 #if !LOG_DISABLED
     String debugString() const;
@@ -128,27 +128,27 @@ void IDBDatabaseIdentifier::encode(Encoder& encoder) const
 }
 
 template<class Decoder>
-std::optional<IDBDatabaseIdentifier> IDBDatabaseIdentifier::decode(Decoder& decoder)
+Optional<IDBDatabaseIdentifier> IDBDatabaseIdentifier::decode(Decoder& decoder)
 {
-    std::optional<String> databaseName;
+    Optional<String> databaseName;
     decoder >> databaseName;
     if (!databaseName)
-        return std::nullopt;
+        return WTF::nullopt;
 
-    std::optional<PAL::SessionID> sessionID;
+    Optional<PAL::SessionID> sessionID;
     decoder >> sessionID;
     if (!sessionID)
-        return std::nullopt;
+        return WTF::nullopt;
     
-    std::optional<SecurityOriginData> openingOrigin;
+    Optional<SecurityOriginData> openingOrigin;
     decoder >> openingOrigin;
     if (!openingOrigin)
-        return std::nullopt;
+        return WTF::nullopt;
 
-    std::optional<SecurityOriginData> mainFrameOrigin;
+    Optional<SecurityOriginData> mainFrameOrigin;
     decoder >> mainFrameOrigin;
     if (!mainFrameOrigin)
-        return std::nullopt;
+        return WTF::nullopt;
 
     IDBDatabaseIdentifier identifier;
     identifier.m_databaseName = WTFMove(*databaseName); // FIXME: When decoding from IPC, databaseName can be null, and the non-empty constructor asserts that this is not the case.

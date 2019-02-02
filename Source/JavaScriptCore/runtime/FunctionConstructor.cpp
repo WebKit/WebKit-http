@@ -101,7 +101,7 @@ JSObject* constructFunctionSkippingEvalEnabledCheck(
     // How we stringify functions is sometimes important for web compatibility.
     // See https://bugs.webkit.org/show_bug.cgi?id=24350.
     String program;
-    std::optional<int> functionConstructorParametersEndPosition = std::nullopt;
+    Optional<int> functionConstructorParametersEndPosition = WTF::nullopt;
     if (args.isEmpty())
         program = makeString(prefix, functionName.string(), "() {\n\n}");
     else if (args.size() == 1) {
@@ -142,7 +142,7 @@ JSObject* constructFunctionSkippingEvalEnabledCheck(
         program = builder.toString();
     }
 
-    SourceCode source = makeSource(program, sourceOrigin, sourceURL, position);
+    SourceCode source = makeSource(program, sourceOrigin, URL({ }, sourceURL), position);
     JSObject* exception = nullptr;
     FunctionExecutable* function = FunctionExecutable::fromGlobalCode(functionName, *exec, source, exception, overrideLineNumber, functionConstructorParametersEndPosition);
     if (!function) {

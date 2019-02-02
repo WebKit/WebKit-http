@@ -142,16 +142,16 @@ static bool executeToggleStyle(Frame& frame, EditorCommandSource source, EditAct
 
 static bool executeApplyParagraphStyle(Frame& frame, EditorCommandSource source, EditAction action, CSSPropertyID propertyID, const String& propertyValue)
 {
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
     style->setProperty(propertyID, propertyValue);
     // FIXME: We don't call shouldApplyStyle when the source is DOM; is there a good reason for that?
     switch (source) {
     case CommandFromMenuOrKeyBinding:
-        frame.editor().applyParagraphStyleToSelection(style.get(), action);
+        frame.editor().applyParagraphStyleToSelection(style.ptr(), action);
         return true;
     case CommandFromDOM:
     case CommandFromDOMWithUserInterface:
-        frame.editor().applyParagraphStyle(style.get());
+        frame.editor().applyParagraphStyle(style.ptr());
         return true;
     }
     ASSERT_NOT_REACHED();
@@ -582,27 +582,27 @@ static bool executeJustifyRight(Frame& frame, Event*, EditorCommandSource source
 
 static bool executeMakeTextWritingDirectionLeftToRight(Frame& frame, Event*, EditorCommandSource, const String&)
 {
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyUnicodeBidi, CSSValueEmbed);
     style->setProperty(CSSPropertyDirection, CSSValueLtr);
-    frame.editor().applyStyle(style.get(), EditAction::SetWritingDirection);
+    frame.editor().applyStyle(style.ptr(), EditAction::SetWritingDirection);
     return true;
 }
 
 static bool executeMakeTextWritingDirectionNatural(Frame& frame, Event*, EditorCommandSource, const String&)
 {
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyUnicodeBidi, CSSValueNormal);
-    frame.editor().applyStyle(style.get(), EditAction::SetWritingDirection);
+    frame.editor().applyStyle(style.ptr(), EditAction::SetWritingDirection);
     return true;
 }
 
 static bool executeMakeTextWritingDirectionRightToLeft(Frame& frame, Event*, EditorCommandSource, const String&)
 {
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyUnicodeBidi, CSSValueEmbed);
     style->setProperty(CSSPropertyDirection, CSSValueRtl);
-    frame.editor().applyStyle(style.get(), EditAction::SetWritingDirection);
+    frame.editor().applyStyle(style.ptr(), EditAction::SetWritingDirection);
     return true;
 }
 
@@ -1102,13 +1102,15 @@ static bool executeSwapWithMark(Frame& frame, Event*, EditorCommandSource, const
     return true;
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
+
 static bool executeTakeFindStringFromSelection(Frame& frame, Event*, EditorCommandSource, const String&)
 {
     frame.editor().takeFindStringFromSelection();
     return true;
 }
-#endif
+
+#endif // PLATFORM(COCOA)
 
 static bool executeToggleBold(Frame& frame, Event*, EditorCommandSource source, const String&)
 {
@@ -1367,12 +1369,14 @@ static bool enabledRedo(Frame& frame, Event*, EditorCommandSource)
     return frame.editor().canRedo();
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
+
 static bool enabledTakeFindStringFromSelection(Frame& frame, Event*, EditorCommandSource)
 {
     return frame.editor().canCopyExcludingStandaloneImages();
 }
-#endif
+
+#endif // PLATFORM(COCOA)
 
 static bool enabledUndo(Frame& frame, Event*, EditorCommandSource)
 {
@@ -1718,7 +1722,7 @@ static const CommandMap& createCommandMap()
         { "PasteGlobalSelection", { executePasteGlobalSelection, supportedFromMenuOrKeyBinding, enabledPaste, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabled } },
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
         { "TakeFindStringFromSelection", { executeTakeFindStringFromSelection, supportedFromMenuOrKeyBinding, enabledTakeFindStringFromSelection, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
 #endif
     };

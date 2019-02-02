@@ -177,6 +177,7 @@ namespace WebCore {
     macro(SpectreGadget) \
     macro(StaticRange) \
     macro(StylePropertyMapReadOnly) \
+    macro(StylePropertyMap) \
     macro(VRDisplay) \
     macro(VRDisplayCapabilities) \
     macro(VRDisplayEvent) \
@@ -189,6 +190,7 @@ namespace WebCore {
     macro(WebGLVertexArrayObject) \
     macro(WebGPU) \
     macro(WebGPUAdapter) \
+    macro(WebGPUBindGroupLayout) \
     macro(WebGPUBuffer) \
     macro(WebGPUBufferUsage) \
     macro(WebGPUCommandBuffer) \
@@ -196,11 +198,13 @@ namespace WebCore {
     macro(WebGPUIndexFormat) \
     macro(WebGPUInputStepMode) \
     macro(WebGPUQueue) \
+    macro(WebGPUPipelineLayout) \
     macro(WebGPUProgrammablePassEncoder) \
     macro(WebGPURenderingContext) \
     macro(WebGPURenderPassEncoder) \
     macro(WebGPURenderPipeline) \
     macro(WebGPUShaderModule) \
+    macro(WebGPUShaderStageBit) \
     macro(WebGPUSwapChain) \
     macro(WebGPUTexture) \
     macro(WebGPUTextureView) \

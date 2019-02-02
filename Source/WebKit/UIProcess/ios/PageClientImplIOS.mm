@@ -41,6 +41,8 @@
 #import "ViewSnapshotStore.h"
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
+#import "WKDrawingView.h"
+#import "WKEditCommand.h"
 #import "WKGeolocationProviderIOS.h"
 #import "WKPasswordView.h"
 #import "WKProcessPoolInternal.h"
@@ -64,61 +66,13 @@
 
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, m_webView.get()->_page->process().connection())
 
-@interface WKEditCommandObjC : NSObject
-{
-    RefPtr<WebKit::WebEditCommandProxy> m_command;
-}
-- (id)initWithWebEditCommandProxy:(Ref<WebKit::WebEditCommandProxy>&&)command;
-- (WebKit::WebEditCommandProxy*)command;
-@end
-
-@interface WKEditorUndoTargetObjC : NSObject
-- (void)undoEditing:(id)sender;
-- (void)redoEditing:(id)sender;
-@end
-
-@implementation WKEditCommandObjC
-
-- (id)initWithWebEditCommandProxy:(Ref<WebKit::WebEditCommandProxy>&&)command
-{
-    self = [super init];
-    if (!self)
-        return nil;
-    
-    m_command = WTFMove(command);
-    return self;
-}
-
-- (WebKit::WebEditCommandProxy *)command
-{
-    return m_command.get();
-}
-
-@end
-
-@implementation WKEditorUndoTargetObjC
-
-- (void)undoEditing:(id)sender
-{
-    ASSERT([sender isKindOfClass:[WKEditCommandObjC class]]);
-    [sender command]->unapply();
-}
-
-- (void)redoEditing:(id)sender
-{
-    ASSERT([sender isKindOfClass:[WKEditCommandObjC class]]);
-    [sender command]->reapply();
-}
-
-@end
-
 namespace WebKit {
 using namespace WebCore;
 
 PageClientImpl::PageClientImpl(WKContentView *contentView, WKWebView *webView)
     : PageClientImplCocoa(webView)
     , m_contentView(contentView)
-    , m_undoTarget(adoptNS([[WKEditorUndoTargetObjC alloc] init]))
+    , m_undoTarget(adoptNS([[WKEditorUndoTarget alloc] init]))
 {
 }
 
@@ -312,8 +266,8 @@ void PageClientImpl::didChangeViewportProperties(const ViewportAttributes&)
 
 void PageClientImpl::registerEditCommand(Ref<WebEditCommandProxy>&& command, UndoOrRedo undoOrRedo)
 {
-    RetainPtr<WKEditCommandObjC> commandObjC = adoptNS([[WKEditCommandObjC alloc] initWithWebEditCommandProxy:command.copyRef()]);
-    String actionName = WebEditCommandProxy::nameForEditAction(command->editAction());
+    auto actionName = WebCore::nameForUndoRedo(command->editAction());
+    auto commandObjC = adoptNS([[WKEditCommand alloc] initWithWebEditCommandProxy:WTFMove(command)]);
     
     NSUndoManager *undoManager = [m_contentView undoManager];
     [undoManager registerUndoWithTarget:m_undoTarget.get() selector:((undoOrRedo == UndoOrRedo::Undo) ? @selector(undoEditing:) : @selector(redoEditing:)) object:commandObjC.get()];
@@ -485,6 +439,11 @@ void PageClientImpl::clearSafeBrowsingWarning()
     [m_webView _clearSafeBrowsingWarning];
 }
 
+void PageClientImpl::clearSafeBrowsingWarningIfForMainFrameNavigation()
+{
+    [m_webView _clearSafeBrowsingWarningIfForMainFrameNavigation];
+}
+
 void PageClientImpl::exitAcceleratedCompositingMode()
 {
     notImplemented();
@@ -540,17 +499,17 @@ void PageClientImpl::couldNotRestorePageState()
     [m_webView _couldNotRestorePageState];
 }
 
-void PageClientImpl::restorePageState(std::optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatBoxExtent& obscuredInsetsOnSave, double scale)
+void PageClientImpl::restorePageState(Optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatBoxExtent& obscuredInsetsOnSave, double scale)
 {
     [m_webView _restorePageScrollPosition:scrollPosition scrollOrigin:scrollOrigin previousObscuredInset:obscuredInsetsOnSave scale:scale];
 }
 
-void PageClientImpl::restorePageCenterAndScale(std::optional<WebCore::FloatPoint> center, double scale)
+void PageClientImpl::restorePageCenterAndScale(Optional<WebCore::FloatPoint> center, double scale)
 {
     [m_webView _restorePageStateToUnobscuredCenter:center scale:scale];
 }
 
-void PageClientImpl::startAssistingNode(const AssistedNodeInformation& nodeInformation, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, API::Object* userData)
+void PageClientImpl::elementDidFocus(const FocusedElementInformation& nodeInformation, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, API::Object* userData)
 {
     MESSAGE_CHECK(!userData || userData->type() == API::Object::Type::Data);
 
@@ -565,17 +524,17 @@ void PageClientImpl::startAssistingNode(const AssistedNodeInformation& nodeInfor
         }
     }
 
-    [m_contentView _startAssistingNode:nodeInformation userIsInteracting:userIsInteracting blurPreviousNode:blurPreviousNode changingActivityState:changingActivityState userObject:userObject];
+    [m_contentView _elementDidFocus:nodeInformation userIsInteracting:userIsInteracting blurPreviousNode:blurPreviousNode changingActivityState:changingActivityState userObject:userObject];
 }
 
-bool PageClientImpl::isAssistingNode()
+bool PageClientImpl::isFocusingElement()
 {
-    return [m_contentView isAssistingNode];
+    return [m_contentView isFocusingElement];
 }
 
-void PageClientImpl::stopAssistingNode()
+void PageClientImpl::elementDidBlur()
 {
-    [m_contentView _stopAssistingNode];
+    [m_contentView _elementDidBlur];
 }
 
 void PageClientImpl::didReceiveEditorStateUpdateAfterFocus()
@@ -829,7 +788,7 @@ void PageClientImpl::startDrag(const DragItem& item, const ShareableBitmap::Hand
     [m_contentView _startDrag:ShareableBitmap::create(image)->makeCGImageCopy() item:item];
 }
 
-void PageClientImpl::didConcludeEditDataInteraction(std::optional<TextIndicatorData> data)
+void PageClientImpl::didConcludeEditDataInteraction(Optional<TextIndicatorData> data)
 {
     [m_contentView _didConcludeEditDataInteraction:data];
 }
@@ -856,6 +815,13 @@ void PageClientImpl::requestPasswordForQuickLookDocument(const String& fileName,
 
     [m_webView _showPasswordViewWithDocumentName:fileName passwordHandler:passwordHandler.get()];
     NavigationState::fromWebPage(*m_webView.get()->_page).didRequestPasswordForQuickLookDocument();
+}
+#endif
+
+#if HAVE(PENCILKIT)
+RetainPtr<WKDrawingView> PageClientImpl::createDrawingView(WebCore::GraphicsLayer::EmbeddedViewID embeddedViewID)
+{
+    return adoptNS([[WKDrawingView alloc] initWithEmbeddedViewID:embeddedViewID contentView:m_contentView]);
 }
 #endif
 

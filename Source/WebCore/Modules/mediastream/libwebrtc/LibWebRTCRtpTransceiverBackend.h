@@ -55,10 +55,11 @@ public:
 
 private:
     RTCRtpTransceiverDirection direction() const final;
-    std::optional<RTCRtpTransceiverDirection> currentDirection() const final;
+    Optional<RTCRtpTransceiverDirection> currentDirection() const final;
     void setDirection(RTCRtpTransceiverDirection) final;
     String mid() final;
     void stop() final;
+    bool stopped() const final;
 
     rtc::scoped_refptr<webrtc::RtpTransceiverInterface> m_rtcTransceiver;
 };

@@ -244,7 +244,7 @@ static inline WKQuad zeroQuad()
 
 @implementation DOMNode (WebCoreInternal)
 
-IGNORE_CLANG_WARNINGS_BEGIN("objc-protocol-method-implementation")
+IGNORE_WARNINGS_BEGIN("objc-protocol-method-implementation")
 
 - (NSString *)description
 {
@@ -258,7 +258,7 @@ IGNORE_CLANG_WARNINGS_BEGIN("objc-protocol-method-implementation")
     return [NSString stringWithFormat:@"<%@ [%@]: %p>", [[self class] description], [self nodeName], _internal];
 }
 
-IGNORE_CLANG_WARNINGS_END
+IGNORE_WARNINGS_END
 
 - (Bindings::RootObject*)_rootObject
 {
@@ -544,10 +544,10 @@ id <DOMEventTarget> kit(EventTarget* target)
 
     auto& node = *core(self);
 
-    Ref<Range> range = rangeOfContents(node);
+    auto range = rangeOfContents(node);
 
     const float margin = 4 / node.document().page()->pageScaleFactor();
-    RefPtr<TextIndicator> textIndicator = TextIndicator::createWithRange(range, TextIndicatorOptionTightlyFitContent |
+    auto textIndicator = TextIndicator::createWithRange(range, TextIndicatorOptionTightlyFitContent |
         TextIndicatorOptionRespectTextColor |
         TextIndicatorOptionPaintBackgrounds |
         TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges |

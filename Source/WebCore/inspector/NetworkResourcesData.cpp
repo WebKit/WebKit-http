@@ -187,6 +187,9 @@ InspectorPageAgent::ResourceType NetworkResourcesData::resourceType(const String
 
 void NetworkResourcesData::setResourceContent(const String& requestId, const String& content, bool base64Encoded)
 {
+    if (content.isNull())
+        return;
+
     ResourceData* resourceData = resourceDataForRequestId(requestId);
     if (!resourceData)
         return;
@@ -296,7 +299,7 @@ Vector<String> NetworkResourcesData::removeCachedResource(CachedResource* cached
     return result;
 }
 
-void NetworkResourcesData::clear(std::optional<String> preservedLoaderId)
+void NetworkResourcesData::clear(Optional<String> preservedLoaderId)
 {
     m_requestIdsDeque.clear();
     m_contentSize = 0;

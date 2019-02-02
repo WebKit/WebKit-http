@@ -28,16 +28,18 @@
 
 #if PLATFORM(IOS_FAMILY)
 
-#import <WebCore/NotImplemented.h>
-
+#import "WKFullKeyboardAccessWatcher.h"
 #import "WebProcessMessages.h"
 
 namespace WebKit {
 
 bool WebProcessProxy::fullKeyboardAccessEnabled()
 {
-    notImplemented();
-    return false;
+#if ENABLE(FULL_KEYBOARD_ACCESS)
+    return [WKFullKeyboardAccessWatcher fullKeyboardAccessEnabled];
+#else
+    return NO;
+#endif
 }
 
 } // namespace WebKit

@@ -231,6 +231,13 @@ inline JSImmutableButterfly* Structure::cachedOwnKeys() const
     return rareData()->cachedOwnKeys();
 }
 
+inline JSImmutableButterfly* Structure::cachedOwnKeysIgnoringSentinel() const
+{
+    if (!hasRareData())
+        return nullptr;
+    return rareData()->cachedOwnKeysIgnoringSentinel();
+}
+
 inline bool Structure::canCacheOwnKeys() const
 {
     if (isDictionary())

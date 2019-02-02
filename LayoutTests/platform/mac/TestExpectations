@@ -1752,6 +1752,9 @@ webkit.org/b/187393 imported/w3c/web-platform-tests/2dcontext/imagebitmap/create
 [ Mojave+ ] imported/blink/fast/text/international/text-shaping-arabic.html [ ImageOnlyFailure ]
 [ Mojave+ ] imported/blink/fast/text/international/vertical-positioning-with-combining-marks.html [ ImageOnlyFailure ]
 
+# < Mojave uses font smoothing.
+[ Sierra HighSierra ] compositing/contents-format/subpixel-antialiased-text.html [ ImageOnlyFailure ]
+
 # < Mojave doesn't support the CG needed for Conic Gradients
 [ Mojave+ ] http/wpt/css/css-images-4/conic-gradient-parsing.html [ Pass ]
 [ Mojave+ ] fast/gradients/conic-repeating.html [ Pass ]
@@ -1798,3 +1801,19 @@ webkit.org/b/191565 imported/w3c/web-platform-tests/css/mediaqueries/test_media_
 webkit.org/b/183389 [ Debug ] fast/css/counters/element-removal-crash.xhtml [ Pass Failure ] 
 
 webkit.org/b/190892 [ Debug ] webgl/2.0.0/conformance2/textures/misc/tex-unpack-params.html [ Pass Slow ] 
+
+webkit.org/b/190976 imported/w3c/web-platform-tests/media-source/mediasource-changetype-play.html [ Pass Failure ]
+
+webkit.org/b/192956 [ Sierra ] webgpu/buffers.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/command-buffers.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/pipeline-layouts.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/queue-creation.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/render-command-encoding.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/render-passes.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/render-pipelines.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/shader-modules.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/textures-textureviews.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/webgpu-basics.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/webgpu-enabled.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/simple-triangle-strip.html [ Skip ]
+webkit.org/b/192956 [ Sierra ] webgpu/vertex-buffer-triangle-strip.html [ Skip ]

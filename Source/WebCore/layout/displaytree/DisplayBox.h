@@ -133,35 +133,36 @@ public:
     LayoutPoint bottomRight() const { return { right(), bottom() }; }
 
     LayoutSize size() const { return { width(), height() }; }
-    LayoutUnit width() const { return borderLeft() + paddingLeft().value_or(0) + contentBoxWidth() + paddingRight().value_or(0) + borderRight(); }
-    LayoutUnit height() const { return borderTop() + paddingTop().value_or(0) + contentBoxHeight() + paddingBottom().value_or(0) + borderBottom(); }
+    LayoutUnit width() const { return borderLeft() + paddingLeft().valueOr(0) + contentBoxWidth() + paddingRight().valueOr(0) + borderRight(); }
+    LayoutUnit height() const { return borderTop() + paddingTop().valueOr(0) + contentBoxHeight() + paddingBottom().valueOr(0) + borderBottom(); }
     Rect rect() const { return { top(), left(), width(), height() }; }
-    Rect rectWithMargin() const { return { top() - marginTop(), left() - marginLeft(), marginLeft() + width() + marginRight(), marginTop() + height() + marginBottom() }; }
+    Rect rectWithMargin() const { return { top() - marginBefore(), left() - marginStart(), marginStart() + width() + marginEnd(), marginBefore() + height() + marginAfter() }; }
 
-    LayoutUnit marginTop() const;
-    LayoutUnit marginLeft() const;
-    LayoutUnit marginBottom() const;
-    LayoutUnit marginRight() const;
+    Layout::VerticalMargin verticalMargin() const;
+    LayoutUnit marginBefore() const;
+    LayoutUnit marginStart() const;
+    LayoutUnit marginAfter() const;
+    LayoutUnit marginEnd() const;
 
-    LayoutUnit nonCollapsedMarginTop() const;
-    LayoutUnit nonCollapsedMarginBottom() const;
-    LayoutUnit nonComputedMarginLeft() const;
-    LayoutUnit nonComputedMarginRight() const;
+    LayoutUnit nonCollapsedMarginBefore() const;
+    LayoutUnit nonCollapsedMarginAfter() const;
+    Optional<LayoutUnit> computedMarginStart() const;
+    Optional<LayoutUnit> computedMarginEnd() const;
 
-    std::optional<LayoutUnit> estimatedMarginTop() const { return m_estimatedMarginTop; }
+    Optional<LayoutUnit> estimatedMarginBefore() const { return m_estimatedMarginBefore; }
 
     LayoutUnit borderTop() const;
     LayoutUnit borderLeft() const;
     LayoutUnit borderBottom() const;
     LayoutUnit borderRight() const;
 
-    std::optional<LayoutUnit> paddingTop() const;
-    std::optional<LayoutUnit> paddingLeft() const;
-    std::optional<LayoutUnit> paddingBottom() const;
-    std::optional<LayoutUnit> paddingRight() const;
+    Optional<LayoutUnit> paddingTop() const;
+    Optional<LayoutUnit> paddingLeft() const;
+    Optional<LayoutUnit> paddingBottom() const;
+    Optional<LayoutUnit> paddingRight() const;
 
-    LayoutUnit contentBoxTop() const { return borderTop() + paddingTop().value_or(0); }
-    LayoutUnit contentBoxLeft() const { return borderLeft() + paddingLeft().value_or(0); }
+    LayoutUnit contentBoxTop() const { return borderTop() + paddingTop().valueOr(0); }
+    LayoutUnit contentBoxLeft() const { return borderLeft() + paddingLeft().valueOr(0); }
     LayoutUnit contentBoxBottom() const { return contentBoxTop() + contentBoxHeight(); }
     LayoutUnit contentBoxRight() const { return contentBoxLeft() + contentBoxWidth(); }
     LayoutUnit contentBoxHeight() const;
@@ -190,14 +191,13 @@ private:
     void setContentBoxHeight(LayoutUnit);
     void setContentBoxWidth(LayoutUnit);
 
-    void setHorizontalMargin(Layout::HorizontalEdges);
-    void setVerticalMargin(Layout::VerticalEdges);
-    void setVerticalNonCollapsedMargin(Layout::VerticalEdges);
-    void setHorizontalNonComputedMargin(Layout::HorizontalEdges);
-    void setEstimatedMarginTop(LayoutUnit marginTop) { m_estimatedMarginTop = marginTop; }
+    void setHorizontalMargin(Layout::UsedHorizontalMargin);
+    void setVerticalMargin(Layout::VerticalMargin);
+    void setHorizontalComputedMargin(Layout::ComputedHorizontalMargin);
+    void setEstimatedMarginBefore(LayoutUnit marginBefore) { m_estimatedMarginBefore = marginBefore; }
 
     void setBorder(Layout::Edges);
-    void setPadding(std::optional<Layout::Edges>);
+    void setPadding(Optional<Layout::Edges>);
 
 #if !ASSERT_DISABLED
     void invalidateMargin();
@@ -208,7 +208,7 @@ private:
     void setHasValidLeft() { m_hasValidLeft = true; }
     void setHasValidVerticalMargin() { m_hasValidVerticalMargin = true; }
     void setHasValidVerticalNonCollapsedMargin() { m_hasValidVerticalNonCollapsedMargin = true; }
-    void setHasValidHorizontalNonComputedMargin() { m_hasValidHorizontalNonComputedMargin = true; }
+    void setHasValidHorizontalComputedMargin() { m_hasValidHorizontalComputedMargin = true; }
     void setHasValidHorizontalMargin() { m_hasValidHorizontalMargin = true; }
 
     void setHasValidBorder() { m_hasValidBorder = true; }
@@ -224,13 +224,13 @@ private:
     LayoutUnit m_contentWidth;
     LayoutUnit m_contentHeight;
 
-    Layout::Edges m_margin;
-    Layout::VerticalEdges m_verticalNonCollapsedMargin;
-    Layout::HorizontalEdges m_horizontalNonComputedMargin;
-    std::optional<LayoutUnit> m_estimatedMarginTop;
+    Layout::UsedHorizontalMargin m_horizontalMargin;
+    Layout::VerticalMargin m_verticalMargin;
+    Layout::ComputedHorizontalMargin m_horizontalComputedMargin;
+    Optional<LayoutUnit> m_estimatedMarginBefore;
 
     Layout::Edges m_border;
-    std::optional<Layout::Edges> m_padding;
+    Optional<Layout::Edges> m_padding;
 
 #if !ASSERT_DISABLED
     bool m_hasValidTop { false };
@@ -238,7 +238,7 @@ private:
     bool m_hasValidHorizontalMargin { false };
     bool m_hasValidVerticalMargin { false };
     bool m_hasValidVerticalNonCollapsedMargin { false };
-    bool m_hasValidHorizontalNonComputedMargin { false };
+    bool m_hasValidHorizontalComputedMargin { false };
     bool m_hasValidBorder { false };
     bool m_hasValidPadding { false };
     bool m_hasValidContentHeight { false };
@@ -437,7 +437,7 @@ inline Box::Rect::operator LayoutRect() const
 
 inline LayoutUnit Box::top() const
 {
-    ASSERT(m_hasValidTop && (m_estimatedMarginTop || m_hasValidVerticalMargin));
+    ASSERT(m_hasValidTop && (m_estimatedMarginBefore || m_hasValidVerticalMargin));
     return m_topLeft.y();
 }
 
@@ -449,7 +449,7 @@ inline LayoutUnit Box::left() const
 
 inline LayoutPoint Box::topLeft() const
 {
-    ASSERT(m_hasValidTop && (m_estimatedMarginTop || m_hasValidVerticalMargin));
+    ASSERT(m_hasValidTop && (m_estimatedMarginBefore || m_hasValidVerticalMargin));
     ASSERT(m_hasValidLeft && m_hasValidHorizontalMargin);
     return m_topLeft;
 }
@@ -507,37 +507,30 @@ inline LayoutUnit Box::contentBoxWidth() const
     return m_contentWidth;
 }
 
-inline void Box::setHorizontalMargin(Layout::HorizontalEdges margin)
+inline void Box::setHorizontalMargin(Layout::UsedHorizontalMargin margin)
 {
 #if !ASSERT_DISABLED
     setHasValidHorizontalMargin();
 #endif
-    m_margin.horizontal = margin;
+    m_horizontalMargin = margin;
 }
 
-inline void Box::setVerticalMargin(Layout::VerticalEdges margin)
+inline void Box::setVerticalMargin(Layout::VerticalMargin margin)
 {
 #if !ASSERT_DISABLED
     setHasValidVerticalMargin();
-#endif
-    ASSERT(!m_estimatedMarginTop || *m_estimatedMarginTop == margin.top);
-    m_margin.vertical = margin;
-}
-
-inline void Box::setVerticalNonCollapsedMargin(Layout::VerticalEdges margin)
-{
-#if !ASSERT_DISABLED
     setHasValidVerticalNonCollapsedMargin();
 #endif
-    m_verticalNonCollapsedMargin = margin;
+    ASSERT(!m_estimatedMarginBefore || *m_estimatedMarginBefore == margin.usedValues().before);
+    m_verticalMargin = margin;
 }
 
-inline void Box::setHorizontalNonComputedMargin(Layout::HorizontalEdges margin)
+inline void Box::setHorizontalComputedMargin(Layout::ComputedHorizontalMargin margin)
 {
 #if !ASSERT_DISABLED
-    setHasValidHorizontalNonComputedMargin();
+    setHasValidHorizontalComputedMargin();
 #endif
-    m_horizontalNonComputedMargin = margin;
+    m_horizontalComputedMargin = margin;
 }
 
 inline void Box::setBorder(Layout::Edges border)
@@ -548,7 +541,7 @@ inline void Box::setBorder(Layout::Edges border)
     m_border = border;
 }
 
-inline void Box::setPadding(std::optional<Layout::Edges> padding)
+inline void Box::setPadding(Optional<Layout::Edges> padding)
 {
 #if !ASSERT_DISABLED
     setHasValidPadding();
@@ -556,55 +549,61 @@ inline void Box::setPadding(std::optional<Layout::Edges> padding)
     m_padding = padding;
 }
 
-inline LayoutUnit Box::marginTop() const
+inline Layout::VerticalMargin Box::verticalMargin() const
 {
     ASSERT(m_hasValidVerticalMargin);
-    return m_margin.vertical.top;
+    return m_verticalMargin;
 }
 
-inline LayoutUnit Box::marginLeft() const
-{
-    ASSERT(m_hasValidHorizontalMargin);
-    return m_margin.horizontal.left;
-}
-
-inline LayoutUnit Box::marginBottom() const
+inline LayoutUnit Box::marginBefore() const
 {
     ASSERT(m_hasValidVerticalMargin);
-    return m_margin.vertical.bottom;
+    return m_verticalMargin.usedValues().before;
 }
 
-inline LayoutUnit Box::marginRight() const
+inline LayoutUnit Box::marginStart() const
 {
     ASSERT(m_hasValidHorizontalMargin);
-    return m_margin.horizontal.right;
+    return m_horizontalMargin.start;
 }
 
-inline LayoutUnit Box::nonCollapsedMarginTop() const
+inline LayoutUnit Box::marginAfter() const
+{
+    ASSERT(m_hasValidVerticalMargin);
+    return m_verticalMargin.usedValues().after;
+}
+
+inline LayoutUnit Box::marginEnd() const
+{
+    ASSERT(m_hasValidHorizontalMargin);
+    return m_horizontalMargin.end;
+}
+
+inline LayoutUnit Box::nonCollapsedMarginBefore() const
 {
     ASSERT(m_hasValidVerticalNonCollapsedMargin);
-    return m_verticalNonCollapsedMargin.top;
+    return m_verticalMargin.nonCollapsedValues().before;
 }
 
-inline LayoutUnit Box::nonCollapsedMarginBottom() const
+inline LayoutUnit Box::nonCollapsedMarginAfter() const
 {
     ASSERT(m_hasValidVerticalNonCollapsedMargin);
-    return m_verticalNonCollapsedMargin.bottom;
+    return m_verticalMargin.nonCollapsedValues().after;
 }
 
-inline LayoutUnit Box::nonComputedMarginLeft() const
+inline Optional<LayoutUnit> Box::computedMarginStart() const
 {
-    ASSERT(m_hasValidHorizontalNonComputedMargin);
-    return m_horizontalNonComputedMargin.left;
+    ASSERT(m_hasValidHorizontalComputedMargin);
+    return m_horizontalComputedMargin.start;
 }
 
-inline LayoutUnit Box::nonComputedMarginRight() const
+inline Optional<LayoutUnit> Box::computedMarginEnd() const
 {
-    ASSERT(m_hasValidHorizontalNonComputedMargin);
-    return m_horizontalNonComputedMargin.right;
+    ASSERT(m_hasValidHorizontalComputedMargin);
+    return m_horizontalComputedMargin.end;
 }
 
-inline std::optional<LayoutUnit> Box::paddingTop() const
+inline Optional<LayoutUnit> Box::paddingTop() const
 {
     ASSERT(m_hasValidPadding);
     if (!m_padding)
@@ -612,7 +611,7 @@ inline std::optional<LayoutUnit> Box::paddingTop() const
     return m_padding->vertical.top;
 }
 
-inline std::optional<LayoutUnit> Box::paddingLeft() const
+inline Optional<LayoutUnit> Box::paddingLeft() const
 {
     ASSERT(m_hasValidPadding);
     if (!m_padding)
@@ -620,7 +619,7 @@ inline std::optional<LayoutUnit> Box::paddingLeft() const
     return m_padding->horizontal.left;
 }
 
-inline std::optional<LayoutUnit> Box::paddingBottom() const
+inline Optional<LayoutUnit> Box::paddingBottom() const
 {
     ASSERT(m_hasValidPadding);
     if (!m_padding)
@@ -628,7 +627,7 @@ inline std::optional<LayoutUnit> Box::paddingBottom() const
     return m_padding->vertical.bottom;
 }
 
-inline std::optional<LayoutUnit> Box::paddingRight() const
+inline Optional<LayoutUnit> Box::paddingRight() const
 {
     ASSERT(m_hasValidPadding);
     if (!m_padding)

@@ -30,6 +30,7 @@
 
 #include <WebCore/AuthenticatorTransport.h>
 #include <WebCore/PublicKeyCredentialCreationOptions.h>
+#include <wtf/MonotonicTime.h>
 
 namespace WebKit {
 using namespace WebCore;
@@ -46,7 +47,7 @@ const size_t maxTransportNumber = 1;
 const unsigned maxTimeOutValue = 120000;
 
 // FIXME(188624, 188625): Support NFC and BLE authenticators.
-static AuthenticatorManager::TransportSet collectTransports(const std::optional<PublicKeyCredentialCreationOptions::AuthenticatorSelectionCriteria>& authenticatorSelection)
+static AuthenticatorManager::TransportSet collectTransports(const Optional<PublicKeyCredentialCreationOptions::AuthenticatorSelectionCriteria>& authenticatorSelection)
 {
     AuthenticatorManager::TransportSet result;
     if (!authenticatorSelection || !authenticatorSelection->authenticatorAttachment) {
@@ -191,6 +192,8 @@ void AuthenticatorManager::respondReceived(Respond&& respond)
     if (WTF::holds_alternative<PublicKeyCredentialData>(respond)) {
         m_pendingCompletionHandler(WTFMove(respond));
         clearStateAsync();
+        // FIXME(192061)
+        LOG_ERROR("Stop timer.");
         m_requestTimeOutTimer.stop();
         return;
     }
@@ -218,16 +221,22 @@ void AuthenticatorManager::startDiscovery(const TransportSet& transports)
     }
 }
 
-void AuthenticatorManager::initTimeOutTimer(const std::optional<unsigned>& timeOutInMs)
+void AuthenticatorManager::initTimeOutTimer(const Optional<unsigned>& timeOutInMs)
 {
     using namespace AuthenticatorManagerInternal;
 
-    unsigned timeOutInMsValue = std::min(maxTimeOutValue, timeOutInMs.value_or(maxTimeOutValue));
+    unsigned timeOutInMsValue = std::min(maxTimeOutValue, timeOutInMs.valueOr(maxTimeOutValue));
+    // FIXME(192061)
+    LOG_ERROR("Start timer: %d. Current time: %f.", timeOutInMsValue, MonotonicTime::now().secondsSinceEpoch().value());
     m_requestTimeOutTimer.startOneShot(Seconds::fromMilliseconds(timeOutInMsValue));
+    LOG_ERROR("Seconds until fire: %f", m_requestTimeOutTimer.secondsUntilFire().value());
 }
 
 void AuthenticatorManager::timeOutTimerFired()
 {
+    ASSERT(m_requestTimeOutTimer.isActive());
+    // FIXME(192061)
+    LOG_ERROR("Timer fired: %f, Current time: %f", m_requestTimeOutTimer.secondsUntilFire().value(), MonotonicTime::now().secondsSinceEpoch().value());
     m_pendingCompletionHandler((ExceptionData { NotAllowedError, "Operation timed out."_s }));
     clearStateAsync();
 }

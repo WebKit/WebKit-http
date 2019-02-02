@@ -688,7 +688,7 @@ void GraphicsLayerCA::moveOrCopyAnimations(MoveOrCopy operation, PlatformCALayer
         return;
 
     // Look for running animations affecting this property.
-    for (auto it : m_animations->runningAnimations) {
+    for (const auto& it : m_animations->runningAnimations) {
         const auto& propertyAnimations = it.value;
         size_t numAnimations = propertyAnimations.size();
         for (size_t i = 0; i < numAnimations; ++i) {
@@ -1039,7 +1039,7 @@ bool GraphicsLayerCA::addAnimation(const KeyframeValueList& valueList, const Flo
         createdAnimations = createAnimationFromKeyframes(valueList, anim, animationName, Seconds { timeOffset });
 
     if (createdAnimations)
-        noteLayerPropertyChanged(AnimationChanged);
+        noteLayerPropertyChanged(AnimationChanged | CoverageRectChanged);
 
     return createdAnimations;
 }
@@ -1072,7 +1072,7 @@ void GraphicsLayerCA::removeAnimation(const String& animationName)
         return;
 
     addProcessingActionForAnimation(animationName, AnimationProcessingAction(Remove));
-    noteLayerPropertyChanged(AnimationChanged);
+    noteLayerPropertyChanged(AnimationChanged | CoverageRectChanged);
 }
 
 void GraphicsLayerCA::platformCALayerAnimationStarted(const String& animationKey, MonotonicTime startTime)
@@ -1420,7 +1420,7 @@ GraphicsLayerCA::VisibleAndCoverageRects GraphicsLayerCA::computeVisibleAndCover
     }
 
     FloatRect coverageRect = clipRectForSelf;
-    std::optional<FloatQuad> quad = state.mappedSecondaryQuad(&mapWasClamped);
+    Optional<FloatQuad> quad = state.mappedSecondaryQuad(&mapWasClamped);
     if (quad && !mapWasClamped && !applyWasClamped)
         coverageRect = (*quad).boundingBox();
 
@@ -1462,7 +1462,7 @@ void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& 
     auto bounds = FloatRect(m_boundsOrigin, size());
     if (auto extent = animationExtent()) {
         // Adjust the animation extent to match the current animation position.
-        bounds = rects.animatingTransform.inverse().value_or(TransformationMatrix()).mapRect(*extent);
+        bounds = rects.animatingTransform.inverse().valueOr(TransformationMatrix()).mapRect(*extent);
     }
 
     // FIXME: we need to take reflections into account when determining whether this layer intersects the coverage rect.
@@ -1577,7 +1577,7 @@ void GraphicsLayerCA::recursiveCommitChanges(CommitState& commitState, const Tra
 
     if (nowRunningTransformAnimation) {
         childCommitState.ancestorHasTransformAnimation = true;
-        if (m_intersectsCoverageRect)
+        if (m_intersectsCoverageRect || !animationExtent())
             childCommitState.ancestorWithTransformAnimationIntersectsCoverageRect = true;
         affectedByTransformAnimation = true;
     }
@@ -2846,7 +2846,7 @@ void GraphicsLayerCA::updateAnimations()
     }
 
     if (m_animations->animationsToProcess.size()) {
-        for (auto it : m_animations->animationsToProcess) {
+        for (const auto& it : m_animations->animationsToProcess) {
             const String& currentAnimationName = it.key;
             auto animationIterator = m_animations->runningAnimations.find(currentAnimationName);
             if (animationIterator == m_animations->runningAnimations.end())
@@ -2882,7 +2882,7 @@ bool GraphicsLayerCA::isRunningTransformAnimation() const
     if (!hasAnimations())
         return false;
 
-    for (auto it : m_animations->runningAnimations) {
+    for (const auto& it : m_animations->runningAnimations) {
         const auto& propertyAnimations = it.value;
         size_t numAnimations = propertyAnimations.size();
         for (size_t i = 0; i < numAnimations; ++i) {

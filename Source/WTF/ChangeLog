@@ -1,3 +1,393 @@
+2019-01-02  Alex Christensen  <achristensen@webkit.org>
+
+        Homograph with LATIN SMALL LETTER R WITH FISHHOOK
+        https://bugs.webkit.org/show_bug.cgi?id=192944
+
+        Reviewed by Tim Horton.
+
+        * wtf/cocoa/NSURLExtras.mm:
+        (WTF::isLookalikeCharacter):
+
+2019-01-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239524.
+        https://bugs.webkit.org/show_bug.cgi?id=193083
+
+        basic browsing seems not to work (Requested by thorton on
+        #webkit).
+
+        Reverted changeset:
+
+        "Expand use of sourceApplicationAuditData"
+        https://bugs.webkit.org/show_bug.cgi?id=192995
+        https://trac.webkit.org/changeset/239524
+
+2018-12-28  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Add ENABLE_UNIFIED_BUILDS option to cmake ports
+        https://bugs.webkit.org/show_bug.cgi?id=193045
+
+        Reviewed by Don Olmstead.
+
+        * Scripts/generate-unified-source-bundles.rb:
+
+2018-12-27  Alex Christensen  <achristensen@webkit.org>
+
+        Resurrect Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=192658
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/PlatformMac.cmake:
+        * wtf/cf/CFURLExtras.cpp:
+        * wtf/cf/CFURLExtras.h:
+        * wtf/cf/URLCF.cpp:
+        * wtf/cocoa/NSURLExtras.h:
+        * wtf/cocoa/NSURLExtras.mm:
+        * wtf/cocoa/URLCocoa.mm:
+
+2018-12-21  Dan Bernstein  <mitz@apple.com>
+
+        Fixed building for macOS 10.13 using the macOS 10.14 SDK.
+
+        * wtf/Platform.h: Changed HAVE_AUTHORIZATION_STATUS_FOR_MEDIA_TYPE to depend on the
+          deployment target, not the SDK.
+
+2018-12-20  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Implement "well-formed JSON.stringify" proposal
+        https://bugs.webkit.org/show_bug.cgi?id=191677
+
+        Reviewed by Darin Adler.
+
+        This patch implements "well-formed JSON.stringify" proposal[1], which is now stage 3.
+        JSON.stringify appended surrogate pair codes even if it is not paired appropriately.
+        The proposal requires that broken surrogate pairs are unicode-escaped.
+
+        [1]: https://github.com/tc39/proposal-well-formed-stringify
+
+        * wtf/text/StringBuilderJSON.cpp:
+        (WTF::appendQuotedJSONStringInternal):
+
+2018-12-21  Alex Christensen  <achristensen@webkit.org>
+
+        Expand use of sourceApplicationAuditData
+        https://bugs.webkit.org/show_bug.cgi?id=192995
+        <rdar://problem/46627875>
+
+        Reviewed by Brady Eidson.
+
+        * wtf/Platform.h:
+
+2018-12-21  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r239503.
+        https://bugs.webkit.org/show_bug.cgi?id=192944
+
+        * wtf/cocoa/NSURLExtras.mm:
+        (WTF::isLookalikeCharacter):
+
+2018-12-20  Brent Fulgham  <bfulgham@apple.com>
+
+        Show punycode if URL contains Latin small letter dotless i
+        https://bugs.webkit.org/show_bug.cgi?id=192944
+        <rdar://problem/46103047>
+
+        Reviewed by Andy Estes.
+
+        Revise our "lookalike character" logic to include the small Latin
+        dotless i character.
+
+        Test: fast/url/host.html
+
+        * wtf/cocoa/NSURLExtras.mm:
+        (WTF::isLookalikeCharacter):
+
+2018-12-20  Chris Dumez  <cdumez@apple.com>
+
+        Use Optional::hasValue() instead of Optional::has_value()
+        https://bugs.webkit.org/show_bug.cgi?id=192948
+
+        Reviewed by Tim Horton.
+
+        * wtf/Hasher.h:
+        (WTF::add):
+        * wtf/Optional.h:
+
+2018-12-20  Chris Dumez  <cdumez@apple.com>
+
+        Use Optional::valueOr() instead of Optional::value_or()
+        https://bugs.webkit.org/show_bug.cgi?id=192933
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Optional.h:
+        (WTF::Optional<T::valueOr const):
+
+2018-12-20  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Consistently use MaxLength for all WTF strings
+        https://bugs.webkit.org/show_bug.cgi?id=192853
+        <rdar://problem/45726906>
+
+        Reviewed by Mark Lam.
+
+        MaxLength was introduced to be INT_MAX for WTF::String and StringImpl,
+        but all the assertions were still done using UINT_MAX. Change it to
+        use MaxLength for all checks.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createUninitializedInternalNonEmpty):
+        (WTF::StringImpl::reallocateInternal):
+        (WTF::StringImpl::create):
+        (WTF::StringImpl::convertToLowercaseWithoutLocale):
+        (WTF::StringImpl::convertToUppercaseWithoutLocale):
+        (WTF::StringImpl::convertToLowercaseWithLocale):
+        (WTF::StringImpl::convertToUppercaseWithLocale):
+        (WTF::StringImpl::foldCase):
+        (WTF::StringImpl::find):
+        (WTF::StringImpl::replace):
+        (WTF::StringImpl::utf8ForCharacters):
+        (WTF::StringImpl::tryGetUtf8ForRange const):
+        * wtf/text/StringImpl.h:
+        (WTF::lengthOfNullTerminatedString):
+        (WTF::StringImpl::tryCreateUninitialized):
+        (WTF::StringImpl::adopt):
+        (WTF::StringImpl::maxInternalLength):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::append):
+        (WTF::String::insert):
+        (WTF::String::fromUTF8):
+        * wtf/text/WTFString.h:
+        (WTF::String::reverseFind const):
+
+2018-12-19  Chris Dumez  <cdumez@apple.com>
+
+        wtf/Optional.h: move-constructor and move-assignment operator should disengage the value being moved from
+        https://bugs.webkit.org/show_bug.cgi?id=192728
+        <rdar://problem/46746779>
+
+        Reviewed by Geoff Garen.
+
+        Update optional's move-constructor and move-assignment operator to disengage the value being moved from.
+        Rename to optional to Optional, make_optional() to makeOptional(), and move class from std to WTF namespace.
+
+        Based on patch by David Kilzer.
+
+        * wtf/*:
+
+2018-12-19  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Force system camera/microphone TCC prompt if necessary
+        https://bugs.webkit.org/show_bug.cgi?id=192820
+        <rdar://problem/42680098>
+
+        Reviewed by Jer Noble.
+
+        * wtf/Platform.h: Define HAVE_AUTHORIZATION_STATUS_FOR_MEDIA_TYPE.
+
+2018-12-17  Chris Fleizach  <cfleizach@apple.com>
+
+        Some builds are broken after r239262
+        https://bugs.webkit.org/show_bug.cgi?id=192777
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Platform.h:
+
+2018-12-17  Daniel Bates  <dabates@apple.com>
+
+        Support concatenating StringView with other string types
+        https://bugs.webkit.org/show_bug.cgi?id=177566
+
+        Reviewed by Darin Adler.
+
+        Add operator+ overloads to StringOperators.h to support concatenating a StringView with
+        other string types (e.g. String). This lets a person write more naturally looking code:
+
+        stringView + string
+
+        Instead of:
+
+        makeString(stringView, string)
+
+        * wtf/text/StringOperators.h:
+        (WTF::operator+): Added various operator+ overloads.
+
+2018-12-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239265 and r239274.
+        https://bugs.webkit.org/show_bug.cgi?id=192765
+
+        unorm_normalize is deprecated, and broke an internal build
+        (Requested by Truitt on #webkit).
+
+        Reverted changesets:
+
+        "[GTK][WPE] Need a function to convert internal URI to display
+        ("pretty") URI"
+        https://bugs.webkit.org/show_bug.cgi?id=174816
+        https://trac.webkit.org/changeset/239265
+
+        "Fix the Apple Internal Mac build with a newer SDK"
+        https://trac.webkit.org/changeset/239274
+
+2018-12-17  Daniel Bates  <dabates@apple.com>
+
+        Fix the Apple Internal Mac build with a newer SDK
+
+        * wtf/URLHelpers.cpp:
+        (WTF::URLHelpers::userVisibleURL):
+
+2018-12-17  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r239254.
+
+        This broke the Windows 10 Debug build
+
+        Reverted changeset:
+
+        "Replace many uses of String::format with more type-safe
+        alternatives"
+        https://bugs.webkit.org/show_bug.cgi?id=192742
+        https://trac.webkit.org/changeset/239254
+
+2018-12-17  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK][WPE] Need a function to convert internal URI to display ("pretty") URI
+        https://bugs.webkit.org/show_bug.cgi?id=174816
+
+        Reviewed by Michael Catanzaro.
+
+        Translate userVisibleString and dependent code into platform-neutral C++
+        in wtf/URLHelpers.{h,cpp}.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/URLHelpers.cpp: Added.
+        (WTF::URLHelpers::loadIDNScriptWhiteList):
+        (WTF::URLHelpers::isArmenianLookalikeCharacter):
+        (WTF::URLHelpers::isArmenianScriptCharacter):
+        (WTF::URLHelpers::isASCIIDigitOrValidHostCharacter):
+        (WTF::URLHelpers::isLookalikeCharacter):
+        (WTF::URLHelpers::whiteListIDNScript):
+        (WTF::URLHelpers::initializeDefaultIDNScriptWhiteList):
+        (WTF::URLHelpers::allCharactersInIDNScriptWhiteList):
+        (WTF::URLHelpers::isSecondLevelDomainNameAllowedByTLDRules):
+        (WTF::URLHelpers::isRussianDomainNameCharacter):
+        (WTF::URLHelpers::allCharactersAllowedByTLDRules):
+        (WTF::URLHelpers::mapHostName):
+        (WTF::URLHelpers::collectRangesThatNeedMapping):
+        (WTF::URLHelpers::applyHostNameFunctionToMailToURLString):
+        (WTF::URLHelpers::applyHostNameFunctionToURLString):
+        (WTF::URLHelpers::mapHostNames):
+        (WTF::URLHelpers::createStringWithEscapedUnsafeCharacters):
+        (WTF::URLHelpers::userVisibleURL):
+        * wtf/URLHelpers.h: Added.
+        * wtf/cocoa/NSURLExtras.mm:
+        (WTF::URLHelpers::loadIDNScriptWhiteList):
+        (WTF::decodePercentEscapes):
+        (WTF::decodeHostName):
+        (WTF::encodeHostName):
+        (WTF::URLWithUserTypedString):
+        (WTF::userVisibleString):
+
+2018-12-15  Darin Adler  <darin@apple.com>
+
+        Use warning-ignoring macros more consistently and simply
+        https://bugs.webkit.org/show_bug.cgi?id=192743
+
+        Reviewed by Mark Lam.
+
+        * wtf/Assertions.h: Use IGNORE_WARNINGS_BEGIN rather than
+        IGNORE_CLANG_WARNINGS_BEGIN since we don't need special handling for
+        non-clang compilers, in part since the code is already inside
+        #if COMPILER(CLANG), but also because it would be harmless to ignore this
+        warning on non-clang; we should almost never use IGNORE_CLANG_WARNINGS_BEGIN.
+
+2018-12-15  Darin Adler  <darin@apple.com>
+
+        Replace many uses of String::format with more type-safe alternatives
+        https://bugs.webkit.org/show_bug.cgi?id=192742
+
+        Reviewed by Mark Lam.
+
+        * wtf/WorkQueue.cpp:
+        (WTF::WorkQueue::concurrentApply): Use makeString.
+
+        * wtf/dtoa.cpp:
+        (WTF::dtoa): Use sprintf instead of String::format in the comments,
+        since these functions have nothing to do with WTF::String.
+
+2018-12-14  Darin Adler  <darin@apple.com>
+
+        Verify size is valid in USE_SYSTEM_MALLOC version of tryAllocateZeroedVirtualPages
+        https://bugs.webkit.org/show_bug.cgi?id=192738
+        rdar://problem/37502342
+
+        Reviewed by Mark Lam.
+
+        * wtf/Gigacage.cpp:
+        (Gigacage::tryAllocateZeroedVirtualPages): Added a RELEASE_ASSERT just
+        like the one in tryLargeZeroedMemalignVirtual in bmalloc.
+
+2018-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        clang-tidy: Fix unnecessary copy of AtomicString each time one is logged
+        <https://webkit.org/b/192710>
+        <rdar://problem/46738962>
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Logger.h:
+        (WTF::LogArgument::toString): Make argument a const reference to
+        avoid the copy.
+
+2018-12-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] RunLoop::dispatchAfter() GSource requires microsecond precision
+        https://bugs.webkit.org/show_bug.cgi?id=192696
+
+        Reviewed by Michael Catanzaro.
+
+        The GSource we set up in GLib's RunLoop::dispatchAfter() implementation
+        should support microsecond-precision delays. Such delays are common in
+        JSC's Watchdog implementation and missing support for them has been
+        causing test failures in the `testapi` program as well as some JSC
+        tests that depend on the termination determination functionality of the
+        JSC::Watchdog class.
+
+        RunLoop::dispatchAfter() is changed to spawn a raw GSource that uses the
+        existing GSourceFuncs implementation used elsewhere in GLib's RunLoop.
+        The GSource's ready time is set manually, now with the necessary
+        microsecond precision.
+
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::dispatchAfter):
+
+2018-12-13  Saam Barati  <sbarati@apple.com>
+
+        The JSC shell should listen for memory pressure events and respond to them
+        https://bugs.webkit.org/show_bug.cgi?id=192647
+
+        Reviewed by Keith Miller.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::MemoryPressureHandler):
+        (WTF::MemoryPressureHandler::setDispatchQueue):
+        Make it so that we can customize which dispatch queue memory pressure
+        events get handled on.
+
+        * wtf/MemoryPressureHandler.h:
+        (WTF::MemoryPressureHandler::setShouldLogMemoryMemoryPressureEvents):
+        Make it so that we can disable logging that happens on each memory
+        pressure event.
+
+        * wtf/cocoa/MemoryPressureHandlerCocoa.mm:
+        (WTF::MemoryPressureHandler::install):
+        (WTF::MemoryPressureHandler::uninstall):
+        (WTF::MemoryPressureHandler::holdOff):
+
 2018-12-13  David Kilzer  <ddkilzer@apple.com>
 
         clang-tidy: Fix unnecessary parameter copies in ParallelHelperPool.cpp

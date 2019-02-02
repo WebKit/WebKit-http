@@ -382,8 +382,8 @@ void AppendPipeline::parseDemuxerSrcPadCaps(GstCaps* demuxerSrcPadCaps)
             m_presentationSize = WebCore::FloatSize();
             m_streamType = WebCore::MediaSourceStreamTypeGStreamer::Invalid;
     } else if (doCapsHaveType(m_demuxerSrcPadCaps.get(), GST_VIDEO_CAPS_TYPE_PREFIX)) {
-        std::optional<FloatSize> size = getVideoResolutionFromCaps(m_demuxerSrcPadCaps.get());
-        if (size.has_value())
+        Optional<FloatSize> size = getVideoResolutionFromCaps(m_demuxerSrcPadCaps.get());
+        if (size.hasValue())
             m_presentationSize = size.value();
         else
             m_presentationSize = WebCore::FloatSize();
@@ -434,7 +434,7 @@ void AppendPipeline::appsinkNewSample(GRefPtr<GstSample>&& sample)
         return;
     }
 
-    RefPtr<MediaSampleGStreamer> mediaSample = WebCore::MediaSampleGStreamer::create(WTFMove(sample), m_presentationSize, trackId());
+    auto mediaSample = WebCore::MediaSampleGStreamer::create(WTFMove(sample), m_presentationSize, trackId());
 
     GST_TRACE("append: trackId=%s PTS=%s DTS=%s DUR=%s presentationSize=%.0fx%.0f",
         mediaSample->trackID().string().utf8().data(),
@@ -456,7 +456,7 @@ void AppendPipeline::appsinkNewSample(GRefPtr<GstSample>&& sample)
         mediaSample->applyPtsOffset(MediaTime::zeroTime());
     }
 
-    m_sourceBufferPrivate->didReceiveSample(*mediaSample);
+    m_sourceBufferPrivate->didReceiveSample(mediaSample.get());
 }
 
 void AppendPipeline::didReceiveInitializationSegment()

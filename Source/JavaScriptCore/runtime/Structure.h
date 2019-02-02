@@ -328,7 +328,6 @@ public:
     const StructureRareData* rareDataConcurrently() const
     {
         JSCell* cell = m_previousOrRareData.get();
-        WTF::loadLoadFence();
         if (isRareData(cell))
             return static_cast<StructureRareData*>(cell);
         return nullptr;
@@ -482,6 +481,7 @@ public:
 
     void setCachedOwnKeys(VM&, JSImmutableButterfly*);
     JSImmutableButterfly* cachedOwnKeys() const;
+    JSImmutableButterfly* cachedOwnKeysIgnoringSentinel() const;
     bool canCacheOwnKeys() const;
 
     void getPropertyNamesFromStructure(VM&, PropertyNameArray&, EnumerationMode);

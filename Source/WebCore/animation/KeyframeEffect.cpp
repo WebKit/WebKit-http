@@ -112,11 +112,11 @@ static inline void computeMissingKeyframeOffsets(Vector<KeyframeEffect::ParsedKe
         return;
 
     // 1. For each keyframe, in keyframes, let the computed keyframe offset of the keyframe be equal to its keyframe offset value.
-    // In our implementation, we only set non-null values to avoid making computedOffset std::optional<double>. Instead, we'll know
+    // In our implementation, we only set non-null values to avoid making computedOffset Optional<double>. Instead, we'll know
     // that a keyframe hasn't had a computed offset by checking if it has a null offset and a 0 computedOffset, since the first
     // keyframe will already have a 0 computedOffset.
     for (auto& keyframe : keyframes)
-        keyframe.computedOffset = keyframe.offset.value_or(0);
+        keyframe.computedOffset = keyframe.offset.valueOr(0);
 
     // 2. If keyframes contains more than one keyframe and the computed keyframe offset of the first keyframe in keyframes is null,
     //    set the computed keyframe offset of the first keyframe to 0.
@@ -390,13 +390,13 @@ static inline ExceptionOr<void> processPropertyIndexedKeyframes(ExecState& state
     // 5. Let offsets be a sequence of nullable double values assigned based on the type of the “offset” member of the property-indexed keyframe as follows:
     //    - sequence<double?>, the value of “offset” as-is.
     //    - double?, a sequence of length one with the value of “offset” as its single item, i.e. « offset »,
-    Vector<std::optional<double>> offsets;
-    if (WTF::holds_alternative<Vector<std::optional<double>>>(propertyIndexedKeyframe.baseProperties.offset))
-        offsets = WTF::get<Vector<std::optional<double>>>(propertyIndexedKeyframe.baseProperties.offset);
+    Vector<Optional<double>> offsets;
+    if (WTF::holds_alternative<Vector<Optional<double>>>(propertyIndexedKeyframe.baseProperties.offset))
+        offsets = WTF::get<Vector<Optional<double>>>(propertyIndexedKeyframe.baseProperties.offset);
     else if (WTF::holds_alternative<double>(propertyIndexedKeyframe.baseProperties.offset))
         offsets.append(WTF::get<double>(propertyIndexedKeyframe.baseProperties.offset));
     else if (WTF::holds_alternative<std::nullptr_t>(propertyIndexedKeyframe.baseProperties.offset))
-        offsets.append(std::nullopt);
+        offsets.append(WTF::nullopt);
 
     // 6. Assign each value in offsets to the keyframe offset of the keyframe with corresponding position in property keyframes until the end of either sequence is reached.
     for (size_t i = 0; i < offsets.size() && i < parsedKeyframes.size(); ++i)
@@ -459,7 +459,7 @@ static inline ExceptionOr<void> processPropertyIndexedKeyframes(ExecState& state
     return { };
 }
 
-ExceptionOr<Ref<KeyframeEffect>> KeyframeEffect::create(ExecState& state, Element* target, Strong<JSObject>&& keyframes, std::optional<Variant<double, KeyframeEffectOptions>>&& options)
+ExceptionOr<Ref<KeyframeEffect>> KeyframeEffect::create(ExecState& state, Element* target, Strong<JSObject>&& keyframes, Optional<Variant<double, KeyframeEffectOptions>>&& options)
 {
     auto keyframeEffect = adoptRef(*new KeyframeEffect(target));
 
@@ -954,7 +954,7 @@ void KeyframeEffect::computedNeedsForcedLayout()
         }
         if (keyframeStyle->hasTransform()) {
             auto& transformOperations = keyframeStyle->transform();
-            for (auto operation : transformOperations.operations()) {
+            for (const auto& operation : transformOperations.operations()) {
                 if (operation->isTranslateTransformOperationType()) {
                     auto translation = downcast<TranslateTransformOperation>(operation.get());
                     if (translation->x().isPercent() || translation->y().isPercent()) {
@@ -1077,7 +1077,7 @@ void KeyframeEffect::setAnimatedPropertiesInStyle(RenderStyle& targetStyle, doub
         // 6. Remove any keyframes from property-specific keyframes that do not have a property value for target property.
         unsigned numberOfKeyframesWithZeroOffset = 0;
         unsigned numberOfKeyframesWithOneOffset = 0;
-        Vector<std::optional<size_t>> propertySpecificKeyframes;
+        Vector<Optional<size_t>> propertySpecificKeyframes;
         for (size_t i = 0; i < m_blendingKeyframes.size(); ++i) {
             auto& keyframe = m_blendingKeyframes[i];
             auto offset = keyframe.key();
@@ -1102,7 +1102,7 @@ void KeyframeEffect::setAnimatedPropertiesInStyle(RenderStyle& targetStyle, doub
         //    offset of 0, a property value set to the neutral value for composition, and a composite operation of add, and prepend it to the beginning of
         //    property-specific keyframes.
         if (!numberOfKeyframesWithZeroOffset) {
-            propertySpecificKeyframes.insert(0, std::nullopt);
+            propertySpecificKeyframes.insert(0, WTF::nullopt);
             numberOfKeyframesWithZeroOffset = 1;
         }
 
@@ -1110,12 +1110,12 @@ void KeyframeEffect::setAnimatedPropertiesInStyle(RenderStyle& targetStyle, doub
         //    keyframe offset of 1, a property value set to the neutral value for composition, and a composite operation of add, and append it to the end of
         //    property-specific keyframes.
         if (!numberOfKeyframesWithOneOffset) {
-            propertySpecificKeyframes.append(std::nullopt);
+            propertySpecificKeyframes.append(WTF::nullopt);
             numberOfKeyframesWithOneOffset = 1;
         }
 
         // 10. Let interval endpoints be an empty sequence of keyframes.
-        Vector<std::optional<size_t>> intervalEndpoints;
+        Vector<Optional<size_t>> intervalEndpoints;
 
         // 11. Populate interval endpoints by following the steps from the first matching condition from below:
         if (iterationProgress < 0 && numberOfKeyframesWithZeroOffset > 1) {
@@ -1314,7 +1314,7 @@ void KeyframeEffect::applyPendingAcceleratedActions()
     auto* compositedRenderer = downcast<RenderBoxModelObject>(renderer);
 
     // To simplify the code we use a default of 0s for an unresolved current time since for a Stop action that is acceptable.
-    auto timeOffset = animation()->currentTime().value_or(0_s).seconds() - delay().seconds();
+    auto timeOffset = animation()->currentTime().valueOr(0_s).seconds() - delay().seconds();
 
     for (const auto& action : pendingAcceleratedActions) {
         switch (action) {
@@ -1408,23 +1408,30 @@ bool KeyframeEffect::computeExtentOfTransformAnimation(LayoutRect& bounds) const
     if (!is<RenderBox>(renderer()))
         return true; // Non-boxes don't get transformed;
 
-    RenderBox& box = downcast<RenderBox>(*renderer());
-    FloatRect rendererBox = snapRectToDevicePixels(box.borderBoxRect(), box.document().deviceScaleFactor());
+    auto& box = downcast<RenderBox>(*renderer());
+    auto rendererBox = snapRectToDevicePixels(box.borderBoxRect(), box.document().deviceScaleFactor());
 
-    FloatRect cumulativeBounds = bounds;
+    auto cumulativeBounds = bounds;
 
     for (const auto& keyframe : m_blendingKeyframes.keyframes()) {
-        // FIXME: maybe for declarative animations we always say it's true for the first and last keyframe.
-        if (!keyframe.containsProperty(CSSPropertyTransform))
-            continue;
+        const auto* keyframeStyle = keyframe.style();
 
-        LayoutRect keyframeBounds = bounds;
+        // FIXME: maybe for declarative animations we always say it's true for the first and last keyframe.
+        if (!keyframe.containsProperty(CSSPropertyTransform)) {
+            // If the first keyframe is missing transform style, use the current style.
+            if (!keyframe.key())
+                keyframeStyle = &box.style();
+            else
+                continue;
+        }
+
+        auto keyframeBounds = bounds;
 
         bool canCompute;
         if (transformFunctionListsMatch())
-            canCompute = computeTransformedExtentViaTransformList(rendererBox, *keyframe.style(), keyframeBounds);
+            canCompute = computeTransformedExtentViaTransformList(rendererBox, *keyframeStyle, keyframeBounds);
         else
-            canCompute = computeTransformedExtentViaMatrix(rendererBox, *keyframe.style(), keyframeBounds);
+            canCompute = computeTransformedExtentViaMatrix(rendererBox, *keyframeStyle, keyframeBounds);
 
         if (!canCompute)
             return false;
@@ -1432,7 +1439,7 @@ bool KeyframeEffect::computeExtentOfTransformAnimation(LayoutRect& bounds) const
         cumulativeBounds.unite(keyframeBounds);
     }
 
-    bounds = LayoutRect(cumulativeBounds);
+    bounds = cumulativeBounds;
     return true;
 }
 

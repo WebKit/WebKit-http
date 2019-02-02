@@ -57,9 +57,9 @@ void WebSWServerToContextConnection::connectionClosed()
     // FIXME: Do what here...?
 }
 
-void WebSWServerToContextConnection::installServiceWorkerContext(const ServiceWorkerContextData& data, PAL::SessionID sessionID)
+void WebSWServerToContextConnection::installServiceWorkerContext(const ServiceWorkerContextData& data, PAL::SessionID sessionID, const String& userAgent)
 {
-    send(Messages::WebSWContextManagerConnection::InstallServiceWorker { data, sessionID });
+    send(Messages::WebSWContextManagerConnection::InstallServiceWorker { data, sessionID, userAgent });
 }
 
 void WebSWServerToContextConnection::fireInstallEvent(ServiceWorkerIdentifier serviceWorkerIdentifier)
@@ -82,7 +82,7 @@ void WebSWServerToContextConnection::syncTerminateWorker(ServiceWorkerIdentifier
     sendSync(Messages::WebSWContextManagerConnection::SyncTerminateWorker(serviceWorkerIdentifier), Messages::WebSWContextManagerConnection::SyncTerminateWorker::Reply());
 }
 
-void WebSWServerToContextConnection::findClientByIdentifierCompleted(uint64_t requestIdentifier, const std::optional<ServiceWorkerClientData>& data, bool hasSecurityError)
+void WebSWServerToContextConnection::findClientByIdentifierCompleted(uint64_t requestIdentifier, const Optional<ServiceWorkerClientData>& data, bool hasSecurityError)
 {
     send(Messages::WebSWContextManagerConnection::FindClientByIdentifierCompleted { requestIdentifier, data, hasSecurityError });
 }

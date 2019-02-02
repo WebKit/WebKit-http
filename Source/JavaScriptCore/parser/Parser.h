@@ -173,6 +173,7 @@ public:
         , m_isAsyncFunctionBoundary(false)
         , m_isLexicalScope(false)
         , m_isGlobalCodeScope(false)
+        , m_isSimpleCatchParameterScope(false)
         , m_isFunctionBoundary(false)
         , m_isValidStrictMode(true)
         , m_hasArguments(false)
@@ -290,6 +291,9 @@ public:
     void setIsGlobalCodeScope() { m_isGlobalCodeScope = true; }
     bool isGlobalCodeScope() const { return m_isGlobalCodeScope; }
 
+    void setIsSimpleCatchParameterScope() { m_isSimpleCatchParameterScope = true; }
+    bool isSimpleCatchParameterScope() { return m_isSimpleCatchParameterScope; }
+
     void setIsLexicalScope() 
     { 
         m_isLexicalScope = true;
@@ -354,8 +358,6 @@ public:
         addResult.iterator->value.setIsVar();
         if (!isValidStrictMode)
             result |= DeclarationResult::InvalidStrictMode;
-        if (m_lexicalVariables.contains(ident->impl()))
-            result |= DeclarationResult::InvalidDuplicateDeclaration;
         return result;
     }
 
@@ -386,6 +388,12 @@ public:
         addResult.iterator->value.setIsFunction();
 
         return result;
+    }
+
+    void addVariableBeingHoisted(const Identifier* ident)
+    {
+        ASSERT(!m_allowsVarDeclarations);
+        m_variablesBeingHoisted.add(ident->impl());
     }
 
     void addSloppyModeHoistableFunctionCandidate(const Identifier* ident)
@@ -421,7 +429,7 @@ public:
             addResult.iterator->value.setIsImportedNamespace();
         }
 
-        if (!addResult.isNewEntry)
+        if (!addResult.isNewEntry || m_variablesBeingHoisted.contains(ident->impl()))
             result |= DeclarationResult::InvalidDuplicateDeclaration;
         if (!isValidStrictMode)
             result |= DeclarationResult::InvalidStrictMode;
@@ -429,7 +437,7 @@ public:
         return result;
     }
 
-    bool hasDeclaredVariable(const Identifier& ident)
+    ALWAYS_INLINE bool hasDeclaredVariable(const Identifier& ident)
     {
         return hasDeclaredVariable(ident.impl());
     }
@@ -441,6 +449,11 @@ public:
             return false;
         VariableEnvironmentEntry entry = iter->value;
         return entry.isVar(); // The callee isn't a "var".
+    }
+
+    ALWAYS_INLINE bool hasLexicallyDeclaredVariable(const Identifier& ident)
+    {
+        return hasLexicallyDeclaredVariable(ident.impl());
     }
 
     bool hasLexicallyDeclaredVariable(const RefPtr<UniquedStringImpl>& ident) const
@@ -798,6 +811,7 @@ private:
     bool m_isAsyncFunctionBoundary;
     bool m_isLexicalScope;
     bool m_isGlobalCodeScope;
+    bool m_isSimpleCatchParameterScope;
     bool m_isFunctionBoundary;
     bool m_isValidStrictMode;
     bool m_hasArguments;
@@ -816,6 +830,7 @@ private:
     VariableEnvironment m_declaredVariables;
     VariableEnvironment m_lexicalVariables;
     Vector<UniquedStringImplPtrSet, 6> m_usedVariables;
+    UniquedStringImplPtrSet m_variablesBeingHoisted;
     UniquedStringImplPtrSet m_sloppyModeHoistableFunctionCandidates;
     HashSet<UniquedStringImpl*> m_closedVariableCandidates;
     DeclarationStacks::FunctionStack m_functionDeclarations;
@@ -872,7 +887,7 @@ public:
     ~Parser();
 
     template <class ParsedNode>
-    std::unique_ptr<ParsedNode> parse(ParserError&, const Identifier&, SourceParseMode, ParsingContext, std::optional<int> functionConstructorParametersEndPosition = std::nullopt);
+    std::unique_ptr<ParsedNode> parse(ParserError&, const Identifier&, SourceParseMode, ParsingContext, Optional<int> functionConstructorParametersEndPosition = WTF::nullopt);
 
     JSTextPosition positionBeforeLastNewline() const { return m_lexer->positionBeforeLastNewline(); }
     JSTokenLocation locationBeforeLastToken() const { return m_lexer->lastTokenLocation(); }
@@ -1208,11 +1223,31 @@ private:
         cleanupScope.setPopped();
         popScopeInternal(scope, shouldTrackClosedVariables);
     }
+
+    NEVER_INLINE DeclarationResultMask declareHoistedVariable(const Identifier* ident)
+    {
+        unsigned i = m_scopeStack.size() - 1;
+        ASSERT(i < m_scopeStack.size());
+        while (true) {
+            // Annex B.3.5 exempts `try {} catch (e) { var e; }` from being a syntax error.
+            // FIXME: This exemption should not apply if the var declaration is a for-of initializer.
+            if (m_scopeStack[i].hasLexicallyDeclaredVariable(*ident) && !m_scopeStack[i].isSimpleCatchParameterScope())
+                return DeclarationResult::InvalidDuplicateDeclaration;
+
+            if (m_scopeStack[i].allowsVarDeclarations())
+                return m_scopeStack[i].declareVariable(ident);
+
+            m_scopeStack[i].addVariableBeingHoisted(ident);
+
+            i--;
+            ASSERT(i < m_scopeStack.size());
+        }
+    }
     
     DeclarationResultMask declareVariable(const Identifier* ident, DeclarationType type = DeclarationType::VarDeclaration, DeclarationImportType importType = DeclarationImportType::NotImported)
     {
         if (type == DeclarationType::VarDeclaration)
-            return currentVariableScope()->declareVariable(ident);
+            return declareHoistedVariable(ident);
 
         ASSERT(type == DeclarationType::LetDeclaration || type == DeclarationType::ConstDeclaration);
         // Lexical variables declared at a top level scope that shadow arguments or vars are not allowed.
@@ -1311,7 +1346,7 @@ private:
 
     Parser();
 
-    String parseInner(const Identifier&, SourceParseMode, ParsingContext, std::optional<int> functionConstructorParametersEndPosition = std::nullopt);
+    String parseInner(const Identifier&, SourceParseMode, ParsingContext, Optional<int> functionConstructorParametersEndPosition = WTF::nullopt);
 
     void didFinishParsing(SourceElements*, DeclarationStacks::FunctionStack&&, VariableEnvironment&, UniquedStringImplPtrSet&&, CodeFeatures, int);
 
@@ -1523,14 +1558,14 @@ private:
     template <class TreeBuilder> TreeSourceElements parseGeneratorFunctionSourceElements(TreeBuilder&, const Identifier& name, SourceElementsMode);
     template <class TreeBuilder> TreeSourceElements parseAsyncFunctionSourceElements(TreeBuilder&, SourceParseMode, bool isArrowFunctionBodyExpression, SourceElementsMode);
     template <class TreeBuilder> TreeSourceElements parseAsyncGeneratorFunctionSourceElements(TreeBuilder&, SourceParseMode, bool isArrowFunctionBodyExpression, SourceElementsMode);
-    template <class TreeBuilder> TreeSourceElements parseSingleFunction(TreeBuilder&, std::optional<int> functionConstructorParametersEndPosition);
+    template <class TreeBuilder> TreeSourceElements parseSingleFunction(TreeBuilder&, Optional<int> functionConstructorParametersEndPosition);
     template <class TreeBuilder> TreeStatement parseStatementListItem(TreeBuilder&, const Identifier*& directive, unsigned* directiveLiteralLength);
     template <class TreeBuilder> TreeStatement parseStatement(TreeBuilder&, const Identifier*& directive, unsigned* directiveLiteralLength = 0);
     enum class ExportType { Exported, NotExported };
     template <class TreeBuilder> TreeStatement parseClassDeclaration(TreeBuilder&, ExportType = ExportType::NotExported, DeclarationDefaultContext = DeclarationDefaultContext::Standard);
-    template <class TreeBuilder> TreeStatement parseFunctionDeclaration(TreeBuilder&, ExportType = ExportType::NotExported, DeclarationDefaultContext = DeclarationDefaultContext::Standard, std::optional<int> functionConstructorParametersEndPosition = std::nullopt);
+    template <class TreeBuilder> TreeStatement parseFunctionDeclaration(TreeBuilder&, ExportType = ExportType::NotExported, DeclarationDefaultContext = DeclarationDefaultContext::Standard, Optional<int> functionConstructorParametersEndPosition = WTF::nullopt);
     template <class TreeBuilder> TreeStatement parseFunctionDeclarationStatement(TreeBuilder&, bool isAsync, bool parentAllowsFunctionDeclarationAsStatement);
-    template <class TreeBuilder> TreeStatement parseAsyncFunctionDeclaration(TreeBuilder&, ExportType = ExportType::NotExported, DeclarationDefaultContext = DeclarationDefaultContext::Standard, std::optional<int> functionConstructorParametersEndPosition = std::nullopt);
+    template <class TreeBuilder> TreeStatement parseAsyncFunctionDeclaration(TreeBuilder&, ExportType = ExportType::NotExported, DeclarationDefaultContext = DeclarationDefaultContext::Standard, Optional<int> functionConstructorParametersEndPosition = WTF::nullopt);
     template <class TreeBuilder> NEVER_INLINE bool maybeParseAsyncFunctionDeclarationStatement(TreeBuilder& context, TreeStatement& result, bool parentAllowsFunctionDeclarationAsStatement);
     template <class TreeBuilder> TreeStatement parseVariableDeclaration(TreeBuilder&, DeclarationType, ExportType = ExportType::NotExported);
     template <class TreeBuilder> TreeStatement parseDoWhileStatement(TreeBuilder&);
@@ -1599,7 +1634,7 @@ private:
     template <class TreeBuilder> ALWAYS_INLINE TreeExpression createResolveAndUseVariable(TreeBuilder&, const Identifier*, bool isEval, const JSTextPosition&, const JSTokenLocation&);
 
     enum class FunctionDefinitionType { Expression, Declaration, Method };
-    template <class TreeBuilder> NEVER_INLINE bool parseFunctionInfo(TreeBuilder&, FunctionNameRequirements, SourceParseMode, bool nameIsInContainingScope, ConstructorKind, SuperBinding, int functionKeywordStart, ParserFunctionInfo<TreeBuilder>&, FunctionDefinitionType, std::optional<int> functionConstructorParametersEndPosition = std::nullopt);
+    template <class TreeBuilder> NEVER_INLINE bool parseFunctionInfo(TreeBuilder&, FunctionNameRequirements, SourceParseMode, bool nameIsInContainingScope, ConstructorKind, SuperBinding, int functionKeywordStart, ParserFunctionInfo<TreeBuilder>&, FunctionDefinitionType, Optional<int> functionConstructorParametersEndPosition = WTF::nullopt);
     
     ALWAYS_INLINE bool isArrowFunctionParameters();
     
@@ -1847,7 +1882,7 @@ private:
 
 template <typename LexerType>
 template <class ParsedNode>
-std::unique_ptr<ParsedNode> Parser<LexerType>::parse(ParserError& error, const Identifier& calleeName, SourceParseMode parseMode, ParsingContext parsingContext, std::optional<int> functionConstructorParametersEndPosition)
+std::unique_ptr<ParsedNode> Parser<LexerType>::parse(ParserError& error, const Identifier& calleeName, SourceParseMode parseMode, ParsingContext parsingContext, Optional<int> functionConstructorParametersEndPosition)
 {
     int errLine;
     String errMsg;
@@ -1986,7 +2021,7 @@ std::unique_ptr<ParsedNode> parse(
     return result;
 }
 
-inline std::unique_ptr<ProgramNode> parseFunctionForFunctionConstructor(VM& vm, const SourceCode& source, ParserError& error, JSTextPosition* positionBeforeLastNewline, std::optional<int> functionConstructorParametersEndPosition)
+inline std::unique_ptr<ProgramNode> parseFunctionForFunctionConstructor(VM& vm, const SourceCode& source, ParserError& error, JSTextPosition* positionBeforeLastNewline, Optional<int> functionConstructorParametersEndPosition)
 {
     ASSERT(!source.provider()->source().isNull());
 

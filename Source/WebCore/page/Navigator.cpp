@@ -95,6 +95,20 @@ const String& Navigator::userAgent() const
         m_userAgent = frame->loader().userAgent(frame->document()->url());
     return m_userAgent;
 }
+    
+const String& Navigator::platform() const
+{
+    auto* frame = this->frame();
+    if (!frame || !frame->page())
+        return m_platform;
+
+    if (m_platform.isNull())
+        m_platform = frame->loader().navigatorPlatform();
+    
+    if (m_platform.isNull())
+        m_platform = NavigatorBase::platform();
+    return m_platform;
+}
 
 void Navigator::userAgentChanged()
 {
@@ -119,7 +133,7 @@ void Navigator::share(ScriptExecutionContext& context, ShareData data, Ref<Defer
         return;
     }
 
-    std::optional<URL> url;
+    Optional<URL> url;
     if (!data.url.isEmpty()) {
         url = context.completeURL(data.url);
         if (!url->isValid()) {

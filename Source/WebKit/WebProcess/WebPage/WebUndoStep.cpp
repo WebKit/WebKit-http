@@ -28,9 +28,9 @@
 
 namespace WebKit {
 
-static uint64_t generateUndoStep()
+static WebUndoStepID generateUndoStep()
 {
-    static uint64_t uniqueEntryID = 1;
+    static WebUndoStepID uniqueEntryID = 1;
     return uniqueEntryID++;
 }
 

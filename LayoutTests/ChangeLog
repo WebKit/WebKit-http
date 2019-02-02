@@ -1,3 +1,1122 @@
+2019-01-04  Jer Noble  <jer.noble@apple.com>
+
+        Web Content process main thread blocked beneath ImageDecoderAVFObjC::readSamples for many seconds on imgur.com
+        https://bugs.webkit.org/show_bug.cgi?id=191806
+        <rdar://problem/46151477>
+
+        Reviewed by Dean Jackson.
+
+        * http/tests/images/mp4-partial-load-expected.txt: Added.
+        * http/tests/images/mp4-partial-load.html: Added.
+        * platform/win/http/tests/mp4-partial-load-expected.txt: Added.
+
+2019-01-04  Youenn Fablet  <youenn@apple.com>
+
+        CSP violation reports should bypass CSP checks
+        https://bugs.webkit.org/show_bug.cgi?id=192857
+        <rdar://problem/46887236>
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/fetch/csp-reports-bypass-csp-checks-expected.txt: Added.
+        * http/wpt/fetch/csp-reports-bypass-csp-checks.html: Added.
+        * http/wpt/fetch/csp-reports-bypass-csp-checks.html.headers: Added.
+        * http/wpt/fetch/resources/store-csp-report.py: Added.
+        (main):
+
+2019-01-04  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: String check: "Rule" does not reflect the meaning of the <hr> html tag
+        https://bugs.webkit.org/show_bug.cgi?id=193041
+        <rdar://problem/46954090>
+
+        Reviewed by Zalan Bujtas.
+
+        * accessibility/mac/hr-element-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+        * platform/mac-wk2/accessibility/roles-exposed-expected.txt:
+
+2019-01-04  Frederic Wang  <fwang@igalia.com>
+
+        Flaky Test: http/wpt/css/css-animations/start-animation-001.html
+        https://bugs.webkit.org/show_bug.cgi?id=190903
+
+        This patch modifies start-animation-001.html to rely on the square positions returned by the
+        Web Process in order to know when they are supposed to be rendered behind the covering rect.
+        This should make it more robust while still testing the original bug 186129.
+
+        Reviewed by Antonio Gomes.
+
+        * http/wpt/css/css-animations/start-animation-001.html:
+
+2019-01-03  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION: -webkit-appearance test case crashes
+        https://bugs.webkit.org/show_bug.cgi?id=189302
+        <rdar://problem/44143049>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/forms/webkit-appearance-searchfield-cancel-button-crash-expected.txt: Added.
+        * fast/forms/webkit-appearance-searchfield-cancel-button-crash.html: Added.
+
+2019-01-03  Chris Dumez  <cdumez@apple.com>
+
+        Potential infinite recursion in isFrameFamiliarWith(Frame&, Frame&)
+        https://bugs.webkit.org/show_bug.cgi?id=192997
+        <rdar://problem/46217271>
+
+        Reviewed by Antti Koivisto.
+
+        Add layout test coverage.
+
+        * fast/dom/Window/resources/window-open-opener-cycle2.html: Added.
+        * fast/dom/Window/resources/window-open-opener-cycle3.html: Added.
+        * fast/dom/Window/resources/window-opens-self.html: Added.
+        * fast/dom/Window/window-open-opener-cycle-expected.txt: Added.
+        * fast/dom/Window/window-open-opener-cycle.html: Added.
+        * fast/dom/Window/window-open-self-as-opener-expected.txt: Added.
+        * fast/dom/Window/window-open-self-as-opener.html: Added.
+
+2019-01-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: conic-gradient color picker doesn't accurately show color when saturation value is not 100%
+        https://bugs.webkit.org/show_bug.cgi?id=192729
+        <rdar://problem/46746815>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/model/color.html:
+        * inspector/model/color-expected.txt:
+
+2019-01-03  Brent Fulgham  <bfulgham@apple.com>
+
+        Remove logic handling DNT header during redirects
+        https://bugs.webkit.org/show_bug.cgi?id=193082
+        <rdar://problem/45555965>
+
+        Reviewed by Chris Dumez.
+
+        Revise test case to reflect fact that we no longer include the DNT
+        header in redirects.
+
+        * http/wpt/fetch/dnt-header-after-redirection-expected.txt:
+        * http/wpt/fetch/dnt-header-after-redirection.html:
+
+2019-01-02  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r239306): Don't disable font smoothing in transparent layers on macOS Mojave and later
+        https://bugs.webkit.org/show_bug.cgi?id=193095
+        <rdar://problem/47014944>
+
+        Reviewed by Zalan Bujtas.
+        
+        A ref test that compares the rendering of layer and non-layer text with smoothing and antialiasing.
+
+        * compositing/contents-format/subpixel-antialiased-text-expected.html: Added.
+        * compositing/contents-format/subpixel-antialiased-text.html: Added.
+        * platform/mac/TestExpectations:
+
+2019-01-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] REGRESSION (r239441): Tab cycling to offscreen <select> may not scroll it into view
+        https://bugs.webkit.org/show_bug.cgi?id=193084
+        <rdar://problem/47006882>
+
+        Reviewed by Simon Fraser.
+
+        Add a layout test to verify that focusing a select element by tapping outside of it scrolls to reveal the
+        focused select element.
+
+        * fast/forms/ios/scroll-to-reveal-focused-select-expected.txt: Added.
+        * fast/forms/ios/scroll-to-reveal-focused-select.html: Added.
+
+2019-01-02  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Implement `queryObjects` Command Line API
+        https://bugs.webkit.org/show_bug.cgi?id=176766
+        <rdar://problem/34890689>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/console/queryObjects-expected.html: Added.
+        * inspector/console/queryObjects.html: Added.
+
+        * http/tests/inspector/console/cross-domain-inspected-node-access-expected.txt:
+
+2019-01-02  Charles Vazac  <cvazac@gmail.com>
+
+        Fix resourcetimingbufferfull bubbles attribute
+        https://bugs.webkit.org/show_bug.cgi?id=193087
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/resource-timing/rt-performance-extensions.js:
+        (promise_test):
+
+2019-01-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Support css-color-4 rgb functions
+        https://bugs.webkit.org/show_bug.cgi?id=192321
+
+        Reviewed by Zalan Bujtas.
+
+        * TestExpectations: Unskip most of the WPT css-color rgb tests. Skip old imported WPT canvas tests.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgb-1-expected.txt: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgb-1.html: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgb-2-expected.txt: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgb-2.html: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgb-5-expected.txt: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgb-5.html: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgb-7-expected.txt: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgb-7.html: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgba-1-expected.txt: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgba-1.html: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgba-2-expected.txt: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgba-2.html: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgba-4-expected.txt: Removed.
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.rgba-4.html: Removed.
+        * css3/calc/color-rgb-expected.txt:
+        * fast/canvas/gradient-addColorStop-with-invalid-color-expected.txt:
+        * fast/canvas/gradient-addColorStop-with-invalid-color.html: Remove a test that is no longer invalid.
+        * fast/css/rgb-float.html: Removed. This test is no longer value, since rgb() accepts floating point values.
+        * platform/gtk/css2.1/t040306-syntax-01-f-expected.txt:
+        * platform/gtk/fast/css/rgb-float-expected.png: Removed.
+        * platform/gtk/fast/css/rgb-float-expected.txt: Removed.
+        * platform/gtk/svg/hixie/perf/007-expected.txt:
+        * platform/ios/css2.1/t040306-syntax-01-f-expected.txt:
+        * platform/ios/fast/css/rgb-float-expected.txt: Removed.
+        * platform/mac/css2.1/t040306-syntax-01-f-expected.txt:
+        * platform/mac/fast/css/rgb-float-expected.png: Removed.
+        * platform/mac/fast/css/rgb-float-expected.txt: Removed.
+        * platform/mac/svg/hixie/perf/007-expected.txt:
+        * platform/win-future/svg/hixie/perf/007-expected.txt:
+        * platform/win/css2.1/t040306-syntax-01-f-expected.txt:
+        * platform/win/svg/hixie/perf/007-expected.txt:
+        * platform/wincairo/css2.1/t040306-syntax-01-f-expected.txt:
+        * platform/wincairo/fast/css/rgb-float-expected.txt: Removed.
+        * platform/wpe/css2.1/t040306-syntax-01-f-expected.txt:
+        * platform/wpe/fast/css/rgb-float-expected.txt: Removed.
+        * platform/wpe/svg/hixie/perf/007-expected.txt:
+        * svg/hixie/perf/007-expected.txt:
+
+2019-01-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r239441): [iOS] Selection UI sometimes doesn't change after tapping "select all" in the callout bar
+        https://bugs.webkit.org/show_bug.cgi?id=193070
+        <rdar://problem/46921508>
+
+        Reviewed by Tim Horton.
+
+        Add a test to ensure that selection UI is shown after tapping on a focused element and then changing the
+        selection programmatically.
+
+        * editing/selection/ios/change-selection-after-tapping-focused-element-expected.txt: Added.
+        * editing/selection/ios/change-selection-after-tapping-focused-element.html: Added.
+
+2019-01-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Handle calc() expressions in gradient color stops
+        https://bugs.webkit.org/show_bug.cgi?id=193066
+        rdar://problem/46961985
+
+        Reviewed by Sam Weinig.
+
+        * fast/gradients/conic-calc-stop-position-expected.html: Added.
+        * fast/gradients/conic-calc-stop-position.html: Added.
+
+2018-12-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Support PHP 7.3 in Debian.
+
+        * http/conf/debian-httpd-2.4-php7.3.conf: Added.
+
+2018-12-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline several tests after r239156.
+
+        * platform/gtk/fast/frames/onlyCommentInIFrame-expected.txt:
+        * platform/gtk/fast/invalid/junk-data-expected.txt:
+        * platform/gtk/fast/invalid/missing-end-tag-expected.txt:
+        * platform/gtk/fast/parser/xhtml-alternate-entities-expected.txt:
+        * platform/gtk/fast/sub-pixel/selection/selection-rect-in-sub-pixel-table-expected.png:
+        * platform/gtk/fast/sub-pixel/selection/selection-rect-in-sub-pixel-table-expected.txt:
+        * platform/gtk/fast/xsl/xslt-extra-content-at-end-expected.txt:
+        * platform/gtk/fast/xsl/xslt-missing-namespace-in-xslt-expected.txt:
+        * platform/gtk/svg/custom/bug45331-expected.txt:
+        * platform/gtk/svg/custom/junk-data-expected.txt:
+        * platform/gtk/svg/custom/missing-xlink-expected.txt:
+        * platform/gtk/svg/custom/path-bad-data-expected.txt:
+        * platform/gtk/svg/custom/use-font-face-crash-expected.txt:
+        * platform/gtk/svg/hixie/error/012-expected.txt:
+
+2018-12-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline several tests after r238730.
+
+        innerText works differently when using complex text path.
+        See https://bugs.webkit.org/show_bug.cgi?id=192750.
+
+        * platform/gtk/fast/events/nested-window-event-expected.txt: Added.
+        * platform/gtk/fast/events/window-events-bubble-expected.txt: Added.
+        * platform/gtk/fast/events/window-events-bubble2-expected.txt: Added.
+        * platform/gtk/fast/tokenizer/script_extra_close-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-015-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-016-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-validity-badInput-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-willValidate-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/selection-expected.txt:
+        * platform/gtk/legacy-animation-engine/animations/lineheight-animation-expected.txt: Added.
+        * platform/gtk/legacy-animation-engine/animations/simultaneous-start-transform-expected.txt: Added.
+        * platform/gtk/legacy-animation-engine/animations/width-using-ems-expected.txt: Added.
+
+2018-12-30  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Identifier validity should be based on ID_Start / ID_Continue properties
+        https://bugs.webkit.org/show_bug.cgi?id=193050
+
+        Reviewed by Yusuke Suzuki.
+
+        * sputnik/Unicode/Unicode_218/S7.6_A1.1_T2-expected.txt:
+        * sputnik/Unicode/Unicode_218/S7.6_A1.1_T6-expected.txt:
+        * sputnik/Unicode/Unicode_218/S7.6_A5.2_T2-expected.txt:
+        * sputnik/Unicode/Unicode_218/S7.6_A5.2_T6-expected.txt:
+        * sputnik/Unicode/Unicode_218/S7.6_A5.3_T1-expected.txt:
+        * sputnik/Unicode/Unicode_218/S7.6_A5.3_T2-expected.txt:
+        * sputnik/Unicode/Unicode_320/S7.6_A1.1_T6-expected.txt:
+        * sputnik/Unicode/Unicode_320/S7.6_A2.3-expected.txt:
+        * sputnik/Unicode/Unicode_320/S7.6_A3.1-expected.txt:
+        * sputnik/Unicode/Unicode_320/S7.6_A5.2_T6-expected.txt:
+        * sputnik/Unicode/Unicode_320/S7.6_A5.2_T9-expected.txt:
+        * sputnik/Unicode/Unicode_320/S7.6_A5.3_T1-expected.txt:
+        * sputnik/Unicode/Unicode_320/S7.6_A5.3_T2-expected.txt:
+        * sputnik/Unicode/Unicode_410/S7.6_A1.1_T6-expected.txt:
+        * sputnik/Unicode/Unicode_410/S7.6_A3.1-expected.txt:
+        * sputnik/Unicode/Unicode_410/S7.6_A5.2_T6-expected.txt:
+        * sputnik/Unicode/Unicode_410/S7.6_A5.3_T1-expected.txt:
+        * sputnik/Unicode/Unicode_410/S7.6_A5.3_T2-expected.txt:
+        * sputnik/Unicode/Unicode_500/S7.6_A1.1_T6-expected.txt:
+        * sputnik/Unicode/Unicode_500/S7.6_A3.1-expected.txt:
+        * sputnik/Unicode/Unicode_500/S7.6_A5.2_T6-expected.txt:
+        * sputnik/Unicode/Unicode_500/S7.6_A5.3_T1-expected.txt:
+        * sputnik/Unicode/Unicode_500/S7.6_A5.3_T2-expected.txt:
+        * sputnik/Unicode/Unicode_510/S7.6_A1.1_T4-expected.txt:
+        * sputnik/Unicode/Unicode_510/S7.6_A1.1_T6-expected.txt:
+        * sputnik/Unicode/Unicode_510/S7.6_A5.2_T4-expected.txt:
+        * sputnik/Unicode/Unicode_510/S7.6_A5.2_T6-expected.txt:
+        Update expectations for outdated tests.
+
+2018-12-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline fast/text/zero-font-size.html after r239539.
+
+        * platform/gtk/fast/text/zero-font-size-expected.txt:
+
+2018-12-13  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [BigInt] Support BigInt in JSON.stringify
+        https://bugs.webkit.org/show_bug.cgi?id=192624
+
+        Reviewed by Saam Barati.
+
+        The test is wrong according to the spec[1]. valueOf of Boolean object won't be called.
+
+        [1]: https://tc39.github.io/ecma262/#sec-serializejsonproperty
+
+        * js/resources/JSON-stringify.js:
+        * js/resources/json2-es5-compat.js:
+        (str):
+
+2018-12-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Suppress native selection behaviors when focusing a very small editable element
+        https://bugs.webkit.org/show_bug.cgi?id=193005
+        <rdar://problem/46583527>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to verify that native selection UI is suppressed when focusing a tiny (1px by 1px)
+        editable element.
+
+        * editing/selection/ios/hide-selection-in-tiny-contenteditable-expected.txt: Added.
+        * editing/selection/ios/hide-selection-in-tiny-contenteditable.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.zoomToScale):
+
+2018-12-20  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Implement "well-formed JSON.stringify" proposal
+        https://bugs.webkit.org/show_bug.cgi?id=191677
+
+        Reviewed by Darin Adler.
+
+        * css3/escape-dom-api-expected.txt:
+        * js/dom/webidl-type-mapping-expected.txt:
+        * js/resources/json2-es5-compat.js:
+        (isHighSurrogate):
+        (isLowSurrogate):
+        (isSurrogate):
+        (quote):
+
+2018-12-21  Youenn Fablet  <youenn@apple.com>
+
+        RTCRtpSender.setParameters() does set active parameter
+        https://bugs.webkit.org/show_bug.cgi?id=192848
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video.html:
+        Add a check for active value.
+        Test video freezing through canvas instead of stats.
+
+2018-12-21  Justin Michaud  <justin_michaud@apple.com>
+
+        CSS variables don't work for colors in "border" property
+        https://bugs.webkit.org/show_bug.cgi?id=192922
+
+        Reviewed by Simon Fraser.
+
+        * css-custom-properties-api/border-variable-parsing-expected.html: Added.
+        * css-custom-properties-api/border-variable-parsing.html: Added.
+
+2018-12-21  Zalan Bujtas  <zalan@apple.com>
+
+        Synchronous media query evaluation could destroy current Frame/FrameView.
+        https://bugs.webkit.org/show_bug.cgi?id=192781
+        <rdar://problem/34416793>
+
+        Reviewed by Chris Dumez.
+
+        * printing/print-with-media-query-destory-expected.txt: Added.
+        * printing/print-with-media-query-destory.html: Added.
+
+2018-12-21  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r239503.
+        https://bugs.webkit.org/show_bug.cgi?id=192944
+
+        * fast/url/host-expected.txt:
+        * fast/url/host.html:
+
+2018-12-21  Truitt Savell  <tsavell@apple.com>
+
+        Skipping webgpu/ tests after https://trac.webkit.org/changeset/239495/webkit disabled webgpu on 10.12
+        https://bugs.webkit.org/show_bug.cgi?id=192956
+
+        Unreviewed Test Gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-12-21  Justin Michaud  <justin_michaud@apple.com>
+
+        Repeated background images with zero size should display the background color
+        https://bugs.webkit.org/show_bug.cgi?id=192962
+
+        Reviewed by Antti Koivisto.
+
+        Fix a rendering bug exposed by the CSS Variable wpt tests where repeated backgrounds with zero size
+        not draw the background colour underneath.
+
+        * fast/backgrounds/background-repeat-with-zero-size-expected.html: Added.
+        * fast/backgrounds/background-repeat-with-zero-size.html: Added.
+
+2018-12-20  Brent Fulgham  <bfulgham@apple.com>
+
+        Show punycode if URL contains Latin small letter dotless i
+        https://bugs.webkit.org/show_bug.cgi?id=192944
+        <rdar://problem/46103047>
+
+        Reviewed by Andy Estes.
+
+        * fast/url/host-expected.txt:
+        * fast/url/host.html:
+
+2018-12-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Remove platform specific files that are exactly the same as the generic expectation.
+
+        * platform/gtk/fast/text/selection-in-initial-advance-region-expected.txt: Removed.
+        * platform/gtk/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt: Removed.
+        * platform/gtk/legacy-animation-engine/animations/lineheight-animation-expected.txt: Removed.
+        * platform/gtk/legacy-animation-engine/animations/simultaneous-start-transform-expected.txt: Removed.
+        * platform/gtk/legacy-animation-engine/animations/width-using-ems-expected.txt: Removed.
+        * platform/gtk/security/block-test-expected.txt: Removed.
+        * platform/gtk/webaudio/codec-tests/wav/24bit-22khz-resample-expected.wav: Removed.
+
+2018-12-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline several tests.
+
+        * platform/gtk/css2.1/t051201-c23-first-line-00-b-expected.png:
+        * platform/gtk/css2.1/t051201-c23-first-line-00-b-expected.txt:
+        * platform/gtk/css2.1/t1508-c527-font-04-b-expected.png:
+        * platform/gtk/css2.1/t1508-c527-font-04-b-expected.txt:
+        * platform/gtk/css2.1/t1508-c527-font-05-b-expected.png:
+        * platform/gtk/css2.1/t1508-c527-font-05-b-expected.txt:
+        * platform/gtk/css2.1/t1508-c527-font-07-b-expected.png:
+        * platform/gtk/css2.1/t1508-c527-font-07-b-expected.txt:
+        * platform/gtk/fast/css/getComputedStyle/computed-style-expected.txt: Added.
+        * platform/gtk/fast/css/getComputedStyle/computed-style-font-family-expected.txt: Added.
+        * platform/gtk/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt: Added.
+        * platform/gtk/fast/text/font-selection-font-loading-api-parse-expected.txt: Added.
+        * platform/gtk/fast/text/font-stretch-parse-expected.txt: Added.
+        * platform/gtk/fast/text/font-style-parse-expected.txt: Added.
+        * platform/gtk/fast/text/font-weight-parse-expected.txt: Added.
+        * platform/gtk/svg/css/getComputedStyle-basic-expected.txt: Added.
+
+2018-12-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Some layout tests are failing after r239441
+        https://bugs.webkit.org/show_bug.cgi?id=192957
+        <rdar://problem/46781759>
+
+        Reviewed by Simon Fraser.
+
+        Fix several failing layout tests after r239441.
+
+        * fast/events/ios/click-event-while-editing-node.html:
+
+        This test started failing after r239441 because it taps the bottom of the editable element, and then expects
+        WebKit to scroll the web view up to reveal the touched location. This was exactly the bug that r239441 fixed, so
+        we should just make this test no longer depend on the broken behavior.
+
+        * fast/forms/ios/focus-long-textarea-expected.txt:
+        * fast/forms/ios/zoom-after-input-tap-wide-input-expected.txt:
+
+        Rebaseline a couple of test expectations to account for the change in margin around the selection rect, in
+        -[WKWebView _zoomToFocusRect:…:].
+
+2018-12-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Remove hash from Client Data
+        https://bugs.webkit.org/show_bug.cgi?id=192727
+        <rdar://problem/46746673>
+
+        Reviewed by Brent Fulgham.
+
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-create-success-local.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-local.https.html:
+
+2018-12-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Add a runtime flag for local authenticator
+        https://bugs.webkit.org/show_bug.cgi?id=192792
+        <rdar://problem/46798738>
+
+        Reviewed by Brent Fulgham.
+
+        * platform/mac-highsierra-wk1/fast/dom/navigator-detached-no-crash-expected.txt:
+        * platform/mac-wk1/fast/dom/navigator-detached-no-crash-expected.txt:
+
+2018-12-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Autoformat doesn't work on icloud.com (javascript-packed.js)
+        https://bugs.webkit.org/show_bug.cgi?id=192946
+        <rdar://problem/42546126>
+
+        Rubber-stamped by Devin Rousso.
+
+        * inspector/formatting/is-text-likely-minified-expected.txt:
+        * inspector/formatting/is-text-likely-minified.html:
+        Add a test for a long header doc at the start but minified content at the end.
+
+2018-12-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [ iOS WK2 ] Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/windowclient-navigate.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=191704
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Mark test as flaky.
+
+2018-12-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [Mac] Update apache httpd.conf
+        https://bugs.webkit.org/show_bug.cgi?id=192942
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/conf/apache2.4-php7-httpd.conf:
+
+2018-12-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [iOS] Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/update-registration-with-type.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=192938
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Mark test as flaky.
+
+2018-12-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Focusing an editable element should scroll to reveal the selection
+        https://bugs.webkit.org/show_bug.cgi?id=192802
+        <rdar://problem/46781759>
+
+        Reviewed by Tim Horton.
+
+        Adds a new layout test to verify that tapping near the bottom of a tall editable element to focus it doesn't
+        cause the page to scroll up (and, as a result, leave the selection caret obscured).
+
+        * editing/selection/ios/selection-is-visible-after-focusing-editable-area-expected.txt: Added.
+        * editing/selection/ios/selection-is-visible-after-focusing-editable-area.html: Added.
+
+2018-12-19  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Unreviewed test gardening.
+
+        * platform/wincairo/TestExpectations:
+
+2018-12-19  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK][WPE] Unreviewed test gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=192904
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/animations/lineheight-animation-expected.txt: Copied from LayoutTests/platform/wpe/legacy-animation-engine/animations/lineheight-animation-expected.txt.
+        * platform/gtk/animations/simultaneous-start-transform-expected.txt: Copied from LayoutTests/platform/wpe/legacy-animation-engine/animations/simultaneous-start-transform-expected.txt.
+        * platform/gtk/animations/width-using-ems-expected.txt: Copied from LayoutTests/platform/wpe/legacy-animation-engine/animations/width-using-ems-expected.txt.
+        * platform/gtk/css1/font_properties/font-expected.txt:
+        * platform/gtk/css1/pseudo/multiple_pseudo_elements-expected.txt:
+        * platform/gtk/css2.1/t1508-c527-font-00-b-expected.txt:
+        * platform/gtk/css2.1/t1508-c527-font-06-b-expected.txt:
+        * platform/gtk/css2.1/t1508-c527-font-10-c-expected.txt:
+        * platform/gtk/fast/inline/inline-content-with-image-simple-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/eventsource/format-mime-bogus-expected.txt: Removed.
+        * platform/gtk/legacy-animation-engine/animations/lineheight-animation-expected.txt: Added.
+        * platform/gtk/legacy-animation-engine/animations/simultaneous-start-transform-expected.txt: Copied from LayoutTests/platform/wpe/legacy-animation-engine/animations/simultaneous-start-transform-expected.txt.
+        * platform/gtk/legacy-animation-engine/animations/width-using-ems-expected.txt: Copied from LayoutTests/platform/wpe/legacy-animation-engine/animations/width-using-ems-expected.txt.
+        * platform/wpe/TestExpectations:
+        * platform/wpe/css1/font_properties/font-expected.txt:
+        * platform/wpe/css1/pseudo/multiple_pseudo_elements-expected.txt:
+        * platform/wpe/css2.1/t1508-c527-font-00-b-expected.txt:
+        * platform/wpe/css2.1/t1508-c527-font-06-b-expected.txt:
+        * platform/wpe/css2.1/t1508-c527-font-10-c-expected.txt:
+        * platform/wpe/fast/inline/inline-content-with-image-simple-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/eventsource/format-mime-bogus-expected.txt: Removed.
+        * platform/wpe/legacy-animation-engine/animations/lineheight-animation-expected.txt:
+        * platform/wpe/legacy-animation-engine/animations/simultaneous-start-transform-expected.txt:
+        * platform/wpe/legacy-animation-engine/animations/width-using-ems-expected.txt:
+
+2018-12-19  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Add stubs for WebGPUPipelineLayout/Descriptor and device::createPipelineLayout
+        https://bugs.webkit.org/show_bug.cgi?id=192843
+        <rdar://problem/46820395>
+
+        Reviewed by Myles Maxfield.
+
+        Update bind-group-layouts and rename to match new PipelineLayout functionality.
+
+        * webgpu/bind-group-layouts-expected.txt: Removed.
+        * webgpu/pipeline-layouts-expected.txt: Added.
+        * webgpu/pipeline-layouts.html: Renamed from LayoutTests/webgpu/bind-group-layouts.html.
+
+2018-12-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION: [ iOS Sim ] Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/update-missing-import-scripts.https.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=192250
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Mark test as flaky.
+
+2018-12-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION: imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html is very flaky on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=192279
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Mark test as flaky.
+
+2018-12-19  Tim Horton  <timothy_horton@apple.com>
+
+        UI process crash when focusing an editable image
+        https://bugs.webkit.org/show_bug.cgi?id=192839
+        <rdar://problem/46786670>
+
+        Reviewed by Wenson Hsieh.
+
+        * editing/images/basic-editable-image-with-gesture.html: Added.
+        * editing/images/basic-editable-image-with-gesture-expected.txt: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.stylusTapAt.return.new.Promise):
+        (window.UIHelper.stylusTapAt):
+        Add a test that ensures that adding an editable image from a gesture
+        doesn't crash, and can be drawn on.
+
+2018-12-19  Youenn Fablet  <youenn@apple.com>
+
+        [ MacOS iOS ] Layout Test webrtc/no-port-zero-in-upd-candidates.html is flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=192866
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/no-port-zero-in-upd-candidates.html:
+        Add some more logging in the test in case of time out.
+
+2018-12-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION (r234940): [ MacOS ] Layout Test imported/w3c/web-platform-tests/media-source/mediasource-changetype-play.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=190976
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations: Mark test as flaky.
+
+2018-12-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r239347.
+
+        Caused the leaks bot to hit an exception and the new test
+        crashes on certain configurations.
+
+        Reverted changeset:
+
+        "Synchronous media query evaluation could destroy current
+        Frame/FrameView."
+        https://bugs.webkit.org/show_bug.cgi?id=192781
+        https://trac.webkit.org/changeset/239347
+
+2018-12-18  Justin Michaud  <justin_michaud@apple.com>
+
+        Update CSS Properties and Values API to use new cycle fallback behaviour
+        https://bugs.webkit.org/show_bug.cgi?id=192800
+
+        Reviewed by Antti Koivisto.
+
+        * css-custom-properties-api/crash.html:
+        * css-custom-properties-api/inherits-expected.txt:
+        * css-custom-properties-api/inherits.html:
+        * css-custom-properties-api/registerProperty-expected.txt:
+        * css-custom-properties-api/registerProperty.html:
+
+2018-12-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Thick overlines and line-throughs grow in the wrong direction
+        https://bugs.webkit.org/show_bug.cgi?id=192264
+
+        Reviewed by Dean Jackson.
+
+        I can't figure out a way to test the line-through, so this just tests the overline.
+
+        * fast/css3-text/css3-text-decoration/text-decoration-thicknes-overline-grow-direction-expected.html: Added.
+        * fast/css3-text/css3-text-decoration/text-decoration-thicknes-overline-grow-direction.html: Added.
+
+2018-12-18  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] BindGroupLayout and Device::createBindGroupLayout
+        https://bugs.webkit.org/show_bug.cgi?id=192817
+
+        Reviewed by Dean Jackson.
+
+        Update bind-group-layouts to test new functionality.
+
+        * webgpu/bind-group-layouts-expected.txt:
+        * webgpu/bind-group-layouts.html:
+
+2018-12-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening after r239306 and r239338.
+
+        Move test compositing/contents-format baselines for Mojave into platform/mac, add new baselines for High Sierra and earlier.
+
+        * platform/mac-highsierra-wk1/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt: Copied from LayoutTests/platform/mac-wk1/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt.
+        * platform/mac-highsierra/compositing/contents-format/subpixel-antialiased-nested-layer-expected.txt: Copied from LayoutTests/platform/mac-mojave/compositing/contents-format/subpixel-antialiased-nested-layer-expected.txt.
+        * platform/mac-highsierra/compositing/contents-format/subpixel-antialiased-text-configs-antialiasing-style-expected.txt: Copied from LayoutTests/platform/mac/compositing/contents-format/subpixel-antialiased-text-configs-antialiasing-style-expected.txt.
+        * platform/mac-highsierra/compositing/contents-format/subpixel-antialiased-text-configs-expected.txt: Copied from LayoutTests/platform/mac/compositing/contents-format/subpixel-antialiased-text-configs-expected.txt.
+        * platform/mac-highsierra/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt: Copied from LayoutTests/platform/mac/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt.
+        * platform/mac-highsierra/compositing/contents-format/subpixel-antialiased-text-images-expected.txt: Copied from LayoutTests/platform/mac/compositing/contents-format/subpixel-antialiased-text-images-expected.txt.
+        * platform/mac-highsierra/compositing/contents-format/subpixel-antialiased-text-traversal-expected.txt: Copied from LayoutTests/platform/mac/compositing/contents-format/subpixel-antialiased-text-traversal-expected.txt.
+        * platform/mac-highsierra/compositing/contents-format/subpixel-antialiased-text-visibility-expected.txt: Copied from LayoutTests/platform/mac/compositing/contents-format/subpixel-antialiased-text-visibility-expected.txt.
+        * platform/mac-mojave-wk1/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt: Removed.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-configs-antialiasing-style-expected.txt: Removed.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-configs-expected.txt: Removed.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt: Removed.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-images-expected.txt: Removed.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-traversal-expected.txt: Removed.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-visibility-expected.txt: Removed.
+        * platform/mac-wk1/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt:
+        * platform/mac/compositing/contents-format/subpixel-antialiased-nested-layer-expected.txt: Renamed from LayoutTests/platform/mac-mojave/compositing/contents-format/subpixel-antialiased-nested-layer-expected.txt.
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-configs-antialiasing-style-expected.txt:
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-configs-expected.txt:
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt:
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-images-expected.txt:
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-traversal-expected.txt:
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-visibility-expected.txt:
+
+2018-12-18  Zalan Bujtas  <zalan@apple.com>
+
+        Synchronous media query evaluation could destroy current Frame/FrameView.
+        https://bugs.webkit.org/show_bug.cgi?id=192781
+        <rdar://problem/34416793>
+
+        Reviewed by Chris Dumez.
+
+        * printing/print-with-media-query-destory-expected.txt: Added.
+        * printing/print-with-media-query-destory.html: Added.
+
+2018-12-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: m3u8 content not shown, it should be text
+        https://bugs.webkit.org/show_bug.cgi?id=192731
+        <rdar://problem/46747728>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/unit-tests/mimetype-utilities-expected.txt:
+        * inspector/unit-tests/mimetype-utilities.html:
+        Tests for shouldTreatMIMETypeAsText.
+
+2018-12-18  Daniel Bates  <dabates@apple.com>
+
+        Remove <meta http-equiv=set-cookie> support
+        https://bugs.webkit.org/show_bug.cgi?id=185077
+        <rdar://problem/41791397>
+
+        Reviewed by Brent Fulgham.
+
+        Update test now that we no longer consider the HTTP equiv. pragma Set-Cookie as
+        dangerous (since it is ignored).
+
+        * http/tests/security/xssAuditor/cookie-injection-expected.txt:
+
+2018-12-18  Justin Michaud  <justin_michaud@apple.com>
+
+        CSS Typed OM should expose attributeStyleMap
+        https://bugs.webkit.org/show_bug.cgi?id=192671
+
+        Reviewed by Ryosuke Niwa.
+
+        * css-typedom/attributeStyleMap-expected.txt: Added.
+        * css-typedom/attributeStyleMap.html: Added.
+        * css-typedom/sameobject-expected.txt: Added.
+        * css-typedom/sameobject.html: Added.
+        * fast/css-custom-paint/properties.html:
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios-wk2/js/dom/dom-static-property-for-in-iteration-expected.txt: Added.
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/js/dom/dom-static-property-for-in-iteration-expected.txt: Added.
+        * platform/win/TestExpectations:
+
+2018-12-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix test failure after r239306.
+
+        Need Mojave WK1 results for this test.
+
+        * platform/mac-mojave-wk1/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt: Added.
+
+2018-12-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Calling setValue() while typing should invoke -textDidChangeInTextField in the injected bundle
+        https://bugs.webkit.org/show_bug.cgi?id=192785
+        <rdar://problem/45321184>
+
+        Reviewed by Tim Horton.
+
+        Add a test to verify that:
+        1. When typing in a focused field, the injected bundle method is invoked.
+        2. When changing the value of the focused field under non-typing user interaction, the method isn't invoked.
+        3. When changing the value of the focused field programmatically without user gesture, the method isn't invoked.
+
+        * TestExpectations:
+        * fast/forms/call-text-did-change-in-text-field-when-typing-expected.txt: Added.
+        * fast/forms/call-text-did-change-in-text-field-when-typing.html: Added.
+        * platform/wk2/TestExpectations:
+
+2018-12-17  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [Mac] Layout Test http/wpt/webauthn/public-key-credential-create-success-hid.https.html and http/wpt/webauthn/public-key-credential-get-success-hid.https.html are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=192061
+
+        Reviewed by Dewei Zhu.
+
+        Add a time out value.
+
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html:
+
+2018-12-17  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] A stream's first video frame should be rendered
+        https://bugs.webkit.org/show_bug.cgi?id=192629
+        <rdar://problem/46664353>
+
+        Reviewed by Youenn Fablet.
+
+        * fast/mediastream/MediaStream-video-element-displays-buffer.html: Updated.
+        * fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled-expected.txt: Ditto.
+        * fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled.html: Ditto.
+        * fast/mediastream/media-stream-renders-first-frame-expected.txt: Added.
+        * fast/mediastream/media-stream-renders-first-frame.html: Added.
+        * http/tests/media/media-stream/getusermedia-with-canvas-expected.txt: Removed.
+        * http/tests/media/media-stream/getusermedia-with-canvas.html: Removed.
+
+2018-12-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Focusing a large editable element always scrolls to the top of the element
+        https://bugs.webkit.org/show_bug.cgi?id=192745
+        <rdar://problem/46758445>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to verify that we don't scroll unnecessarily when focusing a tall editable element, whose
+        top offset is already near the top of the viewport.
+
+        * editing/selection/ios/no-scrolling-when-focusing-large-editable-area-expected.txt: Added.
+        * editing/selection/ios/no-scrolling-when-focusing-large-editable-area.html: Added.
+
+2018-12-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        offsetLeft and offsetParent should adjust across shadow boundaries
+        https://bugs.webkit.org/show_bug.cgi?id=157437
+        <rdar://problem/26154021>
+
+        Reviewed by Simon Fraser.
+
+        Added a W3C style testharness.js test.
+
+        * fast/shadow-dom/offsetParent-across-shadow-boundaries-expected.txt: Added.
+        * fast/shadow-dom/offsetParent-across-shadow-boundaries.html: Added.
+
+2018-12-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Don't use more expensive layer backing store formats when subpixel text antialiasing is not enabled
+        https://bugs.webkit.org/show_bug.cgi?id=192780
+        rdar://problem/43394387
+
+        Reviewed by Tim Horton.
+        
+        New macOS Mojave and later results.
+
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-nested-layer-expected.txt: Added.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-configs-antialiasing-style-expected.txt: Added.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-configs-expected.txt: Added.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt: Added.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-images-expected.txt: Added.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-traversal-expected.txt: Added.
+        * platform/mac-mojave/compositing/contents-format/subpixel-antialiased-text-visibility-expected.txt: Added.
+
+2018-12-17  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Implement WebGPUBindGroupLayoutDescriptor and its supporting dictionaries
+        https://bugs.webkit.org/show_bug.cgi?id=192726
+
+        Reviewed by Myles C. Maxfield.
+
+        Add simple test to ensure a WebGPUBindGroupLayoutDescriptor can be created.
+
+        * webgpu/bind-group-layouts-expected.txt: Added.
+        * webgpu/bind-group-layouts.html: Added.
+
+2018-12-17  Zalan Bujtas  <zalan@apple.com>
+
+        Reproducible ASSERTion failure when toggling layer borders with find-in-page up
+        https://bugs.webkit.org/show_bug.cgi?id=192762
+        <rdar://problem/46676873>
+
+        Reviewed by Simon Fraser.
+
+        * editing/document-marker-null-check-expected.txt: Added.
+        * editing/document-marker-null-check.html: Added.
+
+2018-12-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239265 and r239274.
+        https://bugs.webkit.org/show_bug.cgi?id=192765
+
+        unorm_normalize is deprecated, and broke an internal build
+        (Requested by Truitt on #webkit).
+
+        Reverted changesets:
+
+        "[GTK][WPE] Need a function to convert internal URI to display
+        ("pretty") URI"
+        https://bugs.webkit.org/show_bug.cgi?id=174816
+        https://trac.webkit.org/changeset/239265
+
+        "Fix the Apple Internal Mac build with a newer SDK"
+        https://trac.webkit.org/changeset/239274
+
+2018-12-17  Daniel Bates  <dabates@apple.com>
+
+        Implement UIScriptController::toggleCapsLock() for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=191815
+
+        Reviewed by Andy Estes.
+
+        Add iOS-specific results for some of the tests. We need to continue to skip the caps
+        lock tests on iOS until we have the fix for <rdar://problem/44930119>.
+
+        * fast/forms/password-scrolled-after-caps-lock-toggled.html: Replace input.focus() with
+        UIHelper.activateElement(input) to make it work on iOS and update logic accordingly.
+        Compensate for the fact that one less character than the size of the input is visible in
+        a password field on iOS.
+        * fast/repaint/placeholder-after-caps-lock-hidden.html: Replace input.focus() with
+        UIHelper.activateElement(input) to make it work on iOS and update logic accordingly.
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios-wk2/fast/forms/password-scrolled-after-caps-lock-toggled-expected.txt: Added.
+        * platform/ios-wk2/fast/repaint/placeholder-after-caps-lock-hidden-expected.txt: Added.
+
+2018-12-17  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r233268): Elements animated in from offscreen sometimes don't display
+        https://bugs.webkit.org/show_bug.cgi?id=192725
+        rdar://problem/46011418
+
+        Reviewed by Antoine Quint.
+
+        * compositing/backing/animate-into-view-expected.txt: Added.
+        * compositing/backing/animate-into-view-with-descendant-expected.txt: Added.
+        * compositing/backing/animate-into-view-with-descendant.html: Added.
+        * compositing/backing/animate-into-view.html: Added.
+        * platform/ios/compositing/backing/animate-into-view-expected.txt: Added.
+        * platform/ios/compositing/backing/animate-into-view-with-descendant-expected.txt: Added.
+
+2018-12-17  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK][WPE] Need a function to convert internal URI to display ("pretty") URI
+        https://bugs.webkit.org/show_bug.cgi?id=174816
+
+        Reviewed by Michael Catanzaro.
+
+        * TestExpectations: Enable fast/url/user-visible/.
+
+2018-12-15  Youenn Fablet  <youenn@apple.com>
+
+        Make RTCRtpSender.setParameters to activate specific encodings
+        https://bugs.webkit.org/show_bug.cgi?id=192732
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-expected.txt:
+        * webrtc/video.html:
+
+2018-12-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: toggling selected properties may cause data corruption
+        https://bugs.webkit.org/show_bug.cgi?id=192396
+        <rdar://problem/46478383>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/css/add-css-property-expected.txt: Added.
+        * inspector/css/add-css-property.html: Added.
+        Test adding new properties.
+
+        * inspector/css/modify-css-property-expected.txt:
+        * inspector/css/modify-css-property.html:
+        Test commenting out and uncommenting CSS properties.
+
+2018-12-14  Youenn Fablet  <youenn@apple.com>
+
+        MediaRecorderPrivateAVFImpl should have a Ref<MediaRecorderPrivateWriter> as member
+        https://bugs.webkit.org/show_bug.cgi?id=192720
+
+        Reviewed by Eric Carlson.
+
+        * http/wpt/mediarecorder/MediaRecorder-onremovetrack-expected.txt: Added.
+        * http/wpt/mediarecorder/MediaRecorder-onremovetrack.html: Added.
+
+2018-12-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cookies view should use model objects instead of raw payload data
+        https://bugs.webkit.org/show_bug.cgi?id=189533
+        <rdar://problem/44364183>
+
+        Reviewed by Joseph Pecoraro and Devin Rousso.
+
+        * inspector/unit-tests/cookie-expected.txt:
+        * inspector/unit-tests/cookie.html:
+
+2018-12-14  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r233268): contents of an animated element inside overflow:hidden disappear
+        https://bugs.webkit.org/show_bug.cgi?id=188655
+        rdar://problem/43382687
+
+        Reviewed by Antoine Quint.
+
+        * compositing/backing/backing-store-attachment-empty-keyframe-expected.txt: Added.
+        * compositing/backing/backing-store-attachment-empty-keyframe.html: Added.
+        * legacy-animation-engine/compositing/backing/backing-store-attachment-empty-keyframe-expected.txt: Added.
+        * legacy-animation-engine/compositing/backing/backing-store-attachment-empty-keyframe.html: Added.
+
+2018-12-14  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed test gardening.
+
+        LFC does not support logical to physical coordinate conversion yet.
+
+        * fast/block/block-only/float-avoider-with-margins-expected.txt:
+        * fast/block/block-only/float-avoider-with-margins.html:
+
+2018-12-14  Youenn Fablet  <youenn@apple.com>
+
+        IDB should store RTCCertificate
+        https://bugs.webkit.org/show_bug.cgi?id=192599
+
+        Reviewed by Brady Eidson.
+
+        * webrtc/certificates-indexeddb-expected.txt: Added.
+        * webrtc/certificates-indexeddb.html: Added.
+
+2018-12-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make HTMLConverter work across shadow boundaries
+        https://bugs.webkit.org/show_bug.cgi?id=192640
+
+        Reviewed by Wenson Hsieh.
+
+        Added tests for generating attributed string out across shadow boundaries based on the tests
+        of respective names in editing/pasteboard.
+
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-1-expected.txt: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-1.html: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-2-expected.txt: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-2.html: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-3-expected.txt: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-3.html: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-4-expected.txt: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-4.html: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-5-expected.txt: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-5.html: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-with-style-1-expected.txt: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-with-style-1.html: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-with-style-2-expected.txt: Added.
+        * editing/mac/attributed-string/attributed-string-across-shadow-boundaries-with-style-2.html: Added.
+        * editing/mac/attributed-string/resources/dump-attributed-string.js:
+        (window.dumpAttributedString): Now takes start and end containers and offsets.
+        (serializeSubtreeWithShadow): Added. This function serializes the content of shadow roots along with
+        start and end markers.
+        (serializeSubtreeWithShadow.serializeCharacterData): Added.
+        (serializeSubtreeWithShadow.serializeNode): Added.
+        (serializeSubtreeWithShadow.serializeChildNodes): Added.
+        (serializeSubtreeWithShadow.serializeShadowRootAndChildNodes): Added.
+        (dumpAttributedString): Deleted.
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-across-shadow-boundaries-1-expected.txt: Added.
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-across-shadow-boundaries-2-expected.txt: Added.
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-across-shadow-boundaries-3-expected.txt: Added.
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-across-shadow-boundaries-4-expected.txt: Added.
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-across-shadow-boundaries-5-expected.txt: Added.
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-across-shadow-boundaries-with-style-1-expected.txt: Added.
+        * platform/mac-sierra/editing/mac/attributed-string/attributed-string-across-shadow-boundaries-with-style-2-expected.txt: Added.
+
+2018-12-13  Youenn Fablet  <youenn@apple.com>
+
+        Trying to play a media element synchronously after setting srcObject should succeed without user gesture
+        https://bugs.webkit.org/show_bug.cgi?id=192679
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/local-audio-playing-event-expected.txt:
+        * fast/mediastream/local-audio-playing-event.html:
+
 2018-12-13  Per Arne Vollan  <pvollan@apple.com>
 
         [macOS] Inline WebVTT styles should override styles from Captions settings in System Preferences

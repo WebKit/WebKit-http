@@ -41,19 +41,26 @@ namespace WebCore {
 using PlatformDevice = MTLDevice;
 using PlatformDeviceSmartPtr = RetainPtr<MTLDevice>;
 
+class GPUBindGroupLayout;
 class GPUBuffer;
+class GPUPipelineLayout;
 class GPURenderPipeline;
 class GPUShaderModule;
 
+struct GPUBindGroupLayoutDescriptor;
 struct GPUBufferDescriptor;
-struct GPUShaderModuleDescriptor;
+struct GPUPipelineLayoutDescriptor;
 struct GPURenderPipelineDescriptor;
+struct GPUShaderModuleDescriptor;
 
 class GPUDevice : public RefCounted<GPUDevice> {
 public:
     static RefPtr<GPUDevice> create();
 
     RefPtr<GPUBuffer> createBuffer(GPUBufferDescriptor&&) const;
+
+    RefPtr<GPUBindGroupLayout> tryCreateBindGroupLayout(GPUBindGroupLayoutDescriptor&&) const;
+    Ref<GPUPipelineLayout> createPipelineLayout(GPUPipelineLayoutDescriptor&&) const;
 
     RefPtr<GPUShaderModule> createShaderModule(GPUShaderModuleDescriptor&&) const;
     RefPtr<GPURenderPipeline> createRenderPipeline(GPURenderPipelineDescriptor&&) const;

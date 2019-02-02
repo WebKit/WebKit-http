@@ -60,18 +60,33 @@ inline void StructureRareData::setCachedPropertyNameEnumerator(VM& vm, JSPropert
 inline JSImmutableButterfly* StructureRareData::cachedOwnKeys() const
 {
     ASSERT(!isCompilationThread());
-    return m_cachedOwnKeys.get();
+    auto* butterfly = m_cachedOwnKeys.unvalidatedGet();
+    if (butterfly == cachedOwnKeysSentinel())
+        return nullptr;
+    return butterfly;
+}
+
+inline JSImmutableButterfly* StructureRareData::cachedOwnKeysIgnoringSentinel() const
+{
+    ASSERT(!isCompilationThread());
+    return m_cachedOwnKeys.unvalidatedGet();
 }
 
 inline JSImmutableButterfly* StructureRareData::cachedOwnKeysConcurrently() const
 {
-    auto* result = m_cachedOwnKeys.get();
-    WTF::loadLoadFence();
-    return result;
+    auto* butterfly = m_cachedOwnKeys.unvalidatedGet();
+    if (butterfly == cachedOwnKeysSentinel())
+        return nullptr;
+    return butterfly;
 }
 
 inline void StructureRareData::setCachedOwnKeys(VM& vm, JSImmutableButterfly* butterfly)
 {
+    if (butterfly == cachedOwnKeysSentinel()) {
+        m_cachedOwnKeys.setWithoutWriteBarrier(butterfly);
+        return;
+    }
+
     WTF::storeStoreFence();
     m_cachedOwnKeys.set(vm, this, butterfly);
 }

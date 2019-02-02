@@ -27,19 +27,16 @@
 #include "NetworkProcess.h"
 
 #include "NetworkProcessCreationParameters.h"
-#include "WebCookieManager.h"
 #include <WebCore/CurlContext.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
 
-using namespace WebCore;
-
 namespace WebKit {
 
-void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
+using namespace WebCore;
+
+void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters&)
 {
-    if (!parameters.cookiePersistentStorageFile.isEmpty())
-        supplement<WebCookieManager>()->setCookiePersistentStorage(parameters.cookiePersistentStorageFile);
 }
 
 void NetworkProcess::allowSpecificHTTPSCertificateForHost(const CertificateInfo& certificateInfo, const String& host)

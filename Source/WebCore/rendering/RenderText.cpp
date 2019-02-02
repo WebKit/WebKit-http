@@ -808,7 +808,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
     bool isSpace = false;
     bool firstWord = true;
     bool firstLine = true;
-    std::optional<unsigned> nextBreakable;
+    Optional<unsigned> nextBreakable;
     unsigned lastWordBoundary = 0;
 
     WordTrailingSpace wordTrailingSpace(style);
@@ -828,7 +828,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
         minimumSuffixLength = after < 0 ? 2 : after;
     }
 
-    std::optional<int> firstGlyphLeftOverflow;
+    Optional<int> firstGlyphLeftOverflow;
 
     bool breakNBSP = style.autoWrap() && style.nbspMode() == NBSPMode::Space;
     
@@ -904,7 +904,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
             float currMinWidth = 0;
             bool isSpace = (j < length) && isSpaceAccordingToStyle(c, style);
             float w;
-            std::optional<float> wordTrailingSpaceWidth;
+            Optional<float> wordTrailingSpaceWidth;
             if (isSpace)
                 wordTrailingSpaceWidth = wordTrailingSpace.width(fallbackFonts);
             if (wordTrailingSpaceWidth)
@@ -921,7 +921,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
 
                 if (suffixStart) {
                     float suffixWidth;
-                    std::optional<float> wordTrailingSpaceWidth;
+                    Optional<float> wordTrailingSpaceWidth;
                     if (isSpace)
                         wordTrailingSpaceWidth = wordTrailingSpace.width(fallbackFonts);
                     if (wordTrailingSpaceWidth)
@@ -1004,7 +1004,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
         }
     }
 
-    glyphOverflow.left = firstGlyphLeftOverflow.value_or(glyphOverflow.left);
+    glyphOverflow.left = firstGlyphLeftOverflow.valueOr(glyphOverflow.left);
 
     if ((needsWordSpacing && length > 1) || (ignoringSpaces && !firstWord))
         currMaxWidth += wordSpacing;
@@ -1063,7 +1063,7 @@ Vector<std::pair<unsigned, unsigned>> RenderText::draggedContentRangesBetweenOff
     if (!textNode())
         return { };
 
-    auto markers = document().markers().markersFor(textNode(), DocumentMarker::DraggedContent);
+    auto markers = document().markers().markersFor(*textNode(), DocumentMarker::DraggedContent);
     if (markers.isEmpty())
         return { };
 
@@ -1510,13 +1510,13 @@ int RenderText::previousOffset(int current) const
         return current - 1;
 
     CachedTextBreakIterator iterator(text(), TextBreakIterator::Mode::Caret, nullAtom());
-    return iterator.preceding(current).value_or(current - 1);
+    return iterator.preceding(current).valueOr(current - 1);
 }
 
 int RenderText::previousOffsetForBackwardDeletion(int current) const
 {
     CachedTextBreakIterator iterator(text(), TextBreakIterator::Mode::Delete, nullAtom());
-    return iterator.preceding(current).value_or(0);
+    return iterator.preceding(current).valueOr(0);
 }
 
 int RenderText::nextOffset(int current) const
@@ -1525,7 +1525,7 @@ int RenderText::nextOffset(int current) const
         return current + 1;
 
     CachedTextBreakIterator iterator(text(), TextBreakIterator::Mode::Caret, nullAtom());
-    return iterator.following(current).value_or(current + 1);
+    return iterator.following(current).valueOr(current + 1);
 }
 
 bool RenderText::computeCanUseSimpleFontCodePath() const
@@ -1545,9 +1545,9 @@ void RenderText::momentarilyRevealLastTypedCharacter(unsigned offsetAfterLastTyp
     secureTextTimer->restart(offsetAfterLastTypedCharacter);
 }
 
-StringView RenderText::stringView(unsigned start, std::optional<unsigned> stop) const
+StringView RenderText::stringView(unsigned start, Optional<unsigned> stop) const
 {
-    unsigned destination = stop.value_or(text().length());
+    unsigned destination = stop.valueOr(text().length());
     ASSERT(start <= length());
     ASSERT(destination <= length());
     ASSERT(start <= destination);

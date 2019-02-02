@@ -997,8 +997,12 @@ void PluginView::willDetachRenderer()
 
 RefPtr<SharedBuffer> PluginView::liveResourceData() const
 {
-    if (!m_isInitialized || !m_plugin)
-        return 0;
+    if (!m_isInitialized || !m_plugin) {
+        if (m_manualStreamData && m_manualStreamState == ManualStreamState::Finished)
+            return m_manualStreamData;
+
+        return nullptr;
+    }
 
     return m_plugin->liveResourceData();
 }
@@ -1174,8 +1178,8 @@ void PluginView::performURLRequest(URLRequest* request)
     }
 
     // This request is to load a URL and create a stream.
-    RefPtr<Stream> stream = PluginView::Stream::create(this, request->requestID(), request->request());
-    addStream(stream.get());
+    auto stream = PluginView::Stream::create(this, request->requestID(), request->request());
+    addStream(stream.ptr());
     stream->start();
 }
 
@@ -1193,7 +1197,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
         return;
     }
 
-    UserGestureIndicator gestureIndicator(request->allowPopups() ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
+    UserGestureIndicator gestureIndicator(request->allowPopups() ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : WTF::nullopt);
 
     // First, try to find a target frame.
     Frame* targetFrame = frame->loader().findFrameForNavigation(request->target());
@@ -1477,7 +1481,7 @@ bool PluginView::evaluate(NPObject* npObject, const String& scriptString, NPVari
     // protect the plug-in view from destruction.
     NPRuntimeObjectMap::PluginProtector pluginProtector(&m_npRuntimeObjectMap);
 
-    UserGestureIndicator gestureIndicator(allowPopups ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
+    UserGestureIndicator gestureIndicator(allowPopups ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : WTF::nullopt);
     return m_npRuntimeObjectMap.evaluate(npObject, scriptString, result);
 }
 

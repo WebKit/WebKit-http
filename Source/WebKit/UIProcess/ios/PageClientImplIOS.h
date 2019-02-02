@@ -32,7 +32,7 @@
 #import <wtf/RetainPtr.h>
 
 OBJC_CLASS WKContentView;
-OBJC_CLASS WKEditorUndoTargetObjC;
+OBJC_CLASS WKEditorUndoTarget;
 
 namespace WebCore {
 struct PromisedAttachmentInfo;
@@ -117,6 +117,7 @@ private:
 
     void showSafeBrowsingWarning(const SafeBrowsingWarning&, CompletionHandler<void(Variant<WebKit::ContinueUnsafeLoad, URL>&&)>&&) override;
     void clearSafeBrowsingWarning() override;
+    void clearSafeBrowsingWarningIfForMainFrameNavigation() override;
 
     void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
     void exitAcceleratedCompositingMode() override;
@@ -135,13 +136,13 @@ private:
     void layerTreeCommitComplete() override;
 
     void couldNotRestorePageState() override;
-    void restorePageState(std::optional<WebCore::FloatPoint>, const WebCore::FloatPoint&, const WebCore::FloatBoxExtent&, double) override;
-    void restorePageCenterAndScale(std::optional<WebCore::FloatPoint>, double) override;
+    void restorePageState(Optional<WebCore::FloatPoint>, const WebCore::FloatPoint&, const WebCore::FloatBoxExtent&, double) override;
+    void restorePageCenterAndScale(Optional<WebCore::FloatPoint>, double) override;
 
-    void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, API::Object* userData) override;
-    void stopAssistingNode() override;
+    void elementDidFocus(const FocusedElementInformation&, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, API::Object* userData) override;
+    void elementDidBlur() override;
     void didReceiveEditorStateUpdateAfterFocus() override;
-    bool isAssistingNode() override;
+    bool isFocusingElement() override;
     void selectionDidChange() override;
     bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) override;
     void positionInformationDidChange(const InteractionInformationAtPosition&) override;
@@ -221,14 +222,18 @@ private:
     void didHandleStartDataInteractionRequest(bool started) override;
     void didHandleAdditionalDragItemsRequest(bool added) override;
     void startDrag(const WebCore::DragItem&, const ShareableBitmap::Handle& image) override;
-    void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>) override;
+    void didConcludeEditDataInteraction(Optional<WebCore::TextIndicatorData>) override;
     void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) override;
 #endif
 
     void didFinishProcessingAllPendingMouseEvents() final { }
 
+#if HAVE(PENCILKIT)
+    RetainPtr<WKDrawingView> createDrawingView(WebCore::GraphicsLayer::EmbeddedViewID) override;
+#endif
+
     WKContentView *m_contentView;
-    RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
+    RetainPtr<WKEditorUndoTarget> m_undoTarget;
 };
 } // namespace WebKit
 

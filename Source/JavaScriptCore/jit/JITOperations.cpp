@@ -102,7 +102,7 @@ void JIT_OPERATION operationThrowStackOverflowError(ExecState* exec, CodeBlock* 
     // We pass in our own code block, because the callframe hasn't been populated.
     VM* vm = codeBlock->vm();
     auto scope = DECLARE_THROW_SCOPE(*vm);
-    exec->convertToStackOverflowFrame(*vm);
+    exec->convertToStackOverflowFrame(*vm, codeBlock);
     NativeCallFrameTracer tracer(vm, exec);
     throwStackOverflowError(exec, scope);
 }
@@ -113,8 +113,9 @@ int32_t JIT_OPERATION operationCallArityCheck(ExecState* exec)
     auto scope = DECLARE_THROW_SCOPE(*vm);
 
     int32_t missingArgCount = CommonSlowPaths::arityCheckFor(exec, *vm, CodeForCall);
-    if (missingArgCount < 0) {
-        exec->convertToStackOverflowFrame(*vm);
+    if (UNLIKELY(missingArgCount < 0)) {
+        CodeBlock* codeBlock = CommonSlowPaths::codeBlockFromCallFrameCallee(exec, CodeForCall);
+        exec->convertToStackOverflowFrame(*vm, codeBlock);
         NativeCallFrameTracer tracer(vm, exec);
         throwStackOverflowError(vm->topCallFrame, scope);
     }
@@ -128,8 +129,9 @@ int32_t JIT_OPERATION operationConstructArityCheck(ExecState* exec)
     auto scope = DECLARE_THROW_SCOPE(*vm);
 
     int32_t missingArgCount = CommonSlowPaths::arityCheckFor(exec, *vm, CodeForConstruct);
-    if (missingArgCount < 0) {
-        exec->convertToStackOverflowFrame(*vm);
+    if (UNLIKELY(missingArgCount < 0)) {
+        CodeBlock* codeBlock = CommonSlowPaths::codeBlockFromCallFrameCallee(exec, CodeForConstruct);
+        exec->convertToStackOverflowFrame(*vm, codeBlock);
         NativeCallFrameTracer tracer(vm, exec);
         throwStackOverflowError(vm->topCallFrame, scope);
     }
@@ -689,7 +691,7 @@ static void directPutByVal(CallFrame* callFrame, JSObject* baseObject, JSValue s
     auto property = subscript.toPropertyKey(callFrame);
     RETURN_IF_EXCEPTION(scope, void());
 
-    if (std::optional<uint32_t> index = parseIndex(property)) {
+    if (Optional<uint32_t> index = parseIndex(property)) {
         byValInfo->tookSlowPath = true;
         scope.release();
         baseObject->putDirectIndex(callFrame, index.value(), value, 0, isStrictMode ? PutDirectIndexShouldThrow : PutDirectIndexShouldNotThrow);
@@ -2432,7 +2434,8 @@ void JIT_OPERATION lookupExceptionHandler(VM* vm, ExecState* exec)
 
 void JIT_OPERATION lookupExceptionHandlerFromCallerFrame(VM* vm, ExecState* exec)
 {
-    exec->convertToStackOverflowFrame(*vm);
+    ASSERT(exec->isStackOverflowFrame());
+    ASSERT(jsCast<ErrorInstance*>(vm->exceptionForInspection()->value().asCell())->isStackOverflowError());
     lookupExceptionHandler(vm, exec);
 }
 

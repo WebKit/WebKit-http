@@ -2303,7 +2303,7 @@ void RenderLayer::scrollByRecursively(const IntSize& delta, ScrollableArea** scr
     }
 }
 
-void RenderLayer::setPostLayoutScrollPosition(std::optional<ScrollPosition> position)
+void RenderLayer::setPostLayoutScrollPosition(Optional<ScrollPosition> position)
 {
     m_postLayoutScrollPosition = position;
 }
@@ -2314,7 +2314,7 @@ void RenderLayer::applyPostLayoutScrollPositionIfNeeded()
         return;
 
     scrollToOffset(scrollOffsetFromPosition(m_postLayoutScrollPosition.value()));
-    m_postLayoutScrollPosition = std::nullopt;
+    m_postLayoutScrollPosition = WTF::nullopt;
 }
 
 void RenderLayer::scrollToXPosition(int x, ScrollClamping clamping)
@@ -4457,7 +4457,7 @@ void RenderLayer::paintLayerByApplyingTransform(GraphicsContext& context, const 
     LayoutSize adjustedSubpixelOffset = offsetForThisLayer - LayoutSize(devicePixelSnappedOffsetForThisLayer);
     LayerPaintingInfo transformedPaintingInfo(paintingInfo);
     transformedPaintingInfo.rootLayer = this;
-    transformedPaintingInfo.paintDirtyRect = LayoutRect(encloseRectToDevicePixels(transform.inverse().value_or(AffineTransform()).mapRect(paintingInfo.paintDirtyRect), deviceScaleFactor));
+    transformedPaintingInfo.paintDirtyRect = LayoutRect(encloseRectToDevicePixels(transform.inverse().valueOr(AffineTransform()).mapRect(paintingInfo.paintDirtyRect), deviceScaleFactor));
     transformedPaintingInfo.subpixelOffset = adjustedSubpixelOffset;
     paintLayerContentsAndReflection(context, transformedPaintingInfo, paintFlags);
     context.setCTM(oldTransfrom);
@@ -5037,7 +5037,7 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
 
     // Check for hit test on backface if backface-visibility is 'hidden'
     if (localTransformState && renderer().style().backfaceVisibility() == BackfaceVisibility::Hidden) {
-        std::optional<TransformationMatrix> invertedMatrix = localTransformState->m_accumulatedTransform.inverse();
+        Optional<TransformationMatrix> invertedMatrix = localTransformState->m_accumulatedTransform.inverse();
         // If the z-vector of the matrix is negative, the back is facing towards the viewer.
         if (invertedMatrix && invertedMatrix.value().m33() < 0)
             return nullptr;

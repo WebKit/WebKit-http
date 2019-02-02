@@ -387,7 +387,7 @@ void CanvasRenderingContext2DBase::restore()
         return;
     m_path.transform(state().transform);
     m_stateStack.removeLast();
-    if (std::optional<AffineTransform> inverse = state().transform.inverse())
+    if (Optional<AffineTransform> inverse = state().transform.inverse())
         m_path.transform(inverse.value());
     GraphicsContext* c = drawingContext();
     if (!c)
@@ -915,7 +915,7 @@ ExceptionOr<void> CanvasRenderingContext2DBase::setTransform(DOMMatrix2DInit&& m
     if (checkValid.hasException())
         return checkValid.releaseException();
 
-    setTransform(matrixInit.a.value_or(1), matrixInit.b.value_or(0), matrixInit.c.value_or(0), matrixInit.d.value_or(1), matrixInit.e.value_or(0), matrixInit.f.value_or(0));
+    setTransform(matrixInit.a.valueOr(1), matrixInit.b.valueOr(0), matrixInit.c.valueOr(0), matrixInit.d.valueOr(1), matrixInit.e.valueOr(0), matrixInit.f.valueOr(0));
     return { };
 }
 
@@ -939,7 +939,7 @@ void CanvasRenderingContext2DBase::resetTransform()
     modifiableState().hasInvertibleTransform = true;
 }
 
-void CanvasRenderingContext2DBase::setStrokeColor(const String& color, std::optional<float> alpha)
+void CanvasRenderingContext2DBase::setStrokeColor(const String& color, Optional<float> alpha)
 {
     if (alpha) {
         setStrokeStyle(CanvasStyle::createFromStringWithOverrideAlpha(color, alpha.value()));
@@ -975,7 +975,7 @@ void CanvasRenderingContext2DBase::setStrokeColor(float c, float m, float y, flo
     setStrokeStyle(CanvasStyle(c, m, y, k, a));
 }
 
-void CanvasRenderingContext2DBase::setFillColor(const String& color, std::optional<float> alpha)
+void CanvasRenderingContext2DBase::setFillColor(const String& color, Optional<float> alpha)
 {
     if (alpha) {
         setFillStyle(CanvasStyle::createFromStringWithOverrideAlpha(color, alpha.value()));
@@ -1204,7 +1204,7 @@ bool CanvasRenderingContext2DBase::isPointInPathInternal(const Path& path, float
     if (!state().hasInvertibleTransform)
         return false;
 
-    auto transformedPoint = state().transform.inverse().value_or(AffineTransform()).mapPoint(FloatPoint(x, y));
+    auto transformedPoint = state().transform.inverse().valueOr(AffineTransform()).mapPoint(FloatPoint(x, y));
 
     if (!std::isfinite(transformedPoint.x()) || !std::isfinite(transformedPoint.y()))
         return false;
@@ -1220,7 +1220,7 @@ bool CanvasRenderingContext2DBase::isPointInStrokeInternal(const Path& path, flo
     if (!state().hasInvertibleTransform)
         return false;
 
-    auto transformedPoint = state().transform.inverse().value_or(AffineTransform()).mapPoint(FloatPoint(x, y));
+    auto transformedPoint = state().transform.inverse().valueOr(AffineTransform()).mapPoint(FloatPoint(x, y));
     if (!std::isfinite(transformedPoint.x()) || !std::isfinite(transformedPoint.y()))
         return false;
 
@@ -1339,7 +1339,7 @@ void CanvasRenderingContext2DBase::strokeRect(float x, float y, float width, flo
     }
 }
 
-void CanvasRenderingContext2DBase::setShadow(float width, float height, float blur, const String& colorString, std::optional<float> alpha)
+void CanvasRenderingContext2DBase::setShadow(float width, float height, float blur, const String& colorString, Optional<float> alpha)
 {
     Color color = Color::transparent;
     if (!colorString.isNull()) {
@@ -1442,10 +1442,11 @@ static inline FloatSize size(HTMLVideoElement& video)
 #if ENABLE(CSS_TYPED_OM)
 static inline FloatSize size(TypedOMCSSImageValue& image)
 {
-    LayoutSize size;
-    if (auto* cachedImage = image.image())
-        size = cachedImage->imageSizeForRenderer(image.renderer(), 1.0f); // FIXME: Not sure about this, see fixme in size(HTMLImageElement&...)
-    return size;
+    auto* cachedImage = image.image();
+    if (!cachedImage)
+        return FloatSize();
+
+    return cachedImage->imageSizeForRenderer(nullptr, 1.0f);
 }
 #endif
 
@@ -1512,13 +1513,12 @@ ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(HTMLImageElement& imag
 #if ENABLE(CSS_TYPED_OM)
 ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(TypedOMCSSImageValue& image, const FloatRect& srcRect, const FloatRect& dstRect)
 {
-    auto* renderer = image.renderer();
     auto* cachedImage = image.image();
-    if (!renderer || !cachedImage)
+    if (!cachedImage || !image.document())
         return { };
     FloatRect imageRect = FloatRect(FloatPoint(), size(image));
 
-    auto result = drawImage(renderer->document(), cachedImage, renderer, imageRect, srcRect, dstRect, state().globalComposite, state().globalBlend);
+    auto result = drawImage(*image.document(), cachedImage, nullptr, imageRect, srcRect, dstRect, state().globalComposite, state().globalBlend);
 
     if (!result.hasException())
         checkOrigin(image);

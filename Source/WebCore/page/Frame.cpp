@@ -661,22 +661,23 @@ bool Frame::selectionChangeCallbacksDisabled() const
 
 void Frame::setPrinting(bool printing, const FloatSize& pageSize, const FloatSize& originalPageSize, float maximumShrinkRatio, AdjustViewSizeOrNot shouldAdjustViewSize)
 {
+    if (!view())
+        return;
     // In setting printing, we should not validate resources already cached for the document.
     // See https://bugs.webkit.org/show_bug.cgi?id=43704
     ResourceCacheValidationSuppressor validationSuppressor(m_doc->cachedResourceLoader());
 
     m_doc->setPrinting(printing);
-    if (auto* frameView = view()) {
-        frameView->adjustMediaTypeForPrinting(printing);
+    auto& frameView = *view();
+    frameView.adjustMediaTypeForPrinting(printing);
 
-        m_doc->styleScope().didChangeStyleSheetEnvironment();
-        if (shouldUsePrintingLayout())
-            frameView->forceLayoutForPagination(pageSize, originalPageSize, maximumShrinkRatio, shouldAdjustViewSize);
-        else {
-            frameView->forceLayout();
-            if (shouldAdjustViewSize == AdjustViewSize)
-                frameView->adjustViewSize();
-        }
+    m_doc->styleScope().didChangeStyleSheetEnvironment();
+    if (shouldUsePrintingLayout())
+        frameView.forceLayoutForPagination(pageSize, originalPageSize, maximumShrinkRatio, shouldAdjustViewSize);
+    else {
+        frameView.forceLayout();
+        if (shouldAdjustViewSize == AdjustViewSize)
+            frameView.adjustViewSize();
     }
 
     // Subframes of the one we're printing don't lay out to the page size.
@@ -737,7 +738,7 @@ void Frame::injectUserScriptImmediately(DOMWrapperWorld& world, const UserScript
 
     document->topDocument().setAsRunningUserScripts();
     loader().client().willInjectUserScript(world);
-    m_script->evaluateInWorld(ScriptSourceCode(script.source(), script.url()), world);
+    m_script->evaluateInWorld(ScriptSourceCode(script.source(), URL(script.url())), world);
 }
 
 RenderView* Frame::contentRenderer() const

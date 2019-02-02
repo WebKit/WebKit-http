@@ -228,7 +228,7 @@ void ResourceLoadStatisticsMemoryStore::removeDataRecords(CompletionHandler<void
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     m_activePluginTokens.clear();
-    for (auto plugin : PluginProcessManager::singleton().pluginProcesses())
+    for (const auto& plugin : PluginProcessManager::singleton().pluginProcesses())
         m_activePluginTokens.add(plugin->pluginProcessToken());
 #endif
 
@@ -448,7 +448,7 @@ void ResourceLoadStatisticsMemoryStore::requestStorageAccessUnderOpener(String&&
 #if !RELEASE_LOG_DISABLED
     RELEASE_LOG_INFO_IF(m_debugLoggingEnabled, ResourceLoadStatisticsDebug, "[Temporary combatibility fix] Storage access was granted for %{public}s under opener page from %{public}s, with user interaction in the opened window.", primaryDomainInNeedOfStorageAccess.utf8().data(), openerPrimaryDomain.utf8().data());
 #endif
-    grantStorageAccessInternal(WTFMove(primaryDomainInNeedOfStorageAccess), WTFMove(openerPrimaryDomain), std::nullopt, openerPageID, false, [](bool) { });
+    grantStorageAccessInternal(WTFMove(primaryDomainInNeedOfStorageAccess), WTFMove(openerPrimaryDomain), WTF::nullopt, openerPageID, false, [](bool) { });
 }
 
 void ResourceLoadStatisticsMemoryStore::grantStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, bool userWasPromptedNow, CompletionHandler<void(bool)>&& completionHandler)
@@ -465,7 +465,7 @@ void ResourceLoadStatisticsMemoryStore::grantStorageAccess(String&& subFrameHost
     grantStorageAccessInternal(WTFMove(subFramePrimaryDomain), WTFMove(topFramePrimaryDomain), frameID, pageID, userWasPromptedNow, WTFMove(completionHandler));
 }
 
-void ResourceLoadStatisticsMemoryStore::grantStorageAccessInternal(String&& subFramePrimaryDomain, String&& topFramePrimaryDomain, std::optional<uint64_t> frameID, uint64_t pageID, bool userWasPromptedNowOrEarlier, CompletionHandler<void(bool)>&& callback)
+void ResourceLoadStatisticsMemoryStore::grantStorageAccessInternal(String&& subFramePrimaryDomain, String&& topFramePrimaryDomain, Optional<uint64_t> frameID, uint64_t pageID, bool userWasPromptedNowOrEarlier, CompletionHandler<void(bool)>&& callback)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -587,7 +587,7 @@ void ResourceLoadStatisticsMemoryStore::cancelPendingStatisticsProcessingRequest
 {
     ASSERT(!RunLoop::isMain());
 
-    m_pendingStatisticsProcessingRequestIdentifier = std::nullopt;
+    m_pendingStatisticsProcessingRequestIdentifier = WTF::nullopt;
 }
 
 void ResourceLoadStatisticsMemoryStore::logFrameNavigation(const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, const String& sourcePrimaryDomain, const String& targetHost, const String& mainFrameHost, bool isRedirect, bool isMainFrame)
@@ -877,7 +877,7 @@ bool ResourceLoadStatisticsMemoryStore::shouldRemoveDataRecords() const
         return false;
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    for (auto plugin : PluginProcessManager::singleton().pluginProcesses()) {
+    for (const auto& plugin : PluginProcessManager::singleton().pluginProcesses()) {
         if (!m_activePluginTokens.contains(plugin->pluginProcessToken()))
             return true;
     }

@@ -50,8 +50,8 @@ public:
     Display::Box::Rect rectInContainingBlock() const;
 
     struct HorizontalConstraints {
-        std::optional<PositionInContextRoot> left;
-        std::optional<PositionInContextRoot> right;
+        Optional<PositionInContextRoot> left;
+        Optional<PositionInContextRoot> right;
     };
     void setHorizontalConstraints(HorizontalConstraints);
     void setVerticalConstraint(PositionInContextRoot);
@@ -70,12 +70,13 @@ protected:
     virtual PositionInContextRoot horizontalPositionCandidate(HorizontalConstraints);
     virtual PositionInContextRoot verticalPositionCandidate(PositionInContextRoot);
 
-    LayoutUnit marginTop() const { return displayBox().marginTop(); }
-    LayoutUnit marginBottom() const { return displayBox().marginBottom(); }
-    LayoutUnit marginLeft() const { return displayBox().nonComputedMarginLeft(); }
-    LayoutUnit marginRight() const { return displayBox().nonComputedMarginRight(); }
+    LayoutUnit marginBefore() const { return displayBox().marginBefore(); }
+    LayoutUnit marginAfter() const { return displayBox().marginAfter(); }
+    // Do not use the used values here because they computed as if this box was not a float avoider.
+    LayoutUnit marginStart() const { return displayBox().computedMarginStart().valueOr(0); }
+    LayoutUnit marginEnd() const { return displayBox().computedMarginEnd().valueOr(0); }
 
-    LayoutUnit marginBoxWidth() const { return marginLeft() + displayBox().width() + marginRight(); }
+    LayoutUnit marginBoxWidth() const { return marginStart() + displayBox().width() + marginEnd(); }
 
     const FloatingState& floatingState() const { return m_floatingState; }
     const Box& layoutBox() const { return *m_layoutBox; }

@@ -162,7 +162,7 @@ public:
 
     Ref<MessageEvent> event(ScriptExecutionContext& context)
     {
-        return MessageEvent::create(MessagePort::entanglePorts(context, WTFMove(m_message.transferredPorts)), m_message.message.releaseNonNull(), m_origin, { }, m_source ? std::make_optional(MessageEventSource(WTFMove(m_source))) : std::nullopt);
+        return MessageEvent::create(MessagePort::entanglePorts(context, WTFMove(m_message.transferredPorts)), m_message.message.releaseNonNull(), m_origin, { }, m_source ? makeOptional(MessageEventSource(WTFMove(m_source))) : WTF::nullopt);
     }
 
     SecurityOrigin* targetOrigin() const { return m_targetOrigin.get(); }
@@ -1484,7 +1484,7 @@ RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String
 
     bool allowCrossOrigin = frame->settings().crossOriginCheckInGetMatchedCSSRulesDisabled();
 
-    RefPtr<StaticCSSRuleList> ruleList = StaticCSSRuleList::create();
+    auto ruleList = StaticCSSRuleList::create();
     for (auto& rule : matchedRules) {
         if (!allowCrossOrigin && !rule->hasDocumentSecurityOrigin())
             continue;
@@ -1494,7 +1494,7 @@ RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String
     if (ruleList->rules().isEmpty())
         return nullptr;
 
-    return ruleList;
+    return WTFMove(ruleList);
 }
 
 RefPtr<WebKitPoint> DOMWindow::webkitConvertPointFromNodeToPage(Node* node, const WebKitPoint* p) const
@@ -1839,9 +1839,9 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, Ref<EventListene
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION)
-    if (frame() && frame()->settings().deviceOrientationEventEnabled()) {
+    if (frame() && frame()->settings().deviceOrientationEventEnabled() && document() && document()->loader() && document()->loader()->deviceOrientationEventEnabled()) {
 #if PLATFORM(IOS_FAMILY)
-        if ((eventType == eventNames().devicemotionEvent || eventType == eventNames().deviceorientationEvent) && document()) {
+        if ((eventType == eventNames().devicemotionEvent || eventType == eventNames().deviceorientationEvent)) {
             if (isSameSecurityOriginAsMainFrame() && isSecureContext()) {
                 if (eventType == eventNames().deviceorientationEvent)
                     document()->deviceOrientationController()->addDeviceEventListener(this);
@@ -1859,13 +1859,13 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, Ref<EventListene
             if (isSameSecurityOriginAsMainFrame() && isSecureContext()) {
                 if (DeviceMotionController* controller = DeviceMotionController::from(page()))
                     controller->addDeviceEventListener(this);
-            } else if (document())
+            } else
                 document()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, "Blocked attempt to add a device motion listener from child frame that wasn't the same security origin as the main page."_s);
         } else if (eventType == eventNames().deviceorientationEvent) {
             if (isSameSecurityOriginAsMainFrame() && isSecureContext()) {
                 if (DeviceOrientationController* controller = DeviceOrientationController::from(page()))
                     controller->addDeviceEventListener(this);
-            } else if (document()) {
+            } else {
                 if (isSecureContext())
                     document()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, "Blocked attempt to add a device orientation listener from child frame that wasn't the same security origin as the main page."_s);
                 else
@@ -2245,7 +2245,7 @@ ExceptionOr<RefPtr<Frame>> DOMWindow::createWindow(const String& urlString, cons
     // We pass the opener frame for the lookupFrame in case the active frame is different from
     // the opener frame, and the name references a frame relative to the opener frame.
     bool created;
-    RefPtr<Frame> newFrame = WebCore::createWindow(*activeFrame, openerFrame, WTFMove(frameLoadRequest), windowFeatures, created);
+    auto newFrame = WebCore::createWindow(*activeFrame, openerFrame, WTFMove(frameLoadRequest), windowFeatures, created);
     if (!newFrame)
         return RefPtr<Frame> { nullptr };
 

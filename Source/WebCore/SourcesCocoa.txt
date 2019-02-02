@@ -318,6 +318,7 @@ platform/graphics/cv/PixelBufferConformerCV.cpp
 platform/graphics/cv/TextureCacheCV.mm
 platform/graphics/cv/VideoTextureCopierCV.cpp
 
+platform/graphics/gpu/cocoa/GPUBindGroupLayoutMetal.mm
 platform/graphics/gpu/cocoa/GPUBufferMetal.mm
 platform/graphics/gpu/cocoa/GPUCommandBufferMetal.mm
 platform/graphics/gpu/cocoa/GPUDeviceMetal.mm
@@ -493,7 +494,6 @@ platform/mediastream/ios/CoreAudioCaptureSourceIOS.mm @no-unify
 
 platform/mediastream/mac/AudioTrackPrivateMediaStreamCocoa.cpp
 platform/mediastream/mac/AVCaptureDeviceManager.mm @no-unify
-platform/mediastream/mac/AVMediaCaptureSource.mm @no-unify
 platform/mediastream/mac/AVVideoCaptureSource.mm @no-unify
 platform/mediastream/mac/MockRealtimeVideoSourceMac.mm
 

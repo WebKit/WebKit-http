@@ -456,7 +456,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
 static NSString *defaultApplicationNameForUserAgent()
 {
 #if PLATFORM(IOS_FAMILY)
-    return [@"Mobile/" stringByAppendingString:[UIDevice currentDevice].buildVersion];
+    return @"Mobile/15E148";
 #else
     return nil;
 #endif
@@ -946,7 +946,7 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (double)_cpuLimit
 {
-    return _pageConfiguration->cpuLimit().value_or(0);
+    return _pageConfiguration->cpuLimit().valueOr(0);
 }
 
 #endif // PLATFORM(MAC)

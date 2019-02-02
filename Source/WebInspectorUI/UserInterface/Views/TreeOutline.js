@@ -406,8 +406,10 @@ WI.TreeOutline = class TreeOutline extends WI.Object
         this._cachedNumberOfDescendents++;
 
         let index = this._indexOfTreeElement(element);
-        if (index >= 0)
+        if (index >= 0) {
+            console.assert(!element.selected, "TreeElement should not be selected before being inserted.");
             this._selectionController.didInsertItem(index);
+        }
     }
 
     _forgetTreeElement(element)
@@ -803,7 +805,8 @@ WI.TreeOutline = class TreeOutline extends WI.Object
             let treeElement = this._treeElementAtIndex(index);
             console.assert(treeElement, "Missing TreeElement for deselected index " + index);
             if (treeElement) {
-                treeElement.listItemElement.classList.remove("selected");
+                if (treeElement.listItemElement)
+                    treeElement.listItemElement.classList.remove("selected");
                 if (!this._suppressNextSelectionDidChangeEvent)
                     treeElement.deselect();
             }
@@ -813,7 +816,8 @@ WI.TreeOutline = class TreeOutline extends WI.Object
             let treeElement = this._treeElementAtIndex(index);
             console.assert(treeElement, "Missing TreeElement for selected index " + index);
             if (treeElement) {
-                treeElement.listItemElement.classList.add("selected");
+                if (treeElement.listItemElement)
+                    treeElement.listItemElement.classList.add("selected");
                 if (!this._suppressNextSelectionDidChangeEvent)
                     treeElement.select();
             }
@@ -821,12 +825,12 @@ WI.TreeOutline = class TreeOutline extends WI.Object
 
         let selectedTreeElement = this.selectedTreeElement;
         if (selectedTreeElement !== this._previousSelectedTreeElement) {
-            if (this._previousSelectedTreeElement)
+            if (this._previousSelectedTreeElement && this._previousSelectedTreeElement.listItemElement)
                 this._previousSelectedTreeElement.listItemElement.classList.remove("last-selected");
 
             this._previousSelectedTreeElement = selectedTreeElement;
 
-            if (this._previousSelectedTreeElement)
+            if (this._previousSelectedTreeElement && this._previousSelectedTreeElement.listItemElement)
                 this._previousSelectedTreeElement.listItemElement.classList.add("last-selected");
         }
 

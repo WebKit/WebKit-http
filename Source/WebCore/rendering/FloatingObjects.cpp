@@ -195,14 +195,14 @@ public:
     LayoutUnit highValue() const { return LayoutUnit::max(); }
     void collectIfNeeded(const IntervalType&);
 
-    LayoutUnit nextLogicalBottom() const { return m_nextLogicalBottom.value_or(0); }
-    LayoutUnit nextShapeLogicalBottom() const { return m_nextShapeLogicalBottom.value_or(nextLogicalBottom()); }
+    LayoutUnit nextLogicalBottom() const { return m_nextLogicalBottom.valueOr(0); }
+    LayoutUnit nextShapeLogicalBottom() const { return m_nextShapeLogicalBottom.valueOr(nextLogicalBottom()); }
 
 private:
     WeakPtr<const RenderBlockFlow> m_renderer;
     LayoutUnit m_belowLogicalHeight;
-    std::optional<LayoutUnit> m_nextLogicalBottom;
-    std::optional<LayoutUnit> m_nextShapeLogicalBottom;
+    Optional<LayoutUnit> m_nextLogicalBottom;
+    Optional<LayoutUnit> m_nextShapeLogicalBottom;
 };
 
 inline void FindNextFloatLogicalBottomAdapter::collectIfNeeded(const IntervalType& interval)

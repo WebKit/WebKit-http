@@ -943,7 +943,7 @@ void PDFPlugin::addArchiveResource()
     RetainPtr<NSURLResponse> response = adoptNS([[NSHTTPURLResponse alloc] initWithURL:m_sourceURL statusCode:200 HTTPVersion:(NSString*)kCFHTTPVersion1_1 headerFields:headers]);
     ResourceResponse synthesizedResponse(response.get());
 
-    RefPtr<ArchiveResource> resource = ArchiveResource::create(SharedBuffer::create(m_data.get()), m_sourceURL, "application/pdf", String(), String(), synthesizedResponse);
+    auto resource = ArchiveResource::create(SharedBuffer::create(m_data.get()), m_sourceURL, "application/pdf", String(), String(), synthesizedResponse);
     pluginView()->frame()->document()->loader()->addArchiveResource(resource.releaseNonNull());
 }
 
@@ -1257,7 +1257,7 @@ RefPtr<ShareableBitmap> PDFPlugin::snapshot()
     IntSize backingStoreSize = size();
     backingStoreSize.scale(contentsScaleFactor);
 
-    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(backingStoreSize, { });
+    auto bitmap = ShareableBitmap::createShareable(backingStoreSize, { });
     auto context = bitmap->createGraphicsContext();
 
     context->scale(FloatSize(contentsScaleFactor, -contentsScaleFactor));
@@ -1286,7 +1286,7 @@ IntPoint PDFPlugin::convertFromRootViewToPlugin(const IntPoint& point) const
 IntPoint PDFPlugin::convertFromPDFViewToRootView(const IntPoint& point) const
 {
     IntPoint pointInPluginCoordinates(point.x(), size().height() - point.y());
-    return m_rootViewToPluginTransform.inverse().value_or(AffineTransform()).mapPoint(pointInPluginCoordinates);
+    return m_rootViewToPluginTransform.inverse().valueOr(AffineTransform()).mapPoint(pointInPluginCoordinates);
 }
     
 IntPoint PDFPlugin::convertFromRootViewToPDFView(const IntPoint& point) const
@@ -1315,7 +1315,7 @@ IntRect PDFPlugin::boundsOnScreen() const
         return IntRect();
 
     FloatRect bounds = FloatRect(FloatPoint(), size());
-    FloatRect rectInRootViewCoordinates = m_rootViewToPluginTransform.inverse().value_or(AffineTransform()).mapRect(bounds);
+    FloatRect rectInRootViewCoordinates = m_rootViewToPluginTransform.inverse().valueOr(AffineTransform()).mapRect(bounds);
     return frameView->contentsToScreen(enclosingIntRect(rectInRootViewCoordinates));
 }
 
@@ -1325,7 +1325,7 @@ void PDFPlugin::geometryDidChange(const IntSize& pluginSize, const IntRect&, con
         return;
 
     m_size = pluginSize;
-    m_rootViewToPluginTransform = pluginToRootViewTransform.inverse().value_or(AffineTransform());
+    m_rootViewToPluginTransform = pluginToRootViewTransform.inverse().valueOr(AffineTransform());
     [m_pdfLayerController setFrameSize:pluginSize];
 
     [CATransaction begin];
@@ -1620,7 +1620,7 @@ bool PDFPlugin::handleContextMenuEvent(const WebMouseEvent& event)
     }
     PDFContextMenu contextMenu { point, WTFMove(items) };
 
-    std::optional<int> selectedIndex = -1;
+    Optional<int> selectedIndex = -1;
     webPage->sendSync(Messages::WebPageProxy::ShowPDFContextMenu(contextMenu), Messages::WebPageProxy::ShowPDFContextMenu::Reply(selectedIndex));
 
     if (selectedIndex && *selectedIndex >= 0 && *selectedIndex < itemCount)
@@ -1853,11 +1853,7 @@ void PDFPlugin::writeItemsToPasteboard(NSString *pasteboardName, NSArray *items,
             RetainPtr<NSString> plainTextString = adoptNS([[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
             webProcess.parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::SetPasteboardStringForType(pasteboardName, type, plainTextString.get()), Messages::WebPasteboardProxy::SetPasteboardStringForType::Reply(newChangeCount), 0);
         } else {
-            RefPtr<SharedBuffer> buffer = SharedBuffer::create(data);
-
-            if (!buffer)
-                continue;
-
+            auto buffer = SharedBuffer::create(data);
             SharedMemory::Handle handle;
             RefPtr<SharedMemory> sharedMemory = SharedMemory::allocate(buffer->size());
             memcpy(sharedMemory->data(), buffer->data(), buffer->size());

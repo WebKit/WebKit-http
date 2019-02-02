@@ -123,7 +123,6 @@ extern "C" {
 
 using namespace WebCore;
 using namespace HTMLNames;
-using namespace std;
 
 using JSC::JSGlobalObject;
 using JSC::JSLock;
@@ -564,7 +563,7 @@ HRESULT WebFrame::loadRequest(_In_opt_ IWebURLRequest* request)
     return S_OK;
 }
 
-void WebFrame::loadData(RefPtr<WebCore::SharedBuffer>&& data, BSTR mimeType, BSTR textEncodingName, BSTR baseURL, BSTR failingURL)
+void WebFrame::loadData(Ref<WebCore::SharedBuffer>&& data, BSTR mimeType, BSTR textEncodingName, BSTR baseURL, BSTR failingURL)
 {
     String mimeTypeString(mimeType, SysStringLen(mimeType));
     if (!mimeType)
@@ -610,7 +609,7 @@ HRESULT WebFrame::loadData(_In_opt_ IStream* data, _In_ BSTR mimeType, _In_ BSTR
 
 HRESULT WebFrame::loadPlainTextString(_In_ BSTR plainText, _In_ BSTR url)
 {
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<char*>(plainText), sizeof(UChar) * SysStringLen(plainText));
+    auto sharedBuffer = SharedBuffer::create(reinterpret_cast<char*>(plainText), sizeof(UChar) * SysStringLen(plainText));
     BString plainTextMimeType(TEXT("text/plain"), 10);
     BString utf16Encoding(TEXT("utf-16"), 6);
     loadData(WTFMove(sharedBuffer), plainTextMimeType, utf16Encoding, url, nullptr);
@@ -619,7 +618,7 @@ HRESULT WebFrame::loadPlainTextString(_In_ BSTR plainText, _In_ BSTR url)
 
 void WebFrame::loadHTMLString(_In_ BSTR htmlString, _In_ BSTR baseURL, _In_ BSTR unreachableURL)
 {
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<char*>(htmlString), sizeof(UChar) * SysStringLen(htmlString));
+    auto sharedBuffer = SharedBuffer::create(reinterpret_cast<char*>(htmlString), sizeof(UChar) * SysStringLen(htmlString));
     BString utf16Encoding(TEXT("utf-16"), 6);
     loadData(WTFMove(sharedBuffer), 0, utf16Encoding, baseURL, unreachableURL);
 }
@@ -1574,7 +1573,7 @@ void WebFrame::drawHeader(PlatformGraphicsContext* pctx, IWebUIDelegate* ui, con
 void WebFrame::drawFooter(PlatformGraphicsContext* pctx, IWebUIDelegate* ui, const IntRect& pageRect, UINT page, UINT pageCount, float headerHeight, float footerHeight)
 {
     int x = pageRect.x();
-    int y = max((int)headerHeight+pageRect.height(), m_pageHeight-static_cast<int>(footerHeight));
+    int y = std::max((int)headerHeight+pageRect.height(), m_pageHeight-static_cast<int>(footerHeight));
     RECT footerRect = {x, y, x+pageRect.width(), y+static_cast<int>(footerHeight)};
     ui->drawFooterInRect(d->webView, &footerRect, reinterpret_cast<ULONG_PTR>(pctx), page + 1, pageCount);
 }
@@ -1655,7 +1654,7 @@ void WebFrame::drawFooter(PlatformGraphicsContext* pctx, IWebUIDelegate* ui, con
     HDC hdc = hdcFromContext(pctx);
     
     int x = pageRect.x();
-    int y = max(static_cast<int>(headerHeight) + pageRect.height(), m_pageHeight  -static_cast<int>(footerHeight));
+    int y = std::max(static_cast<int>(headerHeight) + pageRect.height(), m_pageHeight  -static_cast<int>(footerHeight));
     RECT footerRect = {x, y, x + pageRect.width(), y + static_cast<int>(footerHeight)};
 
     ui->drawFooterInRect(d->webView, &footerRect, reinterpret_cast<ULONG_PTR>(hdc), page+1, pageCount);

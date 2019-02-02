@@ -40,7 +40,6 @@
 
 
 namespace WebCore {
-using namespace std;
 
 void AXObjectCache::detachWrapper(AccessibilityObject* obj, AccessibilityDetachmentType)
 {
@@ -119,7 +118,7 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotific
     // element, not the index of a child element.
 
     ASSERT(obj->axObjectID() >= 1);
-    ASSERT(obj->axObjectID() <= numeric_limits<LONG>::max());
+    ASSERT(obj->axObjectID() <= std::numeric_limits<LONG>::max());
 
     NotifyWinEvent(msaaEvent, page->chrome().platformPageClient(), OBJID_CLIENT, -static_cast<LONG>(obj->axObjectID()));
 }

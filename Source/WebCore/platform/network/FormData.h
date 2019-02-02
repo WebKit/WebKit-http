@@ -45,7 +45,7 @@ struct FormDataElement {
         : data(WTFMove(data)) { }
     explicit FormDataElement(Vector<char>&& array)
         : data(WTFMove(array)) { }
-    FormDataElement(const String& filename, int64_t fileStart, int64_t fileLength, std::optional<WallTime> expectedFileModificationTime, bool shouldGenerateFile)
+    FormDataElement(const String& filename, int64_t fileStart, int64_t fileLength, Optional<WallTime> expectedFileModificationTime, bool shouldGenerateFile)
         : data(EncodedFileData { filename, fileStart, fileLength, expectedFileModificationTime, { }, shouldGenerateFile, false }) { }
     explicit FormDataElement(const URL& blobURL)
         : data(EncodedBlobData { blobURL }) { }
@@ -58,12 +58,12 @@ struct FormDataElement {
     {
         encoder << data;
     }
-    template<typename Decoder> static std::optional<FormDataElement> decode(Decoder& decoder)
+    template<typename Decoder> static Optional<FormDataElement> decode(Decoder& decoder)
     {
-        std::optional<Data> data;
+        Optional<Data> data;
         decoder >> data;
         if (!data)
-            return std::nullopt;
+            return WTF::nullopt;
         return FormDataElement(WTFMove(*data));
     }
 
@@ -71,7 +71,7 @@ struct FormDataElement {
         String filename;
         int64_t fileStart { 0 };
         int64_t fileLength { 0 };
-        std::optional<WallTime> expectedFileModificationTime;
+        Optional<WallTime> expectedFileModificationTime;
         String generatedFilename;
         bool shouldGenerateFile { false };
         bool ownsGeneratedFile { false };
@@ -85,7 +85,7 @@ struct FormDataElement {
             return { filename.isolatedCopy(), fileStart, fileLength, expectedFileModificationTime, generatedFilename.isolatedCopy(), shouldGenerateFile, ownsGeneratedFile };
         }
         
-        bool operator==(const EncodedFileData other) const
+        bool operator==(const EncodedFileData& other) const
         {
             return filename == other.filename
                 && fileStart == other.fileStart
@@ -99,37 +99,37 @@ struct FormDataElement {
         {
             encoder << filename << fileStart << fileLength << expectedFileModificationTime << generatedFilename << shouldGenerateFile;
         }
-        template<typename Decoder> static std::optional<EncodedFileData> decode(Decoder& decoder)
+        template<typename Decoder> static Optional<EncodedFileData> decode(Decoder& decoder)
         {
-            std::optional<String> filename;
+            Optional<String> filename;
             decoder >> filename;
             if (!filename)
-                return std::nullopt;
+                return WTF::nullopt;
             
-            std::optional<int64_t> fileStart;
+            Optional<int64_t> fileStart;
             decoder >> fileStart;
             if (!fileStart)
-                return std::nullopt;
+                return WTF::nullopt;
             
-            std::optional<int64_t> fileLength;
+            Optional<int64_t> fileLength;
             decoder >> fileLength;
             if (!fileLength)
-                return std::nullopt;
+                return WTF::nullopt;
             
-            std::optional<std::optional<WallTime>> expectedFileModificationTime;
+            Optional<Optional<WallTime>> expectedFileModificationTime;
             decoder >> expectedFileModificationTime;
             if (!expectedFileModificationTime)
-                return std::nullopt;
+                return WTF::nullopt;
             
-            std::optional<String> generatedFilename;
+            Optional<String> generatedFilename;
             decoder >> generatedFilename;
             if (!generatedFilename)
-                return std::nullopt;
+                return WTF::nullopt;
 
-            std::optional<bool> shouldGenerateFile;
+            Optional<bool> shouldGenerateFile;
             decoder >> shouldGenerateFile;
             if (!shouldGenerateFile)
-                return std::nullopt;
+                return WTF::nullopt;
 
             bool ownsGeneratedFile = false;
             
@@ -149,7 +149,7 @@ struct FormDataElement {
     struct EncodedBlobData {
         URL url;
 
-        bool operator==(const EncodedBlobData other) const
+        bool operator==(const EncodedBlobData& other) const
         {
             return url == other.url;
         }
@@ -157,12 +157,12 @@ struct FormDataElement {
         {
             encoder << url;
         }
-        template<typename Decoder> static std::optional<EncodedBlobData> decode(Decoder& decoder)
+        template<typename Decoder> static Optional<EncodedBlobData> decode(Decoder& decoder)
         {
-            std::optional<URL> url;
+            Optional<URL> url;
             decoder >> url;
             if (!url)
-                return std::nullopt;
+                return WTF::nullopt;
 
             return {{ WTFMove(*url) }};
         }
@@ -218,7 +218,7 @@ public:
 
     WEBCORE_EXPORT void appendData(const void* data, size_t);
     void appendFile(const String& filePath, bool shouldGenerateFile = false);
-    WEBCORE_EXPORT void appendFileRange(const String& filename, long long start, long long length, std::optional<WallTime> expectedModificationTime, bool shouldGenerateFile = false);
+    WEBCORE_EXPORT void appendFileRange(const String& filename, long long start, long long length, Optional<WallTime> expectedModificationTime, bool shouldGenerateFile = false);
     WEBCORE_EXPORT void appendBlob(const URL& blobURL);
 
     Vector<char> flatten() const; // omits files
@@ -279,7 +279,7 @@ private:
     bool m_alwaysStream { false };
     Vector<char> m_boundary;
     bool m_containsPasswordData { false };
-    mutable std::optional<uint64_t> m_lengthInBytes;
+    mutable Optional<uint64_t> m_lengthInBytes;
 };
 
 inline bool operator==(const FormData& a, const FormData& b)
@@ -305,7 +305,7 @@ void FormData::encode(Encoder& encoder) const
 template<typename Decoder>
 RefPtr<FormData> FormData::decode(Decoder& decoder)
 {
-    RefPtr<FormData> data = FormData::create();
+    auto data = FormData::create();
 
     if (!decoder.decode(data->m_alwaysStream))
         return nullptr;
@@ -319,7 +319,7 @@ RefPtr<FormData> FormData::decode(Decoder& decoder)
     if (!decoder.decode(data->m_identifier))
         return nullptr;
 
-    return data;
+    return WTFMove(data);
 }
 
 } // namespace WebCore

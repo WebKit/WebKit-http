@@ -3,7 +3,7 @@
     Copyright (C) 2001 Dirk Mueller (mueller@kde.org)
     Copyright (C) 2002 Waldo Bastian (bastian@kde.org)
     Copyright (C) 2006 Samuel Weinig (sam.weinig@gmail.com)
-    Copyright (C) 2004-2011, 2014 Apple Inc. All rights reserved.
+    Copyright (C) 2004-2011, 2014, 2018 Apple Inc. All rights reserved.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -208,24 +208,30 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
             // Beacons are allowed to go through in 'pagehide' event handlers.
             if (shouldUsePingLoad(type()))
                 break;
-            FALLTHROUGH;
+            RELEASE_LOG_IF_ALLOWED("load: About to enter page cache (frame = %p)", &frame);
+            failBeforeStarting();
+            return;
         case Document::InPageCache:
-            RELEASE_LOG_IF_ALLOWED("load: Already in page cache or being added to it (frame = %p)", &frame);
+            RELEASE_LOG_IF_ALLOWED("load: Already in page cache (frame = %p)", &frame);
             failBeforeStarting();
             return;
         }
     }
 
     FrameLoader& frameLoader = frame.loader();
-    if (m_options.securityCheck == SecurityCheckPolicy::DoSecurityCheck && !shouldUsePingLoad(type()) && (frameLoader.state() == FrameStateProvisional || !frameLoader.activeDocumentLoader() || frameLoader.activeDocumentLoader()->isStopping())) {
-        if (frameLoader.state() == FrameStateProvisional)
-            RELEASE_LOG_IF_ALLOWED("load: Failed security check -- state is provisional (frame = %p)", &frame);
-        else if (!frameLoader.activeDocumentLoader())
-            RELEASE_LOG_IF_ALLOWED("load: Failed security check -- not active document (frame = %p)", &frame);
-        else if (frameLoader.activeDocumentLoader()->isStopping())
-            RELEASE_LOG_IF_ALLOWED("load: Failed security check -- active loader is stopping (frame = %p)", &frame);
-        failBeforeStarting();
-        return;
+    if (m_options.securityCheck == SecurityCheckPolicy::DoSecurityCheck && !shouldUsePingLoad(type())) {
+        while (true) {
+            if (frameLoader.state() == FrameStateProvisional)
+                RELEASE_LOG_IF_ALLOWED("load: Failed security check -- state is provisional (frame = %p)", &frame);
+            else if (!frameLoader.activeDocumentLoader())
+                RELEASE_LOG_IF_ALLOWED("load: Failed security check -- not active document (frame = %p)", &frame);
+            else if (frameLoader.activeDocumentLoader()->isStopping())
+                RELEASE_LOG_IF_ALLOWED("load: Failed security check -- active loader is stopping (frame = %p)", &frame);
+            else
+                break;
+            failBeforeStarting();
+            return;
+        }
     }
 
     m_loading = true;
@@ -282,7 +288,7 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
             unsigned long identifier = frame.page()->progress().createUniqueIdentifier();
             InspectorInstrumentation::willSendRequestOfType(&frame, identifier, frameLoader.activeDocumentLoader(), request, InspectorInstrumentation::LoadType::Beacon);
 
-            platformStrategies()->loaderStrategy()->startPingLoad(frame, request, m_originalRequest->httpHeaderFields(), m_options, [this, protectedThis = WTFMove(protectedThis), protectedFrame = makeRef(frame), identifier] (const ResourceError& error, const ResourceResponse& response) {
+            platformStrategies()->loaderStrategy()->startPingLoad(frame, request, m_originalRequest->httpHeaderFields(), m_options, m_options.contentSecurityPolicyImposition, [this, protectedThis = WTFMove(protectedThis), protectedFrame = makeRef(frame), identifier] (const ResourceError& error, const ResourceResponse& response) {
                 if (!response.isNull())
                     InspectorInstrumentation::didReceiveResourceResponse(protectedFrame, identifier, protectedFrame->loader().activeDocumentLoader(), response, nullptr);
                 if (error.isNull()) {
@@ -873,7 +879,7 @@ bool CachedResource::areAllClientsXMLHttpRequests() const
     return true;
 }
 
-void CachedResource::setLoadPriority(const std::optional<ResourceLoadPriority>& loadPriority)
+void CachedResource::setLoadPriority(const Optional<ResourceLoadPriority>& loadPriority)
 {
     if (loadPriority)
         m_loadPriority = loadPriority.value();

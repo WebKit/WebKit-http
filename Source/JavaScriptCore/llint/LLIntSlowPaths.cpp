@@ -559,7 +559,7 @@ LLINT_SLOW_PATH_DECL(stack_check)
     }
 #endif
 
-    exec->convertToStackOverflowFrame(vm);
+    exec->convertToStackOverflowFrame(vm, codeBlock);
     ErrorHandlingScope errorScope(vm);
     throwStackOverflowError(exec, throwScope);
     pc = returnToThrow(exec);
@@ -825,6 +825,7 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
         && isJSArray(baseValue)
         && ident == vm.propertyNames->length) {
         metadata.mode = GetByIdMode::ArrayLength;
+        new (&metadata.modeMetadata.arrayLengthMode.arrayProfile) ArrayProfile(codeBlock->bytecodeOffset(pc));
         metadata.modeMetadata.arrayLengthMode.arrayProfile.observeStructure(baseValue.asCell()->structure(vm));
 
         // Prevent the prototype cache from ever happening.
@@ -1064,7 +1065,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_val_direct)
     if (UNLIKELY(throwScope.exception()))
         LLINT_END();
 
-    if (std::optional<uint32_t> index = parseIndex(property))
+    if (Optional<uint32_t> index = parseIndex(property))
         baseObject->putDirectIndex(exec, index.value(), value, 0, isStrictMode ? PutDirectIndexShouldThrow : PutDirectIndexShouldNotThrow);
     else {
         PutPropertySlot slot(baseObject, isStrictMode);

@@ -47,6 +47,8 @@ public:
     uint64_t mainFrameID() const { return m_mainFrameID; }
     const String& registrableDomain() const { return m_registrableDomain; }
 
+    bool failedToSuspend() const { return m_suspensionState == SuspensionState::FailedToSuspend; }
+
     void waitUntilReadyToUnsuspend(CompletionHandler<void(SuspendedPageProxy*)>&&);
     void unsuspend();
 
@@ -55,8 +57,8 @@ public:
 #endif
 
 private:
-    void didSuspend();
-    void didFailToSuspend();
+    enum class SuspensionState : uint8_t { Suspending, FailedToSuspend, Suspended, Resumed };
+    void didProcessRequestToSuspend(SuspensionState);
 
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
@@ -67,9 +69,7 @@ private:
     uint64_t m_mainFrameID;
     String m_registrableDomain;
 
-    bool m_isSuspended { true };
-
-    bool m_finishedSuspending { false };
+    SuspensionState m_suspensionState { SuspensionState::Suspending };
     CompletionHandler<void(SuspendedPageProxy*)> m_readyToUnsuspendHandler;
 #if PLATFORM(IOS_FAMILY)
     ProcessThrottler::BackgroundActivityToken m_suspensionToken;

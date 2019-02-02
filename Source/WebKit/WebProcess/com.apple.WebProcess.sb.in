@@ -105,9 +105,6 @@
     (allow mach-lookup
         (global-name "com.apple.cvmsServ"))
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-    ;; Needed by <rdar://problem/40093461>, remove when <rdar://problem/39402555> is fixed.
-    (allow file-read* file-write-unlink
-        (prefix "/private/tmp/cvmsCodeSignObj"))
     (allow file-read*
         (prefix "/private/var/db/CVMS/cvmsCodeSignObj"))
 #endif
@@ -291,6 +288,7 @@
     (iokit-property "NVArch")
     (iokit-property-regex #"^NVC(AP|LASS)")
     (iokit-property-regex #"^NVDA,(Features|NVPresentment-version|accel-loaded|invalid-config|mm-version)")
+    (iokit-property "NVDA,Enable-A2R10G10B10Format")
     (iokit-property-regex #"^NVDA(Type|initgl_created)")
     (iokit-property "NVRAMProperty")
     (iokit-property "NXSystemInfo")
@@ -326,7 +324,9 @@
     (iokit-property "boot-gamma-restored")
     (iokit-property "built-in")
     (iokit-property "cail_properties")
+    (iokit-property-regex #"^canvas-(height|width)")
     (iokit-property "class-code")
+    (iokit-property "color-accuracy-index")
     (iokit-property "compatible")
     (iokit-property "connector-type")
     (iokit-property-regex #"^(device|revision|subsystem-vendor|touch-size)-id")
@@ -662,10 +662,7 @@
 ;; CoreFoundation. We don't import com.apple.corefoundation.sb, because it allows unnecessary access to pasteboard.
 (allow mach-lookup
     (global-name-regex #"^com.apple.distributed_notifications")                                                       
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101400
-    (global-name "com.apple.CoreServices.coreservicesd")
-#endif
-)
+    (global-name "com.apple.CoreServices.coreservicesd"))
 (allow file-read-data
     (literal "/dev/autofs_nowait")) ; Used by CF to circumvent automount triggers
 (allow ipc-posix-shm

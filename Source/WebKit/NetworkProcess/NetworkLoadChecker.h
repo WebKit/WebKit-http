@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,16 +25,23 @@
 
 #pragma once
 
+#include "UserContentControllerIdentifier.h"
 #include <WebCore/ContentExtensionActions.h>
+#include <WebCore/ContentSecurityPolicyResponseHeaders.h>
+#include <WebCore/FetchOptions.h>
 #include <WebCore/NetworkLoadInformation.h>
 #include <WebCore/ResourceError.h>
 #include <wtf/CompletionHandler.h>
 #include <wtf/Expected.h>
 #include <wtf/Variant.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 class ContentSecurityPolicy;
 struct ContentSecurityPolicyClient;
+class SecurityOrigin;
+enum class PreflightPolicy : uint8_t;
+enum class StoredCredentialsPolicy : bool;
 }
 
 namespace WebKit {
@@ -45,7 +52,7 @@ class NetworkLoadChecker : public CanMakeWeakPtr<NetworkLoadChecker> {
 public:
     enum class LoadType : bool { MainFrame, Other };
 
-    NetworkLoadChecker(WebCore::FetchOptions&&, PAL::SessionID, uint64_t pageID, uint64_t frameID, WebCore::HTTPHeaderMap&&, URL&&, RefPtr<WebCore::SecurityOrigin>&&, WebCore::PreflightPolicy, String&& referrer, bool shouldCaptureExtraNetworkLoadMetrics = false, LoadType requestLoadType = LoadType::Other);
+    NetworkLoadChecker(WebCore::FetchOptions&&, PAL::SessionID, uint64_t pageID, uint64_t frameID, WebCore::HTTPHeaderMap&&, URL&&, RefPtr<WebCore::SecurityOrigin>&&, WebCore::PreflightPolicy, String&& referrer, bool isHTTPSUpgradeEnabled = false, bool shouldCaptureExtraNetworkLoadMetrics = false, LoadType requestLoadType = LoadType::Other);
     ~NetworkLoadChecker();
 
     struct RedirectionTriplet {
@@ -62,13 +69,11 @@ public:
     using RedirectionValidationHandler = CompletionHandler<void(RedirectionRequestOrError&&)>;
     void checkRedirection(WebCore::ResourceRequest&& request, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse, WebCore::ContentSecurityPolicyClient*, RedirectionValidationHandler&&);
 
-    void prepareRedirectedRequest(WebCore::ResourceRequest&);
-
     WebCore::ResourceError validateResponse(WebCore::ResourceResponse&);
 
     void setCSPResponseHeaders(WebCore::ContentSecurityPolicyResponseHeaders&& headers) { m_cspResponseHeaders = WTFMove(headers); }
 #if ENABLE(CONTENT_EXTENSIONS)
-    void setContentExtensionController(URL&& mainDocumentURL, std::optional<UserContentControllerIdentifier> identifier)
+    void setContentExtensionController(URL&& mainDocumentURL, Optional<UserContentControllerIdentifier> identifier)
     {
         m_mainDocumentURL = WTFMove(mainDocumentURL);
         m_userContentControllerIdentifier = identifier;
@@ -112,9 +117,7 @@ private:
     void processContentExtensionRulesForLoad(WebCore::ResourceRequest&&, ContentExtensionCallback&&);
 #endif
 
-#if ENABLE(HTTPS_UPGRADE)
-    void applyHTTPSUpgradeIfNeeded(WebCore::ResourceRequest&) const;
-#endif // ENABLE(HTTPS_UPGRADE)
+    void applyHTTPSUpgradeIfNeeded(WebCore::ResourceRequest&&, CompletionHandler<void(WebCore::ResourceRequest&&)>&&) const;
 
     WebCore::FetchOptions m_options;
     WebCore::StoredCredentialsPolicy m_storedCredentialsPolicy;
@@ -125,10 +128,10 @@ private:
     WebCore::HTTPHeaderMap m_firstRequestHeaders; // Needed for CORS checks.
     URL m_url;
     RefPtr<WebCore::SecurityOrigin> m_origin;
-    std::optional<WebCore::ContentSecurityPolicyResponseHeaders> m_cspResponseHeaders;
+    Optional<WebCore::ContentSecurityPolicyResponseHeaders> m_cspResponseHeaders;
 #if ENABLE(CONTENT_EXTENSIONS)
     URL m_mainDocumentURL;
-    std::optional<UserContentControllerIdentifier> m_userContentControllerIdentifier;
+    Optional<UserContentControllerIdentifier> m_userContentControllerIdentifier;
 #endif
 
     std::unique_ptr<NetworkCORSPreflightChecker> m_corsPreflightChecker;
@@ -138,10 +141,10 @@ private:
     size_t m_redirectCount { 0 };
     URL m_previousURL;
     WebCore::PreflightPolicy m_preflightPolicy;
-    String m_dntHeaderValue;
     String m_referrer;
     bool m_checkContentExtensions { false };
     bool m_shouldCaptureExtraNetworkLoadMetrics { false };
+    bool m_isHTTPSUpgradeEnabled { false };
     WebCore::NetworkLoadInformation m_loadInformation;
 
     LoadType m_requestLoadType;

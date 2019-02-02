@@ -94,6 +94,8 @@ public:
     static RefPtr<SharedMemory> map(const Handle&, Protection);
 #if USE(UNIX_DOMAIN_SOCKETS)
     static RefPtr<SharedMemory> wrapMap(void*, size_t, int fileDescriptor);
+#elif OS(DARWIN)
+    static RefPtr<SharedMemory> wrapMap(void*, size_t, Protection);
 #endif
 #if OS(WINDOWS)
     static RefPtr<SharedMemory> adopt(HANDLE, size_t, Protection);
@@ -129,7 +131,7 @@ private:
 #endif
 
 #if USE(UNIX_DOMAIN_SOCKETS)
-    std::optional<int> m_fileDescriptor;
+    Optional<int> m_fileDescriptor;
     bool m_isWrappingMap { false };
 #elif OS(DARWIN)
     mach_port_t m_port { MACH_PORT_NULL };

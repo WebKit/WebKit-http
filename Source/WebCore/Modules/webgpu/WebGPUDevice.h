@@ -29,6 +29,7 @@
 
 #include "GPUDevice.h"
 #include "WebGPUAdapter.h"
+#include "WebGPUBindGroupLayoutDescriptor.h"
 #include "WebGPUBufferDescriptor.h"
 #include "WebGPUQueue.h"
 
@@ -39,11 +40,14 @@
 namespace WebCore {
 
 class ScriptExecutionContext;
+class WebGPUBindGroupLayout;
 class WebGPUBuffer;
 class WebGPUCommandBuffer;
+class WebGPUPipelineLayout;
 class WebGPURenderPipeline;
 class WebGPUShaderModule;
 
+struct WebGPUPipelineLayoutDescriptor;
 struct WebGPURenderPipelineDescriptor;
 struct WebGPUShaderModuleDescriptor;
 
@@ -55,6 +59,9 @@ public:
     const GPUDevice& device() const { return m_device.get(); }
 
     RefPtr<WebGPUBuffer> createBuffer(WebGPUBufferDescriptor&&) const;
+
+    Ref<WebGPUBindGroupLayout> createBindGroupLayout(WebGPUBindGroupLayoutDescriptor&&) const;
+    Ref<WebGPUPipelineLayout> createPipelineLayout(WebGPUPipelineLayoutDescriptor&&) const;
 
     RefPtr<WebGPUShaderModule> createShaderModule(WebGPUShaderModuleDescriptor&&) const;
     RefPtr<WebGPURenderPipeline> createRenderPipeline(WebGPURenderPipelineDescriptor&&) const;

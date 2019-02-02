@@ -31,6 +31,7 @@
 #include <wtf/Lock.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/threads/BinarySemaphore.h>
 
 typedef struct opaqueCMSampleBuffer *CMSampleBufferRef;
@@ -45,11 +46,12 @@ class MediaTime;
 namespace WebCore {
 
 class AudioStreamDescription;
+class MediaStreamTrackPrivate;
 class PlatformAudioData;
 
 class MediaRecorderPrivateWriter : public ThreadSafeRefCounted<MediaRecorderPrivateWriter, WTF::DestructionThread::Main>, public CanMakeWeakPtr<MediaRecorderPrivateWriter> {
 public:
-    MediaRecorderPrivateWriter() = default;
+    static RefPtr<MediaRecorderPrivateWriter> create(const MediaStreamTrackPrivate* audioTrack, const MediaStreamTrackPrivate* videoTrack);
     ~MediaRecorderPrivateWriter();
     
     bool setupWriter();
@@ -61,6 +63,7 @@ public:
     RefPtr<SharedBuffer> fetchData();
     
 private:
+    MediaRecorderPrivateWriter(RetainPtr<AVAssetWriter>&&, String&& path);
     void clear();
 
     RetainPtr<AVAssetWriter> m_writer;

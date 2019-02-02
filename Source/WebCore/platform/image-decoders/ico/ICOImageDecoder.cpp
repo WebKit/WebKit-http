@@ -109,7 +109,7 @@ bool ICOImageDecoder::setFailed()
     return ScalableImageDecoder::setFailed();
 }
 
-std::optional<IntPoint> ICOImageDecoder::hotSpot() const
+Optional<IntPoint> ICOImageDecoder::hotSpot() const
 {
     // When unspecified, the default frame is always frame 0. This is consistent with
     // BitmapImage where currentFrame() starts at 0 and only increases when animation is
@@ -117,10 +117,10 @@ std::optional<IntPoint> ICOImageDecoder::hotSpot() const
     return hotSpotAtIndex(0);
 }
 
-std::optional<IntPoint> ICOImageDecoder::hotSpotAtIndex(size_t index) const
+Optional<IntPoint> ICOImageDecoder::hotSpotAtIndex(size_t index) const
 {
     if (index >= m_dirEntries.size() || m_fileType != CURSOR)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return m_dirEntries[index].m_hotSpot;
 }
@@ -144,8 +144,8 @@ void ICOImageDecoder::setDataForPNGDecoderAtIndex(size_t index)
     // Copy out PNG data to a separate vector and send to the PNG decoder.
     // FIXME: Save this copy by making the PNG decoder able to take an
     // optional offset.
-    RefPtr<SharedBuffer> pngData(SharedBuffer::create(&m_data->data()[dirEntry.m_imageOffset], m_data->size() - dirEntry.m_imageOffset));
-    m_pngDecoders[index]->setData(*pngData, isAllDataReceived());
+    auto pngData = SharedBuffer::create(&m_data->data()[dirEntry.m_imageOffset], m_data->size() - dirEntry.m_imageOffset);
+    m_pngDecoders[index]->setData(pngData.get(), isAllDataReceived());
 }
 
 void ICOImageDecoder::decode(size_t index, bool onlySize, bool allDataReceived)

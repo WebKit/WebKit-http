@@ -80,7 +80,7 @@ protected:
 
     static LayoutUnit ascentForChild(const RenderBox& child)
     {
-        return child.firstLineBaseline().value_or(child.logicalHeight());
+        return child.firstLineBaseline().valueOr(child.logicalHeight());
     }
 
     void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0_lu) override;
@@ -111,7 +111,7 @@ public:
 private:
     bool isRenderMathMLTable() const final { return true; }
     const char* renderName() const final { return "RenderMathMLTable"; }
-    std::optional<int> firstLineBaseline() const final;
+    Optional<int> firstLineBaseline() const final;
 
     Ref<MathMLStyle> m_mathMLStyle;
 };

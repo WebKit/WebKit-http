@@ -54,9 +54,8 @@ LayoutState::LayoutState(const Container& initialContainingBlock, const LayoutSi
 
     auto& displayBox = displayBoxForLayoutBox(initialContainingBlock);
     displayBox.setHorizontalMargin({ });
-    displayBox.setHorizontalNonComputedMargin({ });
+    displayBox.setHorizontalComputedMargin({ });
     displayBox.setVerticalMargin({ });
-    displayBox.setVerticalNonCollapsedMargin({ });
     displayBox.setBorder({ });
     displayBox.setPadding({ });
     displayBox.setTopLeft({ });

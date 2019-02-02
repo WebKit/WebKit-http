@@ -63,7 +63,7 @@ File::File(const String& path, const String& nameOverride)
     ThreadableBlobRegistry::registerFileBlobURL(m_internalURL, path, m_type);
 }
 
-File::File(DeserializationContructor, const String& path, const URL& url, const String& type, const String& name, const std::optional<int64_t>& lastModified)
+File::File(DeserializationContructor, const String& path, const URL& url, const String& type, const String& name, const Optional<int64_t>& lastModified)
     : Blob(deserializationContructor, url, type, -1, path)
     , m_path(path)
     , m_name(name)
@@ -81,7 +81,7 @@ static BlobPropertyBag convertPropertyBag(const File::PropertyBag& initialBag)
 File::File(Vector<BlobPartVariant>&& blobPartVariants, const String& filename, const PropertyBag& propertyBag)
     : Blob(WTFMove(blobPartVariants), convertPropertyBag(propertyBag))
     , m_name(filename)
-    , m_lastModifiedDateOverride(propertyBag.lastModified.value_or(WallTime::now().secondsSinceEpoch().milliseconds()))
+    , m_lastModifiedDateOverride(propertyBag.lastModified.valueOr(WallTime::now().secondsSinceEpoch().milliseconds()))
 {
 }
 

@@ -1066,7 +1066,7 @@ bool MediaPlayer::didPassCORSAccessCheck() const
 bool MediaPlayer::wouldTaintOrigin(const SecurityOrigin& origin) const
 {
     auto wouldTaint = m_private->wouldTaintOrigin(origin);
-    if (wouldTaint.has_value())
+    if (wouldTaint.hasValue())
         return wouldTaint.value();
 
     if (m_url.protocolIsData())
@@ -1467,10 +1467,10 @@ bool MediaPlayer::ended() const
     return m_private->ended();
 }
 
-std::optional<VideoPlaybackQualityMetrics> MediaPlayer::videoPlaybackQualityMetrics()
+Optional<VideoPlaybackQualityMetrics> MediaPlayer::videoPlaybackQualityMetrics()
 {
     if (!m_private)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return m_private->videoPlaybackQualityMetrics();
 }

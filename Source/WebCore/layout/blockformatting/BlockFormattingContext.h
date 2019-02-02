@@ -61,8 +61,8 @@ private:
     void computePositionToAvoidFloats(const FloatingContext&, const Box&) const;
     void computeVerticalPositionForFloatClear(const FloatingContext&, const Box&) const;
 
-    void computeEstimatedMarginTopForAncestors(const Box&) const;
-    void computeEstimatedMarginTop(const Box&) const;
+    void computeEstimatedMarginBeforeForAncestors(const Box&) const;
+    void computeEstimatedMarginBefore(const Box&) const;
 
     void precomputeVerticalPositionForFormattingRootIfNeeded(const Box&) const;
 
@@ -71,43 +71,48 @@ private:
     // This class implements positioning and sizing for boxes participating in a block formatting context.
     class Geometry : public FormattingContext::Geometry {
     public:
-        static HeightAndMargin inFlowHeightAndMargin(const LayoutState&, const Box&, std::optional<LayoutUnit> usedHeight = { });
-        static WidthAndMargin inFlowWidthAndMargin(const LayoutState&, const Box&, std::optional<LayoutUnit> usedWidth = { });
+        static HeightAndMargin inFlowHeightAndMargin(const LayoutState&, const Box&, Optional<LayoutUnit> usedHeight = { });
+        static WidthAndMargin inFlowWidthAndMargin(const LayoutState&, const Box&, Optional<LayoutUnit> usedWidth = { });
 
         static Point staticPosition(const LayoutState&, const Box&);
 
         static bool instrinsicWidthConstraintsNeedChildrenWidth(const Box&);
         static InstrinsicWidthConstraints instrinsicWidthConstraints(const LayoutState&, const Box&);
 
-        static LayoutUnit estimatedMarginTop(const LayoutState&, const Box&);
-        static LayoutUnit estimatedMarginBottom(const LayoutState&, const Box&);
+        static LayoutUnit estimatedMarginBefore(const LayoutState&, const Box&);
+        static LayoutUnit estimatedMarginAfter(const LayoutState&, const Box&);
 
     private:
         // This class implements margin collapsing for block formatting context.
         class MarginCollapse {
         public:
-            static LayoutUnit marginTop(const LayoutState&, const Box&);
-            static LayoutUnit marginBottom(const LayoutState&, const Box&);
+            static LayoutUnit marginBefore(const LayoutState&, const Box&);
+            static LayoutUnit marginAfter(const LayoutState&, const Box&);
 
-            static bool isMarginBottomCollapsedWithParent(const Box&);
-            static bool isMarginTopCollapsedWithParentMarginBottom(const Box&);
+            static bool marginBeforeCollapsesWithParentMarginAfter(const LayoutState&, const Box&);
+            static bool marginAfterCollapsesWithParentMarginAfter(const LayoutState&, const Box&);
 
         private:
-            static LayoutUnit collapsedMarginBottomFromLastChild(const LayoutState&, const Box&);
-            static LayoutUnit nonCollapsedMarginBottom(const LayoutState&, const Box&);
+            static LayoutUnit collapsedMarginAfterFromLastChild(const LayoutState&, const Box&);
+            static LayoutUnit nonCollapsedMarginAfter(const LayoutState&, const Box&);
 
-            static LayoutUnit computedNonCollapsedMarginTop(const LayoutState&, const Box&);
-            static LayoutUnit computedNonCollapsedMarginBottom(const LayoutState&, const Box&);
+            static LayoutUnit computedNonCollapsedMarginBefore(const LayoutState&, const Box&);
+            static LayoutUnit computedNonCollapsedMarginAfter(const LayoutState&, const Box&);
 
-            static LayoutUnit collapsedMarginTopFromFirstChild(const LayoutState&, const Box&);
-            static LayoutUnit nonCollapsedMarginTop(const LayoutState&, const Box&);
+            static LayoutUnit collapsedMarginBeforeFromFirstChild(const LayoutState&, const Box&);
+            static LayoutUnit nonCollapsedMarginBefore(const LayoutState&, const Box&);
 
-            static bool isMarginTopCollapsedWithParent(const LayoutState&, const Box&);
+            static bool marginBeforeCollapsesWithParentMarginBefore(const LayoutState&, const Box&);
+            static bool marginBeforeCollapsesWithPreviousSibling(const Box&);
+            static bool marginAfterCollapsesWithNextSibling(const Box&);
+            static bool marginAfterCollapsesWithSiblingMarginBeforeWithClearance(const LayoutState&, const Box&);
+            static bool marginAfterCollapsesWithParentMarginBefore(const LayoutState&, const Box&);
+            static bool marginsCollapseThrough(const LayoutState&, const Box&);
         };
 
-        static HeightAndMargin inFlowNonReplacedHeightAndMargin(const LayoutState&, const Box&, std::optional<LayoutUnit> usedHeight = { });
-        static WidthAndMargin inFlowNonReplacedWidthAndMargin(const LayoutState&, const Box&, std::optional<LayoutUnit> usedWidth = { });
-        static WidthAndMargin inFlowReplacedWidthAndMargin(const LayoutState&, const Box&, std::optional<LayoutUnit> usedWidth = { });
+        static HeightAndMargin inFlowNonReplacedHeightAndMargin(const LayoutState&, const Box&, Optional<LayoutUnit> usedHeight = { });
+        static WidthAndMargin inFlowNonReplacedWidthAndMargin(const LayoutState&, const Box&, Optional<LayoutUnit> usedWidth = { });
+        static WidthAndMargin inFlowReplacedWidthAndMargin(const LayoutState&, const Box&, Optional<LayoutUnit> usedWidth = { });
         static Point staticPositionForOutOfFlowPositioned(const LayoutState&, const Box&);
     };
 
@@ -116,7 +121,7 @@ private:
         static bool needsStretching(const LayoutState&, const Box&);
         static HeightAndMargin stretchedHeight(const LayoutState&, const Box&, HeightAndMargin);
 
-        static bool shouldIgnoreMarginTop(const LayoutState&, const Box&);
+        static bool shouldIgnoreMarginBefore(const LayoutState&, const Box&);
     };
 };
 
