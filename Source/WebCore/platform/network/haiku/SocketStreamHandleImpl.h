@@ -51,8 +51,11 @@ namespace WebCore {
 
     class SocketStreamHandleImpl : public SocketStreamHandle {
     public:
-        static 			Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID id, const String&, SourceApplicationAuditToken&&)
-							{ return adoptRef(*new SocketStreamHandleImpl(url, client)); }
+        static 			Ref<SocketStreamHandleImpl> create(const URL& url,
+							SocketStreamHandleClient& client, PAL::SessionID id,
+							const String&, SourceApplicationAuditToken&&,
+							const StorageSessionProvider* provider)
+							{ return adoptRef(*new SocketStreamHandleImpl(url, client, provider)); }
         virtual 		~SocketStreamHandleImpl();
 
     protected:
@@ -64,7 +67,8 @@ namespace WebCore {
 		bool			sendPendingData();
 
     private:
-        				SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
+        				SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&,
+							const StorageSessionProvider*);
         // No authentication for streams per se, but proxy may ask for credentials.
         void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
         void receivedCredential(const AuthenticationChallenge&, const Credential&);
@@ -85,8 +89,10 @@ namespace WebCore {
 
         static std::set<void*> liveObjects;
 
-	StreamBuffer<uint8_t, 1024 * 1024> m_buffer;
-	static const unsigned maxBufferSize = 100 * 1024 * 1024;
+    	RefPtr<const StorageSessionProvider> m_storageSessionProvider;
+
+		StreamBuffer<uint8_t, 1024 * 1024> m_buffer;
+		static const unsigned maxBufferSize = 100 * 1024 * 1024;
     };
 
 }  // namespace WebCore

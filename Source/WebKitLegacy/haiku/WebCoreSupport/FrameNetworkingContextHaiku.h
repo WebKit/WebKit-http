@@ -49,7 +49,7 @@ public:
 
 private:
     FrameNetworkingContextHaiku(Frame*, BUrlContext* context);
-    WebCore::NetworkStorageSession& storageSession() const override;
+    WebCore::NetworkStorageSession* storageSession() const override;
 };
 
 }

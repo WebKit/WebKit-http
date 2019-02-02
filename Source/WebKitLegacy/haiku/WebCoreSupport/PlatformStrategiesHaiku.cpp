@@ -48,11 +48,6 @@ PlatformStrategiesHaiku::PlatformStrategiesHaiku()
 {
 }
 
-CookiesStrategy* PlatformStrategiesHaiku::createCookiesStrategy()
-{
-    return this;
-}
-
 LoaderStrategy* PlatformStrategiesHaiku::createLoaderStrategy()
 {
     return new WebResourceLoadScheduler();
@@ -69,39 +64,12 @@ WebCore::BlobRegistry* PlatformStrategiesHaiku::createBlobRegistry()
     return new BlobRegistryImpl();
 }
 
-// CookiesStrategy
-std::pair<WTF::String, bool> PlatformStrategiesHaiku::cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const WebCore::SameSiteInfo& sameSite, const URL& url,
-	WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID,
-	IncludeSecureCookies includeSecure)
-{
-    return session.cookiesForDOM(firstParty, sameSite, url, frameID, pageID, includeSecure);
-}
-
-void PlatformStrategiesHaiku::setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const WebCore::SameSiteInfo& sameSite, const URL& url,
-	WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID,
-	const String& cookieString)
-{
-    session.setCookiesFromDOM(firstParty, sameSite, url, frameID, pageID, cookieString);
-}
 
 bool PlatformStrategiesHaiku::cookiesEnabled(const NetworkStorageSession& session)
 {
-    return session.cookiesEnabled();
+	return session.cookiesEnabled();
 }
 
-std::pair<WTF::String, bool> PlatformStrategiesHaiku::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const WebCore::SameSiteInfo& sameSite, const URL& url,
-	WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID,
-	IncludeSecureCookies includeSecure)
-{
-    return session.cookieRequestHeaderFieldValue(firstParty, sameSite, url, frameID, pageID, includeSecure);
-}
-
-std::pair<WTF::String, bool> PlatformStrategiesHaiku::cookieRequestHeaderFieldValue(PAL::SessionID sessionID, const URL& firstParty, const WebCore::SameSiteInfo& sameSite, const URL& url,
-	WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID,
-	IncludeSecureCookies includeSecure)
-{
-    return NetworkStorageSession::defaultStorageSession().cookieRequestHeaderFieldValue(firstParty, sameSite, url, frameID, pageID, includeSecure);
-}
 
 bool PlatformStrategiesHaiku::getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const WebCore::SameSiteInfo& sameSite, const URL& url,
 	WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID,

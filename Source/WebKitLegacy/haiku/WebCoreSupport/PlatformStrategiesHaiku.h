@@ -20,14 +20,14 @@
 #ifndef PlatformStrategiesHaiku_h
 #define PlatformStrategiesHaiku_h
 
-#include "CookiesStrategy.h"
 #include "LoaderStrategy.h"
+#include "NetworkStorageSession.h"
 #include "PasteboardStrategy.h"
 #include "PlatformStrategies.h"
 
 #include <wtf/Forward.h>
 
-class PlatformStrategiesHaiku : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy {
+class PlatformStrategiesHaiku : public WebCore::PlatformStrategies {
 public:
     static void initialize();
 
@@ -40,25 +40,9 @@ private:
     WebCore::LoaderStrategy* createLoaderStrategy() override;
     WebCore::PasteboardStrategy* createPasteboardStrategy() override;
     WebCore::BlobRegistry* createBlobRegistry() override;
-    WebCore::CookiesStrategy* createCookiesStrategy() override;
 
     // WebCore::CookiesStrategy
-    std::pair<String, bool> cookiesForDOM(const WebCore::NetworkStorageSession&,
-		const WTF::URL& firstParty, const WebCore::SameSiteInfo&, const WTF::URL&,
-		WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID,
-		WebCore::IncludeSecureCookies) override;
-    virtual void setCookiesFromDOM(const WebCore::NetworkStorageSession&,
-		const WTF::URL& firstParty, const WebCore::SameSiteInfo&, const WTF::URL&,
-		WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID, const String&);
     virtual bool cookiesEnabled(const WebCore::NetworkStorageSession&);
-    std::pair<String, bool> cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&,
-		const WTF::URL& firstParty, const WebCore::SameSiteInfo&,
-		const WTF::URL&, WTF::Optional<uint64_t> frameID,
-		WTF::Optional<uint64_t> pageID, WebCore::IncludeSecureCookies) override;
-    std::pair<String, bool> cookieRequestHeaderFieldValue(PAL::SessionID,
-		const WTF::URL& firstParty, const WebCore::SameSiteInfo&, const WTF::URL&,
-		WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID,
-		WebCore::IncludeSecureCookies) override;
     virtual bool getRawCookies(const WebCore::NetworkStorageSession&,
 		const WTF::URL& firstParty, const WebCore::SameSiteInfo&, const WTF::URL&,
 		WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID, Vector<WebCore::Cookie>&);

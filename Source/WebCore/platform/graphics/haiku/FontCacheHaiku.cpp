@@ -47,7 +47,9 @@ void FontCache::platformInit()
 {
 }
 
-RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description, const Font* /*originalFontData*/, bool, const UChar* /*characters*/, unsigned /*length*/)
+RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& description,
+	const Font* /*originalFontData*/, WebCore::IsForPlatformFont,
+	WebCore::FontCache::PreferColoredFont, const UChar* /*characters*/, unsigned /*length*/)
 {
     FontPlatformData data(description, "Sans");
         // FIXME check that the requested characters are actually available,

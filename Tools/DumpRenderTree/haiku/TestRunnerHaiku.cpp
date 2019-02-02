@@ -173,6 +173,12 @@ void TestRunner::setAlwaysAcceptCookies(bool alwaysAcceptCookies)
     notImplemented();
 }
 
+void TestRunner::setOnlyAcceptFirstPartyCookies(bool onlyAcceptFirstPartyCookies)
+{
+    // FIXME: Implement.
+    fprintf(testResult, "ERROR: TestRunner::setOnlyAcceptFirstPartyCookies() not implemented\n");
+}
+
 void TestRunner::setCustomPolicyDelegate(bool enabled, bool permissive)
 {
     notImplemented();

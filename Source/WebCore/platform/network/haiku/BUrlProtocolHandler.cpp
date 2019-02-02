@@ -54,7 +54,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
     , m_responseDataSent(false)
     , m_postData(NULL)
     , m_request(handle->firstRequest().toNetworkRequest(
-        context ? &context->storageSession().platformSession() : nullptr))
+        context ? &context->storageSession()->platformSession() : nullptr))
     , m_position(0)
     , m_redirectionTries(gMaxRecursionLimit)
 {

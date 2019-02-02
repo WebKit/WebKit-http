@@ -31,7 +31,6 @@
 #include <UrlContext.h>
 
 #include "Cookie.h"
-#include "CookiesStrategy.h"
 #include "CookieRequestHeaderFieldProxy.h"
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
