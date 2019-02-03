@@ -374,8 +374,11 @@ void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad(WTF::CompletionHand
     }
 
     BMessage message(LOAD_NEGOTIATING);
-    message.AddString("url", m_webFrame->Frame()->loader().provisionalDocumentLoader()->request().url().string());
-	message.AddPointer("completionHandler", &handler);
+    message.AddString("url",
+		m_webFrame->Frame()->loader().provisionalDocumentLoader()->request().url().string());
+	WTF::CompletionHandler<void()>* copy
+		= new WTF::CompletionHandler<void()>(std::move(handler));
+	message.AddPointer("completionHandler", copy);
     dispatchMessage(message);
 }
 

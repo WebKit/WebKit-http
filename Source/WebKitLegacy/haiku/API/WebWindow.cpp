@@ -32,6 +32,7 @@
 #include "WebWindow.h"
 
 #include "wtf/CompletionHandler.h"
+#include "wtf/MainThread.h"
 #include "WebSettings.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
@@ -148,7 +149,10 @@ void BWebWindow::MessageReceived(BMessage* message)
 
 		WTF::CompletionHandler<void()>* handler;
 		if (message->FindPointer("completionHandler", (void**)&handler) == B_OK) {
-			(*handler)();
+			callOnMainThread([handler] {
+				(*handler)();
+				delete handler;
+			});
 		}
         break;
     }
