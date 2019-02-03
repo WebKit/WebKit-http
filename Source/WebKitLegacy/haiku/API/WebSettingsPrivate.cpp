@@ -60,9 +60,16 @@ WebSettingsPrivate::WebSettingsPrivate(WebCore::Settings* settings)
 	else {
 		// Initialize some default settings
 		// TODO: Get these from the system settings.
-		serifFontFamily = "DejaVu Serif";
-		sansSerifFontFamily = "DejaVu Sans";
-		fixedFontFamily = "DejaVu Sans Mono";
+		font_family ff;
+		font_style fs;
+
+		be_plain_font->GetFamilyAndStyle(&ff, &fs);
+		sansSerifFontFamily = ff;
+
+		be_fixed_font->GetFamilyAndStyle(&ff, &fs);
+		fixedFontFamily = ff;
+
+		serifFontFamily = "Noto Serif Display";
 		standardFontFamily = serifFontFamily;
 		defaultFontSize = 14;
 		defaultFixedFontSize = 14;
