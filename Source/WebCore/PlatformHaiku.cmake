@@ -53,11 +53,12 @@ list(APPEND WebCore_SOURCES
   platform/haiku/RenderThemeHaiku.cpp
   platform/haiku/ScrollbarThemeHaiku.cpp
   platform/haiku/SearchPopupMenuHaiku.cpp
-  platform/posix/SharedBufferPOSIX.cpp
   platform/haiku/SharedTimerHaiku.cpp
   platform/haiku/SoundHaiku.cpp
   platform/haiku/TemporaryLinkStubs.cpp
   platform/haiku/WidgetHaiku.cpp
+
+  platform/posix/SharedBufferPOSIX.cpp
 
   platform/graphics/WOFFFileFormat.cpp
 
@@ -114,8 +115,6 @@ list(APPEND WebCore_SOURCES
   platform/network/haiku/SocketStreamHandleHaiku.cpp
   platform/network/haiku/NetworkStateNotifierHaiku.cpp
   platform/network/haiku/NetworkStorageSessionHaiku.cpp
-
-  platform/posix/FileSystemPOSIX.cpp
 
   platform/text/Hyphenation.cpp
   platform/text/LocaleICU.cpp

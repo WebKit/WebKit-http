@@ -25,7 +25,7 @@
 
 #include "NetworkStorageSessionMap.h"
 
-#include <WebCore/NetworkStorageSession.h>
+#include <NetworkStorageSession.h>
 #include <pal/SessionID.h>
 #include <wtf/MainThread.h>
 #include <wtf/ProcessID.h>
@@ -55,7 +55,7 @@ WebCore::NetworkStorageSession* NetworkStorageSessionMap::storageSession(const P
 WebCore::NetworkStorageSession& NetworkStorageSessionMap::defaultStorageSession()
 {
     if (!defaultNetworkStorageSession()) {
-#if USE(CURL)
+#if USE(CURL) || USE(HAIKU)
         defaultNetworkStorageSession() = std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID(), nullptr);
 #else
         defaultNetworkStorageSession() = std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID());

@@ -27,7 +27,7 @@
  */
 
 #include "config.h"
-#include "FileSystem.h"
+#include "wtf/FileSystem.h"
 
 #include "NotImplemented.h"
 #include <wtf/text/CString.h>

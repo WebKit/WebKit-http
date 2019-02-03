@@ -20,7 +20,7 @@
 #ifndef HAIKUFORMDATASTREAM_H
 #define HAIKUFORMDATASTREAM_H
 
-#include "FileSystem.h"
+#include "wtf/FileSystem.h"
 #include "FormData.h"
 
 #include <DataIO.h>

@@ -61,19 +61,6 @@ static std::unique_ptr<NetworkStorageSession>& defaultSession()
     return session;
 }
 
-NetworkStorageSession& NetworkStorageSession::defaultStorageSession()
-{
-    if (!defaultSession())
-        defaultSession() = std::make_unique<NetworkStorageSession>(PAL::SessionID::defaultSessionID(), nullptr);
-    return *defaultSession();
-}
-
-void NetworkStorageSession::switchToNewTestingSession()
-{
-    defaultSession() = std::make_unique<NetworkStorageSession>(PAL::SessionID::defaultSessionID(), new BUrlContext());
-}
-
-
 void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty,
 	const SameSiteInfo& sameSiteInfo, const URL& url, WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID, const String& value) const
 {

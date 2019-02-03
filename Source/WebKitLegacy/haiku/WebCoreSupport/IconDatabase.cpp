@@ -29,7 +29,7 @@
 
 #include "Logging.h"
 #include <platform/graphics/BitmapImage.h>
-#include <platform/FileSystem.h>
+#include <wtf/FileSystem.h>
 #include <platform/graphics/Image.h>
 #include <SQLiteStatement.h>
 #include <SQLiteTransaction.h>

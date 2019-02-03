@@ -30,6 +30,7 @@
 #include "config.h"
 #include "FrameNetworkingContextHaiku.h"
 
+#include "NetworkStorageSessionMap.h"
 #include "NetworkStorageSession.h"
 #include "NotImplemented.h"
 #include "Page.h"
@@ -78,9 +79,9 @@ NetworkStorageSession* FrameNetworkingContextHaiku::storageSession() const
     ASSERT(isMainThread());
 
     if (frame() && frame()->page()->usesEphemeralSession())
-        return NetworkStorageSession::storageSession(PAL::SessionID::legacyPrivateSessionID());
+        return NetworkStorageSessionMap::storageSession(PAL::SessionID::legacyPrivateSessionID());
 
-    return &NetworkStorageSession::defaultStorageSession();
+    return &NetworkStorageSessionMap::defaultStorageSession();
 }
 
 }

@@ -9,6 +9,8 @@ LIST(APPEND WTF_SOURCES
     OSAllocatorPosix.cpp
     ThreadingPthreads.cpp
 
+    posix/FileSystemPOSIX.cpp
+
     unicode/icu/CollatorICU.cpp
 
     unix/CPUTimeUnix.cpp
