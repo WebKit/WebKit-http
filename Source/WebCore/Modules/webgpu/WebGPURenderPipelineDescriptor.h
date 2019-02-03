@@ -27,6 +27,7 @@
 
 #if ENABLE(WEBGPU)
 
+#include "GPUDepthStencilStateDescriptor.h"
 #include "GPURenderPipelineDescriptor.h"
 #include "WebGPUInputStateDescriptor.h"
 #include "WebGPUPipelineDescriptorBase.h"
@@ -40,6 +41,7 @@ struct WebGPURenderPipelineDescriptor : WebGPUPipelineDescriptorBase {
     WebGPUPipelineStageDescriptor vertexStage;
     WebGPUPipelineStageDescriptor fragmentStage;
     PrimitiveTopology primitiveTopology;
+    GPUDepthStencilStateDescriptor depthStencilState;
     WebGPUInputStateDescriptor inputState;
 };
 

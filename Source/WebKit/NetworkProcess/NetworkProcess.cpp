@@ -30,7 +30,7 @@
 #include "ArgumentCoders.h"
 #include "Attachment.h"
 #include "AuthenticationManager.h"
-#include "ChildProcessMessages.h"
+#include "AuxiliaryProcessMessages.h"
 #include "DataReference.h"
 #include "DownloadProxyMessages.h"
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
@@ -115,7 +115,7 @@ static void callExitSoon(IPC::Connection*)
     // the process will exit forcibly.
     auto watchdogDelay = 10_s;
 
-    WorkQueue::create("com.apple.WebKit.ChildProcess.WatchDogQueue")->dispatchAfter(watchdogDelay, [] {
+    WorkQueue::create("com.apple.WebKit.NetworkProcess.WatchDogQueue")->dispatchAfter(watchdogDelay, [] {
         // We use _exit here since the watchdog callback is called from another thread and we don't want
         // global destructors or atexit handlers to be called from this thread while the main thread is busy
         // doing its thing.
@@ -124,7 +124,7 @@ static void callExitSoon(IPC::Connection*)
     });
 }
 
-NetworkProcess::NetworkProcess(ChildProcessInitializationParameters&& parameters)
+NetworkProcess::NetworkProcess(AuxiliaryProcessInitializationParameters&& parameters)
     : m_downloadManager(*this)
 #if ENABLE(CONTENT_EXTENSIONS)
     , m_networkContentRuleListManager(*this)
@@ -184,9 +184,9 @@ NetworkProximityManager& NetworkProcess::proximityManager()
 }
 #endif
 
-void NetworkProcess::removeNetworkConnectionToWebProcess(NetworkConnectionToWebProcess* connection)
+void NetworkProcess::removeNetworkConnectionToWebProcess(NetworkConnectionToWebProcess& connection)
 {
-    size_t vectorIndex = m_webProcessConnections.find(connection);
+    size_t vectorIndex = m_webProcessConnections.find(&connection);
     ASSERT(vectorIndex != notFound);
 
     m_webProcessConnections.remove(vectorIndex);
@@ -203,8 +203,8 @@ void NetworkProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder
     if (messageReceiverMap().dispatchMessage(connection, decoder))
         return;
 
-    if (decoder.messageReceiverName() == Messages::ChildProcess::messageReceiverName()) {
-        ChildProcess::didReceiveMessage(connection, decoder);
+    if (decoder.messageReceiverName() == Messages::AuxiliaryProcess::messageReceiverName()) {
+        AuxiliaryProcess::didReceiveMessage(connection, decoder);
         return;
     }
 
@@ -359,7 +359,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 
 void NetworkProcess::initializeConnection(IPC::Connection* connection)
 {
-    ChildProcess::initializeConnection(connection);
+    AuxiliaryProcess::initializeConnection(connection);
 
     // We give a chance for didClose() to get called on the main thread but forcefully call _exit() after a delay
     // in case the main thread is unresponsive or didClose() takes too long.
@@ -557,21 +557,6 @@ void NetworkProcess::destroySession(const PAL::SessionID& sessionID)
     m_swServers.remove(sessionID);
     m_swDatabasePaths.remove(sessionID);
 #endif
-}
-
-void NetworkProcess::writeBlobToFilePath(const URL& url, const String& path, SandboxExtension::Handle&& handleForWriting, CompletionHandler<void(bool)>&& completionHandler)
-{
-    auto extension = SandboxExtension::create(WTFMove(handleForWriting));
-    if (!extension) {
-        completionHandler(false);
-        return;
-    }
-
-    extension->consume();
-    NetworkBlobRegistry::singleton().writeBlobToFilePath(url, path, [extension = WTFMove(extension), completionHandler = WTFMove(completionHandler)] (bool success) mutable {
-        extension->revoke();
-        completionHandler(success);
-    });
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -969,12 +954,25 @@ void NetworkProcess::requestStorageAccess(PAL::SessionID sessionID, const String
 {
     if (auto* networkSession = this->networkSession(sessionID)) {
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
-            resourceLoadStatistics->requestStorageAccess(resourceDomain, firstPartyDomain, frameID, pageID, promptEnabled, WTFMove(completionHandler));
+            resourceLoadStatistics->requestStorageAccess(resourceDomain, firstPartyDomain, frameID.value(), pageID, promptEnabled, WTFMove(completionHandler));
         else
             completionHandler(StorageAccessStatus::CannotRequestAccess);
     } else {
         ASSERT_NOT_REACHED();
         completionHandler(StorageAccessStatus::CannotRequestAccess);
+    }
+}
+
+void NetworkProcess::requestStorageAccessGranted(PAL::SessionID sessionID, const String& subFrameHost, const String& topFrameHost, uint64_t frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->requestStorageAccessGranted(subFrameHost, topFrameHost, frameID, pageID, promptEnabled, WTFMove(completionHandler));
+        else
+            completionHandler(false);
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler(false);
     }
 }
 
@@ -1217,7 +1215,7 @@ static void fetchDiskCacheEntries(NetworkCache::Cache* cache, PAL::SessionID ses
 
 void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, uint64_t callbackID)
 {
-    struct CallbackAggregator final : public RefCounted<CallbackAggregator> {
+    struct CallbackAggregator final : public ThreadSafeRefCounted<CallbackAggregator> {
         explicit CallbackAggregator(Function<void (WebsiteData)>&& completionHandler)
             : m_completionHandler(WTFMove(completionHandler))
         {
@@ -1439,7 +1437,7 @@ void NetworkProcess::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersi
 {
     OptionSet<WebsiteDataFetchOption> fetchOptions = WebsiteDataFetchOption::DoNotCreateProcesses;
 
-    struct CallbackAggregator final : public RefCounted<CallbackAggregator> {
+    struct CallbackAggregator final : public ThreadSafeRefCounted<CallbackAggregator> {
         explicit CallbackAggregator(CompletionHandler<void(const HashSet<String>&)>&& completionHandler)
             : m_completionHandler(WTFMove(completionHandler))
         {
@@ -1571,7 +1569,7 @@ void NetworkProcess::topPrivatelyControlledDomainsWithWebsiteData(PAL::SessionID
 {
     OptionSet<WebsiteDataFetchOption> fetchOptions = WebsiteDataFetchOption::DoNotCreateProcesses;
     
-    struct CallbackAggregator final : public RefCounted<CallbackAggregator> {
+    struct CallbackAggregator final : public ThreadSafeRefCounted<CallbackAggregator> {
         explicit CallbackAggregator(CompletionHandler<void(HashSet<String>&&)>&& completionHandler)
             : m_completionHandler(WTFMove(completionHandler))
         {
@@ -1804,7 +1802,7 @@ void NetworkProcess::logDiagnosticMessageWithValue(uint64_t webPageID, const Str
 void NetworkProcess::terminate()
 {
     platformTerminate();
-    ChildProcess::terminate();
+    AuxiliaryProcess::terminate();
 }
 
 void NetworkProcess::processDidTransitionToForeground()
@@ -2262,15 +2260,15 @@ void NetworkProcess::requestCacheStorageSpace(PAL::SessionID sessionID, const Cl
 }
 
 #if !PLATFORM(COCOA)
-void NetworkProcess::initializeProcess(const ChildProcessInitializationParameters&)
+void NetworkProcess::initializeProcess(const AuxiliaryProcessInitializationParameters&)
 {
 }
 
-void NetworkProcess::initializeProcessName(const ChildProcessInitializationParameters&)
+void NetworkProcess::initializeProcessName(const AuxiliaryProcessInitializationParameters&)
 {
 }
 
-void NetworkProcess::initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&)
+void NetworkProcess::initializeSandbox(const AuxiliaryProcessInitializationParameters&, SandboxInitializationParameters&)
 {
 }
 

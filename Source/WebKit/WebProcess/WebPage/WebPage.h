@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -537,8 +537,9 @@ public:
     void setBottomOverhangImage(WebImage*);
     
     void setUseSystemAppearance(bool);
-    void setUseDarkAppearance(bool);
 #endif
+
+    void setUseDarkAppearance(bool);
 
     bool windowIsFocused() const;
     bool windowAndWebPageAreFocused() const;
@@ -1111,7 +1112,6 @@ public:
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& callback);
     void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& callback);
-    void storageAccessResponse(bool wasGranted, uint64_t contextId);
 #endif
 
     void showShareSheet(WebCore::ShareDataWithParsedURL&, WTF::CompletionHandler<void(bool)>&& callback);
@@ -1804,9 +1804,6 @@ private:
     OptionSet<LayerTreeFreezeReason> m_LayerTreeFreezeReasons;
     bool m_isSuspended { false };
     bool m_needsFontAttributes { false };
-#if PLATFORM(MAC)
-    bool m_shouldAttachDrawingAreaOnPageTransition { false };
-#endif
 };
 
 } // namespace WebKit

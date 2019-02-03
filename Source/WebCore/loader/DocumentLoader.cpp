@@ -71,6 +71,7 @@
 #include "ProgressTracker.h"
 #include "ResourceHandle.h"
 #include "ResourceLoadObserver.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SWClientConnection.h"
 #include "SchemeRegistry.h"
 #include "ScriptableDocumentParser.h"
@@ -1779,7 +1780,7 @@ void DocumentLoader::registerTemporaryServiceWorkerClient(const URL& url)
         return;
 
     m_temporaryServiceWorkerClient = TemporaryServiceWorkerClient {
-        generateObjectIdentifier<DocumentIdentifierType>(),
+        DocumentIdentifier::generate(),
         *ServiceWorkerProvider::singleton().existingServiceWorkerConnectionForSession(m_frame->page()->sessionID())
     };
 

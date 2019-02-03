@@ -56,6 +56,7 @@
 #include "WebSWServerToContextConnectionMessages.h"
 #include "WebsiteDataStoreParameters.h"
 #include <WebCore/NetworkStorageSession.h>
+#include <WebCore/ResourceLoadStatistics.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SameSiteInfo.h>
 #include <WebCore/SecurityPolicy.h>
@@ -248,8 +249,8 @@ void NetworkConnectionToWebProcess::didClose(IPC::Connection& connection)
     // root activity trackers.
     stopAllNetworkActivityTracking();
 
-    NetworkBlobRegistry::singleton().connectionToWebProcessDidClose(this);
-    m_networkProcess->removeNetworkConnectionToWebProcess(this);
+    NetworkBlobRegistry::singleton().connectionToWebProcessDidClose(*this);
+    m_networkProcess->removeNetworkConnectionToWebProcess(*this);
 
 #if USE(LIBWEBRTC)
     if (m_rtcProvider) {
@@ -494,37 +495,37 @@ void NetworkConnectionToWebProcess::registerFileBlobURL(const URL& url, const St
 {
     RefPtr<SandboxExtension> extension = SandboxExtension::create(WTFMove(extensionHandle));
 
-    NetworkBlobRegistry::singleton().registerFileBlobURL(this, url, path, WTFMove(extension), contentType);
+    NetworkBlobRegistry::singleton().registerFileBlobURL(*this, url, path, WTFMove(extension), contentType);
 }
 
 void NetworkConnectionToWebProcess::registerBlobURL(const URL& url, Vector<BlobPart>&& blobParts, const String& contentType)
 {
-    NetworkBlobRegistry::singleton().registerBlobURL(this, url, WTFMove(blobParts), contentType);
+    NetworkBlobRegistry::singleton().registerBlobURL(*this, url, WTFMove(blobParts), contentType);
 }
 
 void NetworkConnectionToWebProcess::registerBlobURLFromURL(const URL& url, const URL& srcURL, bool shouldBypassConnectionCheck)
 {
-    NetworkBlobRegistry::singleton().registerBlobURL(this, url, srcURL, shouldBypassConnectionCheck);
+    NetworkBlobRegistry::singleton().registerBlobURL(*this, url, srcURL, shouldBypassConnectionCheck);
 }
 
 void NetworkConnectionToWebProcess::registerBlobURLOptionallyFileBacked(const URL& url, const URL& srcURL, const String& fileBackedPath, const String& contentType)
 {
-    NetworkBlobRegistry::singleton().registerBlobURLOptionallyFileBacked(this, url, srcURL, fileBackedPath, contentType);
+    NetworkBlobRegistry::singleton().registerBlobURLOptionallyFileBacked(*this, url, srcURL, fileBackedPath, contentType);
 }
 
 void NetworkConnectionToWebProcess::registerBlobURLForSlice(const URL& url, const URL& srcURL, int64_t start, int64_t end)
 {
-    NetworkBlobRegistry::singleton().registerBlobURLForSlice(this, url, srcURL, start, end);
+    NetworkBlobRegistry::singleton().registerBlobURLForSlice(*this, url, srcURL, start, end);
 }
 
 void NetworkConnectionToWebProcess::unregisterBlobURL(const URL& url)
 {
-    NetworkBlobRegistry::singleton().unregisterBlobURL(this, url);
+    NetworkBlobRegistry::singleton().unregisterBlobURL(*this, url);
 }
 
 void NetworkConnectionToWebProcess::blobSize(const URL& url, uint64_t& resultSize)
 {
-    resultSize = NetworkBlobRegistry::singleton().blobSize(this, url);
+    resultSize = NetworkBlobRegistry::singleton().blobSize(*this, url);
 }
 
 void NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, CompletionHandler<void(Vector<String>&&)>&& completionHandler)
@@ -559,89 +560,53 @@ void NetworkConnectionToWebProcess::ensureLegacyPrivateBrowsingSession()
     m_networkProcess->addWebsiteDataStore(WebsiteDataStoreParameters::legacyPrivateSessionParameters());
 }
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
 void NetworkConnectionToWebProcess::removeStorageAccessForFrame(PAL::SessionID sessionID, uint64_t frameID, uint64_t pageID)
 {
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (auto* storageSession = networkProcess().storageSession(sessionID))
         storageSession->removeStorageAccessForFrame(frameID, pageID);
-#else
-    UNUSED_PARAM(sessionID);
-    UNUSED_PARAM(frameID);
-    UNUSED_PARAM(pageID);
-#endif
 }
 
 void NetworkConnectionToWebProcess::removeStorageAccessForAllFramesOnPage(PAL::SessionID sessionID, uint64_t pageID)
 {
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (auto* storageSession = networkProcess().storageSession(sessionID))
         storageSession->removeStorageAccessForAllFramesOnPage(pageID);
-#else
-    UNUSED_PARAM(sessionID);
-    UNUSED_PARAM(pageID);
-#endif
 }
 
 void NetworkConnectionToWebProcess::logUserInteraction(PAL::SessionID sessionID, const String& topLevelOrigin)
 {
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (auto networkSession = networkProcess().networkSession(sessionID)) {
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
             resourceLoadStatistics->logUserInteraction(topLevelOrigin, [] { });
     }
-#else
-    UNUSED_PARAM(sessionID);
-    UNUSED_PARAM(topLevelOrigin);
-#endif
 }
 
 void NetworkConnectionToWebProcess::logWebSocketLoading(PAL::SessionID sessionID, const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, WallTime lastSeen)
 {
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (auto networkSession = networkProcess().networkSession(sessionID)) {
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
             resourceLoadStatistics->logWebSocketLoading(targetPrimaryDomain, mainFramePrimaryDomain, lastSeen, [] { });
     }
-#else
-    UNUSED_PARAM(sessionID);
-    UNUSED_PARAM(targetPrimaryDomain);
-    UNUSED_PARAM(mainFramePrimaryDomain);
-    UNUSED_PARAM(lastSeen);
-#endif
 }
 
 void NetworkConnectionToWebProcess::logSubresourceLoading(PAL::SessionID sessionID, const String& targetPrimaryDomain, const String& mainFramePrimaryDomain, WallTime lastSeen)
 {
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (auto networkSession = networkProcess().networkSession(sessionID)) {
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
             resourceLoadStatistics->logSubresourceLoading(targetPrimaryDomain, mainFramePrimaryDomain, lastSeen, [] { });
     }
-#else
-    UNUSED_PARAM(sessionID);
-    UNUSED_PARAM(targetPrimaryDomain);
-    UNUSED_PARAM(mainFramePrimaryDomain);
-    UNUSED_PARAM(lastSeen);
-#endif
 }
 
 void NetworkConnectionToWebProcess::logSubresourceRedirect(PAL::SessionID sessionID, const String& sourcePrimaryDomain, const String& targetPrimaryDomain)
 {
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
     if (auto networkSession = networkProcess().networkSession(sessionID)) {
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
             resourceLoadStatistics->logSubresourceRedirect(sourcePrimaryDomain, targetPrimaryDomain, [] { });
     }
-#else
-    UNUSED_PARAM(sessionID);
-    UNUSED_PARAM(sourcePrimaryDomain);
-    UNUSED_PARAM(targetPrimaryDomain);
-#endif
 }
 
 void NetworkConnectionToWebProcess::requestResourceLoadStatisticsUpdate()
 {
-#if ENABLE(RESOURCE_LOAD_STATISTICS)
     for (auto& networkSession : networkProcess().networkSessions().values()) {
         if (networkSession->sessionID().isEphemeral())
             continue;
@@ -649,8 +614,18 @@ void NetworkConnectionToWebProcess::requestResourceLoadStatisticsUpdate()
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
             resourceLoadStatistics->requestUpdate();
     }
-#endif
 }
+
+void NetworkConnectionToWebProcess::hasStorageAccess(PAL::SessionID sessionID, const String& subFrameHost, const String& topFrameHost, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&& completionHandler)
+{
+    networkProcess().hasStorageAccess(sessionID, subFrameHost, topFrameHost, frameID, pageID, WTFMove(completionHandler));
+}
+
+void NetworkConnectionToWebProcess::requestStorageAccess(PAL::SessionID sessionID, const String& subFrameHost, const String& topFrameHost, uint64_t frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(bool)>&& completionHandler)
+{
+    networkProcess().requestStorageAccessGranted(sessionID, subFrameHost, topFrameHost, frameID, pageID, promptEnabled, WTFMove(completionHandler));
+}
+#endif
 
 void NetworkConnectionToWebProcess::addOriginAccessWhitelistEntry(const String& sourceOrigin, const String& destinationProtocol, const String& destinationHost, bool allowDestinationSubdomains)
 {

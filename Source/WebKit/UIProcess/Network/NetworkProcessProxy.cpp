@@ -72,7 +72,7 @@ static uint64_t generateCallbackID()
 }
 
 NetworkProcessProxy::NetworkProcessProxy(WebProcessPool& processPool)
-    : ChildProcessProxy(processPool.alwaysRunsAtBackgroundPriority())
+    : AuxiliaryProcessProxy(processPool.alwaysRunsAtBackgroundPriority())
     , m_processPool(processPool)
     , m_numPendingConnectionRequests(0)
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
@@ -103,7 +103,7 @@ NetworkProcessProxy::~NetworkProcessProxy()
 void NetworkProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
 {
     launchOptions.processType = ProcessLauncher::ProcessType::Network;
-    ChildProcessProxy::getLaunchOptions(launchOptions);
+    AuxiliaryProcessProxy::getLaunchOptions(launchOptions);
 
     if (processPool().shouldMakeNextNetworkProcessLaunchFailForTesting()) {
         processPool().setShouldMakeNextNetworkProcessLaunchFailForTesting(false);
@@ -149,7 +149,7 @@ void NetworkProcessProxy::getNetworkProcessConnection(WebProcessProxy& webProces
 DownloadProxy* NetworkProcessProxy::createDownloadProxy(const ResourceRequest& resourceRequest)
 {
     if (!m_downloadProxyMap)
-        m_downloadProxyMap = std::make_unique<DownloadProxyMap>(this);
+        m_downloadProxyMap = std::make_unique<DownloadProxyMap>(*this);
 
     return m_downloadProxyMap->createDownloadProxy(m_processPool, resourceRequest);
 }
@@ -334,7 +334,7 @@ void NetworkProcessProxy::didDeleteWebsiteDataForOrigins(uint64_t callbackID)
 
 void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connection::Identifier connectionIdentifier)
 {
-    ChildProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
+    AuxiliaryProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
 
     if (!IPC::Connection::identifierIsValid(connectionIdentifier)) {
         networkProcessCrashed();
@@ -727,6 +727,17 @@ void NetworkProcessProxy::requestStorageAccess(PAL::SessionID sessionID, const S
     sendWithAsyncReply(Messages::NetworkProcess::RequestStorageAccess(sessionID, resourceDomain, firstPartyDomain, frameID, pageID, promptEnabled), WTFMove(completionHandler));
 }
 
+void NetworkProcessProxy::requestStorageAccessConfirm(uint64_t pageID, uint64_t frameID, const String& subFrameHost, const String& topFrameHost, CompletionHandler<void(bool)>&& completionHandler)
+{
+    WebPageProxy* page = WebProcessProxy::webPage(pageID);
+    if (!page) {
+        completionHandler(false);
+        return;
+    }
+    
+    page->requestStorageAccessConfirm(subFrameHost, topFrameHost, frameID, WTFMove(completionHandler));
+}
+
 void NetworkProcessProxy::grantStorageAccess(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, bool userWasPrompted, CompletionHandler<void(bool)>&& completionHandler)
 {
     if (!canSendMessage()) {
@@ -934,18 +945,6 @@ void NetworkProcessProxy::sendProcessDidResume()
 {
     if (canSendMessage())
         send(Messages::NetworkProcess::ProcessDidResume(), 0);
-}
-
-void NetworkProcessProxy::writeBlobToFilePath(const URL& url, const String& path, CompletionHandler<void(bool)>&& completionHandler)
-{
-    if (!canSendMessage()) {
-        completionHandler(false);
-        return;
-    }
-
-    SandboxExtension::Handle handleForWriting;
-    SandboxExtension::createHandle(path, SandboxExtension::Type::ReadWrite, handleForWriting);
-    sendWithAsyncReply(Messages::NetworkProcess::WriteBlobToFilePath(url, path, handleForWriting), WTFMove(completionHandler));
 }
 
 void NetworkProcessProxy::processReadyToSuspend()

@@ -1,3 +1,648 @@
+2019-01-31  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake][JSC] Changing ud_opcode.py should trigger invoking ud_opcode.py
+        https://bugs.webkit.org/show_bug.cgi?id=194085
+
+        Reviewed by Yusuke Suzuki.
+
+        r240730 changed ud_itab.py and caused incremental build failures
+        for Ninja builds.
+
+        * CMakeLists.txt: Added ud_itab.py and optable.xml to UDIS_GEN_DEP.
+
+2019-01-30  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Symbol should be in destructibleCellSpace
+        https://bugs.webkit.org/show_bug.cgi?id=194082
+
+        Reviewed by Saam Barati.
+
+        Because Symbol's member was not poisoned, we changed the subspace for Symbol from destructibleCellSpace
+        to cellJSValueOOBSpace. But the problem is cellJSValueOOBSpace is a space for cells which are not
+        destructible. As a result, Symbol::destroy is never called, and SymbolImpl is leaked. This patch makes
+        Symbol's space destructibleCellSpace to appropriately call the destructor.
+
+        * runtime/Symbol.h:
+
+2019-01-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r240755.
+
+        This was not correct
+
+        Reverted changeset:
+
+        "Unreviewed, fix GCC build after r240730"
+        https://bugs.webkit.org/show_bug.cgi?id=194041
+        https://trac.webkit.org/changeset/240755
+
+2019-01-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix GCC build after r240730
+        https://bugs.webkit.org/show_bug.cgi?id=194041
+        <rdar://problem/47680981>
+
+        * disassembler/udis86/ud_itab.py:
+        (UdItabGenerator.genOpcodeTablesLookupIndex):
+
+2019-01-30  Tadeu Zagallo  <tzagallo@apple.com>
+
+        testapi's `testBytecodeCache` does not need to run the code twice
+        https://bugs.webkit.org/show_bug.cgi?id=194046
+
+        Reviewed by Mark Lam.
+
+        Since we populate the cache eagerly (unlike the stress tests) we don't
+        need to run the code twice.
+
+        * API/tests/testapi.mm:
+        (testBytecodeCache):
+
+2019-01-30  Saam barati  <sbarati@apple.com>
+
+        [WebAssembly] Change BBQ to generate Air IR
+        https://bugs.webkit.org/show_bug.cgi?id=191802
+        <rdar://problem/47651718>
+
+        Reviewed by Keith Miller.
+
+        This patch adds a new Wasm compiler for the BBQ tier. Instead
+        of compiling using  B3-01, we now generate Air code directly.
+        The goal of doing this was to speed up compile times for Wasm
+        programs.
+        
+        This patch provides us with a 20-30% compile time speedup. However, I
+        have ideas on how to improve compile times even further. For example,
+        we should probably implement a faster running register allocator:
+        https://bugs.webkit.org/show_bug.cgi?id=194036
+        
+        We can also improve on the code we generate.
+        We should emit better code for Switch: https://bugs.webkit.org/show_bug.cgi?id=194053
+        And we should do better instruction selection in various
+        areas: https://bugs.webkit.org/show_bug.cgi?id=193999
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * b3/B3LowerToAir.cpp:
+        * b3/B3StackmapSpecial.h:
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::emitDefaultPrologue):
+        * b3/air/AirCode.h:
+        * b3/air/AirTmp.h:
+        (JSC::B3::Air::Tmp::Tmp):
+        * runtime/Options.h:
+        * wasm/WasmAirIRGenerator.cpp: Added.
+        (JSC::Wasm::ConstrainedTmp::ConstrainedTmp):
+        (JSC::Wasm::TypedTmp::TypedTmp):
+        (JSC::Wasm::TypedTmp::operator== const):
+        (JSC::Wasm::TypedTmp::operator!= const):
+        (JSC::Wasm::TypedTmp::operator bool const):
+        (JSC::Wasm::TypedTmp::operator Tmp const):
+        (JSC::Wasm::TypedTmp::operator Arg const):
+        (JSC::Wasm::TypedTmp::tmp const):
+        (JSC::Wasm::TypedTmp::type const):
+        (JSC::Wasm::AirIRGenerator::ControlData::ControlData):
+        (JSC::Wasm::AirIRGenerator::ControlData::dump const):
+        (JSC::Wasm::AirIRGenerator::ControlData::type const):
+        (JSC::Wasm::AirIRGenerator::ControlData::signature const):
+        (JSC::Wasm::AirIRGenerator::ControlData::hasNonVoidSignature const):
+        (JSC::Wasm::AirIRGenerator::ControlData::targetBlockForBranch):
+        (JSC::Wasm::AirIRGenerator::ControlData::convertIfToBlock):
+        (JSC::Wasm::AirIRGenerator::ControlData::resultForBranch const):
+        (JSC::Wasm::AirIRGenerator::emptyExpression):
+        (JSC::Wasm::AirIRGenerator::fail const):
+        (JSC::Wasm::AirIRGenerator::setParser):
+        (JSC::Wasm::AirIRGenerator::toTmpVector):
+        (JSC::Wasm::AirIRGenerator::validateInst):
+        (JSC::Wasm::AirIRGenerator::extractArg):
+        (JSC::Wasm::AirIRGenerator::append):
+        (JSC::Wasm::AirIRGenerator::appendEffectful):
+        (JSC::Wasm::AirIRGenerator::newTmp):
+        (JSC::Wasm::AirIRGenerator::g32):
+        (JSC::Wasm::AirIRGenerator::g64):
+        (JSC::Wasm::AirIRGenerator::f32):
+        (JSC::Wasm::AirIRGenerator::f64):
+        (JSC::Wasm::AirIRGenerator::tmpForType):
+        (JSC::Wasm::AirIRGenerator::addPatchpoint):
+        (JSC::Wasm::AirIRGenerator::emitPatchpoint):
+        (JSC::Wasm::AirIRGenerator::emitCheck):
+        (JSC::Wasm::AirIRGenerator::emitCCall):
+        (JSC::Wasm::AirIRGenerator::moveOpForValueType):
+        (JSC::Wasm::AirIRGenerator::instanceValue):
+        (JSC::Wasm::AirIRGenerator::fixupPointerPlusOffset):
+        (JSC::Wasm::AirIRGenerator::restoreWasmContextInstance):
+        (JSC::Wasm::AirIRGenerator::AirIRGenerator):
+        (JSC::Wasm::AirIRGenerator::restoreWebAssemblyGlobalState):
+        (JSC::Wasm::AirIRGenerator::emitThrowException):
+        (JSC::Wasm::AirIRGenerator::addLocal):
+        (JSC::Wasm::AirIRGenerator::addConstant):
+        (JSC::Wasm::AirIRGenerator::addArguments):
+        (JSC::Wasm::AirIRGenerator::getLocal):
+        (JSC::Wasm::AirIRGenerator::addUnreachable):
+        (JSC::Wasm::AirIRGenerator::addGrowMemory):
+        (JSC::Wasm::AirIRGenerator::addCurrentMemory):
+        (JSC::Wasm::AirIRGenerator::setLocal):
+        (JSC::Wasm::AirIRGenerator::getGlobal):
+        (JSC::Wasm::AirIRGenerator::setGlobal):
+        (JSC::Wasm::AirIRGenerator::emitCheckAndPreparePointer):
+        (JSC::Wasm::sizeOfLoadOp):
+        (JSC::Wasm::AirIRGenerator::emitLoadOp):
+        (JSC::Wasm::AirIRGenerator::load):
+        (JSC::Wasm::sizeOfStoreOp):
+        (JSC::Wasm::AirIRGenerator::emitStoreOp):
+        (JSC::Wasm::AirIRGenerator::store):
+        (JSC::Wasm::AirIRGenerator::addSelect):
+        (JSC::Wasm::AirIRGenerator::emitTierUpCheck):
+        (JSC::Wasm::AirIRGenerator::addLoop):
+        (JSC::Wasm::AirIRGenerator::addTopLevel):
+        (JSC::Wasm::AirIRGenerator::addBlock):
+        (JSC::Wasm::AirIRGenerator::addIf):
+        (JSC::Wasm::AirIRGenerator::addElse):
+        (JSC::Wasm::AirIRGenerator::addElseToUnreachable):
+        (JSC::Wasm::AirIRGenerator::addReturn):
+        (JSC::Wasm::AirIRGenerator::addBranch):
+        (JSC::Wasm::AirIRGenerator::addSwitch):
+        (JSC::Wasm::AirIRGenerator::endBlock):
+        (JSC::Wasm::AirIRGenerator::addEndToUnreachable):
+        (JSC::Wasm::AirIRGenerator::addCall):
+        (JSC::Wasm::AirIRGenerator::addCallIndirect):
+        (JSC::Wasm::AirIRGenerator::unify):
+        (JSC::Wasm::AirIRGenerator::unifyValuesWithBlock):
+        (JSC::Wasm::AirIRGenerator::dump):
+        (JSC::Wasm::AirIRGenerator::origin):
+        (JSC::Wasm::parseAndCompileAir):
+        (JSC::Wasm::AirIRGenerator::emitChecksForModOrDiv):
+        (JSC::Wasm::AirIRGenerator::emitModOrDiv):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32DivS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32RemS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32DivU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32RemU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64DivS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64RemS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64DivU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64RemU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Ctz>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Ctz>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Popcnt>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Popcnt>):
+        (JSC::Wasm::AirIRGenerator::addOp<F64ConvertUI64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32ConvertUI64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Nearest>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Nearest>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Trunc>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Trunc>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32TruncSF64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32TruncSF32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32TruncUF64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32TruncUF32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64TruncSF64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64TruncUF64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64TruncSF32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64TruncUF32>):
+        (JSC::Wasm::AirIRGenerator::addShift):
+        (JSC::Wasm::AirIRGenerator::addIntegerSub):
+        (JSC::Wasm::AirIRGenerator::addFloatingPointAbs):
+        (JSC::Wasm::AirIRGenerator::addFloatingPointBinOp):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Ceil>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Mul>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Sub>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Le>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32DemoteF64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Min>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Ne>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Lt>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Max>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Mul>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Div>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Clz>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Copysign>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64ConvertUI32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32ReinterpretI32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64And>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Ne>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Gt>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Sqrt>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Ge>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64GtS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64GtU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Eqz>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Div>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Add>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Or>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32LeU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32LeS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Ne>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Clz>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Neg>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32And>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32LtU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Rotr>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Abs>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32LtS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Eq>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Copysign>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32ConvertSI64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Rotl>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Lt>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64ConvertSI32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Eq>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Le>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Ge>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32ShrU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32ConvertUI32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32ShrS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32GeU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Ceil>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32GeS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Shl>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Floor>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Xor>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Abs>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Min>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Mul>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Sub>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32ReinterpretF32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Add>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Sub>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Or>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64LtU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64LtS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64ConvertSI64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Xor>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64GeU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Mul>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Sub>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64PromoteF32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Add>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64GeS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64ExtendUI32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Ne>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64ReinterpretI64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Eq>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Eq>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Floor>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32ConvertSI32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Eqz>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64ReinterpretF64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64ShrS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64ShrU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Sqrt>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Shl>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F32Gt>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32WrapI64>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Rotl>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32Rotr>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32GtU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64ExtendSI32>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I32GtS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Neg>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::F64Max>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64LeU>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64LeS>):
+        (JSC::Wasm::AirIRGenerator::addOp<OpType::I64Add>):
+        * wasm/WasmAirIRGenerator.h: Added.
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::emptyExpression):
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::compileFunctions):
+        * wasm/WasmCallingConvention.cpp:
+        (JSC::Wasm::jscCallingConventionAir):
+        (JSC::Wasm::wasmCallingConventionAir):
+        * wasm/WasmCallingConvention.h:
+        (JSC::Wasm::CallingConvention::CallingConvention):
+        (JSC::Wasm::CallingConvention::marshallArgumentImpl const):
+        (JSC::Wasm::CallingConvention::marshallArgument const):
+        (JSC::Wasm::CallingConventionAir::CallingConventionAir):
+        (JSC::Wasm::CallingConventionAir::prologueScratch const):
+        (JSC::Wasm::CallingConventionAir::marshallArgumentImpl const):
+        (JSC::Wasm::CallingConventionAir::marshallArgument const):
+        (JSC::Wasm::CallingConventionAir::headerSizeInBytes):
+        (JSC::Wasm::CallingConventionAir::loadArguments const):
+        (JSC::Wasm::CallingConventionAir::setupCall const):
+        (JSC::Wasm::nextJSCOffset):
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::emptyExpression):
+
+2019-01-30  Robin Morisset  <rmorisset@apple.com>
+
+        Object.keys can now lead to a PhantomNewArrayBuffer, OSR exit from the FTL should know how to materialize a NewArrayBuffer in that case
+        https://bugs.webkit.org/show_bug.cgi?id=194050
+        <rdar://problem/47595592>
+
+        Following https://bugs.webkit.org/show_bug.cgi?id=190047, PhantomNewArrayBuffer is no longer guaranteed to originate from a NewArrayBuffer in the baseline jit.
+        It can now come from Object.keys, which is a function call. We must teach the FTL how to OSR exit in that case.
+
+        Reviewed by Yusuke Suzuki.
+
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+
+2019-01-30  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Remove assertion that CachedSymbolTables should have no RareData
+        https://bugs.webkit.org/show_bug.cgi?id=194037
+
+        Reviewed by Mark Lam.
+
+        It turns out that we don't need to cache the SymbolTableRareData and
+        we should not assert that it's empty.
+
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedSymbolTable::encode):
+
+2019-01-30  Tadeu Zagallo  <tzagallo@apple.com>
+
+        CachedBytecode's move constructor should not call `freeDataIfOwned`
+        https://bugs.webkit.org/show_bug.cgi?id=194045
+
+        Reviewed by Mark Lam.
+
+        That might result in freeing a garbage value
+
+        * parser/SourceProvider.h:
+        (JSC::CachedBytecode::CachedBytecode):
+
+2019-01-30  Keith Miller  <keith_miller@apple.com>
+
+        mul32 should convert powers of 2 to an lshift
+        https://bugs.webkit.org/show_bug.cgi?id=193957
+
+        Reviewed by Yusuke Suzuki.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::mul32):
+        * assembler/testmasm.cpp:
+        (JSC::int32Operands):
+        (JSC::testMul32WithImmediates):
+        (JSC::run):
+
+2019-01-30  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Make disassembler data structures constant read-only data
+        https://bugs.webkit.org/show_bug.cgi?id=194041
+
+        Reviewed by Mark Lam.
+
+        Bunch of disassembler data structures are not marked "const", which prevents the loader to put them in read-only region.
+        This patch makes them "const".
+
+        * disassembler/ARM64/A64DOpcode.cpp:
+        * disassembler/udis86/ud_itab.py:
+        (UdItabGenerator.genOpcodeTablesLookupIndex):
+        (UdItabGenerator.genInsnTable):
+        (UdItabGenerator.genMnemonicsList):
+        (genItabH):
+        * disassembler/udis86/udis86_decode.h:
+        * disassembler/udis86/udis86_syn.c:
+        * disassembler/udis86/udis86_syn.h:
+        * disassembler/udis86/udis86_types.h:
+
+2019-01-30  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, update the builtin test results
+        https://bugs.webkit.org/show_bug.cgi?id=194015
+
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-InternalClashingNames-Combined.js-result:
+        * Scripts/tests/builtins/expected/WebCore-AnotherGuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-ArbitraryConditionalGuard-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-UnguardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-xmlCasingTest-Separate.js-result:
+
+2019-01-30  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        [JSC] Make global static variables "const" as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=194015
+
+        Reviewed by Mark Lam.
+
+        Some of global static variables are not "const". For example, `static const char* name = ...`
+        is not constant variable. We should make it `static const char* const name = ...`.
+
+        * Scripts/wkbuiltins/builtins_generate_combined_header.py:
+        (generate_externs_for_object):
+        * Scripts/wkbuiltins/builtins_generate_separate_header.py:
+        (generate_externs_for_object):
+        * Scripts/wkbuiltins/builtins_generator.py:
+        (BuiltinsGenerator.generate_embedded_code_string_section_for_data):
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::additionBlindedConstant):
+        * b3/air/AirFormTable.h:
+        * b3/air/opcode_generator.rb:
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::visitButterfly):
+        * tools/CodeProfile.cpp:
+        * tools/CodeProfile.h:
+
+2019-01-29  Keith Miller  <keith_miller@apple.com>
+
+        Remove default constructor from LLIntPrototypeLoadAdaptiveStructureWatchpoint
+        https://bugs.webkit.org/show_bug.cgi?id=194000
+        <rdar://problem/47642894>
+
+        Reviewed by Mark Lam.
+
+        default constructor is unused and
+        LLIntPrototypeLoadAdaptiveStructureWatchpoint has a reference
+        data member which causes sadness.
+
+        * bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.h:
+
+2019-01-29  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Remove FIXME for Annex B.3.5's "for-of var" subcase.
+
+        Rubber-stamped by Yusuke Suzuki.
+
+        This subcase is removed from the spec in https://github.com/tc39/ecma262/pull/1393.
+
+        * parser/Parser.h:
+        (JSC::Parser::declareHoistedVariable):
+
+2019-01-29  Mark Lam  <mark.lam@apple.com>
+
+        Remove unneeded CPU(BIG_ENDIAN) handling in LLInt after new bytecode format.
+        https://bugs.webkit.org/show_bug.cgi?id=132333
+
+        Reviewed by Yusuke Suzuki.
+
+        * bytecode/InstructionStream.h:
+        (JSC::InstructionStreamWriter::write):
+        - The 32-bit write() function need not invert the order of the bytes written to
+          the bytecode stream for CPU(BUG_ENDIAN) because the incoming uint32_t value to
+          be written is already in big endian order for CPU(BUG_ENDIAN) platforms.
+
+        * llint/LLIntOfflineAsmConfig.h:
+        - OFFLINE_ASM_BIG_ENDIAN is no longer needed nor used after the new bytecode format.
+
+2019-01-29  Mark Lam  <mark.lam@apple.com>
+
+        ValueRecovery::recover() should purify NaN values it recovers.
+        https://bugs.webkit.org/show_bug.cgi?id=193978
+        <rdar://problem/47625488>
+
+        Reviewed by Saam Barati.
+
+        According to DFG::OSRExit::executeOSRExit() and DFG::OSRExit::compileExit(),
+        recovered DoubleDisplacedInJSStack values need to be purified.
+        ValueRecovery::recover() should do the same.
+
+        * bytecode/ValueRecovery.cpp:
+        (JSC::ValueRecovery::recover const):
+
+2019-01-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] FTL should handle LocalAllocator*
+        https://bugs.webkit.org/show_bug.cgi?id=193980
+
+        Reviewed by Saam Barati.
+
+        At some point, Allocator holds LocalAllocator* instead of 32bit integer. In FTL allocation path, we fail to use this constant LocalAllocator*
+        because the FTL still use the incoming value as 32bit integer there.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::allocateHeapCell):
+
+2019-01-29  Keith Rollin  <krollin@apple.com>
+
+        Add .xcfilelists to Run Script build phases
+        https://bugs.webkit.org/show_bug.cgi?id=193792
+        <rdar://problem/47201785>
+
+        Reviewed by Alex Christensen.
+
+        As part of supporting XCBuild, update the necessary Run Script build
+        phases in their Xcode projects to refer to their associated
+        .xcfilelist files.
+
+        Note that the addition of these files bumps the Xcode project version
+        number to something that's Xcode 10 compatible. This change means that
+        older versions of the Xcode IDE can't read these projects. Nor can it
+        fully load workspaces that refer to these projects (the updated
+        projects are shown as non-expandable placeholders). `xcodebuild` can
+        still build these projects; it's just that the IDE can't open them.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2019-01-29  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [ARM] Check for negative zero instead of just zero
+        https://bugs.webkit.org/show_bug.cgi?id=193689
+
+        Reviewed by Mark Lam.
+
+        ARM now performs a negative zero check in branchConvertDoubleToInt32 instead
+        of just bailing out for zero.
+
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::branchConvertDoubleToInt32):
+
+2019-01-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to edit page WebRTC settings on a remote target
+        https://bugs.webkit.org/show_bug.cgi?id=193863
+        <rdar://problem/47572764>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Page.json:
+        Add more values to the `Setting` enum type:
+         - `ICECandidateFilteringEnabled`
+         - `MediaCaptureRequiresSecureConnection`
+         - `MockCaptureDevicesEnabled`
+
+2019-01-28  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Remove unnecessary `using namespace WTF`s (or at least restrict their scope).
+        https://bugs.webkit.org/show_bug.cgi?id=193941
+
+        Reviewed by Alex Christensen.
+
+        * API/JSWeakObjectMapRefPrivate.cpp:
+        * bytecompiler/NodesCodegen.cpp:
+        * heap/MachineStackMarker.cpp:
+        * jit/ExecutableAllocator.cpp:
+        * jsc.cpp:
+        * parser/Nodes.cpp:
+        * runtime/DateConstructor.cpp:
+        * runtime/DateConversion.cpp:
+        * runtime/DateInstance.cpp:
+        * runtime/DatePrototype.cpp:
+        * runtime/InitializeThreading.cpp:
+        * runtime/IteratorOperations.cpp:
+        * runtime/JSDateMath.cpp:
+        * runtime/JSGlobalObjectFunctions.cpp:
+        * runtime/StringPrototype.cpp:
+        * runtime/VM.cpp:
+        * testRegExp.cpp:
+        * tools/JSDollarVM.cpp:
+        * yarr/YarrInterpreter.cpp:
+        * yarr/YarrJIT.cpp:
+        * yarr/YarrPattern.cpp:
+        * yarr/YarrUnicodeProperties.cpp:
+
+2019-01-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Reduce size of memory used for ShadowChicken
+        https://bugs.webkit.org/show_bug.cgi?id=193546
+
+        Reviewed by Mark Lam.
+
+        This patch lazily instantiate ShadowChicken. We do not need this until we start logging ShadowChicken packets.
+        The removal of ShadowChicken saves 55KB memory.
+
+        * debugger/DebuggerCallFrame.cpp:
+        (JSC::DebuggerCallFrame::create):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::ensureShadowChickenPacket):
+        * heap/Heap.cpp:
+        (JSC::Heap::stopThePeriphery):
+        (JSC::Heap::addCoreConstraints):
+        * jit/CCallHelpers.cpp:
+        (JSC::CCallHelpers::ensureShadowChickenPacket):
+        * jit/JITExceptions.cpp:
+        (JSC::genericUnwind):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_log_shadow_chicken_prologue):
+        (JSC::JIT::emit_op_log_shadow_chicken_tail):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_log_shadow_chicken_prologue):
+        (JSC::JIT::emit_op_log_shadow_chicken_tail):
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::setDebugger):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::setDebugger): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::ensureShadowChicken):
+        * runtime/VM.h:
+        (JSC::VM::shadowChicken):
+        * tools/JSDollarVM.cpp:
+        (JSC::functionShadowChickenFunctionsOnStack):
+        (JSC::changeDebuggerModeWhenIdle):
+
+2019-01-28  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Enable Parental Controls content filtering
+        https://bugs.webkit.org/show_bug.cgi?id=193939
+        <rdar://problem/46641912>
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2019-01-28  Mark Lam  <mark.lam@apple.com>
 
         ToString node actually does GC.

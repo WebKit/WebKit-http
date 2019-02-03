@@ -759,6 +759,7 @@ public:
     PlatformWidget viewWidget();
     const WebCore::Color& backgroundColor() const { return m_backgroundColor; }
     void setBackgroundColor(const WebCore::Color& color) { m_backgroundColor = color; }
+    bool makeGLContextCurrent();
 #endif
 
 #if PLATFORM(WIN)
@@ -897,9 +898,10 @@ public:
 #if PLATFORM(MAC)
     void setUseSystemAppearance(bool);
     bool useSystemAppearance() const { return m_useSystemAppearance; }
+#endif
+
     void effectiveAppearanceDidChange();
     bool useDarkAppearance() const;
-#endif
 
 #if PLATFORM(COCOA)
     // Called by the web process through a message.
@@ -971,7 +973,8 @@ public:
 #endif
 
     class PolicyDecisionSender;
-    void receivedPolicyDecision(WebCore::PolicyAction, API::Navigation*, Optional<WebsitePoliciesData>&&, Ref<PolicyDecisionSender>&&);
+    enum class WillContinueLoadInNewProcess : bool { No, Yes };
+    void receivedPolicyDecision(WebCore::PolicyAction, API::Navigation*, Optional<WebsitePoliciesData>&&, Ref<PolicyDecisionSender>&&, WillContinueLoadInNewProcess = WillContinueLoadInNewProcess::No);
     void receivedNavigationPolicyDecision(WebCore::PolicyAction, API::Navigation*, ProcessSwapRequestedByClient, WebFrameProxy&, API::WebsitePolicies*, Ref<PolicyDecisionSender>&&);
 
     void backForwardRemovedItem(const WebCore::BackForwardItemIdentifier&);
@@ -1380,8 +1383,7 @@ public:
 #endif
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t webProcessContextId);
-    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t webProcessContextId, bool prompt);
+    void requestStorageAccessConfirm(const String& subFrameHost, const String& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&&);
 #endif
 
     static WebPageProxy* nonEphemeralWebPageProxy();
@@ -1401,8 +1403,6 @@ public:
 #if ENABLE(APPLICATION_MANIFEST)
     void getApplicationManifest(Function<void(const Optional<WebCore::ApplicationManifest>&, CallbackBase::Error)>&&);
 #endif
-
-    void writeBlobToFilePath(const URL& blobURL, const String& path, Function<void(bool success)>&&);
 
     WebPreferencesStore preferencesStore() const;
 

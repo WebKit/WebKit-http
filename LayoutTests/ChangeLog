@@ -1,3 +1,452 @@
+2019-01-31  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Use the used margin values in outOfFlowReplacedHorizontalGeometry consistently
+        https://bugs.webkit.org/show_bug.cgi?id=194074
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/absolute-position-with-margin-auto-simple2-expected.html: Added.
+        * fast/block/block-only/absolute-position-with-margin-auto-simple2.html: Added.
+
+2019-01-31  Chris Fleizach  <cfleizach@apple.com>
+
+        ASSERTION FAILED: cache under WebCore::AXObjectCache::postTextStateChangePlatformNotification
+        https://bugs.webkit.org/show_bug.cgi?id=189094
+        <rdar://problem/43853526>
+
+        Reviewed by Zalan Bujtas.
+
+        Unskip flaky test with crash resolved.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-01-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable swipe tests on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=194076
+
+        Reviewed by Geoffrey Garen.
+
+        Enabled tests in LayoutTests/swipe and added iOS specific results for the failing tests.
+
+        * platform/ios/TestExpectations:
+        * platform/ios/swipe/basic-cached-back-swipe-expected.txt: Added.
+        * platform/ios/swipe/main-frame-pinning-requirement-expected.txt: Added.
+        * platform/ios/swipe/pushState-cached-back-swipe-expected.txt: Added.
+
+2019-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Regression(PSON) History navigations to twitter.com lead to a 403 HTTP error
+        https://bugs.webkit.org/show_bug.cgi?id=194023
+        <rdar://problem/47417981>
+
+        Reviewed by Geoffrey Garen.
+
+        Add layout test coverage.
+
+        * http/tests/cookies/same-site/lax-samesite-cookie-after-cross-site-history-load-expected.txt: Added.
+        * http/tests/cookies/same-site/lax-samesite-cookie-after-cross-site-history-load.php: Added.
+        * http/tests/cookies/same-site/resources/navigate-back.html: Added.
+
+2019-01-30  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Keyups for non-modifier keys identified as "Dead" when not focused in a content-editable element
+        https://bugs.webkit.org/show_bug.cgi?id=192824
+        <rdar://problem/47100332>
+
+        Reviewed by Wenson Hsieh.
+
+        Update tests and expected results. As it turns out fixing the bug in WebKitTestRunner/ios/HIDEventGenerator.mm
+        so that we now dispatch key events for F17 thru F24 exposed a bug in UIKit. See <rdar://problem/47128940>.
+        This same bug is also responsible for a lack of key events when the Insert key is pressed.
+
+        Added sub-test for Tab key to keypress-keys-in-non-editable-element.html. Changed expected result in test
+        keypress-keys-in-non-editable-element.html for the forward delete key to expect failure. We expect that pressing
+        the forward delete key will not dispatch a keypress to match the behavior on Mac. This will be addressed by a
+        UIKit fix.
+
+        * fast/events/ios/keydown-keyup-special-keys-in-non-editable-element-expected.txt:
+        * fast/events/ios/keydown-keyup-special-keys-in-non-editable-element.html:
+        * fast/events/ios/keypress-keys-in-non-editable-element-expected.txt:
+        * fast/events/ios/keypress-keys-in-non-editable-element.html:
+
+2019-01-30  Dean Jackson  <dino@apple.com>
+
+        PointerEvents - tiltX and tiltY are reversed
+        https://bugs.webkit.org/show_bug.cgi?id=194032
+        <rdar://problem/47674184>
+
+        Reviewed by Jon Lee.
+
+        * pointerevents/ios/pointer-events-dispatch-on-stylus.html:
+
+2019-01-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Add some basic geometry information to the scrolling tree
+        https://bugs.webkit.org/show_bug.cgi?id=194002
+        rdar://problem/47656294
+
+        Reviewed by Antti Koivisto.
+        
+        New test results with "parent relative scrollable rect" output and 0,0 anchorPoints.
+
+        * compositing/scrolling/overflow-scrolling-layers-are-self-painting-expected.txt:
+        * fast/scrolling/ios/change-scrollability-on-content-resize-expected.txt:
+        * fast/scrolling/ios/change-scrollability-on-content-resize-nested-expected.txt:
+        * fast/scrolling/ios/overflow-scroll-touch-expected.txt:
+        * fast/scrolling/ios/reconcile-layer-position-recursive-expected.txt:
+        * fast/scrolling/ios/subpixel-overflow-scrolling-with-ancestor-expected.txt:
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolled-down-expected.txt:
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolled-down-then-up-expected.txt:
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolling-layers-state-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/coordinated-frame-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/coordinated-frame-gain-scrolling-ancestor-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/coordinated-frame-in-fixed-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/coordinated-frame-lose-scrolling-ancestor-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/fixed-inside-frame-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/gain-scrolling-node-parent-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/lose-scrolling-node-parent-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/overflow-in-fixed-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/remove-coordinated-frame-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/remove-scrolling-role-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/reparent-across-compositing-layers-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/reparent-with-layer-removal-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/scrolling-tree-includes-frame-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/scrolling-tree-is-z-order-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/toggle-coordinated-frame-scrolling-expected.txt:
+        * platform/ios/compositing/overflow/overflow-auto-with-touch-expected.txt:
+        * platform/ios/compositing/overflow/overflow-auto-with-touch-toggle-expected.txt:
+        * platform/ios/compositing/overflow/overflow-overlay-with-touch-expected.txt:
+        * platform/ios/compositing/overflow/scrolling-content-clip-to-viewport-expected.txt:
+        * platform/ios/compositing/overflow/scrolling-without-painting-expected.txt:
+        * platform/ios/compositing/overflow/textarea-scroll-touch-expected.txt:
+        * platform/ios/compositing/overflow/updating-scrolling-content-expected.txt:
+        * platform/ios/compositing/rtl/rtl-scrolling-with-transformed-descendants-expected.txt:
+        * platform/ios/compositing/scrolling/overflow-scrolling-layers-are-self-painting-expected.txt:
+        * platform/ios/fast/scrolling/ios/overflow-scrolling-ancestor-clip-expected.txt:
+        * platform/ios/fast/scrolling/ios/overflow-scrolling-ancestor-clip-size-expected.txt:
+        * platform/ios/fast/scrolling/ios/scrolling-content-clip-to-viewport-expected.txt:
+        * platform/ios/fast/scrolling/ios/textarea-scroll-touch-expected.txt:
+        * platform/ios/media/video-play-glyph-composited-outside-overflow-scrolling-touch-container-expected.txt:
+        * scrollingcoordinator/scrolling-tree/coordinated-frame-expected.txt:
+        * scrollingcoordinator/scrolling-tree/coordinated-frame-gain-scrolling-ancestor-expected.txt:
+        * scrollingcoordinator/scrolling-tree/coordinated-frame-in-fixed-expected.txt:
+        * scrollingcoordinator/scrolling-tree/coordinated-frame-lose-scrolling-ancestor-expected.txt:
+        * scrollingcoordinator/scrolling-tree/fixed-inside-frame-expected.txt:
+        * scrollingcoordinator/scrolling-tree/gain-scrolling-node-parent-expected.txt:
+        * scrollingcoordinator/scrolling-tree/lose-scrolling-node-parent-expected.txt:
+        * scrollingcoordinator/scrolling-tree/overflow-in-fixed-expected.txt:
+        * scrollingcoordinator/scrolling-tree/remove-coordinated-frame-expected.txt:
+        * scrollingcoordinator/scrolling-tree/remove-scrolling-role-expected.txt:
+        * scrollingcoordinator/scrolling-tree/reparent-across-compositing-layers-expected.txt:
+        * scrollingcoordinator/scrolling-tree/reparent-with-layer-removal-expected.txt:
+        * scrollingcoordinator/scrolling-tree/scrolling-tree-includes-frame-expected.txt:
+        * scrollingcoordinator/scrolling-tree/scrolling-tree-is-z-order-expected.txt:
+        * scrollingcoordinator/scrolling-tree/toggle-coordinated-frame-scrolling-expected.txt:
+        * tiled-drawing/scrolling/clamp-out-of-bounds-scrolls-expected.txt:
+        * tiled-drawing/scrolling/fixed/absolute-inside-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/absolute-inside-out-of-view-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-in-overflow-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-position-out-of-view-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-position-out-of-view-negative-zindex-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-with-header-and-footer-expected.txt:
+        * tiled-drawing/scrolling/fixed/negative-scroll-offset-expected.txt:
+        * tiled-drawing/scrolling/fixed/negative-scroll-offset-in-view-expected.txt:
+        * tiled-drawing/scrolling/fixed/nested-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/percentage-inside-fixed-expected.txt:
+        * tiled-drawing/scrolling/frames/scroll-region-after-frame-layout-expected.txt:
+        * tiled-drawing/scrolling/scrolling-tree-after-scroll-expected.txt:
+        * tiled-drawing/scrolling/scrolling-tree-slow-scrolling-expected.txt:
+        * tiled-drawing/scrolling/sticky/negative-scroll-offset-expected.txt:
+        * tiled-drawing/scrolling/sticky/sticky-horizontal-expected.txt:
+        * tiled-drawing/scrolling/sticky/sticky-vertical-expected.txt:
+
+2019-01-30  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Use the used margin values in outOfFlowReplacedVerticalGeometry consistently
+        https://bugs.webkit.org/show_bug.cgi?id=194020
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/absolute-position-with-margin-auto-simple-expected.html: Added.
+        * fast/block/block-only/absolute-position-with-margin-auto-simple.html: Added.
+
+2019-01-30  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Support color well on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=194010
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/ios-simulator/color-well-expected.txt: Added.
+        * accessibility/ios-simulator/color-well.html: Added.
+
+2019-01-30  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Role=switch not returning correct accessibilityValue
+        https://bugs.webkit.org/show_bug.cgi?id=194006
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/ios-simulator/role-switch-expected.txt: Added.
+        * accessibility/ios-simulator/role-switch.html: Added.
+
+2019-01-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening. Manage failures in the imported WPT tests,
+        adding a few failure expectations but mostly rebaselining the tests
+        to match their current status.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text/white-space/seg-break-transformation-001-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/css/css-text/white-space/seg-break-transformation-004-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/basic/header-value-combining.any.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/basic/request-headers-case.any-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/basic/request-headers-case.any.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any.worker-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method.any-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method.any.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-mode.any-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-mode.any.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/request/request-keepalive-quota-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/content-type: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/content-type/script.window-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/http-cache/cc-request-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/nosniff: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/nosniff/parsing-nosniff.window-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/security/dangling-markup-mitigation-data-url.tentative.sub-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/security/embedded-credentials.tentative.sub-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/mimesniff/mime-types/charset-parameter.window-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/resource-timing: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/resource-timing/resource_timing.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/service-workers/service-worker/websocket-in-service-worker.https-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/formdata-blob-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/formdata-expected.txt:
+
+2019-01-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening. Adding some test failure expectations and
+        rebasing a few baselines.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/css2.1/t1508-c527-font-06-b-expected.txt:
+        * platform/wpe/fast/borders/rtl-border-04-expected.txt:
+        * platform/wpe/fast/borders/rtl-border-05-expected.txt:
+        * platform/wpe/fast/dom/52776-expected.txt:
+
+2019-01-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening.
+
+        * platform/wpe/TestExpectations: Skip the resourceLoadStatistics tests
+        since that feature is still not yet enabled for the port.
+
+2019-01-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Add nodes to the scrolling tree in z-index order.
+        https://bugs.webkit.org/show_bug.cgi?id=192529
+        <rdar://problem/47402708>
+
+        Reviewed by Dean Jackson.
+        
+        New testcases for z-order of sibling fixed layers, and the correct nesting of scrolling tree nodes
+        for a position:fixed which is also overflow:scroll.
+
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/overflow-in-fixed-expected.txt: Added.
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/reparent-across-compositing-layers-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/scrolling-tree-is-z-order-expected.txt: Added.
+        * platform/mac-wk2/TestExpectations:
+        * scrollingcoordinator/scrolling-tree/overflow-in-fixed-expected.txt: Added.
+        * scrollingcoordinator/scrolling-tree/overflow-in-fixed.html: Added.
+        * scrollingcoordinator/scrolling-tree/reparent-across-compositing-layers-expected.txt:
+        * scrollingcoordinator/scrolling-tree/scrolling-tree-is-z-order-expected.txt: Added.
+        * scrollingcoordinator/scrolling-tree/scrolling-tree-is-z-order.html: Added.
+
+2019-01-29  Truitt Savell  <tsavell@apple.com>
+
+        Updating expectations for two compositing/repaint/iframes/ tests
+        https://bugs.webkit.org/show_bug.cgi?id=193907
+
+        Unreviewed test gardening.
+
+        * platform/mac-highsierra-wk1/compositing/repaint/iframes/compositing-iframe-scroll-repaint-expected.txt:
+        * platform/mac-highsierra-wk1/compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint-expected.txt:
+
+2019-01-29  Youenn Fablet  <youenn@apple.com>
+
+        Adopt new SPI to evaluate server certificate trust
+        https://bugs.webkit.org/show_bug.cgi?id=193355
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/ssl/certificate-validation-expected.txt: Added.
+        * http/tests/ssl/certificate-validation.html: Added.
+
+2019-01-29  Shawn Roberts  <sroberts@apple.com>
+
+        [ Mac WK2 ] Layout Test http/tests/cache-storage/cache-clearing-origin.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=193976
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-01-29  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION(r240553): [iOS] Crash in ScrollingTree::updateTreeFromStateNode when attempting to log in to icloud.com
+        https://bugs.webkit.org/show_bug.cgi?id=193907
+        rdar://problem/47604080
+
+        Reviewed by Frédéric Wang.
+        
+        New ref test for layer positions in composited frames.
+        
+        New baselines with anchor point on the scroll layer.
+
+        * compositing/geometry/composited-frame-contents-expected.html: Added.
+        * compositing/geometry/composited-frame-contents.html: Added.
+        * compositing/iframes/become-composited-nested-iframes-expected.txt:
+        * compositing/iframes/become-overlapped-iframe-expected.txt:
+        * compositing/iframes/composited-parent-iframe-expected.txt:
+        * compositing/iframes/connect-compositing-iframe-delayed-expected.txt:
+        * compositing/iframes/connect-compositing-iframe-expected.txt:
+        * compositing/iframes/connect-compositing-iframe2-expected.txt:
+        * compositing/iframes/connect-compositing-iframe3-expected.txt:
+        * compositing/iframes/enter-compositing-iframe-expected.txt:
+        * compositing/iframes/iframe-resize-expected.txt:
+        * compositing/iframes/iframe-size-from-zero-expected.txt:
+        * compositing/iframes/overlapped-iframe-expected.txt:
+        * compositing/iframes/overlapped-iframe-iframe-expected.txt:
+        * compositing/iframes/overlapped-nested-iframes-expected.txt:
+        * compositing/iframes/page-cache-layer-tree-expected.txt:
+        * compositing/iframes/remove-reinsert-webview-with-iframe-expected.txt:
+        * compositing/iframes/resize-from-zero-size-expected.txt:
+        * compositing/iframes/scrolling-iframe-expected.txt:
+        * compositing/repaint/iframes/compositing-iframe-scroll-repaint-expected.txt:
+        * compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint-expected.txt:
+        * compositing/visible-rect/iframe-with-layers-outside-viewport-expected.txt:
+        * platform/ios-wk2/compositing/iframes/composited-parent-iframe-expected.txt:
+        * platform/ios-wk2/compositing/iframes/connect-compositing-iframe-delayed-expected.txt:
+        * platform/ios-wk2/compositing/iframes/connect-compositing-iframe-expected.txt:
+        * platform/ios-wk2/compositing/iframes/connect-compositing-iframe2-expected.txt:
+        * platform/ios-wk2/compositing/iframes/connect-compositing-iframe3-expected.txt:
+        * platform/ios-wk2/compositing/iframes/enter-compositing-iframe-expected.txt:
+        * platform/ios-wk2/compositing/iframes/iframe-resize-expected.txt:
+        * platform/ios-wk2/compositing/iframes/leave-compositing-iframe-expected.txt:
+        * platform/ios-wk2/compositing/iframes/overlapped-iframe-expected.txt:
+        * platform/ios-wk2/compositing/iframes/page-cache-layer-tree-expected.txt:
+        * platform/ios-wk2/compositing/iframes/scrolling-iframe-expected.txt:
+        * platform/ios-wk2/compositing/rtl/rtl-iframe-absolute-expected.txt:
+        * platform/ios-wk2/compositing/rtl/rtl-iframe-absolute-overflow-expected.txt:
+        * platform/ios-wk2/compositing/rtl/rtl-iframe-fixed-expected.txt:
+        * platform/ios-wk2/compositing/rtl/rtl-iframe-relative-expected.txt:
+        * platform/ios-wk2/compositing/tiling/tiled-drawing-async-frame-scrolling-expected.txt:
+        * platform/ios-wk2/compositing/visible-rect/iframe-and-layers-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/fixed-inside-frame-expected.txt:
+        * platform/ios/compositing/iframes/become-composited-nested-iframes-expected.txt:
+        * platform/ios/compositing/iframes/become-overlapped-iframe-expected.txt:
+        * platform/ios/compositing/iframes/invisible-nested-iframe-show-expected.txt:
+        * platform/ios/compositing/iframes/overlapped-nested-iframes-expected.txt:
+        * platform/ios/compositing/iframes/remove-reinsert-webview-with-iframe-expected.txt:
+        * platform/ios/compositing/iframes/resizer-expected.txt:
+        * platform/ios/compositing/visible-rect/iframe-with-layers-outside-viewport-expected.txt:
+        * platform/mac-wk1/compositing/iframes/remove-reinsert-webview-with-iframe-expected.txt:
+        * platform/mac-wk1/compositing/repaint/iframes/compositing-iframe-scroll-repaint-expected.txt:
+        * platform/mac-wk1/compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint-expected.txt:
+        * platform/mac-wk2/compositing/tiling/tiled-drawing-async-frame-scrolling-expected.txt:
+        * platform/mac/compositing/iframes/invisible-nested-iframe-show-expected.txt:
+        * platform/mac/compositing/iframes/resizer-expected.txt:
+        * platform/mac/compositing/visible-rect/iframe-and-layers-expected.txt:
+        * scrollingcoordinator/scrolling-tree/fixed-inside-frame-expected.txt:
+        * tiled-drawing/tile-coverage-iframe-to-zero-coverage-expected.txt:
+
+2019-01-29  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Fix and add validation to WebGPURenderPipeline and MTLVertexDescriptor
+        https://bugs.webkit.org/show_bug.cgi?id=193926
+        <rdar://problem/47327648>
+
+        Reviewed by Myles C. Maxfield.
+
+        Updated test for new vertex input logic. Now provides color as a vertex attribute.
+
+        * webgpu/vertex-buffer-triangle-strip.html:
+
+2019-01-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to edit page WebRTC settings on a remote target
+        https://bugs.webkit.org/show_bug.cgi?id=193863
+
+        Unreviewed, skip test from r240644 on WK1 since Media Streams aren't supported.
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-01-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to edit page WebRTC settings on a remote target
+        https://bugs.webkit.org/show_bug.cgi?id=193863
+        <rdar://problem/47572764>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/page/overrideSetting-ICECandidateFilteringEnabled.html: Added.
+        * inspector/page/overrideSetting-ICECandidateFilteringEnabled-expected.txt: Added.
+        * inspector/page/overrideSetting-MockCaptureDevicesEnabled.html: Added.
+        * inspector/page/overrideSetting-MockCaptureDevicesEnabled-expected.txt: Added.
+        * platform/mac/TestExpectations:
+
+2019-01-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION (r240553): Crash in WebCore::ScrollingTree::updateTreeFromStateNode
+        https://bugs.webkit.org/show_bug.cgi?id=193955
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Skip crashing test to unblock EWS.
+
+2019-01-28  Antoine Quint  <graouts@apple.com>
+
+        Implement capture for Pointer Events on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=193917
+        <rdar://problem/47605689>
+
+        Reviewed by Dean Jackson.
+
+        New tests for implicit pointer capture and the Element APIs related to pointer capture.
+
+        * pointerevents/ios/pointer-events-implicit-capture-expected.txt: Added.
+        * pointerevents/ios/pointer-events-implicit-capture-has-pointer-capture-in-pointer-down-expected.txt: Added.
+        * pointerevents/ios/pointer-events-implicit-capture-has-pointer-capture-in-pointer-down.html: Added.
+        * pointerevents/ios/pointer-events-implicit-capture-release-exception-expected.txt: Added.
+        * pointerevents/ios/pointer-events-implicit-capture-release-exception.html: Added.
+        * pointerevents/ios/pointer-events-implicit-capture-release-expected.txt: Added.
+        * pointerevents/ios/pointer-events-implicit-capture-release.html: Added.
+        * pointerevents/ios/pointer-events-implicit-capture.html: Added.
+        * pointerevents/ios/pointer-events-set-pointer-capture-exceptions-expected.txt: Added.
+        * pointerevents/ios/pointer-events-set-pointer-capture-exceptions.html: Added.
+
+2019-01-28  Dean Jackson  <dino@apple.com>
+
+        Produce "pen" Pointer Events if using a stylus (e.g. Apple Pencil)
+        https://bugs.webkit.org/show_bug.cgi?id=193945
+        <rdar://problem/47618922>
+
+        Reviewed by Antoine Quint.
+
+        Test for stylus -> "pen" Pointer Events.
+
+        * pointerevents/ios/pointer-events-dispatch-on-stylus-expected.txt: Added.
+        * pointerevents/ios/pointer-events-dispatch-on-stylus.html: Added.
+        * pointerevents/ios/pointer-events-dispatch-on-touch.html: Test for "touch" type.
+        * pointerevents/utils.js: Add a new helper for stylus event generation.
+        (prototype.assertMatchesEvents):
+        (const.ui.new.UIController.prototype.beginStylus):
+
 2019-01-28  Daniel Bates  <dabates@apple.com>
 
         [iOS] Make Window virtual key code computation match Mac

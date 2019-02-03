@@ -48,13 +48,11 @@ public:
     // From SourceBufferPrivateGStreamer.
     void abort(RefPtr<SourceBufferPrivateGStreamer>);
     void resetParserState(RefPtr<SourceBufferPrivateGStreamer>);
-    bool append(RefPtr<SourceBufferPrivateGStreamer>, Vector<unsigned char>&&);
+    void append(RefPtr<SourceBufferPrivateGStreamer>, Vector<unsigned char>&&);
     void removedFromMediaSource(RefPtr<SourceBufferPrivateGStreamer>);
     void flush(AtomicString);
     void enqueueSample(Ref<MediaSample>&&);
     void allSamplesInTrackEnqueued(const AtomicString&);
-
-    void clearPlayerPrivate();
 
     const MediaTime& duration();
     GRefPtr<WebKitMediaSrc> webKitMediaSrc();
@@ -62,7 +60,7 @@ public:
 private:
     MediaSourceClientGStreamerMSE(MediaPlayerPrivateGStreamerMSE&);
 
-    MediaPlayerPrivateGStreamerMSE* m_playerPrivate;
+    MediaPlayerPrivateGStreamerMSE& m_playerPrivate;
     MediaTime m_duration;
 };
 

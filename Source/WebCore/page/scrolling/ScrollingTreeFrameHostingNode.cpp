@@ -29,6 +29,7 @@
 #if ENABLE(ASYNC_SCROLLING)
 
 #include "Logging.h"
+#include "ScrollingStateFrameHostingNode.h"
 #include "ScrollingStateTree.h"
 #include "ScrollingTree.h"
 #include <wtf/text/TextStream.h>
@@ -48,9 +49,12 @@ ScrollingTreeFrameHostingNode::ScrollingTreeFrameHostingNode(ScrollingTree& scro
 
 ScrollingTreeFrameHostingNode::~ScrollingTreeFrameHostingNode() = default;
 
-void ScrollingTreeFrameHostingNode::commitStateBeforeChildren(const ScrollingStateNode&)
+void ScrollingTreeFrameHostingNode::commitStateBeforeChildren(const ScrollingStateNode& stateNode)
 {
-    // Nothing to do.
+    const ScrollingStateFrameHostingNode& frameHostingStateNode = downcast<ScrollingStateFrameHostingNode>(stateNode);
+
+    if (frameHostingStateNode.hasChangedProperty(ScrollingStateFrameHostingNode::ParentRelativeScrollableRect))
+        m_parentRelativeScrollableRect = frameHostingStateNode.parentRelativeScrollableRect();
 }
 
 void ScrollingTreeFrameHostingNode::updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta)
@@ -62,10 +66,18 @@ void ScrollingTreeFrameHostingNode::updateLayersAfterAncestorChange(const Scroll
         child->updateLayersAfterAncestorChange(changedNode, fixedPositionRect, cumulativeDelta);
 }
 
+LayoutPoint ScrollingTreeFrameHostingNode::parentToLocalPoint(LayoutPoint point) const
+{
+    return point - toLayoutSize(parentRelativeScrollableRect().location());
+}
+
 void ScrollingTreeFrameHostingNode::dumpProperties(TextStream& ts, ScrollingStateTreeAsTextBehavior behavior) const
 {
     ts << "frame hosting node";
     ScrollingTreeNode::dumpProperties(ts, behavior);
+
+    if (!m_parentRelativeScrollableRect.isEmpty())
+        ts.dumpProperty("parent relative scrollable rect", m_parentRelativeScrollableRect);
 }
 
 } // namespace WebCore

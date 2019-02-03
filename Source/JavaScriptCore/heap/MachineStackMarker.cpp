@@ -31,8 +31,6 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/Platform.h>
 
-using namespace WTF;
-
 namespace JSC {
 
 MachineThreads::MachineThreads()

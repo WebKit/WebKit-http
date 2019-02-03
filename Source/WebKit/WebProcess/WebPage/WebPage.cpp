@@ -401,9 +401,6 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_userInterfaceLayoutDirection(parameters.userInterfaceLayoutDirection)
     , m_overrideContentSecurityPolicy { parameters.overrideContentSecurityPolicy }
     , m_cpuLimit(parameters.cpuLimit)
-#if PLATFORM(MAC)
-    , m_shouldAttachDrawingAreaOnPageTransition(parameters.isProcessSwap)
-#endif
 {
     ASSERT(m_pageID);
 
@@ -523,10 +520,13 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     setPageLength(parameters.pageLength);
     setGapBetweenPages(parameters.gapBetweenPages);
     setPaginationLineGridEnabled(parameters.paginationLineGridEnabled);
+
+    setUseDarkAppearance(parameters.useDarkAppearance);
+
 #if PLATFORM(MAC)
     setUseSystemAppearance(parameters.useSystemAppearance);
-    setUseDarkAppearance(parameters.useDarkAppearance);
 #endif
+
     // If the page is created off-screen, its visibilityState should be prerender.
     m_page->setActivityState(m_activityState);
     if (!isVisible())
@@ -697,9 +697,6 @@ void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
         m_drawingArea->setShouldScaleViewToFitDocument(parameters.shouldScaleViewToFitDocument);
         m_drawingArea->updatePreferences(parameters.store);
         m_drawingArea->setPaintingEnabled(true);
-#if PLATFORM(MAC)
-        m_shouldAttachDrawingAreaOnPageTransition = parameters.isProcessSwap;
-#endif
         unfreezeLayerTree(LayerTreeFreezeReason::PageSuspended);
     }
 
@@ -1227,8 +1224,10 @@ void WebPage::close()
     if (m_isClosed)
         return;
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RemoveStorageAccessForAllFramesOnPage(sessionID(), m_pageID), 0);
-    
+#endif
+
     m_isClosed = true;
 
     // If there is still no URL, then we never loaded anything in this page, so nothing to report.
@@ -3096,18 +3095,6 @@ void WebPage::didCompletePageTransition()
     bool isInitialEmptyDocument = !m_mainFrame;
     if (!isInitialEmptyDocument)
         unfreezeLayerTree(LayerTreeFreezeReason::ProcessSwap);
-
-#if PLATFORM(MAC)
-    if (m_shouldAttachDrawingAreaOnPageTransition && !isInitialEmptyDocument) {
-        m_shouldAttachDrawingAreaOnPageTransition = false;
-        // Unfreezing the layer tree above schedules a layer flush so we delay attaching the drawing area
-        // after the next event loop iteration.
-        RunLoop::main().dispatch([this, weakThis = makeWeakPtr(*this)] {
-            if (weakThis && m_drawingArea)
-                m_drawingArea->attach();
-        });
-    }
-#endif
 }
 
 void WebPage::show()
@@ -4501,12 +4488,13 @@ void WebPage::setUseSystemAppearance(bool useSystemAppearance)
 {
     corePage()->setUseSystemAppearance(useSystemAppearance);
 }
-    
+
+#endif
+
 void WebPage::setUseDarkAppearance(bool useDarkAppearance)
 {
     corePage()->setUseDarkAppearance(useDarkAppearance);
 }
-#endif
 
 void WebPage::beginPrinting(uint64_t frameID, const PrintInfo& printInfo)
 {
@@ -6367,40 +6355,15 @@ void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remote
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-static uint64_t nextRequestStorageAccessContextId()
+void WebPage::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
 {
-    static uint64_t nextContextId = 0;
-    return ++nextContextId;
-}
-
-void WebPage::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& callback)
-{
-    auto contextId = nextRequestStorageAccessContextId();
-    auto addResult = m_storageAccessResponseCallbackMap.add(contextId, WTFMove(callback));
-    ASSERT(addResult.isNewEntry);
-    if (addResult.iterator->value)
-        send(Messages::WebPageProxy::HasStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, contextId));
-    else
-        callback(false);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::HasStorageAccess(sessionID(), WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, m_pageID), WTFMove(completionHandler));
 }
     
-void WebPage::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& callback)
+void WebPage::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
 {
-    auto contextId = nextRequestStorageAccessContextId();
-    auto addResult = m_storageAccessResponseCallbackMap.add(contextId, WTFMove(callback));
-    ASSERT(addResult.isNewEntry);
-    if (addResult.iterator->value) {
-        bool promptEnabled = RuntimeEnabledFeatures::sharedFeatures().storageAccessPromptsEnabled();
-        send(Messages::WebPageProxy::RequestStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, contextId, promptEnabled));
-    } else
-        callback(false);
-}
-
-void WebPage::storageAccessResponse(bool wasGranted, uint64_t contextId)
-{
-    auto callback = m_storageAccessResponseCallbackMap.take(contextId);
-    ASSERT(callback);
-    callback(wasGranted);
+    bool promptEnabled = RuntimeEnabledFeatures::sharedFeatures().storageAccessPromptsEnabled();
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::RequestStorageAccess(sessionID(), WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, m_pageID, promptEnabled), WTFMove(completionHandler));
 }
 #endif
     

@@ -3013,7 +3013,7 @@ void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
 
 void FrameView::updateBackgroundRecursively(bool transparent)
 {
-#if ENABLE(DARK_MODE_CSS)
+#if ENABLE(DARK_MODE_CSS) && PLATFORM(MAC)
     Color backgroundColor = transparent ? Color::transparent : RenderTheme::singleton().systemColor(CSSValueAppleSystemControlBackground, styleColorOptions());
 #else
     Color backgroundColor = transparent ? Color::transparent : Color::white;
@@ -5011,7 +5011,7 @@ bool FrameView::wheelEvent(const PlatformWheelEvent& wheelEvent)
     if (Page* page = frame().page()) {
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator()) {
             if (scrollingCoordinator->coordinatesScrollingForFrameView(*this))
-                return scrollingCoordinator->handleWheelEvent(*this, wheelEvent);
+                return scrollingCoordinator->handleWheelEvent(*this, wheelEvent) != ScrollingEventResult::DidNotHandleEvent;
         }
     }
 #endif

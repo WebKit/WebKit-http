@@ -1,3 +1,294 @@
+2019-01-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Memory Timeline View should be responsive / resizable
+        https://bugs.webkit.org/show_bug.cgi?id=153758
+        <rdar://problem/24444320>
+
+        Reviewed by Joseph Pecoraro.
+
+        Leverage the SVG `viewBox` (which was misspelled) to scale the graphs when the width of the
+        container changes. The `viewBox` used is equal to the total amount of time that is visible.
+
+        Make `WI.LineChart` (and its container classes) into subclasses of `WI.View` to leverage the
+        existing layout system.
+
+        Prevent any work from being done when resizing, as this is now handled by CSS/SVG.
+
+        * UserInterface/Views/LineChart.js:
+        (WI.LineChart):
+        (WI.LineChart.prototype.set size):
+        (WI.LineChart.prototype.addPoint):
+        (WI.LineChart.prototype.clear):
+        (WI.LineChart.prototype.layout):
+        (WI.LineChart.prototype.get element): Deleted.
+        (WI.LineChart.prototype.get points): Deleted.
+        (WI.LineChart.prototype.needsLayout): Deleted.
+        (WI.LineChart.prototype.updateLayout): Deleted.
+
+        * UserInterface/Views/CPUUsageView.js:
+        (WI.CPUUsageView):
+        (WI.CPUUsageView.prototype.clear):
+        (WI.CPUUsageView.prototype.updateChart): Added.
+        (WI.CPUUsageView.prototype.get element): Deleted.
+        (WI.CPUUsageView.prototype.layoutWithDataPoints): Deleted.
+        * UserInterface/Views/CPUUsageView.css:
+        (.cpu-usage-view):
+        (.cpu-usage-view > .details):
+        (.cpu-usage-view > .graph, .cpu-usage-view > .graph > .line-chart, .cpu-usage-view > .graph > .line-chart > svg): Added.
+        (.cpu-usage-view > .graph): Deleted.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView):
+        (WI.CPUTimelineView.prototype.layout):
+        (WI.CPUTimelineView.prototype.layout.layoutView):
+        (WI.CPUTimelineView.prototype.layout.layoutView.xScale):
+        (WI.CPUTimelineView.prototype.layout.layoutView.yScale):
+        * UserInterface/Views/CPUTimelineView.css:
+        (body .timeline-view.cpu): Added.
+        (.timeline-view.cpu > .content):
+        (.timeline-view.cpu): Deleted.
+
+        * UserInterface/Views/MemoryCategoryView.js:
+        (WI.MemoryCategoryView):
+        (WI.MemoryCategoryView.prototype.clear):
+        (WI.MemoryCategoryView.prototype.updateChart): Added.
+        (WI.MemoryCategoryView.prototype.get element): Deleted.
+        (WI.MemoryCategoryView.prototype.layoutWithDataPoints): Deleted.
+        * UserInterface/Views/MemoryCategoryView.css:
+        (.memory-category-view):
+        (.memory-category-view > .details):
+        (.memory-category-view > .graph, .memory-category-view > .graph > .line-chart, .memory-category-view > .graph > .line-chart > svg): Added.
+        (.memory-category-view > .graph): Deleted.
+
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WI.MemoryTimelineView.prototype.layout):
+        (WI.MemoryTimelineView.prototype.layout.layoutCategoryView):
+        (WI.MemoryTimelineView.prototype.layout.layoutCategoryView.xScale):
+        (WI.MemoryTimelineView.prototype.layout.layoutCategoryView.yScale):
+        (WI.MemoryTimelineView.prototype._initializeCategoryViews):
+        (WI.MemoryTimelineView.prototype._initializeCategoryViews.appendLegendRow):
+        * UserInterface/Views/MemoryTimelineView.css:
+        (.timeline-view.memory > .content > .overview):
+        (.timeline-view.memory > .content > .overview > .divider):
+        (.timeline-view.memory > .content > .overview .total-usage, .timeline-view.memory > .content > .overview .max-percentage, .timeline-view.memory > .content > .overview .legend .size): Added.
+        (.timeline-view.memory .legend):
+        (.timeline-view.memory .legend .row): Added.
+        (.timeline-view.memory .legend .row + .row): Added.
+        (.timeline-view.memory .legend .swatch): Addd.
+        (.timeline-view.memory .legend .swatch.javascript): Addd.
+        (.timeline-view.memory .legend .swatch.images): Addd.
+        (.timeline-view.memory .legend .swatch.layers): Addd.
+        (.timeline-view.memory .legend .swatch.page): Addd.
+        (.timeline-view.memory .legend .swatch.current): Addd.
+        (.timeline-view.memory > .content): Deleted.
+        (.timeline-view.memory > .content > .overview .total-usage, .timeline-view.memory > .content > .overview .max-percentage):
+        (body[dir=ltr] .timeline-view.memory .legend): Deleted.
+        (body[dir=rtl] .timeline-view.memory .legend): Deleted.
+        (.timeline-view.memory .legend > .row): Deleted.
+        (.timeline-view.memory .legend > .row > .swatch): Deleted.
+        (body[dir=ltr] .timeline-view.memory .legend > .row > .swatch): Deleted.
+        (body[dir=rtl] .timeline-view.memory .legend > .row > .swatch): Deleted.
+        (.timeline-view.memory .legend > .row > p): Deleted.
+        (body[dir=ltr] .timeline-view.memory .legend > .row > :matches(.label, .size)): Deleted.
+        (body[dir=rtl] .timeline-view.memory .legend > .row > :matches(.label, .size)): Deleted.
+        (.timeline-view.memory .legend > .row > .label): Deleted.
+        (.timeline-view.memory .legend > .row > .size): Deleted.
+        (.timeline-view.memory .legend > .row > .swatch.javascript): Deleted.
+        (.timeline-view.memory .legend > .row > .swatch.images): Deleted.
+        (.timeline-view.memory .legend > .row > .swatch.layers): Deleted.
+        (.timeline-view.memory .legend > .row > .swatch.page): Deleted.
+        (.timeline-view.memory .legend > .row > .swatch.current): Deleted.
+
+2019-01-30  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Changes: group CSS rules by resource
+        https://bugs.webkit.org/show_bug.cgi?id=193940
+        <rdar://problem/47617785>
+
+        Reviewed by Matt Baker.
+
+        Create resource sections with source links in their headers.
+
+        Also:
+        - Use read-only WI.SpreadsheetStyleProperty to display inline swatches for colors;
+        - Make the red and green background span the entire width of the panel.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/ChangesDetailsSidebarPanel.css:
+        (.sidebar > .panel.changes-panel):
+        (.sidebar > .panel.changes-panel .css-rule):
+        (.sidebar > .panel.selected.changes-panel.empty):
+        (.changes-panel .resource-section):
+        (.changes-panel .resource-section > .header):
+        (.changes-panel .resource-section > .header > a:hover):
+        (.sidebar > .panel.changes-panel .selector-line,):
+        (.changes-panel .css-property-line > .property):
+        (.changes-panel .css-property-line.unchanged):
+        (.changes-panel .css-property-line.added):
+        (.changes-panel .css-property-line.removed):
+        (.changes-panel .css-property-line.removed::before):
+        (.changes-panel .css-property-line.added::before):
+        (@media (prefers-color-scheme: dark)):
+
+        * UserInterface/Views/ChangesDetailsSidebarPanel.js:
+        (WI.ChangesDetailsSidebarPanel.prototype.layout):
+        (WI.ChangesDetailsSidebarPanel.prototype._createRuleElement):
+        (WI.ChangesDetailsSidebarPanel.prototype._createLocationLink):
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._createInlineSwatch):
+        Allow passing `null` as a delegate.
+
+2019-01-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: change style of device settings override popover content
+        https://bugs.webkit.org/show_bug.cgi?id=194049
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WI._handleDeviceSettingsToolbarButtonClicked):
+        (WI._handleDeviceSettingsToolbarButtonClicked.showUserAgentInput):
+        (WI._handleDeviceSettingsToolbarButtonClicked.createContainer): Deleted.
+        * UserInterface/Views/Main.css:
+        (.device-settings-content):
+        (.device-settings-content > tr > td:first-child): Added.
+        (.device-settings-content .container):
+        (.device-settings-content .container > * + *): Added.
+        (.device-settings-content .column): Added.
+        (.device-settings-content .user-agent select): Added.
+        (.device-settings-content .user-agent input): Added.
+        (.device-settings-content label + label): Added.
+        (.device-settings-content label > input): Added.
+        (.device-settings-content .columns): Deleted.
+        (.device-settings-content .columns > .column): Deleted.
+        (.device-settings-content .columns > .column + .column): Deleted.
+        (.device-settings-content .user-agent-value): Deleted.
+        (.device-settings-content .user-agent-value > select): Deleted.
+        (.device-settings-content .user-agent-value > input): Deleted.
+        (body[dir=ltr] .device-settings-content .user-agent-value > input): Deleted.
+        (body[dir=rtl] .device-settings-content .user-agent-value > input): Deleted.
+
+2019-01-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: null is not an object (evaluating 'url.startsWith')
+        https://bugs.webkit.org/show_bug.cgi?id=194029
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WI.ConsoleMessageView.prototype._appendLocationLink):
+
+2019-01-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Enabled Changes panel in Elements tab by default
+        https://bugs.webkit.org/show_bug.cgi?id=193986
+        <rdar://problem/47647683>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WI.ElementsTabContentView):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+2019-01-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: enable computed style cascades by default
+        https://bugs.webkit.org/show_bug.cgi?id=193983
+        <rdar://problem/47645821>
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (.computed-style-properties):
+        (.computed-style-properties .property .go-to-arrow):
+        (.details-section.computed-style-properties:not(.collapsed) > :matches(.header, .content)):
+        (.details-section.computed-style-properties > .content):
+        (@media (prefers-color-scheme: dark)):
+        (.computed-with-traces .computed-style-properties): Deleted.
+        (.computed-with-traces .details-section.computed-style-properties:not(.collapsed) > :matches(.header, .content)): Deleted.
+        (.computed-with-traces .details-section.computed-style-properties > .content): Deleted.
+        (.computed-with-traces .computed-style-properties .property .go-to-arrow): Deleted.
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WI.ComputedStyleDetailsPanel.prototype.refresh):
+        (WI.ComputedStyleDetailsPanel.prototype.initialLayout):
+        * UserInterface/Views/ComputedStyleDetailsSidebarPanel.js:
+        (WI.ComputedStyleDetailsSidebarPanel):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+2019-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unnecessary promise rejection handlers now that we use the global onunhandledrejection handler
+        https://bugs.webkit.org/show_bug.cgi?id=193921
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Utilities.js:
+        * UserInterface/Debug/UncaughtExceptionReporter.js:
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._exportHAR):
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype.updateFormattedState):
+
+2019-01-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to edit page WebRTC settings on a remote target
+        https://bugs.webkit.org/show_bug.cgi?id=193863
+        <rdar://problem/47572764>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        (WI.initializeTarget):
+        (WI._handleDeviceSettingsToolbarButtonClicked):
+        (WI._handleDeviceSettingsToolbarButtonClicked.createCheckbox):
+        (WI._handleDeviceSettingsToolbarButtonClicked.createColumns): Deleted.
+        * UserInterface/Views/Main.css:
+        (.device-settings-content .container): Added.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-01-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Elements tab should toggle visibility for all selected nodes
+        https://bugs.webkit.org/show_bug.cgi?id=193089
+        <rdar://problem/47009256>
+
+        Reviewed by Devin Rousso.
+
+        Update "Toggle Visibility" command in DOM tree for multiple selection.
+        When both visible and hidden elements are selected in the DOM tree,
+        the toggle command behaves contextually. If one or more elements are
+        visible, they are hidden, otherwise they are shown. The context menu
+        shows "Hide Elements" or "Show Elements", respectively.
+
+        When only one element is selected, or the context menu target element
+        is not selected, the command continues to be "Toggle Visibility".
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.get isNodeHidden): Added.
+        (WI.DOMTreeElement.prototype.toggleElementVisibility.inspectedPage_node_injectStyleAndToggleClass):
+        (WI.DOMTreeElement.prototype.toggleElementVisibility):
+        (WI.DOMTreeElement.prototype._populateTagContextMenu):
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline):
+        (WI.DOMTreeOutline.prototype.toggleSelectedElementsVisibility):  Added.
+        Provide a public method for toggling the visibility of selected DOM nodes.
+        Used by the "H" keyboard shortcut and DOMTreeElement context menu.
+
+        (WI.DOMTreeOutline.prototype._hideElements):
+        (WI.DOMTreeOutline.prototype._hideElement): Deleted.
+        Rename for multiple selection.
+
 2019-01-28  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r240351.

@@ -424,6 +424,9 @@ webkit.org/b/89052 fast/css/image-orientation [ Skip ]
 # CSS image-resolution is not yet enabled.
 webkit.org/b/85262 fast/css/image-resolution [ Skip ]
 
+# No support for resource load statistics yet
+webkit.org/b/177943 http/tests/resourceLoadStatistics/ [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # 3. UNRESOLVED TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1315,8 +1318,6 @@ webkit.org/b/180134 webanimations/left-and-opacity-animation-yields-no-compositi
 webkit.org/b/180134 webanimations/opacity-animation-no-longer-composited-upon-completion.html [ Failure ]
 webkit.org/b/180134 webanimations/width-and-opacity-separate-animation-yields-no-compositing.html [ Failure ]
 
-webkit.org/b/182317 http/tests/resourceLoadStatistics/grandfathering.html [ Failure ]
-
 webkit.org/b/184086 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property.html [ Failure ]
 webkit.org/b/184086 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html [ Failure ]
 
@@ -1545,6 +1546,15 @@ webkit.org/b/193511 http/tests/images/mp4-partial-load.html [ Failure ]
 webkit.org/b/193517 imported/w3c/web-platform-tests/css/css-properties-values-api/typedom.tentative.html [ Failure ]
 
 webkit.org/b/193518 imported/w3c/web-platform-tests/fetch/range/general.window.html [ Failure ]
+
+webkit.org/b/194008 css3/font-feature-font-face-local.html [ ImageOnlyFailure ]
+
+webkit.org/b/194009 fast/css/has-attachment.html [ Failure ]
+
+webkit.org/b/193629 fast/css3-text/css3-text-decoration/text-underline-style.html [ ImageOnlyFailure ]
+
+webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-005.html [ ImageOnlyFailure ]
+webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-normal-bo-000.html [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 #  >> NOTICE <<

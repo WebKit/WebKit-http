@@ -1,3 +1,41 @@
+2019-01-31  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed speculative WPE build fix.
+
+        * CMakeLists.txt: Include the WebKitCommon file, as is normally done in
+        standalone CMakeLists.txt files.
+
+2019-01-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] WebDriver: race condition when session starts
+        https://bugs.webkit.org/show_bug.cgi?id=194086
+
+        Reviewed by Philippe Normand.
+
+        This is causing flakiness in the bots, I can only reproduce it locally when my CPUs are at 100%. The thing
+        is that sometimes we receive an empty target list right after the connection is established because
+        RemoteInspector::setClient() calls pushListingsSoon() before a target has been registered. Most of the times the
+        target is registered before the listing is pushed, but it can happen that when pushed, the listing is still
+        empty. After the target is registered an empty target list means the connection was lost, so we clear the
+        connection and target. We need to ensure we do that only after the target has been registered.
+
+        * glib/SessionHostGlib.cpp:
+
+2019-01-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: POST commands require a valid parameters object
+        https://bugs.webkit.org/show_bug.cgi?id=193906
+
+        Reviewed by Michael Catanzaro.
+
+        We are not failing when http body is empty.
+
+        Fixes tests: imported/w3c/webdriver/tests/set_window_rect/set.py::test_null_parameter_value
+                     imported/w3c/webdriver/tests/set_timeouts/set.py::test_null_parameter_value
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::handleRequest):
+
 2019-01-04  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         WebDriver: element click command should handle user prompts

@@ -18,6 +18,7 @@ target_test((target, test) => {
         assert_equals(event.type, "pointerdown");
         assert_equals(event.clientX, 50);
         assert_equals(event.clientY, 50);
+        assert_equals(event.pointerType, "touch");
         test.done();
     });
     ui.beginTouches({ x: 50, y: 50 });

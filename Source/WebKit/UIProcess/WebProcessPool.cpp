@@ -36,7 +36,7 @@
 #include "APINavigation.h"
 #include "APIPageConfiguration.h"
 #include "APIProcessPoolConfiguration.h"
-#include "ChildProcessMessages.h"
+#include "AuxiliaryProcessMessages.h"
 #include "DownloadProxy.h"
 #include "DownloadProxyMessages.h"
 #include "GamepadData.h"
@@ -81,7 +81,7 @@
 #include <WebCore/MockRealtimeMediaSourceCenter.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PlatformScreen.h>
-#include <WebCore/Process.h>
+#include <WebCore/ProcessIdentifier.h>
 #include <WebCore/ProcessWarming.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RuntimeApplicationChecks.h>
@@ -260,7 +260,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     std::call_once(onceFlag, [] {
         WTF::setProcessPrivileges(allPrivileges());
         WebCore::NetworkStorageSession::permitProcessToUseCookieAPI(true);
-        Process::setIdentifier(generateObjectIdentifier<WebCore::ProcessIdentifierType>());
+        Process::setIdentifier(WebCore::ProcessIdentifier::generate());
     });
 
     if (m_configuration->shouldHaveLegacyDataStore())
@@ -442,8 +442,8 @@ void WebProcessPool::fullKeyboardAccessModeChanged(bool fullKeyboardAccessEnable
 #if OS(LINUX)
 void WebProcessPool::sendMemoryPressureEvent(bool isCritical)
 {
-    sendToAllProcesses(Messages::ChildProcess::DidReceiveMemoryPressureEvent(isCritical));
-    sendToNetworkingProcess(Messages::ChildProcess::DidReceiveMemoryPressureEvent(isCritical));
+    sendToAllProcesses(Messages::AuxiliaryProcess::DidReceiveMemoryPressureEvent(isCritical));
+    sendToNetworkingProcess(Messages::AuxiliaryProcess::DidReceiveMemoryPressureEvent(isCritical));
 #if ENABLE(NETSCAPE_PLUGIN_API)
     PluginProcessManager::singleton().sendMemoryPressureEvent(isCritical);
 #endif
@@ -1482,9 +1482,9 @@ void WebProcessPool::registerURLSchemeAsCachePartitioned(const String& urlScheme
 void WebProcessPool::registerURLSchemeServiceWorkersCanHandle(const String& urlScheme)
 {
     m_schemesServiceWorkersCanHandle.add(urlScheme);
-    sendToAllProcesses(Messages::ChildProcess::RegisterURLSchemeServiceWorkersCanHandle(urlScheme));
+    sendToAllProcesses(Messages::AuxiliaryProcess::RegisterURLSchemeServiceWorkersCanHandle(urlScheme));
     if (m_networkProcess)
-        m_networkProcess->send(Messages::ChildProcess::RegisterURLSchemeServiceWorkersCanHandle(urlScheme), 0);
+        m_networkProcess->send(Messages::AuxiliaryProcess::RegisterURLSchemeServiceWorkersCanHandle(urlScheme), 0);
 }
 
 void WebProcessPool::registerURLSchemeAsCanDisplayOnlyIfCanRequest(const String& urlScheme)
@@ -2190,8 +2190,14 @@ void WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API:
             });
         }
 
-        if (auto* process = WebProcessProxy::processForIdentifier(targetItem->itemID().processIdentifier))
-            return completionHandler(*process, nullptr, "Using target back/forward item's process"_s);
+        if (RefPtr<WebProcessProxy> process = WebProcessProxy::processForIdentifier(targetItem->itemID().processIdentifier)) {
+            // FIXME: Architecturally we do not currently support multiple WebPage's with the same ID in a given WebProcess.
+            // In the case where this WebProcess has a SuspendedPageProxy for this WebPage, we can throw it away to support
+            // WebProcess re-use.
+            removeAllSuspendedPagesForPage(page, process.get());
+
+            return completionHandler(process.releaseNonNull(), nullptr, "Using target back/forward item's process"_s);
+        }
     }
 
     if (navigation.treatAsSameOriginNavigation())
@@ -2225,9 +2231,7 @@ void WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API:
                 // In the case where this WebProcess has a SuspendedPageProxy for this WebPage, we can throw it away to support
                 // WebProcess re-use.
                 // In the future it would be great to refactor-out this limitation (https://bugs.webkit.org/show_bug.cgi?id=191166).
-                m_suspendedPages.removeAllMatching([&](auto& suspendedPage) {
-                    return &suspendedPage->page() == &page && &suspendedPage->process() == process;
-                });
+                removeAllSuspendedPagesForPage(page, process);
 
                 return completionHandler(makeRef(*process), nullptr, reason);
             }
@@ -2263,10 +2267,10 @@ void WebProcessPool::addSuspendedPage(std::unique_ptr<SuspendedPageProxy>&& susp
     m_suspendedPages.append(WTFMove(suspendedPage));
 }
 
-void WebProcessPool::removeAllSuspendedPagesForPage(WebPageProxy& page)
+void WebProcessPool::removeAllSuspendedPagesForPage(WebPageProxy& page, WebProcessProxy* process)
 {
-    m_suspendedPages.removeAllMatching([&page](auto& suspendedPage) {
-        return &suspendedPage->page() == &page;
+    m_suspendedPages.removeAllMatching([&page, process](auto& suspendedPage) {
+        return &suspendedPage->page() == &page && (!process || &suspendedPage->process() == process);
     });
 }
 
@@ -2294,10 +2298,10 @@ void WebProcessPool::removeSuspendedPage(SuspendedPageProxy& suspendedPage)
         m_suspendedPages.remove(it);
 }
 
-bool WebProcessPool::hasSuspendedPageFor(WebProcessProxy& process) const
+bool WebProcessPool::hasSuspendedPageFor(WebProcessProxy& process, WebPageProxy* page) const
 {
-    return m_suspendedPages.findIf([&process](auto& suspendedPage) {
-        return &suspendedPage->process() == &process;
+    return m_suspendedPages.findIf([&process, page](auto& suspendedPage) {
+        return &suspendedPage->process() == &process && (!page || &suspendedPage->page() == page);
     }) != m_suspendedPages.end();
 }
 

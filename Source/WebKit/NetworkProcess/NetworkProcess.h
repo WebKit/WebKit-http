@@ -25,8 +25,8 @@
 
 #pragma once
 
+#include "AuxiliaryProcess.h"
 #include "CacheModel.h"
-#include "ChildProcess.h"
 #include "DownloadManager.h"
 #include "NetworkContentRuleListManager.h"
 #include "NetworkHTTPSUpgradeChecker.h"
@@ -100,7 +100,7 @@ namespace NetworkCache {
 class Cache;
 }
 
-class NetworkProcess : public ChildProcess, private DownloadManager::Client, public ThreadSafeRefCounted<NetworkProcess>
+class NetworkProcess : public AuxiliaryProcess, private DownloadManager::Client, public ThreadSafeRefCounted<NetworkProcess>
 #if ENABLE(INDEXED_DATABASE)
     , public WebCore::IDBServer::IDBBackingStoreTemporaryFileHandler
 #endif
@@ -108,7 +108,7 @@ class NetworkProcess : public ChildProcess, private DownloadManager::Client, pub
 {
     WTF_MAKE_NONCOPYABLE(NetworkProcess);
 public:
-    NetworkProcess(ChildProcessInitializationParameters&&);
+    NetworkProcess(AuxiliaryProcessInitializationParameters&&);
     ~NetworkProcess();
     static constexpr ProcessType processType = ProcessType::Network;
 
@@ -124,7 +124,7 @@ public:
         m_supplements.add(T::supplementName(), std::make_unique<T>(*this));
     }
 
-    void removeNetworkConnectionToWebProcess(NetworkConnectionToWebProcess*);
+    void removeNetworkConnectionToWebProcess(NetworkConnectionToWebProcess&);
 
     AuthenticationManager& authenticationManager();
     DownloadManager& downloadManager();
@@ -206,6 +206,7 @@ public:
     void removeAllStorageAccess(PAL::SessionID, CompletionHandler<void()>&&);
     void removePrevalentDomains(PAL::SessionID, const Vector<String>& domains);
     void requestStorageAccess(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, Optional<uint64_t> frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&&);
+    void requestStorageAccessGranted(PAL::SessionID, const String& subFrameHost, const String& topFrameHost, uint64_t frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(bool)>&&);
     void resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID, CompletionHandler<void()>&&);
     void resetParametersToDefaultValues(PAL::SessionID, CompletionHandler<void()>&&);
     void scheduleClearInMemoryAndPersistent(PAL::SessionID, Optional<WallTime> modifiedSince, ShouldGrandfatherStatistics, CompletionHandler<void()>&&);
@@ -309,10 +310,10 @@ private:
     void platformPrepareToSuspend(CompletionHandler<void()>&&);
     void platformProcessDidResume();
 
-    // ChildProcess
-    void initializeProcess(const ChildProcessInitializationParameters&) override;
-    void initializeProcessName(const ChildProcessInitializationParameters&) override;
-    void initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&) override;
+    // AuxiliaryProcess
+    void initializeProcess(const AuxiliaryProcessInitializationParameters&) override;
+    void initializeProcessName(const AuxiliaryProcessInitializationParameters&) override;
+    void initializeSandbox(const AuxiliaryProcessInitializationParameters&, SandboxInitializationParameters&) override;
     void initializeConnection(IPC::Connection*) override;
     bool shouldTerminate() override;
 
@@ -363,8 +364,6 @@ private:
     
     void syncAllCookies();
     void didSyncAllCookies();
-
-    void writeBlobToFilePath(const URL&, const String& path, SandboxExtension::Handle&&, CompletionHandler<void(bool)>&&);
 
 #if USE(SOUP)
     void setIgnoreTLSErrors(bool);

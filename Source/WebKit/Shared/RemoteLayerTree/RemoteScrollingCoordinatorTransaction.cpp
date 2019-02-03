@@ -158,6 +158,7 @@ void ArgumentCoder<ScrollingStateFrameScrollingNode>::encode(Encoder& encoder, c
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::TopContentInset, topContentInset)
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::FixedElementsLayoutRelativeToFrame, fixedElementsLayoutRelativeToFrame)
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::VisualViewportEnabled, visualViewportEnabled)
+    // AsyncFrameOrOverflowScrollingEnabled is not relevant for UI-side compositing.
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::LayoutViewport, layoutViewport)
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::MinLayoutViewportOrigin, minLayoutViewportOrigin)
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::MaxLayoutViewportOrigin, maxLayoutViewportOrigin)
@@ -181,6 +182,7 @@ void ArgumentCoder<ScrollingStateFrameScrollingNode>::encode(Encoder& encoder, c
 void ArgumentCoder<ScrollingStateFrameHostingNode>::encode(Encoder& encoder, const ScrollingStateFrameHostingNode& node)
 {
     encoder << static_cast<const ScrollingStateNode&>(node);
+    // ParentRelativeScrollableRect isn't used so we don't encode it.
 }
 
 void ArgumentCoder<ScrollingStateOverflowScrollingNode>::encode(Encoder& encoder, const ScrollingStateOverflowScrollingNode& node)
@@ -413,7 +415,6 @@ void RemoteScrollingCoordinatorTransaction::encode(IPC::Encoder& encoder) const
             encodeNodeAndDescendants(encoder, *rootNode, numNodesEncoded);
 
         ASSERT_UNUSED(numNodesEncoded, numNodesEncoded == numNodes);
-        encoder << m_scrollingStateTree->removedNodes();
     } else
         encoder << Vector<ScrollingNodeID>();
 }
@@ -485,14 +486,6 @@ bool RemoteScrollingCoordinatorTransaction::decode(IPC::Decoder& decoder)
     }
 
     m_scrollingStateTree->setHasNewRootStateNode(hasNewRootNode);
-
-    // Removed nodes
-    HashSet<ScrollingNodeID> removedNodes;
-    if (!decoder.decode(removedNodes))
-        return false;
-    
-    if (removedNodes.size())
-        m_scrollingStateTree->setRemovedNodes(removedNodes);
 
     return true;
 }
@@ -653,9 +646,6 @@ static void dump(TextStream& ts, const ScrollingStateTree& stateTree, bool chang
 
     if (stateTree.rootStateNode())
         recursiveDumpNodes(ts, *stateTree.rootStateNode(), changedPropertiesOnly);
-
-    if (!stateTree.removedNodes().isEmpty())
-        ts.dumpProperty<Vector<ScrollingNodeID>>("removed-nodes", copyToVector(stateTree.removedNodes()));
 }
 
 WTF::CString RemoteScrollingCoordinatorTransaction::description() const

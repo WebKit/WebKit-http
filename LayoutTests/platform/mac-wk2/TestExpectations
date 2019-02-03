@@ -324,8 +324,6 @@ webkit.org/b/167321 tiled-drawing/scrolling/scroll-snap/scroll-snap-proximity-ma
 
 webkit.org/b/148408 tiled-drawing/scrolling/root-overflow-with-mousewheel.html [ Pass Failure Timeout ]
 
-webkit.org/b/192529 fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolling-layers-state.html [ Pass Failure ]
-
 webkit.org/b/139820 fast/frames/lots-of-objects.html [ Pass Timeout ]
 webkit.org/b/139820 fast/frames/lots-of-iframes.html [ Pass Timeout ]
 
@@ -896,8 +894,6 @@ imported/w3c/web-platform-tests/payment-request/updateWith-method-pmi-handling-m
 imported/w3c/web-platform-tests/payment-request/user-abort-algorithm-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/user-accepts-payment-request-algo-manual.https.html [ Skip ]
 
-webkit.org/b/189094 [ HighSierra+ ] accessibility/mac/focus-setting-selection-syncronizing-not-clearing.html [ Skip ]
-
 webkit.org/b/189598 compositing/backing/backing-store-attachment-fill-forwards-animation.html [ Pass Failure ]
 
 # Skip local authenticator tests for mac now.
@@ -914,3 +910,5 @@ webkit.org/b/183878 media/modern-media-controls/tracks-panel/tracks-panel-up-cli
 webkit.org/b/191644 [ Sierra ] fast/workers/worker-cloneport.html [ Pass Failure ]
 
 webkit.org/b/191658 [ Sierra Release ] fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/193976 http/tests/cache-storage/cache-clearing-origin.https.html [ Pass Failure ]

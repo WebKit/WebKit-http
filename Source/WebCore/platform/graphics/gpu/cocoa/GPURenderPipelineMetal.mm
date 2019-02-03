@@ -36,6 +36,75 @@
 
 namespace WebCore {
 
+static Optional<MTLCompareFunction> validateAndConvertDepthCompareFunctionToMtl(GPUCompareFunction func)
+{
+    switch (func) {
+    case GPUCompareFunction::Never:
+        return MTLCompareFunctionNever;
+    case GPUCompareFunction::Less:
+        return MTLCompareFunctionLess;
+    case GPUCompareFunction::Equal:
+        return MTLCompareFunctionEqual;
+    case GPUCompareFunction::LessEqual:
+        return MTLCompareFunctionLessEqual;
+    case GPUCompareFunction::Greater:
+        return MTLCompareFunctionGreater;
+    case GPUCompareFunction::NotEqual:
+        return MTLCompareFunctionNotEqual;
+    case GPUCompareFunction::GreaterEqual:
+        return MTLCompareFunctionGreaterEqual;
+    case GPUCompareFunction::Always:
+        return MTLCompareFunctionAlways;
+    default:
+        return WTF::nullopt;
+    }
+}
+
+static RetainPtr<MTLDepthStencilState> tryCreateMtlDepthStencilState(const char* const functionName, const GPUDepthStencilStateDescriptor& descriptor, const GPUDevice& device)
+{
+#if LOG_DISABLED
+    UNUSED_PARAM(functionName);
+#endif
+    RetainPtr<MTLDepthStencilDescriptor> mtlDescriptor;
+
+    BEGIN_BLOCK_OBJC_EXCEPTIONS;
+
+    mtlDescriptor = adoptNS([MTLDepthStencilDescriptor new]);
+
+    END_BLOCK_OBJC_EXCEPTIONS;
+
+    if (!mtlDescriptor) {
+        LOG(WebGPU, "%s: Unable to create MTLDepthStencilDescriptor!", functionName);
+        return nullptr;
+    }
+
+    auto mtlDepthCompare = validateAndConvertDepthCompareFunctionToMtl(descriptor.depthCompare);
+    if (!mtlDepthCompare) {
+        LOG(WebGPU, "%s: Invalid GPUCompareFunction in GPUDepthStencilStateDescriptor!", functionName);
+        return nullptr;
+    }
+
+    mtlDescriptor.get().depthCompareFunction = *mtlDepthCompare;
+    mtlDescriptor.get().depthWriteEnabled = descriptor.depthWriteEnabled;
+
+    // FIXME: Implement back/frontFaceStencil.
+
+    RetainPtr<MTLDepthStencilState> state;
+
+    BEGIN_BLOCK_OBJC_EXCEPTIONS;
+
+    state = adoptNS([device.platformDevice() newDepthStencilStateWithDescriptor:mtlDescriptor.get()]);
+
+    END_BLOCK_OBJC_EXCEPTIONS;
+
+    if (!state) {
+        LOG(WebGPU, "%s: Error creating MTLDepthStencilState!", functionName);
+        return nullptr;
+    }
+
+    return state;
+}
+
 static bool setFunctionsForPipelineDescriptor(const char* const functionName, MTLRenderPipelineDescriptor *mtlDescriptor, const GPURenderPipelineDescriptor& descriptor)
 {
 #if LOG_DISABLED
@@ -118,42 +187,56 @@ static bool setInputStateForPipelineDescriptor(const char* const functionName, M
 #endif
     auto mtlVertexDescriptor = adoptNS([MTLVertexDescriptor new]);
 
-    // Populate vertex attributes, if any.
     const auto& attributes = descriptor.inputState.attributes;
 
-    // FIXME: What kind of validation is needed here?
-    MTLVertexAttributeDescriptorArray *attributeArray = mtlVertexDescriptor.get().attributes;
+    auto attributeArray = retainPtr(mtlVertexDescriptor.get().attributes);
 
     for (size_t i = 0; i < attributes.size(); ++i) {
+        auto location = attributes[i].shaderLocation;
+        // Maximum number of vertex attributes to be supported by Web GPU.
+        if (location > 16) {
+            LOG(WebGPU, "%s: Invalid shaderLocation %lu for vertex attribute!", functionName, location);
+            return false;
+        }
+        // Maximum number of vertex buffers supported.
+        if (attributes[i].inputSlot > 16) {
+            LOG(WebGPU, "%s: Invalid inputSlot %lu for vertex attribute %lu!", functionName, attributes[i].inputSlot, location);
+            return false;
+        }
         auto mtlFormat = validateAndConvertVertexFormatToMTLVertexFormat(attributes[i].format);
         if (!mtlFormat) {
-            LOG(WebGPU, "%s: Invalid WebGPUVertexFormatEnum for vertex attribute!", functionName);
+            LOG(WebGPU, "%s: Invalid WebGPUVertexFormatEnum for vertex attribute %lu!", functionName, location);
             return false;
         }
 
-        MTLVertexAttributeDescriptor *mtlAttributeDesc = [attributeArray objectAtIndexedSubscript:i];
-        mtlAttributeDesc.format = *mtlFormat;
-        mtlAttributeDesc.offset = attributes[i].offset;
-        mtlAttributeDesc.bufferIndex = attributes[i].inputSlot;
-        [mtlVertexDescriptor.get().attributes setObject:mtlAttributeDesc atIndexedSubscript:i];
+        auto mtlAttributeDesc = retainPtr([attributeArray objectAtIndexedSubscript:location]);
+        mtlAttributeDesc.get().format = *mtlFormat;
+        mtlAttributeDesc.get().offset = attributes[i].offset; // FIXME: After adding more vertex formats, ensure offset < buffer's stride + format's data size.
+        mtlAttributeDesc.get().bufferIndex = attributes[i].inputSlot;
+        [mtlVertexDescriptor.get().attributes setObject:mtlAttributeDesc.get() atIndexedSubscript:location];
     }
 
-    // Populate vertex buffer layouts, if any.
     const auto& inputs = descriptor.inputState.inputs;
 
-    MTLVertexBufferLayoutDescriptorArray *layoutArray = mtlVertexDescriptor.get().layouts;
+    auto layoutArray = retainPtr(mtlVertexDescriptor.get().layouts);
 
     for (size_t j = 0; j < inputs.size(); ++j) {
-        auto mtlStepFunction = validateAndConvertStepModeToMTLStepFunction(inputs[j].stepMode);
-        if (!mtlStepFunction) {
-            LOG(WebGPU, "%s: Invalid WebGPUInputStepMode for vertex input!", functionName);
+        auto slot = inputs[j].inputSlot;
+        if (inputs[j].inputSlot > 16) {
+            LOG(WebGPU, "%s: Invalid inputSlot %d for vertex buffer!", functionName, slot);
             return false;
         }
 
-        MTLVertexBufferLayoutDescriptor *mtlLayoutDesc = [layoutArray objectAtIndexedSubscript:j];
-        mtlLayoutDesc.stepFunction = *mtlStepFunction;
-        mtlLayoutDesc.stride = inputs[j].stride;
-        [mtlVertexDescriptor.get().layouts setObject:mtlLayoutDesc atIndexedSubscript:j];
+        auto mtlStepFunction = validateAndConvertStepModeToMTLStepFunction(inputs[j].stepMode);
+        if (!mtlStepFunction) {
+            LOG(WebGPU, "%s: Invalid WebGPUInputStepMode for vertex buffer at slot %lu!", functionName, slot);
+            return false;
+        }
+
+        auto mtlLayoutDesc = retainPtr([layoutArray objectAtIndexedSubscript:slot]);
+        mtlLayoutDesc.get().stepFunction = *mtlStepFunction;
+        mtlLayoutDesc.get().stride = inputs[j].stride;
+        [mtlVertexDescriptor.get().layouts setObject:mtlLayoutDesc.get() atIndexedSubscript:slot];
     }
 
     mtlDescriptor.vertexDescriptor = mtlVertexDescriptor.get();
@@ -161,15 +244,8 @@ static bool setInputStateForPipelineDescriptor(const char* const functionName, M
     return true;
 }
 
-RefPtr<GPURenderPipeline> GPURenderPipeline::create(const GPUDevice& device, GPURenderPipelineDescriptor&& descriptor)
+static RetainPtr<MTLRenderPipelineState> tryCreateMtlRenderPipelineState(const char* const functionName, const GPURenderPipelineDescriptor& descriptor, const GPUDevice& device)
 {
-    const char* const functionName = "GPURenderPipeline::create()";
-
-    if (!device.platformDevice()) {
-        LOG(WebGPU, "%s: Invalid GPUDevice!", functionName);
-        return nullptr;
-    }
-
     RetainPtr<MTLRenderPipelineDescriptor> mtlDescriptor;
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
@@ -183,31 +259,57 @@ RefPtr<GPURenderPipeline> GPURenderPipeline::create(const GPUDevice& device, GPU
         return nullptr;
     }
 
-    if (!setFunctionsForPipelineDescriptor(functionName, mtlDescriptor.get(), descriptor)
-        || !setInputStateForPipelineDescriptor(functionName, mtlDescriptor.get(), descriptor))
+    bool didSetFunctions = false, didSetInputState = false;
+
+    BEGIN_BLOCK_OBJC_EXCEPTIONS;
+
+    didSetFunctions = setFunctionsForPipelineDescriptor(functionName, mtlDescriptor.get(), descriptor);
+    didSetInputState = setInputStateForPipelineDescriptor(functionName, mtlDescriptor.get(), descriptor);
+
+    END_BLOCK_OBJC_EXCEPTIONS;
+
+    if (!didSetFunctions || !didSetInputState)
         return nullptr;
 
     // FIXME: Get the pixelFormat as configured for the context/CAMetalLayer.
     mtlDescriptor.get().colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
 
-    PlatformRenderPipelineSmartPtr pipeline;
+    RetainPtr<MTLRenderPipelineState> pipeline;
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
-    pipeline = adoptNS([device.platformDevice() newRenderPipelineStateWithDescriptor:mtlDescriptor.get() error:nil]);
+    NSError *error = [NSError errorWithDomain:@"com.apple.WebKit.GPU" code:1 userInfo:nil];
+    pipeline = adoptNS([device.platformDevice() newRenderPipelineStateWithDescriptor:mtlDescriptor.get() error:&error]);
+    if (!pipeline)
+        LOG(WebGPU, "%s: %s!", functionName, error.localizedDescription.UTF8String);
 
     END_BLOCK_OBJC_EXCEPTIONS;
 
-    if (!pipeline) {
-        LOG(WebGPU, "%s: Error creating MTLRenderPipelineState!", functionName);
+    return pipeline;
+}
+
+RefPtr<GPURenderPipeline> GPURenderPipeline::create(const GPUDevice& device, GPURenderPipelineDescriptor&& descriptor)
+{
+    const char* const functionName = "GPURenderPipeline::create()";
+
+    if (!device.platformDevice()) {
+        LOG(WebGPU, "%s: Invalid GPUDevice!", functionName);
         return nullptr;
     }
 
-    return adoptRef(new GPURenderPipeline(WTFMove(pipeline), WTFMove(descriptor)));
+    // Depth Stencil state is separate from the render pipeline state in Metal.
+    auto depthStencil = tryCreateMtlDepthStencilState(functionName, descriptor.depthStencilState, device);
+
+    auto pipeline = tryCreateMtlRenderPipelineState(functionName, descriptor, device);
+    if (!pipeline)
+        return nullptr;
+
+    return adoptRef(new GPURenderPipeline(WTFMove(depthStencil), WTFMove(pipeline), WTFMove(descriptor)));
 }
 
-GPURenderPipeline::GPURenderPipeline(PlatformRenderPipelineSmartPtr&& pipeline, GPURenderPipelineDescriptor&& descriptor)
-    : m_platformRenderPipeline(WTFMove(pipeline))
+GPURenderPipeline::GPURenderPipeline(RetainPtr<MTLDepthStencilState>&& depthStencil, RetainPtr<MTLRenderPipelineState>&& pipeline, GPURenderPipelineDescriptor&& descriptor)
+    : m_depthStencilState(WTFMove(depthStencil))
+    , m_platformRenderPipeline(WTFMove(pipeline))
     , m_layout(WTFMove(descriptor.layout))
     , m_primitiveTopology(descriptor.primitiveTopology)
 {

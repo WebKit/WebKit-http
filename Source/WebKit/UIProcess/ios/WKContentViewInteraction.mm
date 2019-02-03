@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +33,6 @@
 #import "EditingRange.h"
 #import "InputViewUpdateDeferrer.h"
 #import "Logging.h"
-#import "ManagedConfigurationSPI.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebTouchEvent.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
@@ -60,7 +59,6 @@
 #import "WKTextInputListViewController.h"
 #import "WKTimePickerViewController.h"
 #import "WKUIDelegatePrivate.h"
-#import "WKWebEvent.h"
 #import "WKWebViewConfiguration.h"
 #import "WKWebViewConfigurationPrivate.h"
 #import "WKWebViewInternal.h"
@@ -102,7 +100,6 @@
 #import <wtf/Optional.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/SetForScope.h>
-#import <wtf/SoftLinking.h>
 #import <wtf/WeakObjCPtr.h>
 #import <wtf/cocoa/NSURLExtras.h>
 #import <wtf/text/TextStream.h>
@@ -125,6 +122,10 @@
 #import "WKFormColorControl.h"
 #endif
 
+#if !USE(UIKIT_KEYBOARD_ADDITIONS)
+#import "WKWebEvent.h"
+#endif
+
 #if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKPlatformFileUploadPanel.mm>)
 #import <WebKitAdditions/WKPlatformFileUploadPanel.mm>
 #endif
@@ -132,6 +133,15 @@
 #if ENABLE(POINTER_EVENTS)
 #import "RemoteScrollingCoordinatorProxy.h"
 #import <WebCore/TouchAction.h>
+#endif
+
+#if !PLATFORM(IOSMAC)
+#import "ManagedConfigurationSPI.h"
+#import <wtf/SoftLinking.h>
+
+SOFT_LINK_PRIVATE_FRAMEWORK(ManagedConfiguration);
+SOFT_LINK_CLASS(ManagedConfiguration, MCProfileConnection);
+SOFT_LINK_CONSTANT(ManagedConfiguration, MCFeatureDefinitionLookupAllowed, NSString *)
 #endif
 
 #if PLATFORM(WATCHOS)
@@ -731,7 +741,10 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self _registerPreview];
 #endif
 
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_resetShowingTextStyle:) name:UIMenuControllerDidHideMenuNotification object:nil];
+    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+    [center addObserver:self selector:@selector(_resetShowingTextStyle:) name:UIMenuControllerDidHideMenuNotification object:nil];
+    [center addObserver:self selector:@selector(_keyboardDidRequestDismissal:) name:UIKeyboardPrivateDidRequestDismissalNotification object:nil];
+
     _showingTextStyleOptions = NO;
 
     // FIXME: This should be called when we get notified that loading has completed.
@@ -1105,7 +1118,8 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     // FIXME: Maybe we should call resignFirstResponder on the superclass
     // and do nothing if the return value is NO.
 
-    _resigningFirstResponder = YES;
+    SetForScope<BOOL> resigningFirstResponderScope { _resigningFirstResponder, YES };
+
     if (!_webView._retainingActiveFocusedState) {
         // We need to complete the editing operation before we blur the element.
         [self _endEditing];
@@ -1117,12 +1131,17 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     
     _inputViewUpdateDeferrer = nullptr;
 
+    // If the user explicitly dismissed the keyboard then we will lose first responder
+    // status only to gain it back again. Just don't resign in that case.
+    if (_keyboardDidRequestDismissal) {
+        _keyboardDidRequestDismissal = NO;
+        return NO;
+    }
+
     bool superDidResign = [super resignFirstResponder];
 
     if (superDidResign)
         _page->activityStateDidChange(WebCore::ActivityState::IsFocused);
-
-    _resigningFirstResponder = NO;
 
     return superDidResign;
 }
@@ -1448,9 +1467,9 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     [_textSelectionAssistant didEndScrollingOverflow];
 }
 
-- (BOOL)_requiresKeyboardWhenFirstResponder
+- (BOOL)shouldShowAutomaticKeyboardUI
 {
-    // FIXME: We should add the logic to handle keyboard visibility during focus redirects.
+    // FIXME: Make this function knowledgeable about the HTML attribute inputmode.
     switch (_focusedElementInformation.elementType) {
     case WebKit::InputType::None:
     case WebKit::InputType::Drawing:
@@ -1468,6 +1487,25 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         return !_focusedElementInformation.isReadOnly;
     }
     return NO;
+}
+
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+- (BOOL)_disableAutomaticKeyboardUI
+{
+    // Always enable automatic keyboard UI if we are not the first responder to avoid
+    // interfering with other focused views (e.g. Find-in-page).
+    return [self isFirstResponder] && ![self shouldShowAutomaticKeyboardUI];
+}
+#endif
+
+- (BOOL)_requiresKeyboardWhenFirstResponder
+{
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    return YES;
+#else
+    // FIXME: We should add the logic to handle keyboard visibility during focus redirects.
+    return [self shouldShowAutomaticKeyboardUI];
+#endif
 }
 
 - (BOOL)_requiresKeyboardResetOnReload
@@ -2672,7 +2710,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
             return NO;
 
 #if !PLATFORM(IOSMAC)
-        if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
+        if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:getMCFeatureDefinitionLookupAllowed()] == MCRestrictedBoolExplicitNo)
             return NO;
 #endif
             
@@ -2684,7 +2722,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
             return NO;
 
 #if !PLATFORM(IOSMAC)
-        if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
+        if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:getMCFeatureDefinitionLookupAllowed()] == MCRestrictedBoolExplicitNo)
             return NO;
 #endif
 
@@ -2760,6 +2798,13 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
     [_textSelectionAssistant hideTextStyleOptions];
 }
 
+- (void)_keyboardDidRequestDismissal:(NSNotification *)notification
+{
+    if (![self isFirstResponder])
+        return;
+    _keyboardDidRequestDismissal = YES;
+}
+
 - (void)copyForWebView:(id)sender
 {
     _page->executeEditCommand("copy"_s);
@@ -2833,7 +2878,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 - (void)_defineForWebView:(id)sender
 {
 #if !PLATFORM(IOSMAC)
-    if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
+    if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:getMCFeatureDefinitionLookupAllowed()] == MCRestrictedBoolExplicitNo)
         return;
 #endif
 
@@ -3867,6 +3912,12 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if (!_traits)
         _traits = adoptNS([[UITextInputTraits alloc] init]);
 
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    // Do not change traits when dismissing the keyboard.
+    if (_isBlurringFocusedNode)
+        return _traits.get();
+#endif
+
     [_traits setSecureTextEntry:_focusedElementInformation.elementType == WebKit::InputType::Password || [_formInputSession forceSecureTextEntry]];
     [_traits setShortcutConversionType:_focusedElementInformation.elementType == WebKit::InputType::Password ? UITextShortcutConversionTypeNo : UITextShortcutConversionTypeDefault];
 
@@ -4024,6 +4075,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     return YES;
 }
 
+#if !USE(UIKIT_KEYBOARD_ADDITIONS)
 - (void)_handleKeyUIEvent:(::UIEvent *)event
 {
     bool isHardwareKeyboardEvent = !!event._hidEvent;
@@ -4048,6 +4100,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     
     [self handleKeyWebEvent:webEvent.get()];
 }
+#endif
 
 - (void)handleKeyWebEvent:(::WebEvent *)theEvent
 {
@@ -4075,6 +4128,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         return;
     }
 
+#if !USE(UIKIT_KEYBOARD_ADDITIONS)
     // If we aren't interacting with editable content, we still need to call [super _handleKeyUIEvent:]
     // so that keyboard repeat will work correctly. If we are interacting with editable content,
     // we already did so in _handleKeyUIEvent.
@@ -4093,6 +4147,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     _uiEventBeingResent = [(WKWebEvent *)event uiEvent];
     [super _handleKeyUIEvent:_uiEventBeingResent.get()];
     _uiEventBeingResent = nil;
+#endif
 }
 
 - (BOOL)_interpretKeyEvent:(::WebEvent *)event isCharEvent:(BOOL)isCharEvent
@@ -4697,6 +4752,10 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
 
 #if HAVE(PENCILKIT)
     [_drawingCoordinator uninstallInkPicker];
+#endif
+
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    [self _endEditing];
 #endif
 
     [_formInputSession invalidate];
@@ -5779,14 +5838,6 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
                 callback(destinationURL, nil);
             else
                 callback(nil, fileWrapperError);
-        } else if (!info.blobURL.isEmpty()) {
-            RELEASE_LOG(DragAndDrop, "Drag session: %p delivering promised blob at path: %@", session.get(), destinationURL.path);
-            strongSelf->_page->writeBlobToFilePath(info.blobURL, destinationURL.path, [protectedURL = retainPtr(destinationURL), protectedCallback = makeBlockPtr(callback)] (bool success) {
-                if (success)
-                    protectedCallback(protectedURL.get(), nil);
-                else
-                    protectedCallback(nil, [NSError errorWithDomain:WKErrorDomain code:WKErrorUnknown userInfo:nil]);
-            });
         } else
             callback(nil, [NSError errorWithDomain:WKErrorDomain code:WKErrorWebViewInvalidated userInfo:nil]);
 

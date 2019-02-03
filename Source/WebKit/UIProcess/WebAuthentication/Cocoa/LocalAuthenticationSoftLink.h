@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,6 @@
 #import <LocalAuthentication/LocalAuthentication.h>
 #import <wtf/SoftLinking.h>
 
-SOFT_LINK_FRAMEWORK(LocalAuthentication);
+SOFT_LINK_FRAMEWORK_FOR_HEADER(WebKit, LocalAuthentication);
 
-SOFT_LINK_CLASS(LocalAuthentication, LAContext);
+SOFT_LINK_CLASS_FOR_HEADER(WebKit, LAContext);

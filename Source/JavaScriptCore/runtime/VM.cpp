@@ -170,8 +170,6 @@
 #include "RegExp.h"
 #endif
 
-using namespace WTF;
-
 namespace JSC {
 
 #if ENABLE(JIT)
@@ -360,7 +358,6 @@ VM::VM(VMType vmType, HeapType heapType)
     , m_typeProfilerEnabledCount(0)
     , m_primitiveGigacageEnabled(IsWatched)
     , m_controlFlowProfilerEnabledCount(0)
-    , m_shadowChicken(std::make_unique<ShadowChicken>())
 {
     interpreter = new Interpreter(*this);
     StackBounds stack = Thread::current().stack();
@@ -508,6 +505,9 @@ VM::VM(VMType vmType, HeapType heapType)
 
     if (!canUseJIT())
         noJITValueProfileSingleton = std::make_unique<ValueProfile>(0);
+
+    if (Options::forceDebuggerBytecodeGeneration() || Options::alwaysUseShadowChicken())
+        ensureShadowChicken();
 
     VMInspector::instance().add(this);
 }
@@ -1237,6 +1237,13 @@ void VM::clearScratchBuffers()
     auto lock = holdLock(m_scratchBufferLock);
     for (auto* scratchBuffer : m_scratchBuffers)
         scratchBuffer->setActiveLength(0);
+}
+
+void VM::ensureShadowChicken()
+{
+    if (m_shadowChicken)
+        return;
+    m_shadowChicken = std::make_unique<ShadowChicken>();
 }
 
 JSGlobalObject* VM::vmEntryGlobalObject(const CallFrame* callFrame) const

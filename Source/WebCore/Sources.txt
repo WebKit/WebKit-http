@@ -1354,6 +1354,7 @@ layout/layouttree/LayoutLineBreakBox.cpp
 layout/layouttree/LayoutReplaced.cpp
 layout/layouttree/LayoutTreeBuilder.cpp
 
+loader/AdClickAttribution.cpp
 loader/CanvasActivityRecord.cpp
 loader/ContentFilter.cpp
 loader/CookieJar.cpp
@@ -1523,6 +1524,7 @@ page/PerformanceResourceTiming.cpp
 page/PerformanceServerTiming.cpp
 page/PerformanceTiming.cpp
 page/PerformanceUserTiming.cpp
+page/PointerCaptureController.cpp
 page/PointerLockController.cpp
 page/PrintContext.cpp
 page/ProcessWarming.cpp
@@ -1627,7 +1629,7 @@ platform/PlatformSpeechSynthesisUtterance.cpp
 platform/PlatformSpeechSynthesisVoice.cpp
 platform/PlatformSpeechSynthesizer.cpp
 platform/PlatformStrategies.cpp
-platform/Process.cpp
+platform/ProcessIdentifier.cpp
 platform/ReferrerPolicy.cpp
 platform/RemoteCommandListener.cpp
 platform/RuntimeApplicationChecks.cpp
@@ -2760,6 +2762,8 @@ JSFillMode.cpp
 JSFocusEvent.cpp
 JSFontFace.cpp
 JSFontFaceSet.cpp
+JSGPUCompareFunction.cpp
+JSGPUDepthStencilStateDescriptor.cpp
 JSGainNode.cpp
 JSGeolocation.cpp
 JSGeoposition.cpp
@@ -3301,8 +3305,8 @@ JSWebGPUBuffer.cpp
 JSWebGPUBufferBinding.cpp
 JSWebGPUBufferDescriptor.cpp
 JSWebGPUBufferUsage.cpp
-JSWebGPUCommandBuffer.cpp
 JSWebGPUColor.cpp
+JSWebGPUCommandBuffer.cpp
 JSWebGPUDevice.cpp
 JSWebGPUIndexFormat.cpp
 JSWebGPUInputStateDescriptor.cpp

@@ -40,6 +40,7 @@
 #include "ScrollAnimator.h"
 #include "ScrollingConstraints.h"
 #include "ScrollingStateFixedNode.h"
+#include "ScrollingStateFrameHostingNode.h"
 #include "ScrollingStateFrameScrollingNode.h"
 #include "ScrollingStateOverflowScrollingNode.h"
 #include "ScrollingStateStickyNode.h"
@@ -129,30 +130,34 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView& frameView)
     if (!coordinatesScrollingForFrameView(frameView))
         return;
 
-    auto* node = downcast<ScrollingStateFrameScrollingNode>(m_scrollingStateTree->stateNodeForID(frameView.scrollLayerID()));
-    if (!node)
+    auto* node = m_scrollingStateTree->stateNodeForID(frameView.scrollLayerID());
+    if (!node || !is<ScrollingStateFrameScrollingNode>(*node))
         return;
+
+    auto& frameScrollingNode = downcast<ScrollingStateFrameScrollingNode>(*node);
 
     auto* verticalScrollbar = frameView.verticalScrollbar();
     auto* horizontalScrollbar = frameView.horizontalScrollbar();
-    node->setScrollerImpsFromScrollbars(verticalScrollbar, horizontalScrollbar);
+    frameScrollingNode.setScrollerImpsFromScrollbars(verticalScrollbar, horizontalScrollbar);
 
-    node->setFrameScaleFactor(frameView.frame().frameScaleFactor());
-    node->setHeaderHeight(frameView.headerHeight());
-    node->setFooterHeight(frameView.footerHeight());
-    node->setTopContentInset(frameView.topContentInset());
+    frameScrollingNode.setFrameScaleFactor(frameView.frame().frameScaleFactor());
+    frameScrollingNode.setHeaderHeight(frameView.headerHeight());
+    frameScrollingNode.setFooterHeight(frameView.footerHeight());
+    frameScrollingNode.setTopContentInset(frameView.topContentInset());
 
-    node->setVisualViewportEnabled(visualViewportEnabled());
-    node->setLayoutViewport(frameView.layoutViewportRect());
-    node->setMinLayoutViewportOrigin(frameView.minStableLayoutViewportOrigin());
-    node->setMaxLayoutViewportOrigin(frameView.maxStableLayoutViewportOrigin());
+    frameScrollingNode.setVisualViewportEnabled(visualViewportEnabled());
+    frameScrollingNode.setLayoutViewport(frameView.layoutViewportRect());
+    frameScrollingNode.setAsyncFrameOrOverflowScrollingEnabled(asyncFrameOrOverflowScrollingEnabled());
 
-    node->setScrollOrigin(frameView.scrollOrigin());
-    node->setScrollableAreaSize(frameView.visibleContentRect().size());
-    node->setTotalContentsSize(frameView.totalContentsSize());
-    node->setReachableContentsSize(frameView.totalContentsSize());
-    node->setFixedElementsLayoutRelativeToFrame(frameView.fixedElementsLayoutRelativeToFrame());
-    node->setScrollBehaviorForFixedElements(frameView.scrollBehaviorForFixedElements());
+    frameScrollingNode.setMinLayoutViewportOrigin(frameView.minStableLayoutViewportOrigin());
+    frameScrollingNode.setMaxLayoutViewportOrigin(frameView.maxStableLayoutViewportOrigin());
+
+    frameScrollingNode.setScrollOrigin(frameView.scrollOrigin());
+    frameScrollingNode.setScrollableAreaSize(frameView.visibleContentRect().size());
+    frameScrollingNode.setTotalContentsSize(frameView.totalContentsSize());
+    frameScrollingNode.setReachableContentsSize(frameView.totalContentsSize());
+    frameScrollingNode.setFixedElementsLayoutRelativeToFrame(frameView.fixedElementsLayoutRelativeToFrame());
+    frameScrollingNode.setScrollBehaviorForFixedElements(frameView.scrollBehaviorForFixedElements());
 
 #if ENABLE(CSS_SCROLL_SNAP)
     frameView.updateSnapOffsets();
@@ -163,7 +168,7 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView& frameView)
     auto* page = frameView.frame().page();
     if (page && page->expectsWheelEventTriggers()) {
         LOG(WheelEventTestTriggers, "    AsyncScrollingCoordinator::frameViewLayoutUpdated: Expects wheel event test trigger=%d", page->expectsWheelEventTriggers());
-        node->setExpectsWheelEventTestTrigger(page->expectsWheelEventTriggers());
+        frameScrollingNode.setExpectsWheelEventTestTrigger(page->expectsWheelEventTriggers());
     }
 #endif
 
@@ -176,7 +181,7 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView& frameView)
     scrollParameters.verticalScrollbarMode = frameView.verticalScrollbarMode();
     scrollParameters.useDarkAppearanceForScrollbars = frameView.useDarkAppearanceForScrollbars();
 
-    node->setScrollableAreaParameters(scrollParameters);
+    frameScrollingNode.setScrollableAreaParameters(scrollParameters);
 }
 
 void AsyncScrollingCoordinator::updateExpectsWheelEventTestTriggerWithFrameView(const FrameView& frameView)
@@ -591,25 +596,33 @@ void AsyncScrollingCoordinator::setNodeLayers(ScrollingNodeID nodeID, GraphicsLa
 
 void AsyncScrollingCoordinator::setScrollingNodeGeometry(ScrollingNodeID nodeID, const ScrollingGeometry& scrollingGeometry)
 {
-    auto* scrollingNode = downcast<ScrollingStateScrollingNode>(m_scrollingStateTree->stateNodeForID(nodeID));
-    ASSERT(scrollingNode);
-    if (!scrollingNode)
+    auto* stateNode = m_scrollingStateTree->stateNodeForID(nodeID);
+    ASSERT(stateNode);
+    if (!stateNode)
         return;
 
-    scrollingNode->setParentRelativeScrollableRect(scrollingGeometry.parentRelativeScrollableRect);
-    scrollingNode->setScrollOrigin(scrollingGeometry.scrollOrigin);
-    scrollingNode->setScrollPosition(scrollingGeometry.scrollPosition);
-    scrollingNode->setTotalContentsSize(scrollingGeometry.contentSize);
-    scrollingNode->setReachableContentsSize(scrollingGeometry.reachableContentSize);
-    scrollingNode->setScrollableAreaSize(scrollingGeometry.scrollableAreaSize);
+    if (stateNode->nodeType() == ScrollingNodeType::FrameHosting) {
+        auto& frameHostingStateNode = downcast<ScrollingStateFrameHostingNode>(*stateNode);
+        frameHostingStateNode.setParentRelativeScrollableRect(scrollingGeometry.parentRelativeScrollableRect);
+        return;
+    }
+
+    auto& scrollingNode = downcast<ScrollingStateScrollingNode>(*stateNode);
+
+    scrollingNode.setParentRelativeScrollableRect(scrollingGeometry.parentRelativeScrollableRect);
+    scrollingNode.setScrollOrigin(scrollingGeometry.scrollOrigin);
+    scrollingNode.setScrollPosition(scrollingGeometry.scrollPosition);
+    scrollingNode.setTotalContentsSize(scrollingGeometry.contentSize);
+    scrollingNode.setReachableContentsSize(scrollingGeometry.reachableContentSize);
+    scrollingNode.setScrollableAreaSize(scrollingGeometry.scrollableAreaSize);
 
 #if ENABLE(CSS_SCROLL_SNAP)
     // updateScrollSnapPropertiesWithFrameView() sets these for frame scrolling nodes. FIXME: Why the difference?
     if (is<ScrollingStateOverflowScrollingNode>(scrollingNode)) {
-        setStateScrollingNodeSnapOffsetsAsFloat(*scrollingNode, ScrollEventAxis::Horizontal, &scrollingGeometry.horizontalSnapOffsets, &scrollingGeometry.horizontalSnapOffsetRanges, m_page->deviceScaleFactor());
-        setStateScrollingNodeSnapOffsetsAsFloat(*scrollingNode, ScrollEventAxis::Vertical, &scrollingGeometry.verticalSnapOffsets, &scrollingGeometry.verticalSnapOffsetRanges, m_page->deviceScaleFactor());
-        scrollingNode->setCurrentHorizontalSnapPointIndex(scrollingGeometry.currentHorizontalSnapPointIndex);
-        scrollingNode->setCurrentVerticalSnapPointIndex(scrollingGeometry.currentVerticalSnapPointIndex);
+        setStateScrollingNodeSnapOffsetsAsFloat(scrollingNode, ScrollEventAxis::Horizontal, &scrollingGeometry.horizontalSnapOffsets, &scrollingGeometry.horizontalSnapOffsetRanges, m_page->deviceScaleFactor());
+        setStateScrollingNodeSnapOffsetsAsFloat(scrollingNode, ScrollEventAxis::Vertical, &scrollingGeometry.verticalSnapOffsets, &scrollingGeometry.verticalSnapOffsetRanges, m_page->deviceScaleFactor());
+        scrollingNode.setCurrentHorizontalSnapPointIndex(scrollingGeometry.currentHorizontalSnapPointIndex);
+        scrollingNode.setCurrentVerticalSnapPointIndex(scrollingGeometry.currentVerticalSnapPointIndex);
     }
 #endif
 }
@@ -668,6 +681,12 @@ void AsyncScrollingCoordinator::setScrollPinningBehavior(ScrollPinningBehavior p
 bool AsyncScrollingCoordinator::visualViewportEnabled() const
 {
     return m_page->mainFrame().settings().visualViewportEnabled();
+}
+
+bool AsyncScrollingCoordinator::asyncFrameOrOverflowScrollingEnabled() const
+{
+    auto& settings = m_page->mainFrame().settings();
+    return settings.asyncFrameScrollingEnabled() || settings.asyncOverflowScrollingEnabled();
 }
 
 String AsyncScrollingCoordinator::scrollingStateTreeAsText(ScrollingStateTreeAsTextBehavior behavior) const

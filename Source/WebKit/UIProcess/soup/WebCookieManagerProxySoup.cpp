@@ -31,17 +31,17 @@
 
 namespace WebKit {
 
-void WebCookieManagerProxy::setCookiePersistentStorage(const String& storagePath, uint32_t storageType)
+void WebCookieManagerProxy::setCookiePersistentStorage(PAL::SessionID sessionID, const String& storagePath, uint32_t storageType)
 {
-    m_cookiePersistentStoragePath = storagePath;
-    m_cookiePersistentStorageType = static_cast<SoupCookiePersistentStorageType>(storageType);
-    processPool()->sendToNetworkingProcess(Messages::WebCookieManager::SetCookiePersistentStorage(storagePath, storageType));
+    m_cookiePersistentStorageMap.set(sessionID, std::make_pair(storagePath, static_cast<SoupCookiePersistentStorageType>(storageType)));
+    processPool()->sendToNetworkingProcess(Messages::WebCookieManager::SetCookiePersistentStorage(sessionID, storagePath, storageType));
 }
 
-void WebCookieManagerProxy::getCookiePersistentStorage(String& storagePath, uint32_t& storageType) const
+void WebCookieManagerProxy::getCookiePersistentStorage(PAL::SessionID sessionID, String& storagePath, uint32_t& storageType) const
 {
-    storagePath = m_cookiePersistentStoragePath;
-    storageType = static_cast<uint32_t>(m_cookiePersistentStorageType);
+    auto pair = m_cookiePersistentStorageMap.get(sessionID);
+    storagePath = pair.first;
+    storageType = static_cast<uint32_t>(pair.second);
 }
 
 }

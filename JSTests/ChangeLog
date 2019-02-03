@@ -1,3 +1,46 @@
+2019-01-30  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Import latest Test262 updates.
+
+        Rubber-stamped by Keith Miller.
+
+        * test262.yaml: Deleted.
+        * test262/config.yaml:
+        * test262/expectations.yaml:
+        * test262/latest-changes-summary.txt:
+        * test262/test/:
+        * test262/test262-Revision.txt:
+
+2019-01-30  Robin Morisset  <rmorisset@apple.com>
+
+        Object.keys can now lead to a PhantomNewArrayBuffer, OSR exit from the FTL should know how to materialize a NewArrayBuffer in that case
+        https://bugs.webkit.org/show_bug.cgi?id=194050
+        <rdar://problem/47595592>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/object-keys-osr-exit.js: Added.
+        (foo):
+        (catch):
+
+2019-01-29  Mark Lam  <mark.lam@apple.com>
+
+        ValueRecovery::recover() should purify NaN values it recovers.
+        https://bugs.webkit.org/show_bug.cgi?id=193978
+        <rdar://problem/47625488>
+
+        Reviewed by Saam Barati.
+
+        * stress/value-recovery-of-double-displaced-in-jsstack-should-be-purified.js: Added.
+
+2019-01-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix the test after r240543 not to use @Error / Error in builtins
+        https://bugs.webkit.org/show_bug.cgi?id=193713
+
+        * stress/try-get-by-id-should-spill-registers-dfg.js:
+        (let.f.createBuiltin):
+
 2019-01-28  Mark Lam  <mark.lam@apple.com>
 
         ToString node actually does GC.
