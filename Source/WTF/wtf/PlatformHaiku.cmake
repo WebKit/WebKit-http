@@ -6,10 +6,9 @@ LIST(APPEND WTF_SOURCES
 	haiku/MemoryFootprintHaiku.cpp
     linux/MemoryPressureHandlerLinux.cpp
 
-    OSAllocatorPosix.cpp
-    ThreadingPthreads.cpp
-
     posix/FileSystemPOSIX.cpp
+    posix/OSAllocatorPOSIX.cpp
+    posix/ThreadingPOSIX.cpp
 
     unicode/icu/CollatorICU.cpp
 
