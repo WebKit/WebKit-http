@@ -364,7 +364,7 @@ String Pasteboard::readString(const String& type)
             data->FindData(type.utf8().data(), B_MIME_TYPE, 
                 reinterpret_cast<const void**>(&buffer), &bufferLength);
         }
-        result = buffer;
+        result.SetTo(buffer, bufferLength);
 
         be_clipboard->Unlock();
     }
