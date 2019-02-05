@@ -47,6 +47,7 @@
 #include <Shape.h>
 #include <View.h>
 #include <Window.h>
+#include <stack>
 #include <stdio.h>
 
 namespace WebCore {
@@ -79,12 +80,15 @@ public:
 
     void pushState()
     {
+    	transformStack.push(view()->Transform());
     	m_graphicsState = new CustomGraphicsState(m_graphicsState);
         view()->PushState();
     }
 
     void popState()
     {
+        view()->PopState();
+
     	ASSERT(m_graphicsState->previous);
     	if (!m_graphicsState->previous)
     	    return;
@@ -93,7 +97,8 @@ public:
     	m_graphicsState = oldTop->previous;
     	delete oldTop;
 
-        view()->PopState();
+		view()->SetTransform(transformStack.top());
+		transformStack.pop();
     }
 
     BView* view() const
@@ -115,6 +120,7 @@ public:
     BView* m_view;
     ShadowBlur blur;
     pattern m_strokeStyle;
+	std::stack<BAffineTransform> transformStack;
 };
 
 GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(BView* view)
