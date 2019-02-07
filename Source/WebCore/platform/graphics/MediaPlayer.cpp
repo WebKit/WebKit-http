@@ -1543,6 +1543,11 @@ void MediaPlayer::platformResume()
     m_private->platformResume();
 }
 
+bool MediaPlayer::shouldIgnoreIntrinsicSize()
+{
+    return m_private->shouldIgnoreIntrinsicSize();
+}
+
 #if !RELEASE_LOG_DISABLED
 const Logger& MediaPlayer::mediaPlayerLogger()
 {

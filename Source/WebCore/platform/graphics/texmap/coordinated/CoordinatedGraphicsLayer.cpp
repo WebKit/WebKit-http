@@ -436,8 +436,14 @@ void CoordinatedGraphicsLayer::setContentsToPlatformLayer(PlatformLayer* platfor
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
 #if USE(NICOSIA)
+    auto* contentLayer = downcast<Nicosia::ContentLayer>(platformLayer);
+    if (m_nicosia.contentLayer != contentLayer) {
+        m_nicosia.contentLayer = contentLayer;
+        m_nicosia.delta.contentLayerChanged = true;
+        if (m_nicosia.contentLayer)
+            m_shouldUpdatePlatformLayer = true;
+    }
 #else
-    if (m_platformLayer != platformLayer)
     if (m_platformLayer != platformLayer) {
         m_shouldSyncPlatformLayer = true;
         if (platformLayer)

@@ -54,7 +54,7 @@ public:
         ShouldRotateTexture270 = 0x40,
         ShouldConvertTextureBGRAToRGBA = 0x80,
         ShouldConvertTextureARGBToRGBA = 0x100,
-        ShouldOverwriteRect = 0x200
+        ShouldNotBlend = 0x200
     };
 
     typedef int Flags;

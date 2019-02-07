@@ -574,6 +574,7 @@ public:
     WEBCORE_EXPORT AVPlayer *objCAVFoundationAVPlayer() const;
 #endif
 
+    bool shouldIgnoreIntrinsicSize();
 private:
     MediaPlayer(MediaPlayerClient&);
 

@@ -55,6 +55,7 @@ WEBKIT_OPTION_DEFINE(USE_WOFF2 "Whether to enable support for WOFF2 Web Fonts." 
 
 # Private options specific to the WPE port.
 WEBKIT_OPTION_DEFINE(USE_OPENVR "Whether to use OpenVR as WebVR backend." PRIVATE ${ENABLE_EXPERIMENTAL_FEATURES})
+WEBKIT_OPTION_DEFINE(USE_GSTREAMER_HOLEPUNCH "Whether to enable GStreamer holepunch" PRIVATE OFF)
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_MEMORY_SAMPLER PRIVATE ON)
@@ -72,6 +73,7 @@ endif ()
 
 # Enable the legacy inspector server.
 SET_AND_EXPOSE_TO_BUILD(ENABLE_INSPECTOR_SERVER TRUE)
+WEBKIT_OPTION_DEPEND(USE_GSTREAMER_HOLEPUNCH ENABLE_VIDEO)
 
 include(GStreamerDependencies)
 

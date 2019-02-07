@@ -28,6 +28,7 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
+#include "FloatRect.h"
 #include "NotImplemented.h"
 
 namespace WebCore {
@@ -78,13 +79,15 @@ void TextureMapperPlatformLayerBuffer::paintToTextureMapper(TextureMapper& textu
         return;
     }
 
-    if (m_extraFlags & TextureMapperGL::ShouldOverwriteRect)
+    if (m_holePunchClient && m_extraFlags & TextureMapperGL::ShouldNotBlend) {
+        ASSERT(!m_texture);
+        m_holePunchClient->setVideoRectangle(enclosingIntRect(modelViewMatrix.mapRect(targetRect)));
         texmapGL.drawSolidColor(targetRect, modelViewMatrix, Color(0, 0, 0, 0), false);
-    else if (!m_textureID)
-        texmapGL.drawSolidColor(targetRect, modelViewMatrix, Color(.0, .0, .0, opacity), true);
-    else {
-        texmapGL.drawTexture(m_textureID, m_extraFlags, m_size, targetRect, modelViewMatrix, opacity);
+        return;
     }
+
+    ASSERT(m_textureID);
+    texmapGL.drawTexture(m_textureID, m_extraFlags, m_size, targetRect, modelViewMatrix, opacity);
 }
 
 } // namespace WebCore

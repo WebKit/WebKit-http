@@ -283,8 +283,10 @@ public:
 #if ENABLE(VIDEO) && USE(AVFOUNDATION)
     virtual AVPlayer *objCAVFoundationAVPlayer() const { return nullptr; }
 #endif
+
     virtual void platformSuspend() { }
     virtual void platformResume() { }
+    virtual bool shouldIgnoreIntrinsicSize() { return false; }
 };
 
 }
