@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku, inc.
+ * Copyright 2014,2019 Haiku, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,36 +26,25 @@
 #include "config.h"
 #include "WebProcessMainUnix.h"
 
-#include "ChildProcessMain.h"
-#include "NotImplemented.h"
+#include "AuxiliaryProcessMain.h"
 #include "WebProcess.h"
 
 #include <Application.h>
-
+namespace WebKit {
 using namespace WebCore;
 
-namespace WebKit {
-
-class WebProcessMain final: public ChildProcessMainBase {
+class WebProcessMain final : public AuxiliaryProcessMainBase {
 public:
     bool platformInitialize() override
     {
-        new BApplication("application/x-vnd.haiku-webkit.webprocess");
-        notImplemented();
+        BApplication* app = new BApplication("application/x-vnd.haiku-webkit.webprocess");
         return true;
-    }
-
-    void platformFinalize() override
-    {
-        notImplemented();
-        delete be_app;
     }
 };
 
 int WebProcessMainUnix(int argc, char** argv)
 {
-    return ChildProcessMain<WebProcess, WebProcessMain>(argc, argv);
+    return AuxiliaryProcessMain<WebProcess, WebProcessMain>(argc, argv);
 }
 
-
-}
+} // namespace WebKit

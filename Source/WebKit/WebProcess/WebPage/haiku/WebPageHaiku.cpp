@@ -40,14 +40,17 @@ namespace WebKit {
 
 void WebPage::platformInitialize()
 {
-#if HAVE(ACCESSIBILITY)
-    m_accessibilityObject = adoptGRef(webPageAccessibilityObjectNew(this));
-#else
-    notImplemented();
-#endif
+}
+
+void WebPage::platformReinitialize()
+{
 }
 
 void WebPage::platformDetach()
+{
+}
+
+void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePostLayoutDataHint shouldIncludePostLayoutData) const
 {
 }
 
@@ -60,11 +63,6 @@ void WebPage::updateAccessibilityTree()
     webPageAccessibilityObjectRefresh(m_accessibilityObject.get());
 }
 #endif
-
-void WebPage::platformPreferencesDidChange(const WebPreferencesStore&)
-{
-    notImplemented();
-}
 
 bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent& keyboardEvent)
 {
@@ -112,44 +110,16 @@ bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent& keyboard
     return true;
 }
 
-bool WebPage::platformHasLocalDataForURL(const URL&)
-{
-    notImplemented();
-    return false;
-}
-
-String WebPage::cachedResponseMIMETypeForURL(const URL&)
-{
-    notImplemented();
-    return String();
-}
-
 bool WebPage::platformCanHandleRequest(const ResourceRequest&)
 {
     notImplemented();
     return true;
 }
 
-String WebPage::cachedSuggestedFilenameForURL(const URL&)
-{
-    notImplemented();
-    return String();
-}
-
-PassRefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL&)
+const char* WebPage::interpretKeyEvent(const KeyboardEvent* event)
 {
     notImplemented();
     return 0;
-}
-
-const char* WebPage::interpretKeyEvent(const KeyboardEvent* event)
-{
-    ASSERT(event->type() == eventNames().keydownEvent || event->type() == eventNames().keypressEvent);
-
-    if (event->type() == eventNames().keydownEvent)
-        return getKeyDownCommandName(event);
-
-    return getKeyPressCommandName(event);
 }
 
 String WebPage::platformUserAgent(const URL&) const

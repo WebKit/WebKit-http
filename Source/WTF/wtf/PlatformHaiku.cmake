@@ -11,6 +11,7 @@ LIST(APPEND WTF_SOURCES
     posix/ThreadingPOSIX.cpp
 
     unicode/icu/CollatorICU.cpp
+    UniStdExtras.cpp
 
     unix/CPUTimeUnix.cpp
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku Inc. All rights reserved.
+ * Copyright (C) 2019 Haiku Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,36 +23,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameNetworkingContext_h
-#define WebFrameNetworkingContext_h
+#ifndef WebEventFactory_h
+#define WebEventFactory_h
 
-#include "HTTPCookieAcceptPolicy.h"
-#include <WebCore/FrameNetworkingContext.h>
-#include <pal/SessionID.h>
+#include "WebEvent.h"
+
+class BMessage;
 
 namespace WebKit {
 
-class WebFrame;
-class WebFrameLoaderClient;
-
-class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
+class WebEventFactory {
 public:
-    static Ref<WebFrameNetworkingContext> create(WebFrame* frame)
-    {
-        return adoptRef(*new WebFrameNetworkingContext(frame));
-    }
-
-    static void ensurePrivateBrowsingSession(PAL::SessionID);
-    static void setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy);
-
-    WebFrameLoaderClient* webFrameLoaderClient() const;
-
-private:
-    WebFrameNetworkingContext(WebFrame*);
-
-    WebCore::NetworkStorageSession* storageSession() const override {return nullptr;}
+    static WebMouseEvent createWebMouseEvent(const BMessage*, int);
+    static WebWheelEvent createWebWheelEvent(const BMessage*);
+    static WebKeyboardEvent createWebKeyboardEvent(const BMessage*);
+#if ENABLE(TOUCH_EVENTS)
+    //static WebTouchEvent createWebTouchEvent(const GdkEvent*, Vector<WebPlatformTouchPoint>&&);
+#endif
 };
 
-}
+} // namespace WebKit
 
-#endif // WebFrameNetworkingContext_h
+#endif // WebEventFactory_h

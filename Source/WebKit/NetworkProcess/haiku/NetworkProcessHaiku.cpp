@@ -1,7 +1,6 @@
 /*
  * Copyright (C) 2019 Haiku, Inc.
  *
- *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -25,38 +24,70 @@
  */
 
 #include "config.h"
+#include "NetworkProcess.h"
 
-#if ENABLE(CONTEXT_MENUS)
-
-#include "WebContextMenuClient.h"
-
+#include "NetworkProcessCreationParameters.h"
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
 
-using namespace WebCore;
+namespace WebCore
+{
+	class NetworkStorageSession;
+}
 
 namespace WebKit {
 
-void WebContextMenuClient::lookUpInDictionary(Frame*)
+using namespace WebCore;
+
+void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
 {
     notImplemented();
 }
 
-bool WebContextMenuClient::isSpeaking()
-{
-    notImplemented();
-    return false;
-}
-
-void WebContextMenuClient::speak(const String&)
+void NetworkProcess::allowSpecificHTTPSCertificateForHost(const CertificateInfo& certificateInfo, const String& host)
 {
     notImplemented();
 }
 
-void WebContextMenuClient::stopSpeaking()
+std::unique_ptr<WebCore::NetworkStorageSession> NetworkProcess::platformCreateDefaultStorageSession() const
+{
+    return std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID());
+}
+
+void NetworkProcess::platformProcessDidTransitionToForeground()
+{
+    notImplemented();
+}
+
+void NetworkProcess::platformProcessDidTransitionToBackground()
+{
+    notImplemented();
+}
+
+void NetworkProcess::clearCacheForAllOrigins(uint32_t cachesToClear)
+{
+    notImplemented();
+}
+
+void NetworkProcess::platformProcessDidResume()
+{
+    notImplemented();
+}
+
+void NetworkProcess::platformTerminate()
+{
+    notImplemented();
+}
+
+void NetworkProcess::platformPrepareToSuspend(CompletionHandler<void()>&& completionHandler)
+{
+    notImplemented();
+    completionHandler();
+}
+
+void NetworkProcess::clearDiskCache(WallTime modifiedSince, CompletionHandler<void()>&& completionHandler)
 {
     notImplemented();
 }
 
 } // namespace WebKit
-#endif // ENABLE(CONTEXT_MENUS)
-

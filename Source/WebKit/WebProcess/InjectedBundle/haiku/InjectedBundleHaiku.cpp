@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku, inc.
+ * Copyright (C) 2014,2019 Haiku, inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,8 +37,11 @@ bool InjectedBundle::initialize(const WebProcessCreationParameters&, API::Object
     notImplemented();
 }
 
-void InjectedBundle::setBundleParameter(const String& /*key*/, const IPC::DataReference& /*data*/)
+void InjectedBundle::setBundleParameter(WTF::String const&, IPC::DataReference const&)
 {
 }
 
+void InjectedBundle::setBundleParameters(const IPC::DataReference&)
+{
+}
 }

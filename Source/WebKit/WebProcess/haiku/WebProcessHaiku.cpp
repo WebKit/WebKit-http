@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku, inc.
+ * Copyright (C) 2014,2019 Haiku, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,47 +27,20 @@
 #include "WebProcess.h"
 
 #include "NotImplemented.h"
-#include <WebCore/Language.h>
 
 namespace WebKit {
 
-void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters& parameters, IPC::MessageDecoder&)
+void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& parameters)
 {
-#if ENABLE(SECCOMP_FILTERS)
-    {
-#if PLATFORM(EFL)
-        SeccompFiltersWebProcessEfl seccompFilters(parameters);
-#endif
-        seccompFilters.initialize();
-    }
-#endif
-
-    if (usesNetworkProcess())
-        return;
-
     notImplemented();
 }
 
 void WebProcess::platformTerminate()
 {
-    if (!usesNetworkProcess())
-        WebCore::removeLanguageChangeObserver(this);
 }
 
 void WebProcess::platformSetCacheModel(CacheModel cacheModel)
 {
-    notImplemented();
-}
-
-void WebProcess::platformClearResourceCaches(ResourceCachesToClear cachesToClear)
-{
-    if (cachesToClear == InMemoryResourceCachesOnly)
-        return;
-
-    // If we're using the network process then it is the only one that needs to clear the disk cache.
-    if (usesNetworkProcess())
-        return;
-
     notImplemented();
 }
 

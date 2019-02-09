@@ -36,9 +36,4 @@ String contextMenuItemTagSearchWeb()
     return String::fromUTF8("_Search the Web");
 }
 
-String localizedString(const char* key)
-{
-    return String::fromUTF8(key, strlen(key));
-}
-
 };

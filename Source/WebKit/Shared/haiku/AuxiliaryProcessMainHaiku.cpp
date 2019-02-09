@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku Inc. All rights reserved.
+ * Copyright (C) 2019 Haiku, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,36 +23,18 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameNetworkingContext_h
-#define WebFrameNetworkingContext_h
+#include "config.h"
+#include "AuxiliaryProcessMain.h"
 
-#include "HTTPCookieAcceptPolicy.h"
-#include <WebCore/FrameNetworkingContext.h>
-#include <pal/SessionID.h>
+#include "NotImplemented.h"
+
 
 namespace WebKit {
 
-class WebFrame;
-class WebFrameLoaderClient;
-
-class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
-public:
-    static Ref<WebFrameNetworkingContext> create(WebFrame* frame)
-    {
-        return adoptRef(*new WebFrameNetworkingContext(frame));
-    }
-
-    static void ensurePrivateBrowsingSession(PAL::SessionID);
-    static void setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy);
-
-    WebFrameLoaderClient* webFrameLoaderClient() const;
-
-private:
-    WebFrameNetworkingContext(WebFrame*);
-
-    WebCore::NetworkStorageSession* storageSession() const override {return nullptr;}
-};
-
+bool AuxiliaryProcessMainBase::parseCommandLine(int argc, char** argv)
+{
+	notImplemented();
+    return true;
 }
 
-#endif // WebFrameNetworkingContext_h
+} // namespace WebKit

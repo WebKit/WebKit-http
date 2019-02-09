@@ -96,6 +96,9 @@
 #include <wtf/ProcessID.h>
 #include <wtf/ProcessPrivilege.h>
 
+#include "CertificateInfo.h"
+
+
 namespace WebKit {
 using namespace WebCore;
 
@@ -225,6 +228,12 @@ bool WebFrameLoaderClient::shouldUseCredentialStorage(DocumentLoader*, unsigned 
         return true;
 
     return webPage->injectedBundleResourceLoadClient().shouldUseCredentialStorage(*webPage, *m_frame, identifier);
+}
+
+bool WebFrameLoaderClient::dispatchDidReceiveInvalidCertificate(WebCore::DocumentLoader*, const WebCore::CertificateInfo&, const char* message)
+{
+	notImplemented();
+	return true;
 }
 
 void WebFrameLoaderClient::dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge&)

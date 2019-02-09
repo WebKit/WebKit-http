@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Samsung Electronics
+ * Copyright (C) 2019 Haiku, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,7 +25,8 @@
  */
 
 #include "config.h"
-#include "WebInspector.h"
+#include "WebInspectorUI.h"
+#include "RemoteWebInspectorUI.h"
 
 #if ENABLE(INSPECTOR)
 
@@ -33,17 +35,23 @@
 
 namespace WebKit {
 
-bool WebInspector::canSave() const
+bool WebInspectorUI::canSave()
 {
     return false;
 }
 
-String WebInspector::localizedStringsURL() const
+String WebInspectorUI::localizedStringsURL()
 {
     notImplemented();
     return "file:///localizedStrings.js";
 }
 
+String RemoteWebInspectorUI::localizedStringsURL()
+{
+	notImplemented();
+    return "file:///localizedStrings.js";
+}
+	
 } // namespace WebKit
 
 #endif // ENABLE(INSPECTOR)

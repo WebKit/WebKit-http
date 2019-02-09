@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku, inc.
+ * Copyright (C) 2019 Haiku Inc.,
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,7 +10,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS AS IS''
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
@@ -24,65 +24,38 @@
  */
 
 #include "config.h"
-#include "WebCookieManagerProxy.h"
-#include "WebContext.h"
+#include "NetworkCacheIOChannel.h"
 
 #include "NotImplemented.h"
-#include <WebCore/IconDatabase.h>
 
 namespace WebKit {
+namespace NetworkCache {
 
-void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
+IOChannel::IOChannel(const String& filePath, Type type)
+    : m_path{filePath}
+    , m_type{type}
 {
     notImplemented();
 }
 
-void WebContext::platformInvalidateContext()
+IOChannel::~IOChannel()
+{
+}
+
+Ref<IOChannel> IOChannel::open(const String& filePath, IOChannel::Type type)
+{
+    return adoptRef(*new IOChannel(filePath, type));
+}
+
+void IOChannel::read(size_t offset, size_t size, WorkQueue* queue, Function<void(Data&, int error)>&& completionHandler)
 {
     notImplemented();
 }
 
-String WebContext::platformDefaultWebSQLDatabaseDirectory()
+void IOChannel::write(size_t offset, const Data& data, WorkQueue* queue, Function<void(int error)>&& completionHandler)
 {
     notImplemented();
-    return "/WebKitEfl/Databases";
 }
 
-String WebContext::platformDefaultIndexedDBDatabaseDirectory()
-{
-    notImplemented();
-    return String();
-}
-
-String WebContext::platformDefaultIconDatabasePath() const
-{
-    notImplemented();
-    return "/WebKitEfl/IconDatabase/" + WebCore::IconDatabase::defaultDatabaseFilename();
-}
-
-String WebContext::platformDefaultLocalStorageDirectory()
-{
-    notImplemented();
-    return "/WebKitEfl/LocalStorage";
-}
-
-String WebContext::platformDefaultDiskCacheDirectory() const
-{
-    notImplemented();
-    return "/WebKitEfl";
-}
-
-String WebContext::platformDefaultCookieStorageDirectory() const
-{
-    notImplemented();
-    return String();
-}
-
-
-String WebContext::platformDefaultApplicationCacheDirectory() const
-{
-    notImplemented();
-    return "/WebKitEfl/Applications";
-}
-
-}
+} // namespace NetworkCache
+} // namespace WebKit

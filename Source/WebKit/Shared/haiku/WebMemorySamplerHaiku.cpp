@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku, Inc.
+ * Copyright (C) 2014,2019 Haiku, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,10 +27,15 @@
 
 #if ENABLE(MEMORY_SAMPLER)
 
-#include "NotImplemented.h"
+#include <JavaScriptCore/JSCInlines.h>
+#include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/MemoryStatistics.h>
+#include <WebCore/CommonVM.h>
 #include <WebCore/JSDOMWindow.h>
-#include <wtf/CurrentTime.h>
+#include "NotImplemented.h"
+#include <string.h>
+#include <wtf/WallTime.h>
+#include <wtf/text/WTFString.h>  
 
 #include <OS.h>
 
@@ -84,19 +89,19 @@ WebMemoryStatistics WebMemorySampler::sampleWebKit() const
 {
     WebMemoryStatistics webKitMemoryStats;
 
-    double now = currentTime();
+    WallTime now = WallTime::now();
 
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Timestamp"), now);
+    appendKeyValuePair(webKitMemoryStats, "Timestamp"_s, now.secondsSinceEpoch().seconds());
 
     ApplicationMemoryStats applicationStats = sampleMemoryAllocatedForApplication();
 
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Total Program Size"), applicationStats.totalProgramSize);
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("RSS"), applicationStats.residentSetSize);
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Shared"), applicationStats.sharedSize);
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Text"), applicationStats.textSize);
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Library"), applicationStats.librarySize);
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Data/Stack"), applicationStats.dataStackSize);
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Dirty"), applicationStats.dirtyPageSize);
+    appendKeyValuePair(webKitMemoryStats, "Total Program Size"_s, applicationStats.totalProgramSize);
+    appendKeyValuePair(webKitMemoryStats, "RSS"_s, applicationStats.residentSetSize);
+    appendKeyValuePair(webKitMemoryStats, "Shared"_s, applicationStats.sharedSize);
+    appendKeyValuePair(webKitMemoryStats, "Text"_s, applicationStats.textSize);
+    appendKeyValuePair(webKitMemoryStats, "Library"_s, applicationStats.librarySize);
+    appendKeyValuePair(webKitMemoryStats, "Data/Stack"_s, applicationStats.dataStackSize);
+    appendKeyValuePair(webKitMemoryStats, "Dirty"_s, applicationStats.dirtyPageSize);
 
     size_t totalBytesInUse = 0;
     size_t totalBytesCommitted = 0;
@@ -108,12 +113,12 @@ WebMemoryStatistics WebMemorySampler::sampleWebKit() const
     totalBytesInUse += fastMallocBytesInUse;
     totalBytesCommitted += fastMallocBytesCommitted;
 
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Fast Malloc In Use"), fastMallocBytesInUse);
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Fast Malloc Committed Memory"), fastMallocBytesCommitted);
+    appendKeyValuePair(webKitMemoryStats, "Fast Malloc In Use"_s, fastMallocBytesInUse);
+    appendKeyValuePair(webKitMemoryStats, "Fast Malloc Committed Memory"_s, fastMallocBytesCommitted);
 #endif
 
-    size_t jscHeapBytesInUse = JSDOMWindow::commonVM().heap.size();
-    size_t jscHeapBytesCommitted = JSDOMWindow::commonVM().heap.capacity();
+    size_t jscHeapBytesInUse = commonVM().heap.size();
+    size_t jscHeapBytesCommitted = commonVM().heap.capacity();
     totalBytesInUse += jscHeapBytesInUse;
     totalBytesCommitted += jscHeapBytesCommitted;
 
@@ -121,23 +126,23 @@ WebMemoryStatistics WebMemorySampler::sampleWebKit() const
     totalBytesInUse += globalMemoryStats.stackBytes + globalMemoryStats.JITBytes;
     totalBytesCommitted += globalMemoryStats.stackBytes + globalMemoryStats.JITBytes;
 
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("JavaScript Heap In Use"), jscHeapBytesInUse);
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("JavaScript Heap Commited Memory"), jscHeapBytesCommitted);
+    appendKeyValuePair(webKitMemoryStats, "JavaScript Heap In Use"_s, jscHeapBytesInUse);
+    appendKeyValuePair(webKitMemoryStats, "JavaScript Heap Commited Memory"_s, jscHeapBytesCommitted);
     
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("JavaScript Stack Bytes"), globalMemoryStats.stackBytes);
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("JavaScript JIT Bytes"), globalMemoryStats.JITBytes);
+    appendKeyValuePair(webKitMemoryStats, "JavaScript Stack Bytes"_s, globalMemoryStats.stackBytes);
+    appendKeyValuePair(webKitMemoryStats, "JavaScript JIT Bytes"_s, globalMemoryStats.JITBytes);
 
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Total Memory In Use"), totalBytesInUse);
-    appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Total Committed Memory"), totalBytesCommitted);
+    appendKeyValuePair(webKitMemoryStats, "Total Memory In Use"_s, totalBytesInUse);
+    appendKeyValuePair(webKitMemoryStats, "Total Committed Memory"_s, totalBytesCommitted);
 
     system_info systemInfo;
     if (!get_system_info(&systemInfo)) {
-        appendKeyValuePair(webKitMemoryStats, ASCIILiteral("System Total Bytes"), systemInfo.max_pages * B_PAGE_SIZE);
-        appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Available Bytes"), systemInfo.free_memory);
-        //appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Shared Bytes"), systemInfo.sharedram);
-        appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Buffer Bytes"), systemInfo.block_cache_pages * B_PAGE_SIZE);
-        appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Total Swap Bytes"), systemInfo.max_swap_pages * B_PAGE_SIZE);
-        appendKeyValuePair(webKitMemoryStats, ASCIILiteral("Available Swap Bytes"), systemInfo.free_swap_pages * B_PAGE_SIZE);
+        appendKeyValuePair(webKitMemoryStats, "System Total Bytes"_s, systemInfo.max_pages * B_PAGE_SIZE);
+        appendKeyValuePair(webKitMemoryStats, "Available Bytes"_s, systemInfo.free_memory);
+        //appendKeyValuePair(webKitMemoryStats, "Shared Bytes"_s, systemInfo.sharedram);
+        appendKeyValuePair(webKitMemoryStats, "Buffer Bytes"_s, systemInfo.block_cache_pages * B_PAGE_SIZE);
+        appendKeyValuePair(webKitMemoryStats, "Total Swap Bytes"_s, systemInfo.max_swap_pages * B_PAGE_SIZE);
+        appendKeyValuePair(webKitMemoryStats, "Available Swap Bytes"_s, systemInfo.free_swap_pages * B_PAGE_SIZE);
     }   
 
     return webKitMemoryStats;

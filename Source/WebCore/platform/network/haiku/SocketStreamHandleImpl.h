@@ -58,11 +58,11 @@ namespace WebCore {
 							{ return adoptRef(*new SocketStreamHandleImpl(url, client, provider)); }
         virtual 		~SocketStreamHandleImpl();
 
+        WEBCORE_EXPORT void platformSend(const uint8_t* data, size_t length, Function<void(bool)>&&) final;
+		WEBCORE_EXPORT void platformSendHandshake(const uint8_t* data, size_t length, const WTF::Optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
+        WEBCORE_EXPORT void platformClose() final;
     protected:
-        void			platformSend(const uint8_t* data, size_t length, Function<void(bool)>&&) final;
 		WTF::Optional<size_t>	platformSendInternal(const uint8_t* data, size_t length);
-        void 			platformClose() final;
-		void			platformSendHandshake(const uint8_t* data, size_t length, const WTF::Optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
 		size_t 			bufferedAmount() final;
 		bool			sendPendingData();
 

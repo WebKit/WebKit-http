@@ -27,10 +27,10 @@
 #include "config.h"
 #include "ProcessExecutablePath.h"
 
-#include "FileSystem.h"
 #include "NotImplemented.h"
 #include <libgen.h>
 #include <unistd.h>
+#include <wtf/FileSystem.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
@@ -44,8 +44,8 @@ static String findProcessPath(const char* processName)
     String executablePath;
     static const char* execDirectory = getenv("WEBKIT_EXEC_PATH");
     if (execDirectory) {
-        executablePath = WebCore::pathByAppendingComponent(String::fromUTF8(execDirectory), processName);
-        if (WebCore::fileExists(executablePath))
+        executablePath = FileSystem::pathByAppendingComponent(String::fromUTF8(execDirectory), processName);
+        if (FileSystem::fileExists(executablePath))
             return executablePath;
     }
 
@@ -60,13 +60,13 @@ static String findProcessPath(const char* processName)
 #endif
     if (result > 0) {
         char* executablePathPtr = dirname(readLinkBuffer);
-        executablePath = WebCore::pathByAppendingComponent(String::fromUTF8(executablePathPtr), processName);
-        if (WebCore::fileExists(executablePath))
+        executablePath = FileSystem::pathByAppendingComponent(String::fromUTF8(executablePathPtr), processName);
+        if (FileSystem::fileExists(executablePath))
             return executablePath;
     }
 #endif
-    executablePath = WebCore::pathByAppendingComponent(String(LIBEXECDIR), processName);
-    ASSERT(WebCore::fileExists(executablePath));
+    executablePath = FileSystem::pathByAppendingComponent(String(LIBEXECDIR), processName);
+    ASSERT(FileSystem::fileExists(executablePath));
     return executablePath;
 }
 

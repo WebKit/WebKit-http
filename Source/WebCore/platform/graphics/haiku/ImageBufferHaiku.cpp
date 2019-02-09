@@ -32,8 +32,8 @@
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
 #include "StillImageHaiku.h"
-#include "JavaScriptCore/GenericTypedArrayViewInlines.h"
-#include "JavaScriptCore/JSGenericTypedArrayView.h"
+#include "JavaScriptCore/JSCInlines.h"
+#include "JavaScriptCore/TypedArrayInlines.h"
 
 #include <wtf/text/Base64.h>
 #include <wtf/text/CString.h>

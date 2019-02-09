@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku Inc. All rights reserved.
+ * Copyright (C) 2019 Haiku, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,7 +10,7 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS''
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
  * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
@@ -23,36 +23,23 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameNetworkingContext_h
-#define WebFrameNetworkingContext_h
+#include "config.h"
+#include "NetworkProcessMainUnix.h"
 
-#include "HTTPCookieAcceptPolicy.h"
-#include <WebCore/FrameNetworkingContext.h>
-#include <pal/SessionID.h>
+#include "AuxiliaryProcessMain.h"
+#include "NetworkProcess.h"
 
 namespace WebKit {
 
-class WebFrame;
-class WebFrameLoaderClient;
-
-class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
-public:
-    static Ref<WebFrameNetworkingContext> create(WebFrame* frame)
-    {
-        return adoptRef(*new WebFrameNetworkingContext(frame));
-    }
-
-    static void ensurePrivateBrowsingSession(PAL::SessionID);
-    static void setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy);
-
-    WebFrameLoaderClient* webFrameLoaderClient() const;
-
-private:
-    WebFrameNetworkingContext(WebFrame*);
-
-    WebCore::NetworkStorageSession* storageSession() const override {return nullptr;}
-};
-
+template<>
+void initializeAuxiliaryProcess<NetworkProcess>(AuxiliaryProcessInitializationParameters&& parameters)
+{
+    static NeverDestroyed<NetworkProcess> networkProcess(WTFMove(parameters));
 }
 
-#endif // WebFrameNetworkingContext_h
+int NetworkProcessMainUnix(int argc, char** argv)
+{
+    return AuxiliaryProcessMain<NetworkProcess, AuxiliaryProcessMainBase>(argc, argv);
+}
+
+} // namespace WebKit

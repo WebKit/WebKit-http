@@ -24,6 +24,7 @@
  */
 
 #include "NetworkProcessMainUnix.h"
+#include "wtf/Platform.h"
 
 #include <cstdlib>
 

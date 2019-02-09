@@ -41,7 +41,7 @@
 
 namespace WebKit {
 
-#if PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(GTK) || PLATFORM(WPE) || PLATFORM(HAIKU)
 enum class SandboxPermission {
     ReadOnly,
     ReadWrite,

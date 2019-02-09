@@ -24,6 +24,7 @@
  */
 
 #include "WebProcessMainUnix.h"
+#include "wtf/Platform.h"
 
 #include <cstdlib>
 

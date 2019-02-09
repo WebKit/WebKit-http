@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku Inc. All rights reserved.
+ * Copyright (C) 2019 Haiku, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,36 +23,26 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameNetworkingContext_h
-#define WebFrameNetworkingContext_h
+#include "config.h"
+#include "RemoteNetworkingContext.h"
 
-#include "HTTPCookieAcceptPolicy.h"
-#include <WebCore/FrameNetworkingContext.h>
-#include <pal/SessionID.h>
+#include "NetworkProcess.h"
+#include "NetworkSession.h"
+#include "WebsiteDataStoreParameters.h"
+#include <WebCore/NetworkStorageSession.h>
 
 namespace WebKit {
 
-class WebFrame;
-class WebFrameLoaderClient;
+using namespace WebCore;
 
-class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
-public:
-    static Ref<WebFrameNetworkingContext> create(WebFrame* frame)
-    {
-        return adoptRef(*new WebFrameNetworkingContext(frame));
-    }
+void RemoteNetworkingContext::ensureWebsiteDataStoreSession(NetworkProcess& networkProcess, WebsiteDataStoreParameters&& parameters)
+{
+    auto sessionID = parameters.networkSessionParameters.sessionID;
+    if (networkProcess.storageSession(sessionID))
+        return;
 
-    static void ensurePrivateBrowsingSession(PAL::SessionID);
-    static void setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy);
-
-    WebFrameLoaderClient* webFrameLoaderClient() const;
-
-private:
-    WebFrameNetworkingContext(WebFrame*);
-
-    WebCore::NetworkStorageSession* storageSession() const override {return nullptr;}
-};
-
+    networkProcess.ensureSession(sessionID, String::number(sessionID.sessionID()));
+    networkProcess.setSession(sessionID, NetworkSession::create(networkProcess, WTFMove(parameters.networkSessionParameters)));
 }
 
-#endif // WebFrameNetworkingContext_h
+}

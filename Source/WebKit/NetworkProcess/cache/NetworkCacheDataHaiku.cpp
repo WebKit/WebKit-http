@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku Inc. All rights reserved.
+ * Copyright (C) 2019 Haiku, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,36 +23,59 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameNetworkingContext_h
-#define WebFrameNetworkingContext_h
+#include "config.h"
+#include "NetworkCacheData.h"
 
-#include "HTTPCookieAcceptPolicy.h"
-#include <WebCore/FrameNetworkingContext.h>
-#include <pal/SessionID.h>
+#include "NotImplemented.h"
 
 namespace WebKit {
+namespace NetworkCache {
 
-class WebFrame;
-class WebFrameLoaderClient;
-
-class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
-public:
-    static Ref<WebFrameNetworkingContext> create(WebFrame* frame)
-    {
-        return adoptRef(*new WebFrameNetworkingContext(frame));
-    }
-
-    static void ensurePrivateBrowsingSession(PAL::SessionID);
-    static void setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy);
-
-    WebFrameLoaderClient* webFrameLoaderClient() const;
-
-private:
-    WebFrameNetworkingContext(WebFrame*);
-
-    WebCore::NetworkStorageSession* storageSession() const override {return nullptr;}
-};
-
+Data::Data(const uint8_t* data, size_t size)
+{
+    notImplemented();
 }
 
-#endif // WebFrameNetworkingContext_h
+Data Data::empty()
+{
+    notImplemented();
+    return { };
+}
+
+const uint8_t* Data::data() const
+{
+    notImplemented();
+    return nullptr;
+}
+
+bool Data::isNull() const
+{
+    notImplemented();
+    return true;
+}
+
+bool Data::apply(const Function<bool(const uint8_t*, size_t)>& applier) const
+{
+    notImplemented();
+    return false;
+}
+
+Data Data::subrange(size_t offset, size_t size) const
+{
+    return { };
+}
+
+Data concatenate(const Data& a, const Data& b)
+{
+    notImplemented();
+    return { };
+}
+
+Data Data::adoptMap(void* map, size_t size, int fd)
+{
+    notImplemented();
+    return { };
+}
+
+} // namespace NetworkCache
+} // namespace WebKit

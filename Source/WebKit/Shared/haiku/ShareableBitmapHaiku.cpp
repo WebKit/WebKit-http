@@ -37,20 +37,22 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static inline PassRefPtr<StillImage> createSurfaceFromData(void* data, const WebCore::IntSize& size)
+static inline RefPtr<StillImage> createSurfaceFromData(void* data, const WebCore::IntSize& size)
 {
-    PassRefPtr<StillImage> image = StillImage::createForRendering(new BBitmap(
-            BRect(B_ORIGIN, size), B_RGBA32,
-        static_cast<unsigned char*>(data), B_BITMAP_ACCEPTS_VIEWS));
+	BitmapRef* bitmap = new BitmapRef(BRect(B_ORIGIN, size), B_RGBA32, false);
+
+    bitmap->ImportBits(static_cast<unsigned char*>(data),
+		size.width() * size.height() * 4, 32 * size.height(), 0, B_RGB32);
+    RefPtr<StillImage> image = StillImage::create(adoptRef(bitmap));
     return image;
 }
 
 std::unique_ptr<GraphicsContext> ShareableBitmap::createGraphicsContext()
 {
     RefPtr<StillImage> image = createBitmapSurface();
-    BView* v = new BView(image->nativeImageForCurrentFrame()->Bounds(),
+    BView* v = new BView(image->nativeImageForCurrentFrame(nullptr)->Bounds(),
         "Shareable", 0, 0);
-    image->nativeImageForCurrentFrame()->AddChild(v);
+    image->nativeImageForCurrentFrame(nullptr)->AddChild(v);
     return std::make_unique<GraphicsContext>(v);
 }
 
@@ -63,21 +65,26 @@ void ShareableBitmap::paint(GraphicsContext& context, float scaleFactor, const I
     //context.platformContext()->DrawBitmap(surface.get(), destRect, srcRectScaled);
 }
 
-PassRefPtr<StillImage> ShareableBitmap::createBitmapSurface()
+RefPtr<StillImage> ShareableBitmap::createBitmapSurface()
 {
     RefPtr<StillImage> image = createSurfaceFromData(data(), m_size);
 
     ref(); // Balanced by deref in releaseSurfaceData.
-    return image.release();
+    return image;
 }
 
-PassRefPtr<Image> ShareableBitmap::createImage()
+RefPtr<Image> ShareableBitmap::createImage()
 {
     RefPtr<StillImage> surface = createBitmapSurface();
     if (!surface)
         return 0;
 
-    return BitmapImage::create(surface->nativeImageForCurrentFrame());
+    return BitmapImage::create(surface->nativeImageForCurrentFrame(nullptr));
+}
+
+Checked<unsigned, RecordOverflow> ShareableBitmap::calculateBytesPerRow(WebCore::IntSize, const ShareableBitmap::Configuration&)
+{
+	notImplemented();
 }
 
 }

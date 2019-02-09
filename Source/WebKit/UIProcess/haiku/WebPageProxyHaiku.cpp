@@ -59,6 +59,16 @@ String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent
     return applicationNameForUserAgent.isEmpty() ? standardUserAgentString : standardUserAgentString + ' ' + applicationNameForUserAgent;
 }
 
+void WebPageProxy::saveRecentSearches(const String& name, const Vector<WebCore::RecentSearch>& searchItems)
+{
+    notImplemented();
+}
+
+void WebPageProxy::loadRecentSearches(const String& name, CompletionHandler<void(Vector<WebCore::RecentSearch>&&)>&&)
+{
+    notImplemented();
+}
+
 #if 0
 void WebPageProxy::getEditorCommandsForKeyEvent(Vector<WTF::String>& /*commandsList*/)
 {
@@ -66,15 +76,9 @@ void WebPageProxy::getEditorCommandsForKeyEvent(Vector<WTF::String>& /*commandsL
 }
 #endif
 
-void WebPageProxy::saveRecentSearches(const String&, const Vector<String>&)
+void WebPageProxy::editorStateChanged(const EditorState& editorState)
 {
-    notImplemented();
+    m_editorState = editorState;
 }
-
-void WebPageProxy::loadRecentSearches(const String&, Vector<String>&)
-{
-    notImplemented();
-}
-
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ *  Copyright (C) 2019 Haiku, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,20 +24,21 @@
  */
 
 #include "config.h"
-#include "WebProcessProxy.h"
+#include "WebEditorClient.h"
+
+#include "NotImplemented.h"
 
 namespace WebKit {
+using namespace WebCore;
 
-void WebProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
+void WebEditorClient::handleKeyboardEvent(KeyboardEvent* event)
 {
-#ifndef NDEBUG
-    const char* webProcessCmdPrefix = getenv("WEB_PROCESS_CMD_PREFIX");
-    if (webProcessCmdPrefix && *webProcessCmdPrefix)
-        launchOptions.processCmdPrefix = String::fromUTF8(webProcessCmdPrefix);
-#else
-    UNUSED_PARAM(launchOptions);
-#endif
+    notImplemented();
 }
 
-} // namespace WebKit
+void WebEditorClient::handleInputMethodKeydown(KeyboardEvent* event)
+{
+    notImplemented();
+}
 
+}

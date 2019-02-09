@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku, inc.
+ * Copyright (C) 2019 Haiku, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,174 +26,113 @@
 #include "config.h"
 #include "TextChecker.h"
 
-#include "NotImplemented.h"
 #include "TextCheckerState.h"
-
-using namespace WebCore;
+#include "NotImplemented.h"
 
 namespace WebKit {
+using namespace WebCore;
 
-static TextCheckerState textCheckerState;
+TextCheckerState& checkerState()
+{
+    static TextCheckerState textCheckerState;
+    return textCheckerState;
+}
 
 const TextCheckerState& TextChecker::state()
 {
-    static bool didInitializeState = false;
-    if (didInitializeState)
-        return textCheckerState;
+    return checkerState();
+}
 
-    textCheckerState.isContinuousSpellCheckingEnabled = false;
-    textCheckerState.isGrammarCheckingEnabled = false;
+static bool testingModeEnabled = false;
 
-    didInitializeState = true;
+void TextChecker::setTestingMode(bool enabled)
+{
+    testingModeEnabled = enabled;
+}
 
-    return textCheckerState;
+bool TextChecker::isTestingMode()
+{
+    return testingModeEnabled;
 }
 
 bool TextChecker::isContinuousSpellCheckingAllowed()
 {
-    notImplemented();
     return false;
 }
 
-void TextChecker::setContinuousSpellCheckingEnabled(bool isContinuousSpellCheckingEnabled)
+void TextChecker::setContinuousSpellCheckingEnabled(bool)
 {
-#if ENABLE(SPELLCHECK)
-    if (state().isContinuousSpellCheckingEnabled == isContinuousSpellCheckingEnabled)
-        return;
-
-    textCheckerState.isContinuousSpellCheckingEnabled = isContinuousSpellCheckingEnabled;
-
-    // Notify the client about the setting change.
-    WebTextChecker::shared()->client().setContinuousSpellCheckingEnabled(isContinuousSpellCheckingEnabled);
-#else
-    UNUSED_PARAM(isContinuousSpellCheckingEnabled);
-#endif
 }
 
 void TextChecker::setGrammarCheckingEnabled(bool)
 {
-    notImplemented();
 }
 
-void TextChecker::continuousSpellCheckingEnabledStateChanged(bool enabled)
+void TextChecker::continuousSpellCheckingEnabledStateChanged(bool)
 {
-#if ENABLE(SPELLCHECK)
-    if (state().isContinuousSpellCheckingEnabled == enabled)
-        return;
-
-    textCheckerState.isContinuousSpellCheckingEnabled = enabled;
-#else
-    UNUSED_PARAM(enabled);
-#endif
 }
 
 void TextChecker::grammarCheckingEnabledStateChanged(bool)
 {
-    notImplemented();
 }
 
-int64_t TextChecker::uniqueSpellDocumentTag(WebPageProxy* page)
+SpellDocumentTag TextChecker::uniqueSpellDocumentTag(WebPageProxy*)
 {
-#if ENABLE(SPELLCHECK)
-    return WebTextChecker::shared()->client().uniqueSpellDocumentTag(page);
-#else
-    UNUSED_PARAM(page);
-    return 0;
-#endif
+    return { };
 }
 
-void TextChecker::closeSpellDocumentWithTag(int64_t tag)
+void TextChecker::closeSpellDocumentWithTag(SpellDocumentTag)
 {
-#if ENABLE(SPELLCHECK)
-    WebTextChecker::shared()->client().closeSpellDocumentWithTag(tag);
-#else
-    UNUSED_PARAM(tag);
-#endif
 }
 
-void TextChecker::checkSpellingOfString(int64_t spellDocumentTag, StringView text, int32_t& misspellingLocation, int32_t& misspellingLength)
+void TextChecker::checkSpellingOfString(SpellDocumentTag, StringView, int32_t&, int32_t&)
 {
-#if ENABLE(SPELLCHECK)
-    WebTextChecker::shared()->client().checkSpellingOfString(spellDocumentTag, text.toStringWithoutCopying(), misspellingLocation, misspellingLength);
-#else
-    UNUSED_PARAM(spellDocumentTag);
-    UNUSED_PARAM(text);
-    UNUSED_PARAM(misspellingLocation);
-    UNUSED_PARAM(misspellingLength);
-#endif
 }
 
-void TextChecker::checkGrammarOfString(int64_t, StringView, Vector<GrammarDetail>&, int32_t&, int32_t&)
+void TextChecker::checkGrammarOfString(SpellDocumentTag, StringView /* text */, Vector<WebCore::GrammarDetail>& /* grammarDetails */, int32_t& /* badGrammarLocation */, int32_t& /* badGrammarLength */)
 {
-    notImplemented();
 }
 
 bool TextChecker::spellingUIIsShowing()
 {
-    notImplemented();
     return false;
 }
 
 void TextChecker::toggleSpellingUIIsShowing()
 {
-    notImplemented();
 }
 
-void TextChecker::updateSpellingUIWithMisspelledWord(int64_t, const String&)
+void TextChecker::updateSpellingUIWithMisspelledWord(SpellDocumentTag, const String& /* misspelledWord */)
 {
-    notImplemented();
 }
 
-void TextChecker::updateSpellingUIWithGrammarString(int64_t, const String&, const GrammarDetail&)
+void TextChecker::updateSpellingUIWithGrammarString(SpellDocumentTag, const String& /* badGrammarPhrase */, const GrammarDetail& /* grammarDetail */)
 {
-    notImplemented();
 }
 
-void TextChecker::getGuessesForWord(int64_t spellDocumentTag, const String& word, const String& , Vector<String>& guesses)
+void TextChecker::getGuessesForWord(SpellDocumentTag, const String&, const String& /* context */, int32_t /* insertionPoint */, Vector<String>&, bool)
 {
-#if ENABLE(SPELLCHECK)
-    WebTextChecker::shared()->client().guessesForWord(spellDocumentTag, word, guesses);
-#else
-    UNUSED_PARAM(spellDocumentTag);
-    UNUSED_PARAM(word);
-    UNUSED_PARAM(guesses);
+}
+
+void TextChecker::learnWord(SpellDocumentTag, const String&)
+{
+}
+
+void TextChecker::ignoreWord(SpellDocumentTag, const String&)
+{
+}
+
+void TextChecker::requestCheckingOfString(Ref<TextCheckerCompletion>&&, int32_t)
+{
+}
+
+#if USE(UNIFIED_TEXT_CHECKING)
+
+Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(SpellDocumentTag, StringView, int32_t, OptionSet<TextCheckingType>, bool)
+{
+    return { };
+}
+
 #endif
-}
 
-void TextChecker::learnWord(int64_t spellDocumentTag, const String& word)
-{
-#if ENABLE(SPELLCHECK)
-    WebTextChecker::shared()->client().learnWord(spellDocumentTag, word);
-#else
-    UNUSED_PARAM(spellDocumentTag);
-    UNUSED_PARAM(word);
-#endif
-}
-
-void TextChecker::ignoreWord(int64_t spellDocumentTag, const String& word)
-{
-#if ENABLE(SPELLCHECK)
-    WebTextChecker::shared()->client().ignoreWord(spellDocumentTag, word);
-#else
-    UNUSED_PARAM(spellDocumentTag);
-    UNUSED_PARAM(word);
-#endif
-}
-
-void TextChecker::requestCheckingOfString(PassRefPtr<TextCheckerCompletion> completion)
-{
-#if ENABLE(SPELLCHECK)
-    if (!completion)
-        return;
-
-    TextCheckingRequestData request = completion->textCheckingRequestData();
-    ASSERT(request.sequence() != unrequestedTextCheckingSequence);
-    ASSERT(request.mask() != TextCheckingTypeNone);
-
-    completion->didFinishCheckingText(checkTextOfParagraph(completion->spellDocumentTag(), request.text(), request.mask()));
-#else
-    UNUSED_PARAM(completion);
-#endif
-}
-
-}
+} // namespace WebKit

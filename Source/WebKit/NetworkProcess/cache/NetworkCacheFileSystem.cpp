@@ -51,7 +51,7 @@
 namespace WebKit {
 namespace NetworkCache {
 
-#if !OS(WINDOWS)
+#if !OS(WINDOWS) && !OS(HAIKU)
 static DirectoryEntryType directoryEntryType(uint8_t dtype)
 {
     switch (dtype) {
@@ -69,7 +69,7 @@ static DirectoryEntryType directoryEntryType(uint8_t dtype)
 
 void traverseDirectory(const String& path, const Function<void (const String&, DirectoryEntryType)>& function)
 {
-#if !OS(WINDOWS)
+#if !OS(WINDOWS) && !OS(HAIKU)
     DIR* dir = opendir(FileSystem::fileSystemRepresentation(path).data());
     if (!dir)
         return;
