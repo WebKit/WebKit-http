@@ -90,7 +90,6 @@ public:
     static bool supportsAllCodecs(const Vector<String>& codecs);
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    void attemptToDecryptWithInstance(CDMInstance&) final;
     void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&) final;
 #endif
 

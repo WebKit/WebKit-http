@@ -1448,17 +1448,6 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
             gst_mpegts_section_unref(section);
         }
 #endif
-#if 0 && ENABLE(ENCRYPTED_MEDIA)
-        else if (gst_structure_has_name(structure, "drm-key-needed")) {
-            GST_DEBUG("drm-key-needed message from %s", GST_MESSAGE_SRC_NAME(message));
-            GRefPtr<GstEvent> event;
-            gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
-            handleProtectionEvent(event.get());
-        } else if (gst_structure_has_name(structure, "decrypt-key-needed")) {
-            GST_DEBUG("decrypt-key-needed message from %s", GST_MESSAGE_SRC_NAME(message));
-            MediaPlayerPrivateGStreamerBase::dispatchCDMInstance();
-        }
-#endif
         else if (gst_structure_has_name(structure, "http-headers")) {
             GstStructure* responseHeaders;
             if (gst_structure_get(structure, "response-headers", GST_TYPE_STRUCTURE, &responseHeaders, nullptr)) {
@@ -1484,9 +1473,6 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
             else if (gst_structure_has_name(structure, "drm-initialization-data-encountered")) {
                 GST_DEBUG("drm-initialization-data-encountered message from %s", GST_MESSAGE_SRC_NAME(message));
                 handleProtectionStructure(structure);
-            } else if (gst_structure_has_name(structure, "drm-waiting-for-key")) {
-                GST_DEBUG("drm-waiting-for-key message from %s", GST_MESSAGE_SRC_NAME(message));
-                m_player->waitingForKey();
             }
 #endif
             else

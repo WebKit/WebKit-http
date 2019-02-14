@@ -25,7 +25,6 @@
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
-#include "GStreamerCommon.h"
 #include "GStreamerEMEUtilities.h"
 #include <CDMInstance.h>
 #include <wtf/Condition.h>
@@ -34,11 +33,11 @@
 #include <wtf/text/StringHash.h>
 
 using WebCore::CDMInstance;
+using WebCore::GstMappedBuffer;
 
 #define WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_MEDIA_CENC_DECRYPT, WebKitMediaCommonEncryptionDecryptPrivate))
 struct _WebKitMediaCommonEncryptionDecryptPrivate {
     bool m_keyReceived { false };
-    bool m_waitingForKey { false };
     Lock m_mutex;
     Condition m_condition;
     RefPtr<CDMInstance> m_cdmInstance;
@@ -244,10 +243,9 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             if (priv->m_isFlushing) {
                 GST_DEBUG_OBJECT(self, "flushing");
                 return GST_FLOW_FLUSHING;
-            } else {
-                GST_ERROR_OBJECT(self, "key not available");
-                return GST_FLOW_NOT_SUPPORTED;
             }
+            GST_ERROR_OBJECT(self, "key not available");
+            return GST_FLOW_NOT_SUPPORTED;
         }
         GST_DEBUG_OBJECT(self, "key received, continuing");
     }
@@ -302,7 +300,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     keyIDBuffer = gst_value_get_buffer(value);
 #ifndef GST_DISABLE_GST_DEBUG
     if (gst_debug_category_get_threshold(GST_CAT_DEFAULT) >= GST_LEVEL_MEMDUMP) {
-        WebCore::GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
+        GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
         if (!mappedKeyID) {
             GST_ERROR_OBJECT(self, "failed to map key ID buffer");
             return GST_FLOW_NOT_SUPPORTED;
@@ -348,6 +346,11 @@ static bool webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(WebKitMedia
 
     if (!priv->m_cdmInstance) {
         GRefPtr<GstContext> context = adoptGRef(gst_element_get_context(GST_ELEMENT(self), "drm-cdm-instance"));
+        // According to the GStreamer documentation, if we can't find the context, we should run a downstream query, then an upstream one and then send a bus
+        // message. In this case that does not make a lot of sense since only the app (player) answers it, meaning that no query is going to solve it. A message
+        // could be helpful but the player sets the context as soon as it gets the CDMInstance and if it does not have it, we have no way of asking for one as it is
+        // something provided by crossplatform code. This means that we won't be able to answer the bus request in any way either. Summing up, neither queries nor bus
+        // requests are useful here.
         if (context) {
             const GValue* value = gst_structure_get_value(gst_context_get_structure(context.get()), "cdm-instance");
             priv->m_cdmInstance = value ? reinterpret_cast<CDMInstance*>(g_value_get_pointer(value)) : nullptr;
@@ -396,7 +399,7 @@ static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMedi
         priv->m_currentEvent = GST_EVENT_SEQNUM(event.get());
 
         if (initData.isEmpty() || gst_buffer_memcmp(buffer, 0, initData.characters8(), initData.sizeInBytes())) {
-            WebCore::GstMappedBuffer mappedBuffer(buffer, GST_MAP_READ);
+            GstMappedBuffer mappedBuffer(buffer, GST_MAP_READ);
             if (!mappedBuffer) {
                 GST_WARNING_OBJECT(self, "cannot map protection data");
                 continue;
@@ -435,7 +438,7 @@ static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMedi
 
     if (!isCDMInstanceAvailable && !concatenatedInitDatas.isEmpty()) {
         GRefPtr<GstBuffer> buffer = adoptGRef(gst_buffer_new_allocate(nullptr, concatenatedInitDatas.sizeInBytes(), nullptr));
-        WebCore::GstMappedBuffer mappedBuffer(buffer.get(), GST_MAP_WRITE);
+        GstMappedBuffer mappedBuffer(buffer.get(), GST_MAP_WRITE);
         if (!mappedBuffer) {
             GST_WARNING_OBJECT(self, "cannot map writable init data");
             return;
@@ -476,12 +479,9 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             LockHolder locker(priv->m_mutex);
             RELEASE_ASSERT(webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self));
             priv->m_keyReceived = klass->attemptToDecryptWithLocalInstance(self, priv->m_initDatas.get(WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem())));
-            GST_DEBUG_OBJECT(self, "attempted to decrypt with local instance %p, key received %s, waiting for key %s", priv->m_cdmInstance.get(), WTF::boolForPrinting(priv->m_keyReceived), WTF::boolForPrinting(priv->m_waitingForKey));
-            if (priv->m_keyReceived) {
-                priv->m_waitingForKey = false;
+            GST_DEBUG_OBJECT(self, "attempted to decrypt with local instance %p, key received %s", priv->m_cdmInstance.get(), WTF::boolForPrinting(priv->m_keyReceived));
+            if (priv->m_keyReceived)
                 priv->m_condition.notifyOne();
-            } else if (priv->m_waitingForKey)
-                gst_element_post_message(GST_ELEMENT(self), gst_message_new_element(GST_OBJECT(self), gst_structure_new_empty("drm-waiting-for-key")));
         }
         break;
     }
@@ -543,6 +543,7 @@ static void webKitMediaCommonEncryptionDecryptorSetContext(GstElement* element, 
 
     if (gst_context_has_context_type(context, "drm-cdm-instance")) {
         const GValue* value = gst_structure_get_value(gst_context_get_structure(context), "cdm-instance");
+        LockHolder locker(priv->m_mutex);
         priv->m_cdmInstance = value ? reinterpret_cast<CDMInstance*>(g_value_get_pointer(value)) : nullptr;
         GST_DEBUG_OBJECT(self, "received new CDMInstance %p", priv->m_cdmInstance.get());
         return;
@@ -557,5 +558,4 @@ RefPtr<CDMInstance> webKitMediaCommonEncryptionDecryptCDMInstance(WebKitMediaCom
     ASSERT(priv->m_mutex.isLocked());
     return webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self) ? priv->m_cdmInstance : nullptr;
 }
-
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
