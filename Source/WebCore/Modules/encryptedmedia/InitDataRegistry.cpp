@@ -41,6 +41,7 @@ namespace WebCore {
 
 namespace {
     const uint32_t kCencMaxBoxSize = 64 * KB;
+    const uint8_t playreadyXMLMagic[10] = { 0x8c, 0x03, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x82, 0x03 };
 }
 
 static std::optional<Vector<Ref<SharedBuffer>>> extractKeyIDsKeyids(const SharedBuffer& buffer)
@@ -107,6 +108,20 @@ static std::optional<Vector<Ref<SharedBuffer>>> extractKeyIDsCenc(const SharedBu
 
     unsigned offset = 0;
     Vector<Ref<SharedBuffer>> keyIDs;
+
+    // FIXME: We have a problem here when it comes to Smooth Streaming
+    // manifests, the protection payload sent from mssdemux is the
+    // protection XML specified (ha!) here:
+    // https://msdn.microsoft.com/en-us/library/ee673439(v=vs.90).aspx
+    // That's just an XML blob, not a PSSH box. So the problem is that
+    // for "cenc" init datas, we have either a PSSH box or a Playready
+    // XML blob (not a PSSH box!). This seems to start with a magical
+    // sequence of 10 bytes which we'll use to early return here,
+    // Proper fix would be to synthesize PSSH boxes from qtdemux in
+    // these cases, but that would probably break the Playready CDM,
+    // what a mess.
+    if (buffer.size() > 10 && !memcmp(buffer.data(), playreadyXMLMagic, 10))
+        return keyIDs;
 
     auto view = JSC::DataView::create(buffer.tryCreateArrayBuffer(), offset, buffer.size());
     while (auto optionalBoxType = ISOBox::peekBox(view, offset)) {
