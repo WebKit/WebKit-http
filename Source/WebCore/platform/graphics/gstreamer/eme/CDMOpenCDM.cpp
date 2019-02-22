@@ -28,6 +28,7 @@
 #include "CDMPrivate.h"
 #include "MediaKeyMessageType.h"
 #include "MediaKeysRequirement.h"
+#include "MediaPlayerPrivateGStreamerBase.h"
 
 #include <gst/gst.h>
 #include <wtf/text/Base64.h>
@@ -271,6 +272,7 @@ CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm& system, const String& key
     , m_mimeType("video/x-h264")
     , m_openCDM(system)
 {
+    MediaPlayerPrivateGStreamerBase::ensureWebKitGStreamerElements();
     m_openCDM.SelectKeySystem(keySystem.utf8().data());
 }
 
