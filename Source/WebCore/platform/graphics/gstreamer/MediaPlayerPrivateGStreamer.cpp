@@ -377,7 +377,7 @@ static GstElement* findVideoDecoder(GstElement *element)
         }
         g_value_unset (&item);
         gst_iterator_free(it);
-    } else if (GST_IS_VIDEO_DECODER(element))
+    } else if (GST_IS_VIDEO_DECODER(element) || g_str_has_suffix(G_OBJECT_TYPE_NAME(G_OBJECT(element)), "VideoDecoder"))
         re = element;
     return re;
 }
