@@ -53,4 +53,23 @@ inline JSValue jsMakeNontrivialString(ExecState* exec, StringType&& string, Stri
     return jsNontrivialString(exec, WTFMove(result));
 }
 
+template <typename CharacterType>
+inline JSString* repeatCharacter(ExecState& exec, CharacterType character, unsigned repeatCount)
+{
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    CharacterType* buffer = nullptr;
+    auto impl = StringImpl::tryCreateUninitialized(repeatCount, buffer);
+    if (!impl) {
+        throwOutOfMemoryError(&exec, scope);
+        return nullptr;
+    }
+
+    std::fill_n(buffer, repeatCount, character);
+
+    scope.release();
+    return jsString(&exec, WTFMove(impl));
+}
+
 } // namespace JSC
