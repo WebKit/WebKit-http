@@ -1246,11 +1246,7 @@ void RenderLayerBacking::updateAfterDescendants()
         // this is called, which causes the contentsRect not to be set for them. As we are guaranteed
         // that video elements have a layer using the hole punch, ensure that resetContentsRect() is called
         // for them.
-        if (!didUpdateContentsRect && (m_graphicsLayer->usesContentsLayer()
-#if USE(HOLE_PUNCH_GSTREAMER) || USE(HOLE_PUNCH_EXTERNAL)
-            || is<RenderVideo>(renderer())
-#endif
-        ))
+        if (!didUpdateContentsRect && (m_graphicsLayer->usesContentsLayer()))
             resetContentsRect();
     }
 

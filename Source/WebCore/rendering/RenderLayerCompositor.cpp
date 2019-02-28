@@ -2461,16 +2461,6 @@ bool RenderLayerCompositor::requiresCompositingForVideo(RenderLayerModelObject& 
 
 #if ENABLE(VIDEO)
     if (is<RenderVideo>(renderer)) {
-#if USE(HOLE_PUNCH_GSTREAMER) || USE(HOLE_PUNCH_EXTERNAL)
-        // In normal conditions, the video GraphicsLayer is not created until we receive feedback
-        // from the player. Concretely, when we get a valid naturalSize for the video frames, a layout
-        // is triggered that causes the creation of the GraphicsLayer.
-        // When using hole punch, we may not be able to get a valid naturalSize. Using HOLE_PUNCH_GSTREAMER
-        // we have problems to get it on brcm boxes, and using HOLE_PUNCH_EXTERNAL we don't have a way to get
-        // it at all. So instead of using the normal approach, we force the creation of the layer from the
-        // very beginning.
-        return true;
-#endif
         auto& video = downcast<RenderVideo>(renderer);
         return (video.requiresImmediateCompositing() || video.shouldDisplayVideo()) && canAccelerateVideoRendering(video);
     }

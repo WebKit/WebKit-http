@@ -172,9 +172,7 @@ public:
 protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
 
-#if !USE(HOLE_PUNCH_GSTREAMER)
     virtual GstElement* createVideoSink();
-#endif
 
 #if USE(GSTREAMER_GL)
     static GstFlowReturn newSampleCallback(GstElement*, MediaPlayerPrivateGStreamerBase*);
@@ -209,10 +207,8 @@ protected:
     void repaint();
     void cancelRepaint(bool destroying = false);
 
-#if !USE(HOLE_PUNCH_GSTREAMER)
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
     static void repaintCancelledCallback(MediaPlayerPrivateGStreamerBase*);
-#endif
 
     void notifyPlayerOfVolumeChange();
     void notifyPlayerOfMute();
@@ -287,10 +283,6 @@ protected:
 #endif
 
     ImageOrientation m_videoSourceOrientation;
-
-#if USE(HOLE_PUNCH_GSTREAMER)
-    void updateVideoRectangle(bool makeInvisible = false);
-#endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
     RefPtr<const CDMInstance> m_cdmInstance;

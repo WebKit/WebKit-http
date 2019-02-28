@@ -158,14 +158,6 @@ void RenderVideo::imageChanged(WrappedImagePtr newImage, const IntRect* rect)
 
 IntRect RenderVideo::videoBox() const
 {
-#if USE(HOLE_PUNCH_GSTREAMER) || USE(HOLE_PUNCH_EXTERNAL)
-    // When using the hole punch, skip all the intrinsic size stuff and just
-    // report the <video> element size. The external application or the custom
-    // sink will be in charge of scaling the video frames appropriately
-    // FIXME: should we take into account the zoom here?
-    return snappedIntRect(contentBoxRect());
-#endif
-
     LayoutSize intrinsicSize = this->intrinsicSize();
 
     if (videoElement().shouldDisplayPosterImage())
@@ -258,14 +250,8 @@ void RenderVideo::updatePlayer()
 
     contentChanged(VideoChanged);
 
-#if USE(HOLE_PUNCH_GSTREAMER) || USE(HOLE_PUNCH_EXTERNAL)
-    IntRect windowRect = document().view()->contentsToScreen(absoluteBoundingBoxRect(true));
-    mediaPlayer->setSize(IntSize(windowRect.width(), windowRect.height()));
-    mediaPlayer->setPosition(IntPoint(windowRect.x(), windowRect.y()));
-#else
     IntRect videoBounds = videoBox();
     mediaPlayer->setSize(IntSize(videoBounds.width(), videoBounds.height()));
-#endif
     mediaPlayer->setVisible(!videoElement().elementIsHidden());
     mediaPlayer->setShouldMaintainAspectRatio(style().objectFit() != ObjectFit::Fill);
 }

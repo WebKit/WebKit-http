@@ -331,12 +331,6 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 #endif
 #endif
 {
-#if USE(HOLE_PUNCH_GSTREAMER)
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    LockHolder locker(m_platformLayerProxy->lock());
-    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldOverwriteRect, GL_DONT_CARE));
-#endif
-#endif
 }
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
@@ -400,10 +394,6 @@ void MediaPlayerPrivateGStreamerBase::setPipeline(GstElement* pipeline)
 
         return GST_BUS_PASS;
     }, this, nullptr);
-
-#if USE(HOLE_PUNCH_GSTREAMER)
-    updateVideoRectangle();
-#endif
 }
 
 void MediaPlayerPrivateGStreamerBase::clearSamples()
@@ -773,10 +763,6 @@ RefPtr<TextureMapperPlatformLayerProxy> MediaPlayerPrivateGStreamerBase::proxy()
 
 void MediaPlayerPrivateGStreamerBase::swapBuffersIfNeeded()
 {
-#if USE(HOLE_PUNCH_GSTREAMER) && USE(COORDINATED_GRAPHICS_THREADED)
-    LockHolder locker(m_platformLayerProxy->lock());
-    m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldOverwriteRect, GL_DONT_CARE));
-#endif
 }
 #endif
 
@@ -883,7 +869,6 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 #endif // USE(TEXTURE_MAPPER_GL)
 }
 
-#if !USE(HOLE_PUNCH_GSTREAMER)
 void MediaPlayerPrivateGStreamerBase::repaintCallback(MediaPlayerPrivateGStreamerBase* player, GstSample* sample)
 {
     player->triggerRepaint(sample);
@@ -893,7 +878,6 @@ void MediaPlayerPrivateGStreamerBase::repaintCancelledCallback(MediaPlayerPrivat
 {
     player->cancelRepaint();
 }
-#endif
 
 void MediaPlayerPrivateGStreamerBase::cancelRepaint(bool destroying)
 {
@@ -965,10 +949,6 @@ void MediaPlayerPrivateGStreamerBase::setSize(const IntSize& size)
 
     GST_INFO("Setting size to %dx%d", size.width(), size.height());
     m_size = size;
-
-#if USE(HOLE_PUNCH_GSTREAMER)
-    updateVideoRectangle();
-#endif
 }
 
 void MediaPlayerPrivateGStreamerBase::setPosition(const IntPoint& position)
@@ -977,35 +957,7 @@ void MediaPlayerPrivateGStreamerBase::setPosition(const IntPoint& position)
         return;
 
     m_position = position;
-
-#if USE(HOLE_PUNCH_GSTREAMER)
-    updateVideoRectangle();
-#endif
 }
-
-#if USE(HOLE_PUNCH_GSTREAMER)
-void MediaPlayerPrivateGStreamerBase::updateVideoRectangle(bool makeInvisible)
-{
-    if (!m_pipeline)
-        return;
-
-    GRefPtr<GstElement> sinkElement;
-    g_object_get(m_pipeline.get(), "video-sink", &sinkElement.outPtr(), nullptr);
-    if (!sinkElement)
-        return;
-
-    GST_INFO("Setting video sink size and position to x:%d y:%d, width=%d, height=%d", m_position.x(), m_position.y(), m_size.width(), m_size.height());
-
-    IntRect r;
-    if (!makeInvisible) {
-        r.setSize({ m_size.width(), m_size.height() });
-        r.setLocation({ m_position.x(), m_position.y() });
-    }
-
-    GUniquePtr<gchar> rectString(g_strdup_printf("%d,%d,%d,%d", r.x(), r.y(), r.width(), r.height()));
-    g_object_set(sinkElement.get(), "rectangle", rectString.get(), nullptr);
-}
-#endif
 
 void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext& context, const FloatRect& rect)
 {
@@ -1256,7 +1208,6 @@ void MediaPlayerPrivateGStreamerBase::ensureGLVideoSinkContext()
 }
 #endif // USE(GSTREAMER_GL)
 
-#if !USE(HOLE_PUNCH_GSTREAMER)
 GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
 {
     acceleratedRenderingStateChanged();
@@ -1298,7 +1249,6 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
 
     return videoSink;
 }
-#endif
 
 void MediaPlayerPrivateGStreamerBase::setStreamVolumeElement(GstStreamVolume* volume)
 {
@@ -1515,16 +1465,10 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerBase::extendedSupportsType(
 
 void MediaPlayerPrivateGStreamerBase::platformSuspend()
 {
-#if USE(HOLE_PUNCH_GSTREAMER)
-    updateVideoRectangle(true);
-#endif
 }
 
 void MediaPlayerPrivateGStreamerBase::platformResume()
 {
-#if USE(HOLE_PUNCH_GSTREAMER)
-    updateVideoRectangle();
-#endif
 }
 
 }

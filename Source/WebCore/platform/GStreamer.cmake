@@ -17,6 +17,7 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         platform/graphics/gstreamer/TextCombinerGStreamer.cpp
         platform/graphics/gstreamer/TextSinkGStreamer.cpp
         platform/graphics/gstreamer/TrackPrivateBaseGStreamer.cpp
+        platform/graphics/gstreamer/VideoSinkGStreamer.cpp
         platform/graphics/gstreamer/VideoTrackPrivateGStreamer.cpp
         platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
 
@@ -92,12 +93,6 @@ if (ENABLE_VIDEO)
         )
     endif ()
 
-    if (NOT USE_HOLE_PUNCH_GSTREAMER)
-        list(APPEND WebCore_SOURCES
-            platform/graphics/gstreamer/VideoSinkGStreamer.cpp
-        )
-    endif()
-
     if (USE_GSTREAMER_GL)
         list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${GSTREAMER_GL_INCLUDE_DIRS}
@@ -171,17 +166,6 @@ if (ENABLE_ENCRYPTED_MEDIA)
             platform/graphics/gstreamer/eme/WebKitClearKeyDecryptorGStreamer.cpp
         )
     endif ()
-endif ()
-
-if (USE_HOLE_PUNCH_EXTERNAL)
-    list(APPEND WebCore_SOURCES
-        platform/graphics/holepunch/MediaPlayerPrivateHolePunchBase.cpp
-        platform/graphics/holepunch/MediaPlayerPrivateHolePunchDummy.cpp
-    )
-
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/platform/graphics/holepunch"
-    )
 endif ()
 
 if (USE_CAIRO)
