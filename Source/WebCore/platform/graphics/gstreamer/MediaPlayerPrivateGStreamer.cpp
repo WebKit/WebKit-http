@@ -1356,11 +1356,15 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         }
 #endif
 
-#if USE(HOLE_PUNCH_GSTREAMER)
-        // Ensure that the video rectangle is set to the videoSink once we are sure that the
-        // videoSink was created.
-        if (currentState == GST_STATE_NULL && newState == GST_STATE_READY)
-            updateVideoRectangle();
+#if USE(GSTREAMER_HOLEPUNCH)
+        // If we didn't create a video sink, store a reference to the created one.
+        if (currentState == GST_STATE_NULL && newState == GST_STATE_READY) {
+            if (!m_videoSink) {
+                g_object_get(m_pipeline.get(), "video-sink", &m_videoSink.outPtr(), nullptr);
+                if (m_videoSink)
+                    pushNextHolePunchBuffer();
+            }
+        }
 #endif
 
         if (!messageSourceIsPlaybin || m_delayingLoad)
@@ -2795,30 +2799,13 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin(const gchar* playbinName, con
     g_object_set(m_pipeline.get(), "text-sink", m_textAppSink.get(), nullptr);
 #endif
 
-#if !USE(HOLE_PUNCH_GSTREAMER)
-    // If we are using the gstreamer hole punch then we rely on autovideosink
-    // to use the appropriate sink
-
     g_object_set(m_pipeline.get(), "video-sink", createVideoSink(), nullptr);
-
+#if !USE(GSTREAMER_HOLEPUNCH)
     GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
     if (videoSinkPad)
         g_signal_connect_swapped(videoSinkPad.get(), "notify::caps", G_CALLBACK(videoSinkCapsChangedCallback), this);
 #endif
 
-#if USE(WESTEROS_SINK) && USE(HOLE_PUNCH_GSTREAMER)
-    GRefPtr<GstElementFactory> westerosfactory = adoptGRef(gst_element_factory_find("westerossink"));
-
-    m_videoSink = gst_element_factory_create(westerosfactory.get(), "WesterosVideoSink");
-    g_object_set(m_pipeline.get(), "video-sink", m_videoSink.get(), nullptr);
-    g_object_set(G_OBJECT(m_videoSink.get()), "zorder",0.0f, nullptr);
-#endif
-
-#if PLATFORM(QCOM_DB)
-    m_videoSink = gst_element_factory_make( "db410csink", "optimized vsink");
-    g_object_set(m_pipeline.get(), "video-sink", m_videoSink.get(), nullptr);
-#endif    
-    
 #if !USE(WESTEROS_SINK) && !USE(FUSION_SINK)
     g_object_set(m_pipeline.get(), "audio-sink", createAudioSink(), nullptr);
 #endif

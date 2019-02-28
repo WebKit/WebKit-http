@@ -1226,29 +1226,42 @@ void MediaPlayerPrivateGStreamerBase::ensureGLVideoSinkContext()
 #endif // USE(GSTREAMER_GL)
 
 #if USE(GSTREAMER_HOLEPUNCH)
-static void setRectangleToVideoSink(GstElement* videoSink, const IntRect& rect)
+static void setRectangleToVideoSink(GstElement* videoSink, const IntRect& rect, bool changeSuspensionState)
 {
     // Here goes the platform-dependant code to set to the videoSink the size
     // and position of the video rendering window. Mark them unused as default.
-    UNUSED_PARAM(videoSink);
-    UNUSED_PARAM(rect);
+    static Lock mutex;
+    static bool isSuspended = false;
+
+    LockHolder holeder(mutex);
+    isSuspended = changeSuspensionState ? !isSuspended : isSuspended;
+
+    if (!videoSink || (isSuspended && !changeSuspensionState))
+        return;
+
+    GUniquePtr<gchar> rectString(g_strdup_printf("%d,%d,%d,%d", rect.x(), rect.y(), rect.width(), rect.height()));
+    g_object_set(videoSink, "rectangle", rectString.get(), nullptr);
 }
 
 class GStreamerHolePunchClient : public TextureMapperPlatformLayerBuffer::HolePunchClient {
 public:
     GStreamerHolePunchClient(GRefPtr<GstElement>&& videoSink) : m_videoSink(WTFMove(videoSink)) { };
-    void setVideoRectangle(const IntRect& rect) final { setRectangleToVideoSink(m_videoSink.get(), rect); }
+    void setVideoRectangle(const IntRect& rect) final { setRectangleToVideoSink(m_videoSink.get(), rect, false); }
 private:
     GRefPtr<GstElement> m_videoSink;
 };
 
 GstElement* MediaPlayerPrivateGStreamerBase::createHolePunchVideoSink()
 {
-    // Here goes the platform-dependant code to create the videoSink. As a default
-    // we use a fakeVideoSink so nothing is drawn to the page.
-    GstElement* videoSink =  gst_element_factory_make("fakevideosink", nullptr);
-
+#if USE(WESTEROS_SINK)
+    GRefPtr<GstElementFactory> westerosfactory = adoptGRef(gst_element_factory_find("westerossink"));
+    GstElement* videoSink = gst_element_factory_create(westerosfactory.get(), "WesterosVideoSink");
+    g_object_set(G_OBJECT(videoSink), "zorder", 0.0f, nullptr);
     return videoSink;
+#endif
+
+    // Returning nullptr means relying on autovideosink.
+    return nullptr;
 }
 
 void MediaPlayerPrivateGStreamerBase::pushNextHolePunchBuffer()
@@ -1279,6 +1292,10 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
     m_videoSink = createHolePunchVideoSink();
     pushNextHolePunchBuffer();
     return m_videoSink.get();
+#endif
+
+#if PLATFORM(QCOM_DB)
+    m_videoSink = gst_element_factory_make( "db410csink", "optimized vsink");
 #endif
 
 #if USE(GSTREAMER_GL)
@@ -1534,10 +1551,18 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerBase::extendedSupportsType(
 
 void MediaPlayerPrivateGStreamerBase::platformSuspend()
 {
+#if USE(GSTREAMER_HOLEPUNCH)
+    // Set an empty rectangle and block updates until resumed.
+    setRectangleToVideoSink(m_videoSink.get(), IntRect(), true);
+#endif
 }
 
 void MediaPlayerPrivateGStreamerBase::platformResume()
 {
+#if USE(GSTREAMER_HOLEPUNCH)
+    // Set an empty rectangle and allow updates.
+    setRectangleToVideoSink(m_videoSink.get(), IntRect(), true);
+#endif
 }
 
 }
