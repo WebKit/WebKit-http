@@ -83,7 +83,7 @@ void MediaSourceClientGStreamerMSE::durationChanged(const MediaTime& duration)
 {
     ASSERT(WTF::isMainThread());
 
-    GST_TRACE("duration: %f", duration.toFloat());
+    GST_TRACE("duration: %s", duration.toString().utf8().data());
     if (!duration.isValid() || duration.isNegativeInfinite())
         return;
 
