@@ -365,7 +365,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveIcon()
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad(WTF::CompletionHandler<void()>&& handler)
+void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 {
     CALLED();
     if (m_loadingErrorPage) {
@@ -376,9 +376,6 @@ void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad(WTF::CompletionHand
     BMessage message(LOAD_NEGOTIATING);
     message.AddString("url",
 		m_webFrame->Frame()->loader().provisionalDocumentLoader()->request().url().string());
-	WTF::CompletionHandler<void()>* copy
-		= new WTF::CompletionHandler<void()>(std::move(handler));
-	message.AddPointer("completionHandler", copy);
     dispatchMessage(message);
 }
 
@@ -510,37 +507,42 @@ void FrameLoaderClientHaiku::dispatchShow()
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest& request, FramePolicyFunction&& function)
+void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(
+	const WebCore::ResourceResponse& response,
+	const WebCore::ResourceRequest& request, PolicyCheckIdentifier identifier,
+	FramePolicyFunction&& function)
 {
     if (request.isNull()) {
-        function(PolicyAction::Ignore);
+        function(PolicyAction::Ignore, identifier);
         return;
     }
     // we need to call directly here
     if (!response.isAttachment() && canShowMIMEType(response.mimeType())) {
-        function(PolicyAction::Use);
+        function(PolicyAction::Use, identifier);
     } else if (!request.url().isLocalFile() && response.mimeType() != "application/x-shockwave-flash") {
-        function(PolicyAction::Download);
+        function(PolicyAction::Download, identifier);
     } else {
-        function(PolicyAction::Ignore);
+        function(PolicyAction::Ignore, identifier);
     }
 }
 
-void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action,
-    const ResourceRequest& request, FormState* /*formState*/, const String& /*targetName*/, FramePolicyFunction&& function)
+void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(
+	const NavigationAction& action, const ResourceRequest& request,
+	FormState* /*formState*/, const String& /*targetName*/,
+	PolicyCheckIdentifier identifier, FramePolicyFunction&& function)
 {
     ASSERT(function);
     if (!function)
         return;
 
     if (request.isNull()) {
-        function(PolicyAction::Ignore);
+        function(PolicyAction::Ignore, identifier);
         return;
     }
 
     if (!m_messenger.IsValid() || !isTertiaryMouseButton(action)) {
         dispatchNavigationRequested(request);
-        function(PolicyAction::Use);
+        function(PolicyAction::Use, identifier);
         return;
     }
 
@@ -568,15 +570,19 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
         m_webFrame->Frame()->loader().activeDocumentLoader()->setLastCheckedRequest(WTFMove(emptyRequest));
     }
 
-    function(PolicyAction::Ignore);
+    function(PolicyAction::Ignore, identifier);
 }
 
-void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(const NavigationAction& action,
-    const ResourceRequest& request, const WebCore::ResourceResponse& response, FormState* formState, PolicyDecisionMode, FramePolicyFunction&& function)
+void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(
+	const NavigationAction& action, const ResourceRequest& request,
+	const WebCore::ResourceResponse& response, FormState* formState,
+	PolicyDecisionMode, PolicyCheckIdentifier identifier,
+	FramePolicyFunction&& function)
 {
     // Potentially we want to open a new window, when the user clicked with the
     // tertiary mouse button. That's why we can reuse the other method.
-    dispatchDecidePolicyForNewWindowAction(action, request, formState, String(), std::move(function));
+    dispatchDecidePolicyForNewWindowAction(action, request, formState, String(),
+		identifier, std::move(function));
 }
 
 void FrameLoaderClientHaiku::cancelPolicyCheck()

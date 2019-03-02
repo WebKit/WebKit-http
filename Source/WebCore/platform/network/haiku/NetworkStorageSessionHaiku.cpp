@@ -44,9 +44,9 @@
 
 namespace WebCore {
 
-NetworkStorageSession::NetworkStorageSession(PAL::SessionID sessionID, BUrlContext* context)
+NetworkStorageSession::NetworkStorageSession(PAL::SessionID sessionID)
     : m_sessionID(sessionID)
-    , m_context(context)
+    , m_context(nullptr)
 {
 }
 

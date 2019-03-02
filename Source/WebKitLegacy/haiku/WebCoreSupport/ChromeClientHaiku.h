@@ -115,7 +115,7 @@ namespace WebCore {
         PlatformPageClient platformPageClient() const override;
         void contentsSizeChanged(Frame&, const IntSize&) const override;
         void scrollRectIntoView(const IntRect&) const override;
-        void attachViewOverlayGraphicsLayer(WebCore::Frame& frame, WebCore::GraphicsLayer* layer) override;
+        void attachViewOverlayGraphicsLayer(WebCore::GraphicsLayer* layer) override;
 
         void setCursor(const Cursor&) override ;
         void setCursorHiddenUntilMouseMoves(bool) override { }
