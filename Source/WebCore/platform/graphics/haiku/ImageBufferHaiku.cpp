@@ -441,8 +441,7 @@ String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, 
     Vector<char> encodedBuffer;
     base64Encode(binaryBuffer, encodedBuffer);
 
-    return String::format("data:%s;base64,%.*s", mimeType.utf8().data(),
-        (int)encodedBuffer.size(), encodedBuffer.data());
+	return "data:" + mimeType + ";base64;" + encodedBuffer;
 }
 
 
