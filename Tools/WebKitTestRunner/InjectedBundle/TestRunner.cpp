@@ -1094,6 +1094,15 @@ void TestRunner::resetUserMediaPermission()
     InjectedBundle::singleton().resetUserMediaPermission();
 }
 
+bool TestRunner::isDoingMediaCapture() const
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("IsDoingMediaCapture"));
+    WKTypeRef returnData = nullptr;
+    WKBundlePagePostSynchronousMessageForTesting(InjectedBundle::singleton().page()->page(), messageName.get(), nullptr, &returnData);
+    ASSERT(WKGetTypeID(returnData) == WKBooleanGetTypeID());
+    return WKBooleanGetValue(adoptWK(static_cast<WKBooleanRef>(returnData)).get());
+}
+
 void TestRunner::setUserMediaPersistentPermissionForOrigin(bool permission, JSStringRef origin, JSStringRef parentOrigin)
 {
     WKRetainPtr<WKStringRef> originWK = toWK(origin);
@@ -2713,6 +2722,13 @@ unsigned long TestRunner::serverTrustEvaluationCallbackCallsCount()
     WKBundlePagePostSynchronousMessageForTesting(InjectedBundle::singleton().page()->page(), messageName.get(), nullptr, &returnData);
     ASSERT(WKGetTypeID(returnData) == WKUInt64GetTypeID());
     return WKUInt64GetValue(adoptWK(static_cast<WKUInt64Ref>(returnData)).get());
+}
+
+void TestRunner::setShouldDismissJavaScriptAlertsAsynchronously(bool shouldDismissAsynchronously)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("ShouldDismissJavaScriptAlertsAsynchronously"));
+    WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(shouldDismissAsynchronously));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
 }
 
 } // namespace WTR

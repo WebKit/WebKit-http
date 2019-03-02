@@ -1,3 +1,594 @@
+2019-02-06  Olivier Blin  <olivier.blin@softathome.com>
+
+        [GTK][WPE] force libpsl build to use ICU in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=194288
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/jhbuild.modules:
+        Require ICU for libpsl build in jhbuild, like done in WPE.
+
+2019-02-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r240785): [SOUP] Broke cookie persistent storage
+        https://bugs.webkit.org/show_bug.cgi?id=194209
+
+        Reviewed by Carlos Garcia Campos.
+
+        Enhance TestCookieManager to ensure this doesn't happen again.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestCookieManager.cpp:
+        (testCookieManagerPersistentStorage):
+        (beforeAll):
+
+2019-02-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Rename TestOptions.ignoreSynchronousMessagingTimeoutsForTesting
+        https://bugs.webkit.org/show_bug.cgi?id=194324
+
+        Reviewed by Andy Estes.
+
+        Rename ignoreSynchronousMessagingTimeoutsForTesting to just ignoreSynchronousMessagingTimeouts. The -ForTesting
+        part of the name is already implicit, since this is in testing code in TestOptions.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::generateContextConfiguration const):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2019-02-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Allow * as platform for builders and workers
+        https://bugs.webkit.org/show_bug.cgi?id=188533
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        (checkWorkersAndBuildersForConsistency):
+
+2019-02-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add few bots to config.json
+        https://bugs.webkit.org/show_bug.cgi?id=194304
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/config.json:
+
+2019-02-05  Keith Rollin  <krollin@apple.com>
+
+        Enable the automatic checking and regenerations of .xcfilelists during builds
+        https://bugs.webkit.org/show_bug.cgi?id=194124
+        <rdar://problem/47721277>
+
+        Reviewed by Tim Horton.
+
+        Bug 193790 add a facility for checking -- during build time -- that
+        any needed .xcfilelist files are up-to-date and for updating them if
+        they are not. This facility was initially opt-in by setting
+        WK_ENABLE_CHECK_XCFILELISTS until other pieces were in place and until
+        the process seemed robust. Its now time to enable this facility and
+        make it opt-out. If there is a need to disable this facility, set and
+        export WK_DISABLE_CHECK_XCFILELISTS=1 in your environment before
+        running `make` or `build-webkit`, or before running Xcode from the
+        command line.
+
+        Additionally, remove the step that generates a list of source files
+        going into the UnifiedSources build step. It's only necessarily to
+        specify Sources.txt and SourcesCocoa.txt as inputs.
+
+        * Scripts/generate-xcfilelists:
+
+2019-02-05  Olivier Blin  <olivier.blin@softathome.com>
+
+        [GTK][WPE] force libpsl build to use ICU in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=194288
+
+        Reviewed by Philippe Normand.
+
+        In jhbuild, libpsl depends on ICU, but its configure script may decide to use libidn instead of ICU.
+        This can cause build failures if libidn is detected but libunistring is not available.
+
+        Make sure that ICU is used for runtime and builtin PSL data.
+
+        * gtk/jhbuild.modules:
+        * wpe/jhbuild.modules:
+
+2019-02-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Modified timestamp should be updated on updating data
+        https://bugs.webkit.org/show_bug.cgi?id=194295
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/models/build.py:
+        * BuildSlaveSupport/ews-app/ews/models/buildermapping.py:
+        * BuildSlaveSupport/ews-app/ews/models/step.py:
+
+2019-02-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r240742.
+
+        Causes crashes on iOS simulator.
+
+        Reverted changeset:
+
+        "[iOS] Keyups for non-modifier keys identified as "Dead" when
+        not focused in a content-editable element"
+        https://bugs.webkit.org/show_bug.cgi?id=192824
+        https://trac.webkit.org/changeset/240742
+
+2019-02-05  Jonathan Bedard  <jbedard@apple.com>
+
+        run-webkit-tests emits message "...running None" when running tests
+        https://bugs.webkit.org/show_bug.cgi?id=194133
+        <rdar://problem/47724738>
+
+        Reviewed by Lucas Forschler.
+
+        * Scripts/webkitpy/xcode/device_type.py:
+        (DeviceType.__str__): Use both version mapping tables and use just the variant
+        name if no version name is available.
+        * Scripts/webkitpy/xcode/device_type_unittest.py:
+        (DeviceTypeTest):
+        (DeviceTypeTest.test_unmapped_version): Test case where the version does not have
+        an associated named.
+
+2019-02-05  Olivier Blin  <olivier.blin@softathome.com>
+
+        [WPE] require python3-setuptools for meson build in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=194287
+
+        Reviewed by Philippe Normand.
+
+        python3-setuptools is needed to build meson in jhbuild.
+        It is already required by the GTK port.
+
+        * wpe/install-dependencies:
+
+2019-02-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add method to save BuilderMapping to database
+        https://bugs.webkit.org/show_bug.cgi?id=194264
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/models/buildermapping.py:
+        (BuilderMapping.__str__):
+        (BuilderMapping):
+        (BuilderMapping.save_mapping):
+        (BuilderMapping.update_mapping):
+        (BuilderMapping.get_existing_mapping):
+        (BuilderMapping.is_valid_mapping):
+
+2019-02-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add timestamp fields for BuilderMappings
+        https://bugs.webkit.org/show_bug.cgi?id=194266
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/models/buildermapping.py:
+        (BuilderMapping):
+
+2019-02-04  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK][WPE] Need a function to convert internal URI to display ("pretty") URI
+        https://bugs.webkit.org/show_bug.cgi?id=174816
+
+        Reviewed by Michael Catanzaro.
+
+        Add tests for webkit_uri_for_display().
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitURIUtilities.cpp: Added.
+        (testURIForDisplayUnaffected):
+        (testURIForDisplayAffected):
+        (beforeAll):
+        (afterAll):
+        * TestWebKitAPI/glib/CMakeLists.txt:
+
+2019-02-04  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Precedence of booted devices should match precedence in DEFAULT_DEVICE_TYPES
+        https://bugs.webkit.org/show_bug.cgi?id=194158
+        <rdar://problem/47737268>
+
+        Rubber-stamped by Aakash Jain.
+
+        * Scripts/webkitpy/port/device_port.py:
+        (DevicePort.supported_device_types): Sort supported device types by the DEFAULT_DEVICE_TYPES.
+
+2019-02-04  Said Abou-Hallawa  <said@apple.com>
+
+        [CG] Enable setAdditionalSupportedImageTypes for WK1
+        https://bugs.webkit.org/show_bug.cgi?id=194190
+
+        Reviewed by Tim Horton.
+
+        Add a test similar to the one under WebKit Cocoa but make it create a
+        WebView instead of a WKWebView.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/100x100-red.tga: Added.
+        * TestWebKitAPI/Tests/mac/AdditionalSupportedImageTypes.html: Added.
+        * TestWebKitAPI/Tests/mac/AdditionalSupportedImageTypes.mm: Added.
+        (-[AdditionalSupportedImageTypesTest webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::runTest):
+        (TestWebKitAPI::TEST):
+
+2019-02-04  Zalan Bujtas  <zalan@apple.com>
+
+        [First paint] Adjust "finishedParsingMainDocument" flag by taking deferred and async scripts into account.
+        https://bugs.webkit.org/show_bug.cgi?id=194168
+
+        Reviewed by Simon Fraser.
+
+        Test if the firstVisuallyNoneEmpty milestone fires before the deferred script's post-message. 
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/FirstVisuallyNonEmptyMilestoneWithDeferredScript.mm: Added.
+        (-[FirstPaintMessageHandler userContentController:didReceiveScriptMessage:]):
+        (-[RenderingProgressNavigationDelegate _webView:renderingProgressDidChange:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit/deferred-script-load.html: Added.
+        * TestWebKitAPI/Tests/WebKit/deferred-script.js: Added.
+
+2019-02-04  Dean Johnson  <dean_johnson@apple.com>
+
+        REGRESSION (r237269): webkit-patch what-broke is broken 
+        https://bugs.webkit.org/show_bug.cgi?id=193025
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/common/host.py:
+        (Host.buildbot):
+        (Host.bugzilla): Renamed to 'buildbot'.
+
+2019-02-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] API test WKAttachmentTests.InsertAndRemoveDuplicateAttachment is failing after r240902
+        https://bugs.webkit.org/show_bug.cgi?id=194207
+
+        Reviewed by Tim Horton.
+
+        Fix this API test by making it robust against smart paste on iOS. Currently, this test pastes an attachment
+        element and assumes that the pasted attachment is adjacent to the original one. However, after enabling smart
+        paste, we now insert an extra space in between. Instead of executing "DeleteBackward" twice to test removing the
+        attachment elements, we delete backwards once to remove the pasted attachment, and move the selection to the
+        start and delete forwards to remove the original attachment.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (TestWebKitAPI::TEST):
+
+2019-02-04  Youenn Fablet  <youenn@apple.com>
+
+        Capture state should be managed consistently when doing process swapping
+        https://bugs.webkit.org/show_bug.cgi?id=194122
+        <rdar://problem/47609293>
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        (-[GetUserMediaUIDelegate _webView:requestUserMediaAuthorizationForDevices:url:mainFrameURL:decisionHandler:]):
+        (-[GetUserMediaUIDelegate _webView:checkUserMediaPermissionForURL:mainFrameURL:frameIdentifier:decisionHandler:]):
+        (-[GetUserMediaUIDelegate _webView:mediaCaptureStateDidChange:]):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::isDoingMediaCapture const):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::isDoingMediaCapture const):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::isDoingMediaCapture const):
+
+2019-02-03  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] WebKitTestRunners is failing to create the IndexedDB directory.
+        https://bugs.webkit.org/show_bug.cgi?id=194142
+
+        Reviewed by Ross Kirsling.
+
+        There three 'separator' variables in TestController.cpp. Renamed
+        it 'pathSeparator', and unified them.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::generateContextConfiguration const):
+        (WTR::createTestURL):
+        (WTR::TestController::platformAdjustContext):
+
+2019-02-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Make setNeedsLayout on the root more explicitly about triggering its side-effects
+        https://bugs.webkit.org/show_bug.cgi?id=194198
+
+        Reviewed by Antti Koivisto.
+
+        No need to set the banner heights on navigation now, since Page stores them.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController webView:didFinishNavigation:]):
+
+2019-02-03  John Wilander  <wilander@apple.com>
+
+        Parse and handle Ad Click Attribution attributes in HTMLAnchorElement::handleClick()
+        https://bugs.webkit.org/show_bug.cgi?id=194104
+        <rdar://problem/47649991>
+
+        Reviewed by Chris Dumez, Daniel Bates, and Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/AdClickAttribution.cpp:
+        (TestWebKitAPI::TEST):
+            Changed numeric types from unsigned short to uint32_t.
+
+2019-02-02  David Kilzer  <ddkilzer@apple.com>
+
+        Leak of NSArray (4.25 Kbytes) in com.apple.WebKit.WebContent running WebKit layout tests on iOS Simulator
+        <https://webkit.org/b/194178>
+        <rdar://problem/47753473>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm:
+        (WTR::uninstallFakeHelvetica): Pass nullptr into
+        CTFontManagerUnregisterFontsForURLs() to ignore any errors.
+
+2019-02-02  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Initialize ICB's style with fixed width/height.
+        https://bugs.webkit.org/show_bug.cgi?id=194188
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-02-02  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add missing case to out-of-flow non-replaced horizontal used margin value computation
+        https://bugs.webkit.org/show_bug.cgi?id=194185
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-12-16  Darin Adler  <darin@apple.com>
+
+        Convert additional String::format clients to alternative approaches
+        https://bugs.webkit.org/show_bug.cgi?id=192746
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::originUserVisibleName): Use makeString and reduce the use of std::string
+        as an intermediate in code that ultimately constructs a WTF::String.
+        (WTR::userMediaOriginHash): Use makeString.
+        (WTR::TestController::didNavigateWithNavigationData): More of the same.
+        (WTR::TestController::didPerformClientRedirect): Ditto.
+        (WTR::TestController::didPerformServerRedirect): Ditto.
+        (WTR::TestController::didUpdateHistoryTitle): Ditto.
+
+2019-02-01  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add unit test to verify builder keys
+        https://bugs.webkit.org/show_bug.cgi?id=194152
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/loadConfig_unittest.py:
+        (ConfigDotJSONTest.test_builder_keys): Added unit-test.
+
+2019-02-01  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Expand tests coverage (12 new tests -> 787)
+
+        Unreviewed test gardening.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-02-01  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Fix statically positioned replaced out-of-flow horizontal geometry
+        https://bugs.webkit.org/show_bug.cgi?id=194163
+
+        Reviewed by Simon Fraser.
+
+        775
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-02-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Consistent 1 sec hang when triggering modal alerts while handling synchronous touch events
+        https://bugs.webkit.org/show_bug.cgi?id=194140
+        <rdar://problem/47728098>
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setShouldDismissJavaScriptAlertsAsynchronously):
+
+        Add a new TestRunner hook to make modal JavaScript alerts dismiss asynchronously. This is used by the new layout
+        test to induce an IPC deadlock when presenting a modal alert during touch start.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::runJavaScriptAlert):
+
+        Add a client callback function for running JavaScript alerts.
+
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::generateContextConfiguration const):
+
+        Add a test option to disable IPC timeouts for a layout test. This forces the test to reliably time out without
+        the fix in this patch.
+
+        (WTR::TestController::createWebViewWithOptions):
+
+        Plumb TestOptions to generateContextConfiguration.
+
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        (WTR::TestController::setShouldDismissJavaScriptAlertsAsynchronously):
+        (WTR::TestController::handleJavaScriptAlert):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2019-02-01  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: Flaky ASSERTION FAILED: m_uncommittedState.state == State::Committed on http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page.html
+        https://bugs.webkit.org/show_bug.cgi?id=193740
+        <rdar://problem/47527267>
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-02-01  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add display name field to BuilderMapping model
+        https://bugs.webkit.org/show_bug.cgi?id=194153
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/models/buildermapping.py:
+        (BuilderMapping):
+
+2019-02-01  Youenn Fablet  <youenn@apple.com>
+
+        API Test broken: TestWebKitAPI.WebKit2.GetUserMediaReprompt
+        https://bugs.webkit.org/show_bug.cgi?id=194155
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Tests/WebKit/getUserMedia.html:
+        Revert use of async functions as it seems it cannot be evaluated from TestWebKitAPI.
+        Keep calling enumerateDevices to continue cover https://bugs.webkit.org/show_bug.cgi?id=194106.
+
+2019-02-01  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Adjust replaced element's intrinsic ratio
+        https://bugs.webkit.org/show_bug.cgi?id=194154
+
+        Reviewed by Antti Koivisto.
+
+        761
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Show test results in minibrowser
+        https://bugs.webkit.org/show_bug.cgi?id=194150
+
+        Reviewed by Žan Doberšek.
+
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.show_results_html_file):
+
+2019-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] MiniBrowser: add ky bindings for back/forward navigation
+        https://bugs.webkit.org/show_bug.cgi?id=194151
+
+        Reviewed by Žan Doberšek.
+
+        ALT + <- go back
+        ALT + -> go forward
+
+        * MiniBrowser/wpe/main.cpp:
+        (main):
+
+2019-02-01  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Set intrinsic size on Layout::Replaced
+        https://bugs.webkit.org/show_bug.cgi?id=194139
+
+        Reviewed by Antti Koivisto.
+
+        744
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] MiniBrowser: use g_file_new_for_commandline_arg
+        https://bugs.webkit.org/show_bug.cgi?id=194146
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        It allows to open relative paths.
+
+        * MiniBrowser/wpe/main.cpp:
+        (main):
+
+2019-01-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update flakiness dashboard configuration after recent queue changes
+        https://bugs.webkit.org/show_bug.cgi?id=194127
+
+        Rubber-stamped by Aakash Jain.
+
+        Apple Windows queues were updated in r237755, and Sierra was removed in r239859.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+
+2019-01-31  Youenn Fablet  <youenn@apple.com>
+
+        Add an API test to cover UIClient checkUserMediaPermissionForOrigin being nullptr
+        https://bugs.webkit.org/show_bug.cgi?id=194106
+        <rdar://problem/47676333>
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/Tests/WebKit/UserMedia.cpp:
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit/getUserMedia.html:
+
+2019-01-31  Chris Dumez  <cdumez@apple.com>
+
+        Page zoom level is lost after a process swap or a crash
+        https://bugs.webkit.org/show_bug.cgi?id=194105
+        <rdar://problem/47610781>
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        (-[PSONNavigationDelegate webView:didCommitNavigation:]):
+
+2019-01-31  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r238819 which is unneeded and caused a performance regression.
+        https://bugs.webkit.org/show_bug.cgi?id=192272
+        <rdar://problem/46664625>
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ParserYieldTokenPlugIn.mm:
+        (-[ParserYieldTokenPlugIn webProcessPlugInBrowserContextController:didCommitLoadForFrame:]):
+        (-[ParserYieldTokenPlugIn webProcessPlugInBrowserContextController:willStartProvisionalLoadForFrame:completionHandler:]): Deleted.
+
+2019-01-31  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Formalize WebKitAdditions mechanism of LoadOptimizer
+        https://bugs.webkit.org/show_bug.cgi?id=193886
+        <rdar://problem/47696809>
+
+        Reviewed by Brent Fulgham.
+
+        * MiniBrowser/MiniBrowser.entitlements:
+        Make com.apple.security.temporary-exception.mach-lookup.global-name an array.
+
 2019-01-31  Zalan Bujtas  <zalan@apple.com>
 
         [LFC] Margin before/after/start/end initial value is 0 and not auto.

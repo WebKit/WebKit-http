@@ -260,9 +260,7 @@ struct WKAutoCorrectionData {
     WebKit::InteractionInformationAtPosition _positionInformation;
     WebKit::FocusedElementInformation _focusedElementInformation;
     RetainPtr<NSObject<WKFormPeripheral>> _inputPeripheral;
-#if !USE(UIKIT_KEYBOARD_ADDITIONS)
     RetainPtr<UIEvent> _uiEventBeingResent;
-#endif
     BlockPtr<void(::WebEvent *, BOOL)> _keyWebEventHandler;
 
     CGPoint _lastInteractionLocation;
@@ -377,6 +375,10 @@ struct WKAutoCorrectionData {
 - (BOOL)resignFirstResponderForWebView;
 - (BOOL)canPerformActionForWebView:(SEL)action withSender:(id)sender;
 - (id)targetForActionForWebView:(SEL)action withSender:(id)sender;
+
+#if ENABLE(POINTER_EVENTS)
+- (void)cancelPointersForGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
+#endif
 
 #define DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW(_action) \
     - (void)_action ## ForWebView:(id)sender;

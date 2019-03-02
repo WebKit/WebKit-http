@@ -35,6 +35,7 @@
 namespace WebCore {
 namespace Layout {
 
+class InlineContainer;
 class InlineFormattingState;
 class InlineRunProvider;
 
@@ -112,13 +113,13 @@ private:
 
     void layoutFormattingContextRoot(const Box&) const;
     void computeWidthAndHeightForReplacedInlineBox(const Box&) const;
+    void computeMarginBorderAndPadding(const InlineContainer&) const;
     void computeHeightAndMargin(const Box&) const;
     void computeWidthAndMargin(const Box&) const;
     void computeFloatPosition(const FloatingContext&, Line&, const Box&) const;
     void placeInFlowPositionedChildren(unsigned firstRunIndex) const;
 
     void collectInlineContent(InlineRunProvider&) const;
-    void collectInlineContentForSubtree(const Box& root, InlineRunProvider&) const;
     InstrinsicWidthConstraints instrinsicWidthConstraints() const override;
 
     InlineFormattingState& formattingState() const { return downcast<InlineFormattingState>(FormattingContext::formattingState()); }

@@ -104,12 +104,6 @@ class JSObject : public JSCell {
 public:
     typedef JSCell Base;
 
-    template<typename>
-    static CompleteSubspace* subspaceFor(VM& vm)
-    {
-        return &vm.cellJSValueOOBSpace;
-    }
-
     // This is a super dangerous method for JITs. Sometimes the JITs will want to create either a
     // JSFinalObject or a JSArray. This is the method that will do that.
     static JSObject* createRawObject(ExecState* exec, Structure* structure, Butterfly* = nullptr);
@@ -884,6 +878,9 @@ public:
 
     bool canPerformFastPutInline(VM&, PropertyName);
     bool canPerformFastPutInlineExcludingProto(VM&);
+
+    bool mayBePrototype() const;
+    void didBecomePrototype();
 
     DECLARE_EXPORT_INFO;
 

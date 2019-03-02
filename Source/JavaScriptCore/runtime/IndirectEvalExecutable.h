@@ -31,10 +31,10 @@ namespace JSC {
 
 class IndirectEvalExecutable final : public EvalExecutable {
 public:
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess mode>
     static IsoSubspace* subspaceFor(VM& vm)
     {
-        return &vm.indirectEvalExecutableSpace.space;
+        return vm.indirectEvalExecutableSpace<mode>();
     }
 
     static IndirectEvalExecutable* create(ExecState*, const SourceCode&, bool isInStrictContext, DerivedContextType, bool isArrowFunctionContext, EvalContextType);

@@ -80,7 +80,7 @@ messages -> WebPage LegacyReceiver {
     SyncApplyAutocorrection(String correction, String originalText) -> (bool autocorrectionApplied) LegacySync
     RequestAutocorrectionContext(WebKit::CallbackID callbackID)
     GetAutocorrectionContext() -> (String beforeContext, String markedText, String selectedText, String afterContext, uint64_t location, uint64_t length) LegacySync
-    GetPositionInformation(struct WebKit::InteractionInformationRequest request) -> (struct WebKit::InteractionInformationAtPosition information) LegacySync
+    GetPositionInformation(struct WebKit::InteractionInformationRequest request) -> (struct WebKit::InteractionInformationAtPosition information) Delayed
     RequestPositionInformation(struct WebKit::InteractionInformationRequest request)
     StartInteractionWithElementAtPosition(WebCore::IntPoint point)
     StopInteraction()
@@ -121,10 +121,14 @@ messages -> WebPage LegacyReceiver {
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-    TouchEventSync(WebKit::WebTouchEvent event) -> (bool handled) LegacySync
+    TouchEventSync(WebKit::WebTouchEvent event) -> (bool handled) Delayed
 #endif
 #if !ENABLE(IOS_TOUCH_EVENTS) && ENABLE(TOUCH_EVENTS)
     TouchEvent(WebKit::WebTouchEvent event)
+#endif
+
+#if ENABLE(POINTER_EVENTS)
+    CancelPointer(WebCore::PointerID pointerId, WebCore::IntPoint documentPoint)
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -167,7 +171,7 @@ messages -> WebPage LegacyReceiver {
     DidRemoveBackForwardItem(struct WebCore::BackForwardItemIdentifier backForwardItemID)
 
     UpdateWebsitePolicies(struct WebKit::WebsitePoliciesData websitePolicies)
-    DidReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, enum:uint8_t WebCore::PolicyAction policyAction, uint64_t navigationID, WebKit::DownloadID downloadID, Optional<WebKit::WebsitePoliciesData> websitePolicies)
+    DidReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, WebCore::PolicyCheckIdentifier policyCheckIdentifier, enum:uint8_t WebCore::PolicyAction policyAction, uint64_t navigationID, WebKit::DownloadID downloadID, Optional<WebKit::WebsitePoliciesData> websitePolicies)
     ContinueWillSubmitForm(uint64_t frameID, uint64_t listenerID)
 
     ClearSelection()

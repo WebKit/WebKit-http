@@ -190,6 +190,7 @@
 #include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/PlatformMediaSessionManager.h>
 #include <WebCore/PluginDocument.h>
+#include <WebCore/PointerCaptureController.h>
 #include <WebCore/PrintContext.h>
 #include <WebCore/PromisedAttachmentInfo.h>
 #include <WebCore/Range.h>
@@ -261,6 +262,8 @@
 #endif
 
 #if PLATFORM(IOS_FAMILY)
+#include "InteractionInformationAtPosition.h"
+#include "InteractionInformationRequest.h"
 #include "RemoteLayerTreeDrawingArea.h"
 #include <CoreGraphics/CoreGraphics.h>
 #include <WebCore/Icon.h>
@@ -484,6 +487,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     m_drawingArea->updatePreferences(parameters.store);
 
     setBackgroundExtendsBeyondPage(parameters.backgroundExtendsBeyondPage);
+    setPageAndTextZoomFactors(parameters.pageZoomFactor, parameters.textZoomFactor);
 
 #if ENABLE(GEOLOCATION)
     WebCore::provideGeolocationTo(m_page.get(), *new WebGeolocationClient(*this));
@@ -786,12 +790,12 @@ WebPage::~WebPage()
 #endif
 }
 
-IPC::Connection* WebPage::messageSenderConnection()
+IPC::Connection* WebPage::messageSenderConnection() const
 {
     return WebProcess::singleton().parentProcessConnection();
 }
 
-uint64_t WebPage::messageSenderDestinationID()
+uint64_t WebPage::messageSenderDestinationID() const
 {
     return pageID();
 }
@@ -1216,7 +1220,7 @@ void WebPage::enterAcceleratedCompositingMode(GraphicsLayer* layer)
 
 void WebPage::exitAcceleratedCompositingMode()
 {
-    m_drawingArea->setRootCompositingLayer(0);
+    m_drawingArea->setRootCompositingLayer(nullptr);
 }
 
 void WebPage::close()
@@ -2124,16 +2128,12 @@ void WebPage::showPageBanners()
 
 void WebPage::setHeaderBannerHeightForTesting(int height)
 {
-#if ENABLE(RUBBER_BANDING)
-    corePage()->addHeaderWithHeight(height);
-#endif
+    corePage()->setHeaderHeight(height);
 }
 
 void WebPage::setFooterBannerHeightForTesting(int height)
 {
-#if ENABLE(RUBBER_BANDING)
-    corePage()->addFooterWithHeight(height);
-#endif
+    corePage()->setFooterHeight(height);
 }
 
 #endif // !PLATFORM(IOS_FAMILY)
@@ -2723,6 +2723,19 @@ void WebPage::requestFontAttributesAtSelectionStart(CallbackID callbackID)
     send(Messages::WebPageProxy::FontAttributesCallback(attributes, callbackID));
 }
 
+void WebPage::cancelGesturesBlockedOnSynchronousReplies()
+{
+#if ENABLE(IOS_TOUCH_EVENTS)
+    if (auto reply = WTFMove(m_pendingSynchronousTouchEventReply))
+        reply(true);
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+    if (auto reply = WTFMove(m_pendingSynchronousPositionInformationReply))
+        reply(InteractionInformationAtPosition::invalidInformation());
+#endif
+}
+
 #if ENABLE(TOUCH_EVENTS)
 static bool handleTouchEvent(const WebTouchEvent& touchEvent, Page* page)
 {
@@ -2744,13 +2757,19 @@ void WebPage::dispatchTouchEvent(const WebTouchEvent& touchEvent, bool& handled)
     updatePotentialTapSecurityOrigin(touchEvent, handled);
 }
 
-void WebPage::touchEventSync(const WebTouchEvent& touchEvent, bool& handled)
+void WebPage::touchEventSync(const WebTouchEvent& touchEvent, CompletionHandler<void(bool)>&& reply)
 {
+    m_pendingSynchronousTouchEventReply = WTFMove(reply);
+
     EventDispatcher::TouchEventQueue queuedEvents;
     WebProcess::singleton().eventDispatcher().getQueuedTouchEventsForPage(*this, queuedEvents);
     dispatchAsynchronousTouchEvents(queuedEvents);
 
+    bool handled = true;
     dispatchTouchEvent(touchEvent, handled);
+
+    if (auto reply = WTFMove(m_pendingSynchronousTouchEventReply))
+        reply(handled);
 }
 
 void WebPage::updatePotentialTapSecurityOrigin(const WebTouchEvent& touchEvent, bool wasHandled)
@@ -2793,6 +2812,13 @@ void WebPage::touchEvent(const WebTouchEvent& touchEvent)
     bool handled = handleTouchEvent(touchEvent, m_page.get());
 
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(touchEvent.type()), handled));
+}
+#endif
+
+#if ENABLE(POINTER_EVENTS)
+void WebPage::cancelPointer(WebCore::PointerID pointerId, const WebCore::IntPoint& documentPoint)
+{
+    m_page->pointerCaptureController().cancelPointer(pointerId, documentPoint);
 }
 #endif
 
@@ -3048,12 +3074,12 @@ void WebPage::setSessionID(PAL::SessionID sessionID)
     m_page->setSessionID(sessionID);
 }
 
-void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, PolicyAction policyAction, uint64_t navigationID, const DownloadID& downloadID, Optional<WebsitePoliciesData>&& websitePolicies)
+void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, PolicyCheckIdentifier identifier, PolicyAction policyAction, uint64_t navigationID, const DownloadID& downloadID, Optional<WebsitePoliciesData>&& websitePolicies)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame)
         return;
-    frame->didReceivePolicyDecision(listenerID, policyAction, navigationID, downloadID, WTFMove(websitePolicies));
+    frame->didReceivePolicyDecision(listenerID, identifier, policyAction, navigationID, downloadID, WTFMove(websitePolicies));
 }
 
 void WebPage::continueWillSubmitForm(uint64_t frameID, uint64_t listenerID)
@@ -3363,6 +3389,13 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     updatePreferencesGenerated(store);
 
     Settings& settings = m_page->settings();
+
+#if !PLATFORM(GTK)
+    if (!settings.acceleratedCompositingEnabled()) {
+        RELEASE_LOG_IF_ALLOWED("%p - WebPage - acceleratedCompositingEnabled setting was false. WebKit cannot function in this mode; changing setting to true", this);
+        settings.setAcceleratedCompositingEnabled(true);
+    }
+#endif
 
     bool requiresUserGestureForMedia = store.getBoolValueForKey(WebPreferencesKey::requiresUserGestureForMediaPlaybackKey());
     settings.setVideoPlaybackRequiresUserGesture(requiresUserGestureForMedia || store.getBoolValueForKey(WebPreferencesKey::requiresUserGestureForVideoPlaybackKey()));
@@ -4800,17 +4833,19 @@ void WebPage::handleAlternativeTextUIResult(const String& result)
 
 void WebPage::simulateMouseDown(int button, WebCore::IntPoint position, int clickCount, WKEventModifiers modifiers, WallTime time)
 {
-    mouseEvent(WebMouseEvent(WebMouseEvent::MouseDown, static_cast<WebMouseEvent::Button>(button), 0, position, position, 0, 0, 0, clickCount, static_cast<WebMouseEvent::Modifiers>(modifiers), time, WebCore::ForceAtClick, WebMouseEvent::NoTap));
+    static_assert(sizeof(WKEventModifiers) >= sizeof(WebEvent::Modifier), "WKEventModifiers must be greater than or equal to the size of WebEvent::Modifier");
+    mouseEvent(WebMouseEvent(WebMouseEvent::MouseDown, static_cast<WebMouseEvent::Button>(button), 0, position, position, 0, 0, 0, clickCount, OptionSet<WebEvent::Modifier>::fromRaw(modifiers), time, WebCore::ForceAtClick, WebMouseEvent::NoTap));
 }
 
 void WebPage::simulateMouseUp(int button, WebCore::IntPoint position, int clickCount, WKEventModifiers modifiers, WallTime time)
 {
-    mouseEvent(WebMouseEvent(WebMouseEvent::MouseUp, static_cast<WebMouseEvent::Button>(button), 0, position, position, 0, 0, 0, clickCount, static_cast<WebMouseEvent::Modifiers>(modifiers), time, WebCore::ForceAtClick, WebMouseEvent::NoTap));
+    static_assert(sizeof(WKEventModifiers) >= sizeof(WebEvent::Modifier), "WKEventModifiers must be greater than or equal to the size of WebEvent::Modifier");
+    mouseEvent(WebMouseEvent(WebMouseEvent::MouseUp, static_cast<WebMouseEvent::Button>(button), 0, position, position, 0, 0, 0, clickCount, OptionSet<WebEvent::Modifier>::fromRaw(modifiers), time, WebCore::ForceAtClick, WebMouseEvent::NoTap));
 }
 
 void WebPage::simulateMouseMotion(WebCore::IntPoint position, WallTime time)
 {
-    mouseEvent(WebMouseEvent(WebMouseEvent::MouseMove, WebMouseEvent::NoButton, 0, position, position, 0, 0, 0, 0, WebMouseEvent::Modifiers(), time, 0, WebMouseEvent::NoTap));
+    mouseEvent(WebMouseEvent(WebMouseEvent::MouseMove, WebMouseEvent::NoButton, 0, position, position, 0, 0, 0, 0, OptionSet<WebEvent::Modifier> { }, time, 0, WebMouseEvent::NoTap));
 }
 
 void WebPage::setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length, bool suppressUnderline)

@@ -1034,6 +1034,10 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
         WKRetainPtr<WKUInt64Ref> result(AdoptWK, WKUInt64Create(count));
         return result;
     }
+    if (WKStringIsEqualToUTF8CString(messageName, "IsDoingMediaCapture")) {
+        WKRetainPtr<WKTypeRef> result(AdoptWK, WKBooleanCreate(TestController::singleton().isDoingMediaCapture()));
+        return result;
+    }
 
     if (WKStringIsEqualToUTF8CString(messageName, "SetStatisticsDebugMode")) {
         ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
@@ -1537,6 +1541,13 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
     if (WKStringIsEqualToUTF8CString(messageName, "ServerTrustEvaluationCallbackCallsCount")) {
         WKRetainPtr<WKTypeRef> result(AdoptWK, WKUInt64Create(TestController::singleton().serverTrustEvaluationCallbackCallsCount()));
         return result;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "ShouldDismissJavaScriptAlertsAsynchronously")) {
+        ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
+        WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
+        TestController::singleton().setShouldDismissJavaScriptAlertsAsynchronously(WKBooleanGetValue(value));
+        return nullptr;
     }
 
     ASSERT_NOT_REACHED();

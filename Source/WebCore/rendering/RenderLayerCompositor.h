@@ -241,11 +241,12 @@ public:
     WEBCORE_EXPORT RenderLayer& rootRenderLayer() const;
     GraphicsLayer* rootGraphicsLayer() const;
 
-    GraphicsLayer* scrollLayer() const { return m_scrollLayer.get(); }
+    GraphicsLayer* scrollContainerLayer() const { return m_scrollContainerLayer.get(); }
+    GraphicsLayer* scrolledContentsLayer() const { return m_scrolledContentsLayer.get(); }
     GraphicsLayer* clipLayer() const { return m_clipLayer.get(); }
-    GraphicsLayer* rootContentLayer() const { return m_rootContentLayer.get(); }
+    GraphicsLayer* rootContentsLayer() const { return m_rootContentsLayer.get(); }
 
-    GraphicsLayer* layerForClipping() const {  return m_clipLayer ? m_clipLayer.get() : m_scrollLayer.get();  }
+    GraphicsLayer* layerForClipping() const {  return m_clipLayer ? m_clipLayer.get() : m_scrollContainerLayer.get();  }
 
 #if ENABLE(RUBBER_BANDING)
     GraphicsLayer* headerLayer() const { return m_layerForHeader.get(); }
@@ -534,7 +535,7 @@ private:
     
 private:
     RenderView& m_renderView;
-    RefPtr<GraphicsLayer> m_rootContentLayer;
+    RefPtr<GraphicsLayer> m_rootContentsLayer;
     Timer m_updateCompositingLayersTimer;
 
     ChromeClient::CompositingTriggerFlags m_compositingTriggers { static_cast<ChromeClient::CompositingTriggerFlags>(ChromeClient::AllTriggers) };
@@ -564,7 +565,8 @@ private:
 
     // Enclosing clipping layer for iframe content
     RefPtr<GraphicsLayer> m_clipLayer;
-    RefPtr<GraphicsLayer> m_scrollLayer;
+    RefPtr<GraphicsLayer> m_scrollContainerLayer;
+    RefPtr<GraphicsLayer> m_scrolledContentsLayer;
 
     // Enclosing layer for overflow controls and the clipping layer
     RefPtr<GraphicsLayer> m_overflowControlsHostLayer;

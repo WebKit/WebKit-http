@@ -72,24 +72,21 @@ ScrollingThread& ScrollingThread::singleton()
 
 void ScrollingThread::createThreadIfNeeded()
 {
-    if (m_thread)
-        return;
-
     // Wait for the thread to initialize the run loop.
-    {
-        std::unique_lock<Lock> lock(m_initializeRunLoopMutex);
+    std::unique_lock<Lock> lock(m_initializeRunLoopMutex);
 
+    if (!m_thread) {
         m_thread = Thread::create("WebCore: Scrolling", [this] {
             WTF::Thread::setCurrentThreadIsUserInteractive();
             initializeRunLoop();
         });
-        
-#if PLATFORM(COCOA)
-        m_initializeRunLoopConditionVariable.wait(lock, [this]{ return m_threadRunLoop; });
-#else
-        m_initializeRunLoopConditionVariable.wait(lock, [this]{ return m_runLoop; });
-#endif
     }
+
+#if PLATFORM(COCOA)
+    m_initializeRunLoopConditionVariable.wait(lock, [this]{ return m_threadRunLoop; });
+#else
+    m_initializeRunLoopConditionVariable.wait(lock, [this]{ return m_runLoop; });
+#endif
 }
 
 void ScrollingThread::dispatchFunctionsFromScrollingThread()
@@ -106,6 +103,25 @@ void ScrollingThread::dispatchFunctionsFromScrollingThread()
     for (auto& function : functions)
         function();
 }
+
+#if PLATFORM(IOS_FAMILY)
+NO_RETURN_DUE_TO_ASSERT void ScrollingThread::initializeRunLoop()
+{
+    ASSERT_NOT_REACHED();
+}
+
+void ScrollingThread::wakeUpRunLoop()
+{
+}
+
+void ScrollingThread::threadRunLoopSourceCallback(void*)
+{
+}
+
+void ScrollingThread::threadRunLoopSourceCallback()
+{
+}
+#endif // PLATFORM(IOS_FAMILY)
 
 } // namespace WebCore
 

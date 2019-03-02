@@ -1,3 +1,582 @@
+2019-02-06  Antti Koivisto  <antti@apple.com>
+
+        RELEASE_ASSERT(!m_document.isResolvingTreeStyle()) in com.apple.WebKit.WebContent at WebCore: WebCore::StyleResolver::~StyleResolver
+        https://bugs.webkit.org/show_bug.cgi?id=194333
+        <rdar://problem/47822929>
+
+        Reviewed by Zalan Bujtas.
+
+        * http/tests/contentextensions/css-display-none-keyframe-expected.txt: Added.
+        * http/tests/contentextensions/css-display-none-keyframe.html: Added.
+        * http/tests/contentextensions/css-display-none-keyframe.html.json: Added.
+
+2019-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r240909): Release assert in FrameLoader::loadURL when navigating with a non-existent target name
+        https://bugs.webkit.org/show_bug.cgi?id=194329
+
+        Reviewed by Geoffrey Garen.
+
+        Added a regression test.
+
+        * fast/loader/navigate-with-new-target-after-back-forward-navigation-expected.txt: Added.
+        * fast/loader/navigate-with-new-target-after-back-forward-navigation.html: Added.
+
+2019-02-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: PropertiesChanged shouldn't fire when old and new text are both empty
+        https://bugs.webkit.org/show_bug.cgi?id=194318
+
+        Reviewed by Devin Rousso.
+
+        Fix the flaky test on Debug.
+
+        * inspector/css/modify-css-property-race-expected.txt:
+        * inspector/css/modify-css-property-race.html:
+
+2019-02-05  Megan Gardner  <megan_gardner@apple.com>
+
+        [iOS] Layout tests editing/pasteboard/smart-paste-007.html and editing/pasteboard/smart-paste-008.html are failing
+        https://bugs.webkit.org/show_bug.cgi?id=194275
+
+        Reviewed by Ryosuke Niwa.
+
+        Smart paste tests 7 and 8 were outputting more information that was needed
+        to verify correct functionality. Also cleaned up test 8 to be more similar to
+        the other smart copy paste tests. 
+
+        * editing/pasteboard/smart-paste-007.html:
+        * editing/pasteboard/smart-paste-008.html:
+        * platform/ios-wk1/editing/pasteboard/smart-paste-007-expected.txt: Removed.
+        * platform/ios-wk1/editing/pasteboard/smart-paste-008-expected.txt: Removed.
+        * platform/ios-wk2/editing/pasteboard/smart-paste-008-expected.txt: Removed.
+        * platform/ios/editing/pasteboard/smart-paste-007-expected.txt: Renamed from LayoutTests/platform/ios-wk2/editing/pasteboard/smart-paste-007-expected.txt.
+        * platform/ios/editing/pasteboard/smart-paste-008-expected.txt: Added.
+        * platform/mac/editing/pasteboard/smart-paste-007-expected.txt:
+        * platform/mac/editing/pasteboard/smart-paste-008-expected.txt:
+
+2019-02-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Rename TestOptions.ignoreSynchronousMessagingTimeoutsForTesting
+        https://bugs.webkit.org/show_bug.cgi?id=194324
+
+        Reviewed by Andy Estes.
+
+        * fast/events/touch/ios/show-modal-alert-during-touch-start.html:
+
+2019-02-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Fix modify-css-property-race.html test failures
+        https://bugs.webkit.org/show_bug.cgi?id=194282
+
+        Reviewed by Matt Baker.
+
+        Fix test failures introduced by r240946 by providing a message for expectGreaterThan assert,
+        so it doesn't log the actual values.
+
+        * inspector/css/modify-css-property-race-expected.txt:
+        * inspector/css/modify-css-property-race.html:
+
+2019-02-05  Andy VanWagoner  <andy@vanwagoner.family>
+
+        REGRESSION(r238848): ICU upgrade broke jsc-layout-tests.yaml/js/script-tests/intl-numberformat.js.layout
+        https://bugs.webkit.org/show_bug.cgi?id=193620
+
+        Reviewed by Michael Catanzaro.
+
+        Update NumberFormat tests to be more tolerant of ICU version differences.
+
+        * js/intl-numberformat-expected.txt:
+        * js/script-tests/intl-numberformat.js:
+        * platform/gtk/TestExpectations:
+
+2019-02-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r240742.
+
+        Causes crashes on iOS simulator.
+
+        Reverted changeset:
+
+        "[iOS] Keyups for non-modifier keys identified as "Dead" when
+        not focused in a content-editable element"
+        https://bugs.webkit.org/show_bug.cgi?id=192824
+        https://trac.webkit.org/changeset/240742
+
+2019-02-04  Jonathan Bedard  <jbedard@apple.com>
+
+        [iPad] Initial test gardening (Part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=193767
+        <rdar://problem/47515175>
+
+        Unreviewed test gardening.
+
+        A number of tests need to be re-baselined when run on iPad because of the larger screen.
+
+        * fast/canvas/canvas-too-large-to-draw.html: iOS userAgent regex should match iPhones and iPads.
+        * fast/events/touch/ios/target-taller-than-view.html: Move event listener since tabpPointY is the value we should compare against.
+        * fast/visual-viewport/ios/min-scale-greater-than-one.html: expectedTop depends on the screen size of the device.
+        * platform/ipad/fast/events: Added.
+        * platform/ipad/fast/events/ios: Added.
+        * platform/ipad/fast/events/ios/keyboard-should-not-trigger-resize-expected.txt: Added.
+        * platform/ipad/fast/events/ios/rotation: Added.
+        * platform/ipad/fast/events/ios/rotation/zz-no-rotation-expected.txt: Added.
+        * platform/ipad/fast/events/touch: Added.
+        * platform/ipad/fast/events/touch/ios: Added.
+        * platform/ipad/fast/events/touch/ios/target-taller-than-view-expected.txt: Added.
+        * platform/ipad/fast/scrolling: Added.
+        * platform/ipad/fast/scrolling/ios: Added.
+        * platform/ipad/fast/scrolling/ios/clipping-ancestor-with-accelerated-scrolling-ancestor-expected.txt: Added.
+        * platform/ipad/fast/scrolling/ios/overflow-scrolling-ancestor-clip-expected.txt: Added.
+        * platform/ipad/fast/scrolling/ios/overflow-scrolling-ancestor-clip-size-expected.txt: Added.
+        * platform/ipad/fast/scrolling/ios/scrolling-content-clip-to-viewport-expected.txt: Added.
+        * platform/ipad/fast/scrolling/ios/subpixel-overflow-scrolling-with-ancestor-expected.txt: Added.
+        * platform/ipad/fast/scrolling/ios/touch-stacking-expected.txt: Added.
+        * platform/ipad/fast/viewport/ios: Added.
+        * platform/ipad/fast/viewport/ios/device-width-viewport-after-changing-view-scale-expected.txt: Added.
+        * platform/ipad/fast/viewport/ios/initial-scale-after-changing-view-scale-expected.txt: Added.
+        * platform/ipad/fast/viewport/ios/use-minimum-device-width-for-page-without-viewport-meta-expected.txt: Added.
+        * platform/ipad/fast/viewport/ios/width-is-device-width-expected.txt: Added.
+        * platform/ipad/fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-expected.txt: Added.
+        * platform/ipad/fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall-expected.txt: Added.
+        * platform/ipad/fast/viewport/ios/width-is-device-width-overflowing-expected.txt: Added.
+        * platform/ipad/fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit-expected.txt: Added.
+        * platform/ipad/platform: Added.
+        * platform/ipad/platform/ios: Added.
+        * platform/ipad/platform/ios/ios: Added.
+        * platform/ipad/platform/ios/ios/fast: Added.
+        * platform/ipad/platform/ios/ios/fast/text: Added.
+        * platform/ipad/platform/ios/ios/fast/text/opticalFontWithTextStyle-expected.txt: Added.
+        * platform/ipad/scrollingcoordinator: Added.
+        * platform/ipad/scrollingcoordinator/ios: Added.
+        * platform/ipad/scrollingcoordinator/ios/sync-layer-positions-after-scroll-expected.txt: Added.
+        * platform/ipad/scrollingcoordinator/ios/ui-scrolling-tree-expected.txt: Added.
+
+2019-02-04  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK][WPE] Need a function to convert internal URI to display ("pretty") URI
+        https://bugs.webkit.org/show_bug.cgi?id=174816
+
+        Reviewed by Michael Catanzaro.
+
+        * TestExpectations: Enable fast/url/user-visible/.
+
+2019-02-04  Shawn Roberts  <sroberts@apple.com>
+
+        [iOS Simulator] pageoverlay/overlay tests are flaky failures
+        https://bugs.webkit.org/show_bug.cgi?id=153337
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2019-02-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: fix race conditions when editing
+        https://bugs.webkit.org/show_bug.cgi?id=192739
+        <rdar://problem/46752925>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/css/modify-css-property-expected.txt:
+        * inspector/css/modify-css-property-race-expected.txt: Added.
+        * inspector/css/modify-css-property-race.html: Added.
+        * inspector/css/modify-css-property.html:
+
+2019-02-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Async overflow scroll with border-radius renders incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=194205
+        <rdar://problem/47771668>
+
+        Reviewed by Zalan Bujtas.
+
+        New baselines, mostly correcting offsetFromRenderer.
+
+        * compositing/clipping/border-radius-async-overflow-clipping-layer-expected.txt: Added.
+        * compositing/clipping/border-radius-async-overflow-clipping-layer.html: Added.
+        * compositing/clipping/border-radius-async-overflow-non-stacking-expected.html: Added.
+        * compositing/clipping/border-radius-async-overflow-non-stacking.html: Added.
+        * compositing/clipping/border-radius-async-overflow-stacking-expected.html: Added.
+        * compositing/clipping/border-radius-async-overflow-stacking.html: Added.
+        * compositing/scrolling/overflow-scrolling-layers-are-self-painting-expected.txt:
+        * platform/ios/compositing/overflow/scrolling-without-painting-expected.txt:
+        * platform/ios/compositing/overflow/textarea-scroll-touch-expected.txt: html.css specifies a border-radius on <textarea> for iOS, so we make additional
+        clipping layers.
+        * platform/ios/compositing/rtl/rtl-scrolling-with-transformed-descendants-expected.txt:
+        * platform/ios/compositing/scrolling/overflow-scrolling-layers-are-self-painting-expected.txt:
+
+2019-02-04  Simon Fraser  <simon.fraser@apple.com>
+
+        PageOverlayController's layers should be created lazily
+        https://bugs.webkit.org/show_bug.cgi?id=194199
+        rdar://problem/46571593
+
+        Reviewed by Tim Horton.
+
+        * pageoverlay/overlay-remove-reinsert-view-expected.txt: We no longer unparent the overlays
+        on view removal, so new results.
+        * platform/ios-wk2/TestExpectations: Unskip some iOS tests.
+        * platform/ios-wk2/pageoverlay/overlay-installation-expected.txt: Added.
+        * platform/ios-wk2/pageoverlay/overlay-large-document-expected.txt: Added.
+        * platform/ios-wk2/pageoverlay/overlay-large-document-scrolled-expected.txt: Added.
+        * platform/ios/TestExpectations: Unskip some iOS tests.
+
+2019-02-04  Eric Liang  <ericliang@apple.com>
+
+        Check if slider value changed after calling AX Increment or Decrement on disabled sliders.
+        https://bugs.webkit.org/show_bug.cgi?id=193497
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/set-value-not-work-for-disabled-sliders.html: Added.
+
+2019-02-04  Frederic Wang  <fwang@igalia.com>
+
+        [css-scroll-snap] scroll-snap-align not honored on child with non-visible overflow
+        https://bugs.webkit.org/show_bug.cgi?id=191816
+
+        Reviewed by Wenson Hsieh.
+
+        Add a test to verify that children with non-visible overflow create snap offsets.
+
+        * css3/scroll-snap/scroll-snap-children-with-overflow-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-children-with-overflow.html: Added.
+
+2019-02-03  Antti Koivisto  <antti@apple.com>
+
+        [iOS] Tiles not created in large scrollable iframes
+        https://bugs.webkit.org/show_bug.cgi?id=193665
+
+        Reviewed by Simon Fraser.
+
+        Test by Frédéric Wang.
+
+        * fast/scrolling/ios/scroll-iframe-expected.html:
+        * fast/scrolling/ios/scroll-iframe.html:
+        * platform/ios-wk2/compositing/iframes/scrolling-iframe-expected.txt:
+        * platform/ios-wk2/compositing/tiling/tiled-drawing-async-frame-scrolling-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/fixed-inside-frame-expected.txt:
+
+2019-02-03  John Wilander  <wilander@apple.com>
+
+        Parse and handle Ad Click Attribution attributes in HTMLAnchorElement::handleClick()
+        https://bugs.webkit.org/show_bug.cgi?id=194104
+        <rdar://problem/47649991>
+
+        Reviewed by Chris Dumez, Daniel Bates, and Darin Adler.
+
+        This test case makes sure invalid data triggers console warnings.
+
+        * http/tests/adClickAttribution/anchor-tag-attributes-validation-expected.txt: Added.
+        * http/tests/adClickAttribution/anchor-tag-attributes-validation.html: Added.
+        * platform/ios-wk2/http/tests/adClickAttribution/anchor-tag-attributes-validation-expected.txt: Added.
+            Console line numbers are not emitted when running iOS tests so this -expected.txt file doesn't have them.
+
+2019-02-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unable to move selection into editable roots with 0 height
+        https://bugs.webkit.org/show_bug.cgi?id=194143
+        <rdar://problem/47767284>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new layout test that executes editing commands in a contenteditable element of height 0, and adjust an
+        existing layout test that copies and pastes an image element to wait until the image has loaded.
+
+        * editing/pasteboard/styled-element-markup.html:
+        * editing/selection/insert-text-in-empty-content-editable-expected.txt: Added.
+        * editing/selection/insert-text-in-empty-content-editable.html: Added.
+
+2019-02-03  Megan Gardner  <megan_gardner@apple.com>
+
+        Turn on Smart Paste
+        https://bugs.webkit.org/show_bug.cgi?id=193786
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaselined many tests and/or added iOS specific expectations to 
+        correctly reflect smart copy paste behavior.
+
+        * editing/editing.js:
+        (runEditingTestWithCallbackLogging):
+        (runDumpAsTextEditingTest):
+        Added ability to handle async functions.
+        * editing/pasteboard/smart-paste-001.html:
+        * editing/pasteboard/smart-paste-002.html:
+        * editing/pasteboard/smart-paste-003.html:
+        * editing/pasteboard/smart-paste-004.html:
+        * editing/pasteboard/smart-paste-005.html:
+        * editing/pasteboard/smart-paste-006.html:
+        * editing/pasteboard/smart-paste-007.html:
+        * editing/pasteboard/smart-paste-008.html:
+        * platform/ios-wk2/editing/pasteboard/smart-paste-007-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/smart-paste-008-expected.txt:
+        * platform/ios/TestExpectations:
+        * platform/ios/editing/pasteboard/smart-paste-001-expected.txt: Added.
+        * platform/ios/editing/pasteboard/smart-paste-002-expected.txt: Added.
+        * platform/ios/editing/pasteboard/smart-paste-003-expected.txt: Added.
+        * platform/ios/editing/pasteboard/smart-paste-004-expected.txt: Added.
+        * platform/ios/editing/pasteboard/smart-paste-005-expected.txt: Added.
+        * platform/ios/editing/pasteboard/smart-paste-006-expected.txt: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.doubleClickAt):
+        (window.UIHelper.async.selectWordByDoubleTapOrClick):
+        Added helper functions to allow for selecting a word by double tap or click.
+
+2019-02-02  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Fix GPURenderPassEncoder::setVertexBuffers and allow overlapping indices with GPUBindGroups
+        https://bugs.webkit.org/show_bug.cgi?id=194125
+
+        Reviewed by Myles C. Maxfield.
+
+        Updated buffer-resource-triangles to assign bind groups and vertex buffers to the same index.
+
+        * webgpu/buffer-resource-triangles.html:
+
+2019-02-02  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add missing case to out-of-flow non-replaced horizontal used margin value computation
+        https://bugs.webkit.org/show_bug.cgi?id=194185
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/absolute-position-left-right-margin-expected.html: Added.
+        * fast/block/block-only/absolute-position-left-right-margin.html: Added.
+
+2019-02-01  Megan Gardner  <megan_gardner@apple.com>
+
+        Rewrite and rebaseline smart copy paste tests to work on iOS and MacOS
+        https://bugs.webkit.org/show_bug.cgi?id=194175
+
+        Reviewed by Megan Gardner.
+        Patch by Ryosuke Niwa.
+
+        Using the functions committed in 194070 Ryosuke wrote, make the
+        smart copy paste tests run on both iOS and MacOS. 
+        These tests will be turned on in 193786.
+
+        * editing/editing.js:
+        (runEditingTestWithCallbackLogging):
+        (runDumpAsTextEditingTest):
+        * editing/pasteboard/smart-paste-001.html:
+        * editing/pasteboard/smart-paste-002-expected.txt:
+        * editing/pasteboard/smart-paste-002.html:
+        * editing/pasteboard/smart-paste-003.html:
+        * editing/pasteboard/smart-paste-004.html:
+        * editing/pasteboard/smart-paste-005-expected.txt:
+        * editing/pasteboard/smart-paste-005.html:
+        * editing/pasteboard/smart-paste-006-expected.txt:
+        * editing/pasteboard/smart-paste-006.html:
+        * editing/pasteboard/smart-paste-007.html:
+        * editing/pasteboard/smart-paste-008.html:
+        * platform/mac/editing/pasteboard/smart-paste-008-expected.txt:
+
+2019-02-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Consistent 1 sec hang when triggering modal alerts while handling synchronous touch events
+        https://bugs.webkit.org/show_bug.cgi?id=194140
+        <rdar://problem/47728098>
+
+        Reviewed by Tim Horton.
+
+        Add a test that induces sync IPC deadlock by presenting a modal alert while handling touch start. This test
+        forces sync IPC timeouts to be disabled, and passes if we do not time out while handling a touch.
+
+        * fast/events/touch/ios/show-modal-alert-during-touch-start-expected.txt: Added.
+        * fast/events/touch/ios/show-modal-alert-during-touch-start.html: Added.
+
+2019-02-01  Antoine Quint  <graouts@apple.com>
+
+        Dispatch pointercancel events when content is panned or zoomed on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=193962
+        <rdar://problem/47629134>
+
+        Reviewed by Dean Jackson.
+
+        Adding a few tests for "pointercancel" and adding "touch-action: none" on tests that would now be affected by canceling pointers. We also unflake a few tests.
+
+        * pointerevents/ios/pointer-events-implicit-capture.html:
+        * pointerevents/ios/pointer-events-is-primary.html:
+        * pointerevents/ios/touch-action-pan-x-pan-y.html:
+        * pointerevents/ios/touch-action-pan-x.html:
+        * pointerevents/ios/touch-action-pan-y-expected.txt:
+        * pointerevents/ios/touch-action-pan-y.html:
+        * pointerevents/ios/touch-action-pinch-zoom-allows-zooming.html:
+        * pointerevents/ios/touch-action-pointercancel-pan-x-expected.txt: Added.
+        * pointerevents/ios/touch-action-pointercancel-pan-x.html: Added.
+        * pointerevents/ios/touch-action-pointercancel-pan-y-expected.txt: Added.
+        * pointerevents/ios/touch-action-pointercancel-pan-y.html: Added.
+        * pointerevents/ios/touch-action-pointercancel-pinch-zoom-expected.txt: Added.
+        * pointerevents/ios/touch-action-pointercancel-pinch-zoom.html: Added.
+
+2019-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r239915): css3/font-feature-font-face-local.html failing on WPE
+        https://bugs.webkit.org/show_bug.cgi?id=194008
+
+        Reviewed by Žan Doberšek.
+
+        Remove test expectation.
+
+        * platform/wpe/TestExpectations:
+
+2019-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Enable font variations
+        https://bugs.webkit.org/show_bug.cgi?id=194148
+
+        Reviewed by Žan Doberšek.
+
+        * platform/wpe/TestExpectations:
+
+2019-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        ComplexText: Test fast/text/word-space-nbsp.html fails when using complex text path
+        https://bugs.webkit.org/show_bug.cgi?id=193279
+
+        Reviewed by Michael Catanzaro.
+
+        Remove test expectation.
+
+        * platform/gtk/TestExpectations:
+
+2019-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed WPE gardening. Remove duplicated expectations.
+
+        Remove the platform specific expectations that match the generic ones.
+
+        * platform/wpe/animations/lineheight-animation-expected.txt: Removed.
+        * platform/wpe/animations/simultaneous-start-transform-expected.txt: Removed.
+        * platform/wpe/animations/width-using-ems-expected.txt: Removed.
+        * platform/wpe/fast/events/mouseover-mouseout-expected.txt: Removed.
+        * platform/wpe/fast/events/nested-window-event-expected.txt: Removed.
+        * platform/wpe/fast/events/window-events-bubble-expected.txt: Removed.
+        * platform/wpe/fast/events/window-events-bubble2-expected.txt: Removed.
+        * platform/wpe/fast/replaced/008-expected.txt: Removed.
+        * platform/wpe/fast/tokenizer/script_extra_close-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-check-initdata-type.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-events-session-closed-event.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-events.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-generate-request-disallowed-input.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-invalid-license.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-keystatuses-multiple-sessions.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-keystatuses.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-destroy-persistent-license.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-persistent-license.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-retrieve-destroy-persistent-license.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-retrieve-persistent-license.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-encrypted-clear-sources.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multisession.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-after-update.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-immediately.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-setMediaKeys-onencrypted.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-two-videos.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-waitingforkey.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-again-after-playback.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-again-after-resetting-src.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-at-same-time.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-multiple-times-with-different-mediakeys.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-multiple-times-with-the-same-mediakeys.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys-to-multiple-video-elements.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-setmediakeys.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-syntax-mediakeysession.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-syntax-mediakeysystemaccess.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-not-callable-after-createsession.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-update-non-ascii-input.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any.worker-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/security/dangling-markup-mitigation-data-url.tentative.sub-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/extension/pointerevent_touch-action-verification-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-illegal-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/pointerevents/pointerevent_touch-action-verification-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/touch-events/historical-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/formdata-blob-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/xhr/formdata-expected.txt: Removed.
+        * platform/wpe/legacy-animation-engine/animations/lineheight-animation-expected.txt: Removed.
+        * platform/wpe/legacy-animation-engine/animations/simultaneous-start-transform-expected.txt: Removed.
+        * platform/wpe/legacy-animation-engine/animations/width-using-ems-expected.txt: Removed.
+        * platform/wpe/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt: Removed.
+        * platform/wpe/svg/custom/pan-direction-expected.txt: Removed.
+        * platform/wpe/tables/mozilla/bugs/bug149275-2-expected.txt: Removed.
+        * platform/wpe/webgl/2.0.0/conformance/context/context-attributes-alpha-depth-stencil-antialias-expected.txt: Removed.
+        * platform/wpe/webgl/2.0.0/conformance/context/context-hidden-alpha-expected.txt: Removed.
+
+2019-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed WPE gardening. Rebaseline and update expectations after r240774.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/fast/css/font-weight-1-expected.txt:
+
+2019-01-31  Megan Gardner  <megan_gardner@apple.com>
+
+        Don't insert spaces at the beginning of a newline when using smart-copy-paste
+        https://bugs.webkit.org/show_bug.cgi?id=194070
+
+        Add test for smart copy paste around newlines.
+        Rebaseline a test that is dependant on a console log that changes lines.
+        Add additional helper functions to ui-helper.js.
+
+        Reviewed by Tim Horton.
+
+        * editing/pasteboard/mac/copy-smartpaste-first-line-in-textarea-expected.txt: Added.
+        * editing/pasteboard/mac/copy-smartpaste-first-line-in-textarea.html: Added.
+        * http/tests/security/anchor-download-block-crossorigin-expected.txt:
+        * platform/mac/TestExpectations:
+        * resources/ui-helper.js:
+        (window.UIHelper.doubleClickAt):
+        (window.UIHelper.doubleClickAtThenDragTo):
+        (window.UIHelper.async.selectWordByDoubleTapOrClick):
+
+2019-01-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline time range selection sometimes shows 0.000, should be just 0
+        https://bugs.webkit.org/show_bug.cgi?id=194108
+        <rdar://problem/47714273>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/unit-tests/number-utilities-expected.txt:
+        * inspector/unit-tests/number-utilities.html:
+
+2019-01-31  Chris Dumez  <cdumez@apple.com>
+
+        [ MacOS ] Layout Test performance-api/performance-observer-callback-after-gc.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=191041
+        <rdar://problem/45649982>
+
+        Reviewed by Joseph Pecoraro.
+
+        Make the test print the same output no matter if the performance observer is notified once or
+        twice. What matters is that it is notified about 3 marks.
+
+        * performance-api/performance-observer-callback-after-gc-expected.txt:
+        * performance-api/performance-observer-callback-after-gc.html:
+
+2019-01-31  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] WebGPUAdapterDescriptor -> GPURequestAdapterOptions and take powerPreference into account
+        https://bugs.webkit.org/show_bug.cgi?id=194068
+        <rdar://problem/47680215>
+
+        Reviewed by Dean Jackson.
+
+        Add simple test to create device with all options. Update helper functions for other Web GPU
+        tests to request different adapters. (No change in test behavior expected.)
+
+        * webgpu/adapter-options-expected.txt: Added.
+        * webgpu/adapter-options.html: Added.
+        * webgpu/js/basic-webgpu-functions.js:
+        (async.setUpContexts): Update to use no adapter request argument at all. 
+        * webgpu/js/webgpu-functions.js:
+        (async.getBasicDevice): Update to request the low-power adapter.
+
 2019-01-31  Zalan Bujtas  <zalan@apple.com>
 
         [LFC] Use the used margin values in outOfFlowReplacedHorizontalGeometry consistently

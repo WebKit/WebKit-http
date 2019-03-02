@@ -38,10 +38,10 @@ public:
 
     const static unsigned StructureFlags = Base::StructureFlags;
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess>
     static IsoSubspace* subspaceFor(VM& vm)
     {
-        return &vm.asyncFunctionSpace;
+        return &vm.functionSpace;
     }
 
     DECLARE_EXPORT_INFO;
@@ -67,5 +67,6 @@ private:
 
     static JSAsyncFunction* createImpl(VM&, FunctionExecutable*, JSScope*, Structure*);
 };
+static_assert(sizeof(JSAsyncFunction) == sizeof(JSFunction), "Some subclasses of JSFunction should be the same size to share IsoSubspace");
 
 } // namespace JSC

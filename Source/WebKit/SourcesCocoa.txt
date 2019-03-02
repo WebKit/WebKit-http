@@ -39,7 +39,8 @@ NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.cpp
 
 NetworkProcess/Downloads/cocoa/DownloadCocoa.mm
 
-NetworkProcess/EntryPoint/mac/XPCService/NetworkServiceEntryPoint.mm
+NetworkProcess/EntryPoint/Cocoa/Daemon/DaemonEntryPoint.mm
+NetworkProcess/EntryPoint/Cocoa/XPCService/NetworkServiceEntryPoint.mm
 
 NetworkProcess/ios/NetworkProcessIOS.mm
 
@@ -81,7 +82,7 @@ Platform/mac/StringUtilities.mm
 
 Platform/unix/EnvironmentUtilities.cpp
 
-PluginProcess/EntryPoint/mac/XPCService/PluginServiceEntryPoint.mm @no-unify
+PluginProcess/EntryPoint/Cocoa/XPCService/PluginServiceEntryPoint.mm @no-unify
 
 PluginProcess/mac/PluginControllerProxyMac.mm @no-unify
 PluginProcess/mac/PluginProcessMac.mm @no-unify
@@ -108,6 +109,7 @@ Shared/API/Cocoa/_WKRemoteObjectRegistry.mm
 Shared/API/Cocoa/RemoteObjectInvocation.mm
 Shared/API/Cocoa/RemoteObjectRegistry.mm
 Shared/API/Cocoa/WKBrowsingContextHandle.mm
+Shared/API/Cocoa/WKMain.mm
 Shared/API/Cocoa/WKRemoteObject.mm
 Shared/API/Cocoa/WKRemoteObjectCoder.mm
 
@@ -147,8 +149,8 @@ Shared/Cocoa/WKNSURLExtras.mm
 Shared/Cocoa/WKNSURLRequest.mm
 Shared/Cocoa/WKObject.mm
 
-Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm
-Shared/EntryPointUtilities/mac/XPCService/XPCServiceMain.mm
+Shared/EntryPointUtilities/Cocoa/XPCService/XPCServiceEntryPoint.mm
+Shared/EntryPointUtilities/Cocoa/XPCService/XPCServiceMain.mm
 
 Shared/ios/AuxiliaryProcessIOS.mm
 Shared/ios/InteractionInformationAtPosition.mm
@@ -324,7 +326,6 @@ UIProcess/Cocoa/FullscreenClient.mm
 UIProcess/Cocoa/GlobalFindInPageState.mm
 UIProcess/Cocoa/IconLoadingDelegate.mm
 UIProcess/Cocoa/LegacyCustomProtocolManagerClient.mm
-UIProcess/Cocoa/LoadOptimizer.mm
 UIProcess/Cocoa/MediaCaptureUtilities.mm
 UIProcess/Cocoa/NavigationState.mm
 UIProcess/Cocoa/PageClientImplCocoa.mm
@@ -494,7 +495,7 @@ WebProcess/cocoa/UserMediaCaptureManager.cpp
 WebProcess/cocoa/VideoFullscreenManager.mm
 WebProcess/cocoa/WebProcessCocoa.mm
 
-WebProcess/EntryPoint/mac/XPCService/WebContentServiceEntryPoint.mm
+WebProcess/EntryPoint/Cocoa/XPCService/WebContentServiceEntryPoint.mm
 
 WebProcess/InjectedBundle/API/c/WKBundlePageBanner.cpp
 

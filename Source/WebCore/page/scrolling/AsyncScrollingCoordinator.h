@@ -108,11 +108,12 @@ private:
     WEBCORE_EXPORT ScrollingNodeID parentOfNode(ScrollingNodeID) const override;
     WEBCORE_EXPORT Vector<ScrollingNodeID> childrenOfNode(ScrollingNodeID) const override;
 
-    WEBCORE_EXPORT void setNodeLayers(ScrollingNodeID, GraphicsLayer* /*layer*/, GraphicsLayer* /*scrolledContentsLayer*/ = nullptr, GraphicsLayer* /*counterScrollingLayer*/ = nullptr, GraphicsLayer* /*insetClipLayer*/ = nullptr) override;
+    WEBCORE_EXPORT void setNodeLayers(ScrollingNodeID, const NodeLayers&) override;
     WEBCORE_EXPORT void setScrollingNodeGeometry(ScrollingNodeID, const ScrollingGeometry&) override;
     WEBCORE_EXPORT void setViewportConstraintedNodeGeometry(ScrollingNodeID, const ViewportConstraints&) override;
 
     WEBCORE_EXPORT void reconcileScrollingState(FrameView&, const FloatPoint&, const LayoutViewportOriginOrOverrideRect&, bool programmaticScroll, ViewportRectStability, ScrollingLayerPositionAction) override;
+    void reconcileScrollPosition(FrameView&, ScrollingLayerPositionAction);
 
     bool isRubberBandInProgress() const override;
     void setScrollPinningBehavior(ScrollPinningBehavior) override;
@@ -129,7 +130,6 @@ private:
     virtual void scheduleTreeStateCommit() = 0;
 
     void ensureRootStateNodeForFrameView(FrameView&);
-    void updateScrollLayerPosition(FrameView&);
 
     void updateScrollPositionAfterAsyncScrollTimerFired();
     void setEventTrackingRegionsDirty();

@@ -924,7 +924,17 @@ function runEditingTestWithCallbackLogging(enableCallbackLogging) {
     var elem = document.getElementById("test");
     var selection = window.getSelection();
     selection.setPosition(elem, 0);
-    editingTest();
+    
+    const result = editingTest();
+ 
+    if (result instanceof Promise) {
+        if (window.testRunner)
+            testRunner.waitUntilDone();
+        result.then(() => {
+            if (window.testRunner)
+                testRunner.notifyDone();
+        });
+    }
 }
 
 var dumpAsText = false;
@@ -942,10 +952,23 @@ function runDumpAsTextEditingTest(enableCallbacks) {
     var elem = document.getElementById("test");
     var selection = window.getSelection();
     selection.setPosition(elem, 0);
-    editingTest();
+    const result = editingTest();
 
-    for (var i = 0; i < elementsForDumpingMarkupList.length; i++)
-        document.body.appendChild(elementsForDumpingMarkupList[i]);
+    const postTask = () => {
+        for (var i = 0; i < elementsForDumpingMarkupList.length; i++)
+            document.body.appendChild(elementsForDumpingMarkupList[i]);
+    }
+
+    if (result instanceof Promise) {
+        if (window.testRunner)
+            testRunner.waitUntilDone();
+        result.then(() => {
+            postTask();
+            if (window.testRunner)
+                testRunner.notifyDone();
+        });
+    } else
+        postTask();
 }
 
 function debugForDumpAsText(name) {

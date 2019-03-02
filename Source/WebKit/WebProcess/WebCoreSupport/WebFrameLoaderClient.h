@@ -109,7 +109,7 @@ private:
     void dispatchDidReplaceStateWithinPage() final;
     void dispatchDidPopStateWithinPage() final;
     void dispatchWillClose() final;
-    void dispatchDidStartProvisionalLoad(CompletionHandler<void()>&&) final;
+    void dispatchDidStartProvisionalLoad() final;
     void dispatchDidReceiveTitle(const WebCore::StringWithDirection&) final;
     void dispatchDidCommitLoad(Optional<WebCore::HasInsecureContent>) final;
     void dispatchDidFailProvisionalLoad(const WebCore::ResourceError&) final;
@@ -123,9 +123,9 @@ private:
     WebCore::Frame* dispatchCreatePage(const WebCore::NavigationAction&) final;
     void dispatchShow() final;
     
-    void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, WebCore::FramePolicyFunction&&) final;
-    void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, WebCore::FormState*, const String& frameName, WebCore::FramePolicyFunction&&) final;
-    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse, WebCore::FormState*, WebCore::PolicyDecisionMode, WebCore::FramePolicyFunction&&) final;
+    void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, WebCore::PolicyCheckIdentifier, WebCore::FramePolicyFunction&&) final;
+    void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, WebCore::FormState*, const String& frameName, WebCore::PolicyCheckIdentifier, WebCore::FramePolicyFunction&&) final;
+    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse, WebCore::FormState*, WebCore::PolicyDecisionMode, WebCore::PolicyCheckIdentifier, WebCore::FramePolicyFunction&&) final;
     void cancelPolicyCheck() final;
     
     void dispatchUnableToImplementPolicy(const WebCore::ResourceError&) final;

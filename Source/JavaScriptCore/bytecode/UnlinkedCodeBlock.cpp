@@ -56,7 +56,6 @@ const ClassInfo UnlinkedCodeBlock::s_info = { "UnlinkedCodeBlock", nullptr, null
 
 UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, DebuggerMode debuggerMode)
     : Base(*vm, structure)
-    , m_globalObjectRegister(VirtualRegister())
     , m_usesEval(info.usesEval())
     , m_isStrictMode(info.isStrictMode())
     , m_isConstructor(info.isConstructor())
@@ -71,14 +70,16 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_derivedContextType(static_cast<unsigned>(info.derivedContextType()))
     , m_evalContextType(static_cast<unsigned>(info.evalContextType()))
     , m_hasTailCalls(false)
-    , m_features(0)
-    , m_didOptimize(MixedTriState)
+    , m_codeType(static_cast<unsigned>(codeType))
+    , m_didOptimize(static_cast<unsigned>(MixedTriState))
     , m_parseMode(info.parseMode())
-    , m_codeType(codeType)
+    , m_metadata(UnlinkedMetadataTable::create())
 {
     for (auto& constantRegisterIndex : m_linkTimeConstants)
         constantRegisterIndex = 0;
     ASSERT(m_constructorKind == static_cast<unsigned>(info.constructorKind()));
+    ASSERT(m_codeType == static_cast<unsigned>(codeType));
+    ASSERT(m_didOptimize == static_cast<unsigned>(MixedTriState));
 }
 
 void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -92,7 +93,7 @@ void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
     for (FunctionExpressionVector::iterator ptr = thisObject->m_functionExprs.begin(), end = thisObject->m_functionExprs.end(); ptr != end; ++ptr)
         visitor.append(*ptr);
     visitor.appendValues(thisObject->m_constantRegisters.data(), thisObject->m_constantRegisters.size());
-    size_t extraMemory = thisObject->m_metadata.sizeInBytes();
+    size_t extraMemory = thisObject->m_metadata->sizeInBytes();
     if (thisObject->m_instructions)
         extraMemory += thisObject->m_instructions->sizeInBytes();
     visitor.reportExtraMemoryVisited(extraMemory);
@@ -101,7 +102,7 @@ void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
 size_t UnlinkedCodeBlock::estimatedSize(JSCell* cell, VM& vm)
 {
     UnlinkedCodeBlock* thisObject = jsCast<UnlinkedCodeBlock*>(cell);
-    size_t extraSize = thisObject->m_metadata.sizeInBytes();
+    size_t extraSize = thisObject->m_metadata->sizeInBytes();
     if (thisObject->m_instructions)
         extraSize += thisObject->m_instructions->sizeInBytes();
     return Base::estimatedSize(cell, vm) + extraSize;
@@ -310,9 +311,9 @@ void UnlinkedCodeBlock::setInstructions(std::unique_ptr<InstructionStream> instr
     {
         auto locker = holdLock(cellLock());
         m_instructions = WTFMove(instructions);
-        m_metadata.finalize();
+        m_metadata->finalize();
     }
-    Heap::heap(this)->reportExtraMemoryAllocated(m_instructions->sizeInBytes() + m_metadata.sizeInBytes());
+    Heap::heap(this)->reportExtraMemoryAllocated(m_instructions->sizeInBytes() + m_metadata->sizeInBytes());
 }
 
 const InstructionStream& UnlinkedCodeBlock::instructions() const
@@ -380,9 +381,7 @@ void UnlinkedCodeBlock::shrinkToFit()
     m_jumpTargets.shrinkToFit();
     m_propertyAccessInstructions.shrinkToFit();
     m_identifiers.shrinkToFit();
-    m_bitVectors.shrinkToFit();
     m_constantRegisters.shrinkToFit();
-    m_constantIdentifierSets.shrinkToFit();
     m_constantsSourceCodeRepresentation.shrinkToFit();
     m_functionDecls.shrinkToFit();
     m_functionExprs.shrinkToFit();
@@ -394,6 +393,8 @@ void UnlinkedCodeBlock::shrinkToFit()
         m_rareData->m_stringSwitchJumpTables.shrinkToFit();
         m_rareData->m_expressionInfoFatPositions.shrinkToFit();
         m_rareData->m_opProfileControlFlowBytecodeOffsets.shrinkToFit();
+        m_rareData->m_bitVectors.shrinkToFit();
+        m_rareData->m_constantIdentifierSets.shrinkToFit();
     }
 }
 

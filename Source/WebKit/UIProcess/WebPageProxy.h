@@ -81,6 +81,7 @@
 #include <WebCore/MediaPlaybackTargetContext.h>
 #include <WebCore/MediaProducer.h>
 #include <WebCore/PlatformScreen.h>
+#include <WebCore/PointerID.h>
 #include <WebCore/ScrollTypes.h>
 #include <WebCore/SearchPopupMenu.h>
 #include <WebCore/TextChecking.h>
@@ -790,6 +791,10 @@ public:
     void handleTouchEvent(const NativeWebTouchEvent&);
 #endif
 
+#if ENABLE(POINTER_EVENTS)
+    void cancelPointer(WebCore::PointerID, const WebCore::IntPoint&);
+#endif
+
     void scrollBy(WebCore::ScrollDirection, WebCore::ScrollGranularity);
     void centerSelectionInVisibleArea();
 
@@ -945,7 +950,6 @@ public:
     void getContentsAsString(WTF::Function<void (const String&, CallbackBase::Error)>&&);
     void getBytecodeProfile(WTF::Function<void (const String&, CallbackBase::Error)>&&);
     void getSamplingProfilerOutput(WTF::Function<void (const String&, CallbackBase::Error)>&&);
-    void isWebProcessResponsive(WTF::Function<void (bool isWebProcessResponsive)>&&);
 
 #if ENABLE(MHTML)
     void getContentsAsMHTMLData(Function<void (API::Data*, CallbackBase::Error)>&&);
@@ -1244,6 +1248,7 @@ public:
 
     bool isPlayingAudio() const { return !!(m_mediaState & WebCore::MediaProducer::IsPlayingAudio); }
     void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags, uint64_t);
+    void updatePlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags);
     bool hasActiveAudioStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveAudioCaptureDevice; }
     bool hasActiveVideoStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveVideoCaptureDevice; }
     WebCore::MediaProducer::MediaStateFlags mediaStateFlags() const { return m_mediaState; }
@@ -1433,8 +1438,11 @@ public:
     void didPerformClientRedirectShared(Ref<WebProcessProxy>&&, const String& sourceURLString, const String& destinationURLString, uint64_t frameID);
     void didNavigateWithNavigationDataShared(Ref<WebProcessProxy>&&, const WebNavigationDataStore&, uint64_t frameID);
     void didChangeProvisionalURLForFrameShared(Ref<WebProcessProxy>&&, uint64_t frameID, uint64_t navigationID, URL&&);
-    void decidePolicyForNavigationActionAsyncShared(Ref<WebProcessProxy>&&, uint64_t frameID, WebCore::SecurityOriginData&& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&&, FrameInfoData&&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody, WebCore::ResourceResponse&& redirectResponse, const UserData&, uint64_t listenerID);
-    void decidePolicyForResponseShared(Ref<WebProcessProxy>&&, uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&);
+    void decidePolicyForNavigationActionAsyncShared(Ref<WebProcessProxy>&&, uint64_t frameID, WebCore::SecurityOriginData&& frameSecurityOrigin, WebCore::PolicyCheckIdentifier,
+        uint64_t navigationID, NavigationActionData&&, FrameInfoData&&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&,
+        IPC::FormDataReference&& requestBody, WebCore::ResourceResponse&& redirectResponse, const UserData&, uint64_t listenerID);
+    void decidePolicyForResponseShared(Ref<WebProcessProxy>&&, uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, WebCore::PolicyCheckIdentifier,
+        uint64_t navigationID, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&);
     void startURLSchemeTaskShared(Ref<WebProcessProxy>&&, URLSchemeTaskParameters&&);
     void loadDataWithNavigationShared(Ref<WebProcessProxy>&&, API::Navigation&, const IPC::DataReference&, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData, WebCore::ShouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&& = WTF::nullopt);
     void loadRequestWithNavigationShared(Ref<WebProcessProxy>&&, API::Navigation&, WebCore::ResourceRequest&&, WebCore::ShouldOpenExternalURLsPolicy, API::Object* userData, WebCore::ShouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&& = WTF::nullopt);
@@ -1471,8 +1479,8 @@ private:
 
     // IPC::MessageSender
     bool sendMessage(std::unique_ptr<IPC::Encoder>, OptionSet<IPC::SendOption>) override;
-    IPC::Connection* messageSenderConnection() override;
-    uint64_t messageSenderDestinationID() override;
+    IPC::Connection* messageSenderConnection() const override;
+    uint64_t messageSenderDestinationID() const override;
 
     // WebPopupMenuProxy::Client
     void valueChangedForPopupMenu(WebPopupMenuProxy*, int32_t newSelectedIndex) override;
@@ -1520,11 +1528,19 @@ private:
 
     void didDestroyNavigation(uint64_t navigationID);
 
-    void decidePolicyForNavigationAction(Ref<WebProcessProxy>&&, WebFrameProxy&, WebCore::SecurityOriginData&& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&&, FrameInfoData&&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody, WebCore::ResourceResponse&& redirectResponse, const UserData&, Ref<PolicyDecisionSender>&&);
-    void decidePolicyForNavigationActionAsync(uint64_t frameID, WebCore::SecurityOriginData&& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&&, FrameInfoData&&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody, WebCore::ResourceResponse&& redirectResponse, const UserData&, uint64_t listenerID);
-    void decidePolicyForNavigationActionSync(uint64_t frameID, bool isMainFrame, WebCore::SecurityOriginData&& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&&, FrameInfoData&&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody, WebCore::ResourceResponse&& redirectResponse, const UserData&, Messages::WebPageProxy::DecidePolicyForNavigationActionSync::DelayedReply&&);
-    void decidePolicyForNewWindowAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, NavigationActionData&&, WebCore::ResourceRequest&&, const String& frameName, uint64_t listenerID, const UserData&);
-    void decidePolicyForResponse(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&);
+    void decidePolicyForNavigationAction(Ref<WebProcessProxy>&&, WebFrameProxy&, WebCore::SecurityOriginData&&, uint64_t navigationID, NavigationActionData&&,
+        FrameInfoData&&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody,
+        WebCore::ResourceResponse&& redirectResponse, const UserData&, Ref<PolicyDecisionSender>&&);
+    void decidePolicyForNavigationActionAsync(uint64_t frameID, WebCore::SecurityOriginData&&, WebCore::PolicyCheckIdentifier, uint64_t navigationID, NavigationActionData&&,
+        FrameInfoData&&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody,
+        WebCore::ResourceResponse&& redirectResponse, const UserData&, uint64_t listenerID);
+    void decidePolicyForNavigationActionSync(uint64_t frameID, bool isMainFrame, WebCore::SecurityOriginData&&, WebCore::PolicyCheckIdentifier, uint64_t navigationID, NavigationActionData&&,
+        FrameInfoData&&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody,
+        WebCore::ResourceResponse&& redirectResponse, const UserData&, Messages::WebPageProxy::DecidePolicyForNavigationActionSync::DelayedReply&&);
+    void decidePolicyForNewWindowAction(uint64_t frameID, const WebCore::SecurityOriginData&, WebCore::PolicyCheckIdentifier, NavigationActionData&&,
+        WebCore::ResourceRequest&&, const String& frameName, uint64_t listenerID, const UserData&);
+    void decidePolicyForResponse(uint64_t frameID, const WebCore::SecurityOriginData&, WebCore::PolicyCheckIdentifier, uint64_t navigationID,
+        const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&);
     void unableToImplementPolicy(uint64_t frameID, const WebCore::ResourceError&, const UserData&);
     void beginSafeBrowsingCheck(const URL&, bool, WebFramePolicyListenerProxy&);
 

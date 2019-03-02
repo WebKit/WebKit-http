@@ -1,3 +1,1914 @@
+2019-02-06  Antti Koivisto  <antti@apple.com>
+
+        RELEASE_ASSERT(!m_document.isResolvingTreeStyle()) in com.apple.WebKit.WebContent at WebCore: WebCore::StyleResolver::~StyleResolver
+        https://bugs.webkit.org/show_bug.cgi?id=194333
+        <rdar://problem/47822929>
+
+        Reviewed by Zalan Bujtas.
+
+        Content extensions may mutate the extension stylesheet in the middle of a style resolution as a result of
+        the legacy animation code triggering a resource load.
+
+        Test: http/tests/contentextensions/css-display-none-keyframe.html
+
+        * style/StyleScope.cpp:
+        (WebCore::Style::Scope::scheduleUpdate):
+
+        Avoid clearing the style resolver if we are in the middle of a style resolution.
+        A better fix that avoid doing this in the first place is tracked by https://bugs.webkit.org/show_bug.cgi?id=194335.
+
+2019-02-06  Pablo Saavedra  <psaavedra@igalia.com>
+
+        Build failure after r240315
+        https://bugs.webkit.org/show_bug.cgi?id=194341
+
+        Reviewed by Wenson Hsieh.
+
+        * bindings/js/JSUndoItemCustom.cpp:
+        (WebCore::JSUndoItemOwner::isReachableFromOpaqueRoots):
+
+2019-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r240909): Release assert in FrameLoader::loadURL when navigating with a non-existent target name
+        https://bugs.webkit.org/show_bug.cgi?id=194329
+
+        Reviewed by Geoffrey Garen.
+
+        The bug was caused by the code path for when navigating with a specific target frame name that does not exist
+        never setting the load type of PolicyChecker. As a result, we would use whatever load type used in the previous
+        navigation, resulting in this release assertion.
+
+        Updating the load type here should in theory fix the underlying bug r240909 was meant to catch & fix.
+
+        Test: fast/loader/navigate-with-new-target-after-back-forward-navigation.html
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::loadURL):
+
+2019-02-05  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [FreeType] Build fix for Debian stable
+
+        Unreviewed build fix.
+
+        Debian stable currently has a version of fontconfig that doesn't
+        yet have FC_COLOR. #ifdef its use to fix the build.
+
+        * platform/graphics/freetype/FontCacheFreeType.cpp:
+        (WebCore::FontCache::systemFallbackForCharacters):
+
+2019-02-05  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using blobRegistry in NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=194027
+
+        Reviewed by Youenn Fablet.
+
+        Also stop using NetworkBlobRegistry::singleton.
+        Instead, have the NetworkProcess own a NetworkBlobRegistry which owns a BlobRegistryImpl.
+        We now have to resolve all blob file references while we still have a
+        NetworkConnectionToWebProcess/NetworkProcess/NetworkBlobRegistry/BlobRegistryImpl instead of
+        using the singleton after we have passed everything to the loading code, but it works the same
+        as it did before.  We must consume the sandbox extension from the BlobRegistryImpl before using
+        the resolved files, so I pass around a Vector<RefPtr<WebCore::BlobDataFileReference>> so we know
+        which extensions to revoke.
+
+        * platform/network/BlobRegistryImpl.h:
+        * platform/network/FormData.cpp:
+        (WebCore::appendBlobResolved):
+        (WebCore::FormData::resolveBlobReferences):
+        * platform/network/FormData.h:
+        * platform/network/cf/FormDataStreamCFNet.cpp:
+        (WebCore::createHTTPBodyCFReadStream):
+        * platform/network/curl/CurlFormDataStream.cpp:
+        (WebCore::CurlFormDataStream::CurlFormDataStream):
+
+2019-02-05  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r240984.
+
+        Revision casued two API timeouts
+
+        Reverted changeset:
+
+        "Stop using blobRegistry in NetworkProcess"
+        https://bugs.webkit.org/show_bug.cgi?id=194027
+        https://trac.webkit.org/changeset/240984
+
+2019-02-05  Keith Rollin  <krollin@apple.com>
+
+        Enable the automatic checking and regenerations of .xcfilelists during builds
+        https://bugs.webkit.org/show_bug.cgi?id=194124
+        <rdar://problem/47721277>
+
+        Reviewed by Tim Horton.
+
+        Bug 193790 add a facility for checking -- during build time -- that
+        any needed .xcfilelist files are up-to-date and for updating them if
+        they are not. This facility was initially opt-in by setting
+        WK_ENABLE_CHECK_XCFILELISTS until other pieces were in place and until
+        the process seemed robust. Its now time to enable this facility and
+        make it opt-out. If there is a need to disable this facility, set and
+        export WK_DISABLE_CHECK_XCFILELISTS=1 in your environment before
+        running `make` or `build-webkit`, or before running Xcode from the
+        command line.
+
+        Additionally, remove the step that generates a list of source files
+        going into the UnifiedSources build step. It's only necessarily to
+        specify Sources.txt and SourcesCocoa.txt as inputs.
+
+        No new tests since there should be no observable behavior difference.
+
+        * UnifiedSources-input.xcfilelist: Removed.
+        * WebCore.xcodeproj/project.pbxproj:
+
+2019-02-05  Keith Rollin  <krollin@apple.com>
+
+        Update .xcfilelist files
+        https://bugs.webkit.org/show_bug.cgi?id=194121
+        <rdar://problem/47720863>
+
+        Reviewed by Tim Horton.
+
+        Preparatory to enabling the facility for automatically updating the
+        .xcfilelist files, check in a freshly-updated set so that not everyone
+        runs up against having to regenerate them themselves.
+
+        No new tests since there should be no observable behavior difference.
+
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+
+2019-02-05  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using blobRegistry in NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=194027
+
+        Reviewed by Youenn Fablet.
+
+        Also stop using NetworkBlobRegistry::singleton.
+        Instead, have the NetworkProcess own a NetworkBlobRegistry which owns a BlobRegistryImpl.
+        We now have to resolve all blob file references while we still have a
+        NetworkConnectionToWebProcess/NetworkProcess/NetworkBlobRegistry/BlobRegistryImpl instead of
+        using the singleton after we have passed everything to the loading code, but it works the same
+        as it did before.  We must consume the sandbox extension from the BlobRegistryImpl before using
+        the resolved files, so I pass around a Vector<RefPtr<WebCore::BlobDataFileReference>> so we know
+        which extensions to revoke.
+
+        * platform/network/BlobRegistryImpl.h:
+        * platform/network/FormData.cpp:
+        (WebCore::appendBlobResolved):
+        (WebCore::FormData::resolveBlobReferences):
+        * platform/network/FormData.h:
+        * platform/network/cf/FormDataStreamCFNet.cpp:
+        (WebCore::createHTTPBodyCFReadStream):
+        * platform/network/curl/CurlFormDataStream.cpp:
+        (WebCore::CurlFormDataStream::CurlFormDataStream):
+
+2019-02-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r240742.
+
+        Causes crashes on iOS simulator.
+
+        Reverted changeset:
+
+        "[iOS] Keyups for non-modifier keys identified as "Dead" when
+        not focused in a content-editable element"
+        https://bugs.webkit.org/show_bug.cgi?id=192824
+        https://trac.webkit.org/changeset/240742
+
+2019-02-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] collectInlineContent should use pre-computed margins, paddings and borders
+        https://bugs.webkit.org/show_bug.cgi?id=194269
+
+        Reviewed by Antti Koivisto.
+
+        In this patch we pre-compute the margins padding and borders for formatting context roots, replaced boxes and non-replaced containers.
+        These property values are input to collectInlineContent's inline item detaching logic.
+
+        * layout/inlineformatting/InlineFormattingContext.cpp:
+        (WebCore::Layout::nextInPreOrder):
+        (WebCore::Layout::InlineFormattingContext::layout const):
+        (WebCore::Layout::InlineFormattingContext::computeMarginBorderAndPadding const):
+        (WebCore::Layout::InlineFormattingContext::collectInlineContent const):
+        * layout/inlineformatting/InlineFormattingContext.h:
+        * layout/layouttree/LayoutBox.h: ran out bits. 
+
+2019-02-05  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION (r240579): com.apple.WebKit.WebContent at WebCore: WebCore::Document::absoluteEventRegionForNode
+        https://bugs.webkit.org/show_bug.cgi?id=194284
+        <rdar://problem/47774298>
+
+        Reviewed by Antti Koivisto.
+
+        The m_touchActionElements list needs to be HashSet<RefPtr<Element>> instead of HashSet<Element*>. It was initially storing raw pointers based on m_touchEventTargets
+        which is an EventTargetSet (typedef’d to HashCountedSet<Node*>), but that's because these nodes have an event listener registered for them and as such are kept alive,
+        whereas elements with a touch-action property aren’t. Elements are removed from this list from Document::nodeWillBeRemoved() and from Document::updateTouchActionElements(),
+        the latter being called from Style::TreeResolver::resolveElement().
+
+        * dom/Document.cpp:
+        (WebCore::Document::updateTouchActionElements):
+        * dom/Document.h:
+        (WebCore::Document::touchActionElements const):
+
+2019-02-05  Benjamin Poulain  <benjamin@webkit.org>
+
+        Hit testing functions optimizations
+        https://bugs.webkit.org/show_bug.cgi?id=194073
+        <rdar://problem/47692312>
+
+        Reviewed by Zalan Bujtas.
+
+        This patch implements some easy optimizations that speed up
+        hit testing without changing the algorithms.
+
+        * page/FrameViewLayoutContext.h:
+        The code for:
+            view().frameView().layoutContext().isPaintOffsetCacheEnabled()
+        followed by:
+            view().frameView().layoutContext().layoutState()
+        was loading all the intermediate values twice and calling layoutState()
+        twice.
+
+        By marking the function as pure, Clang can CSE the whole thing and
+        remove the duplicated code.
+
+        * platform/graphics/LayoutRect.h:
+        (WebCore::LayoutRect::isInfinite const):
+        That one is pretty funny.
+
+        Since LayoutRect::isInfinite() was implemented before operator==() is
+        declared, the compiler was falling back to the implicit convertion to FloatRect()
+        before doing any comparison.
+
+        This explains a bunch of the convertions to float when using LayoutRect.
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::mapLocalToContainer const):
+        Just reoder to make the register nice and clean for the optimization described above.
+
+2019-02-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Shrink size of VM by lazily allocating IsoSubspaces for non-common types
+        https://bugs.webkit.org/show_bug.cgi?id=193993
+
+        Reviewed by Keith Miller.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        * bridge/runtime_method.h:
+
+2019-02-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Move some macOS/iOS scrolling code into the scrolling/cocoa directory
+        https://bugs.webkit.org/show_bug.cgi?id=194245
+
+        Reviewed by Zalan Bujtas.
+
+        ScrollingTreeFixedNode and ScrollingTreeStickyNode are used on iOS and macOS, so move them to the cocoa
+        directory.
+
+        Standardize on the ordering of ENABLE(ASYNC_SCROLLING) && PLATFORM(MAC).
+
+        Stop building ScrollingThread for iOS (it's never used), and stub out some functions so things build.
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * page/scrolling/ScrollingThread.cpp:
+        (WebCore::ScrollingThread::initializeRunLoop):
+        (WebCore::ScrollingThread::wakeUpRunLoop):
+        (WebCore::ScrollingThread::threadRunLoopSourceCallback):
+        * page/scrolling/cocoa/ScrollingTreeFixedNode.h: Renamed from Source/WebCore/page/scrolling/mac/ScrollingTreeFixedNode.h.
+        * page/scrolling/cocoa/ScrollingTreeFixedNode.mm: Renamed from Source/WebCore/page/scrolling/mac/ScrollingTreeFixedNode.mm.
+        * page/scrolling/cocoa/ScrollingTreeStickyNode.h: Renamed from Source/WebCore/page/scrolling/mac/ScrollingTreeStickyNode.h.
+        * page/scrolling/cocoa/ScrollingTreeStickyNode.mm: Renamed from Source/WebCore/page/scrolling/mac/ScrollingTreeStickyNode.mm.
+        * page/scrolling/mac/ScrollingThreadMac.mm:
+        * page/scrolling/mac/ScrollingTreeScrollingNodeDelegateMac.h:
+        * page/scrolling/mac/ScrollingTreeScrollingNodeDelegateMac.mm:
+
+2019-02-04  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK][WPE] Need a function to convert internal URI to display ("pretty") URI
+        https://bugs.webkit.org/show_bug.cgi?id=174816
+
+        Reviewed by Michael Catanzaro.
+
+        Tests: enabled fast/url/user-visible/.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::userVisibleString): Enable method on all platforms.
+
+2019-02-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [curl] ASSERTION FAILED: !m_didNotifyResponse || m_multipartHandle
+        https://bugs.webkit.org/show_bug.cgi?id=190895
+
+        Reviewed by Ross Kirsling.
+
+        An assertion was failing in CurlRequest::invokeDidReceiveResponse
+        because DidReceiveResponse was already dispatched. This condition
+        was met if CurlRequestScheduler::completeTransfer is called while
+        waiting for the reply for the first DidReceiveResponse.
+
+        No new tests, covered by existing tests.
+
+        * platform/network/curl/CurlRequest.h:
+        (WebCore::CurlRequest::needToInvokeDidReceiveResponse const):
+        Return true if m_didNotifyResponse is false disregard to
+        m_didReturnFromNotify.
+
+2019-02-04  Said Abou-Hallawa  <said@apple.com>
+
+        [CG] Enable setAdditionalSupportedImageTypes for WK1
+        https://bugs.webkit.org/show_bug.cgi?id=194190
+
+        Reviewed by Tim Horton.
+
+        Move the function webCoreStringVectorFromNSStringArray from WebKit to
+        WebCore so it can be used by both WebKit and WebKitLegacy.
+
+        * platform/mac/StringUtilities.h:
+        * platform/mac/StringUtilities.mm:
+        (WebCore::webCoreStringVectorFromNSStringArray):
+
+2019-02-04  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Code clean-up for RenderPipeline backend
+        https://bugs.webkit.org/show_bug.cgi?id=194238
+
+        Reviewed by Dean Jackson.
+
+        Replace dot syntax setters with calls to setter methods, and remove unnecessary setter calls for 
+        the input state's descriptor arrays.
+
+        Covered by existing tests; no change in behavior.
+
+        * platform/graphics/gpu/cocoa/GPURenderPipelineMetal.mm:
+        (WebCore::tryCreateMtlDepthStencilState): Refactor to use implicit setters rather than dot syntax.
+        (WebCore::setInputStateForPipelineDescriptor): Ditto, and remove unnecessary setter calls on array objects.
+
+2019-02-04  Benjamin Poulain  <benjamin@webkit.org>
+
+        Use deferrable timer to restart the Responsiveness Timer on each wheel event
+        https://bugs.webkit.org/show_bug.cgi?id=194135
+        <rdar://problem/47724099>
+
+        Reviewed by Simon Fraser.
+
+        The original DeferrableOneShotTimer was not really deferrable.
+        What it allows is to restart the count down from scratch after
+        firing.
+
+        For this optimization, I want to keep the correct timing but avoid
+        starting a real timer every time.
+
+        I renamed DeferrableOneShotTimer to ResettableOneShotTimer and
+        created a real DeferrableOneShotTimer that support deadlines.
+
+        * css/CSSImageGeneratorValue.cpp:
+        * html/HTMLPlugInImageElement.h:
+        * loader/cache/CachedResource.h:
+        * platform/Timer.cpp:
+        (WebCore::DeferrableOneShotTimer::startOneShot):
+        (WebCore::DeferrableOneShotTimer::fired):
+        * platform/Timer.h:
+        (WebCore::TimerBase::nextFireTime const):
+        (WebCore::ResettableOneShotTimer::ResettableOneShotTimer):
+        (WebCore::DeferrableOneShotTimer::DeferrableOneShotTimer):
+        (WebCore::DeferrableOneShotTimer::stop):
+        (WebCore::DeferrableOneShotTimer::restart): Deleted.
+        * platform/graphics/ca/TileController.h:
+        * platform/graphics/cg/SubimageCacheWithTimer.h:
+
+2019-02-04  Antoine Quint  <graouts@apple.com>
+
+        Use constants for pointer types
+        https://bugs.webkit.org/show_bug.cgi?id=194232
+
+        Reviewed by Dean Jackson.
+
+        We cannot use an enum for the pointer type since a custom pointer type can be created by developers when creating a
+        pointer event using JavaScript, but we can at least used string constants for the ones created internally.
+
+        * dom/PointerEvent.cpp:
+        (WebCore::PointerEvent::mousePointerType):
+        (WebCore::PointerEvent::penPointerType):
+        (WebCore::PointerEvent::touchPointerType):
+        * dom/PointerEvent.h:
+        * dom/ios/PointerEventIOS.cpp:
+
+2019-02-04  Zalan Bujtas  <zalan@apple.com>
+
+        [First paint] Adjust "finishedParsingMainDocument" flag by taking deferred and async scripts into account.
+        https://bugs.webkit.org/show_bug.cgi?id=194168
+
+        Reviewed by Simon Fraser.
+
+        First paint should not be blocked by async or deferred scripts.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::qualifiesAsVisuallyNonEmpty const):
+
+2019-02-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Async overflow scroll with border-radius renders incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=194205
+        <rdar://problem/47771668>
+
+        Reviewed by Zalan Bujtas.
+
+        When an element has composited overflow:scroll and border-radius, we need to make a layer
+        to clip to the inside of the border radius if necessary.
+
+        Existing code simply turned off needsDescendantsClippingLayer for composited scrolling
+        layers, but now we check to see if the inner border is rounded. If we have both a m_childContainmentLayer
+        and scrolling layers, we need to adjust the location of the scrolling layers (which are parented
+        in m_childContainmentLayer).
+
+        Also fix offsetFromRenderer for these layers; it's positive for layers inset from the top left
+        of the border box.
+
+        Tests: compositing/clipping/border-radius-async-overflow-clipping-layer.html
+               compositing/clipping/border-radius-async-overflow-non-stacking.html
+               compositing/clipping/border-radius-async-overflow-stacking.html
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateConfiguration):
+        (WebCore::RenderLayerBacking::updateGeometry):
+        (WebCore::RenderLayerBacking::updateChildClippingStrategy): Layout is always up-to-date now, so remove the comment.
+
+2019-02-04  Simon Fraser  <simon.fraser@apple.com>
+
+        PageOverlayController's layers should be created lazily
+        https://bugs.webkit.org/show_bug.cgi?id=194199
+
+        Reviewed by Tim Horton.
+
+        Expose PageOverlayController::hasDocumentOverlays() and hasViewOverlays()
+        and use them to only parent the overlay-hosting layers when necessary.
+
+        For document overlays, RenderLayerCompositor::appendDocumentOverlayLayers() can
+        simply do nothing if there are none. Updates are triggered via Page::installedPageOverlaysChanged(),
+        which calls FrameView::setNeedsCompositingConfigurationUpdate() to trigger the root layer
+        compositing updates that parents the layerWithDocumentOverlays().
+
+        View overlays are added to the layer tree via the DrawingArea. When we go between having
+        none and some view overlays, Page::installedPageOverlaysChanged() calls attachViewOverlayGraphicsLayer()
+        on the ChromeClient, and the DrawingArea responds by calling updateRootLayers() and scheduling a
+        compositing flush (this has to be done manually because view overlay layers are outside the
+        subtree managed by RenderLayerCompositor).
+        
+        Now that GraphicsLayers are ref-counted, we can let the DrawingArea simply retain its m_viewOverlayRootLayer;
+        there is no need for RenderLayerCompositor::attachRootLayer()/detachRootLayer() to do anything with view
+        overlay layers. This implies that a page can navigate (new FrameView) and view overlays will persist, without
+        having to be manually removed and re-added. We can also remove the Frame argument to attachViewOverlayGraphicsLayer().
+
+        * loader/EmptyClients.h:
+        * page/ChromeClient.h:
+        * page/FrameView.cpp:
+        (WebCore::FrameView::setNeedsCompositingConfigurationUpdate): These functions need to schedule a compositing flush
+        because there may be nothing else that does.
+        (WebCore::FrameView::setNeedsCompositingGeometryUpdate):
+        * page/Page.cpp:
+        (WebCore::Page::installedPageOverlaysChanged):
+        * page/Page.h:
+        * page/PageOverlayController.cpp:
+        (WebCore::PageOverlayController::hasDocumentOverlays const):
+        (WebCore::PageOverlayController::hasViewOverlays const):
+        (WebCore::PageOverlayController::attachViewOverlayLayers): PageOverlayController has the Page so it
+        might as well be the one to call through the ChromeClient.
+        (WebCore::PageOverlayController::detachViewOverlayLayers):
+        (WebCore::PageOverlayController::installPageOverlay):
+        (WebCore::PageOverlayController::uninstallPageOverlay):
+        * page/PageOverlayController.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::updateCompositingLayers): isFullUpdate is always true; remove it.
+        (WebCore::RenderLayerCompositor::appendDocumentOverlayLayers):
+        (WebCore::RenderLayerCompositor::attachRootLayer):
+        (WebCore::RenderLayerCompositor::detachRootLayer):
+
+2019-02-04  Eric Liang  <ericliang@apple.com>
+
+        When performing Increment or Decrement on sliders, check to see if the slider is disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=173497
+
+        Reviewed by Chris Fleizach.
+
+        Test: accessibility/set-value-not-work-for-disabled-sliders.html
+
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::alterSliderValue):
+
+2019-02-04  Sihui Liu  <sihui_liu@apple.com>
+
+        IndexedDB: leak WebIDBConnectionToServer in layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=193688
+        <rdar://problem/47353263>
+
+        Reviewed by Geoffrey Garen.
+
+        Let IDBConnectionToServer keep a WeakPtr of IDBConnectionToServerDelegate.
+
+        * Modules/indexeddb/client/IDBConnectionToServer.cpp:
+        (WebCore::IDBClient::IDBConnectionToServer::IDBConnectionToServer):
+        * Modules/indexeddb/client/IDBConnectionToServer.h:
+        * Modules/indexeddb/client/IDBConnectionToServerDelegate.h:
+
+2019-02-04  Youenn Fablet  <youenn@apple.com>
+
+        Make sure to remove the device observer in AVVideoCaptureSource
+        https://bugs.webkit.org/show_bug.cgi?id=194181
+        <rdar://problem/47739247>
+
+        Reviewed by Eric Carlson.
+
+        Make sure to remove the device observer when the observer is destroyed.
+        To simplify things, add the observer in AVVideoCaptureSource constructor and remove it in the destructor.
+
+        Make also sure the session observer is also removed whenever the session is released by AVVideoCaptureSource.
+
+        Covered by manual test.
+
+       * platform/mediastream/mac/AVVideoCaptureSource.h:
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        (WebCore::AVVideoCaptureSource::AVVideoCaptureSource):
+        (WebCore::AVVideoCaptureSource::~AVVideoCaptureSource):
+        (WebCore::AVVideoCaptureSource::initializeSession):
+        (WebCore::AVVideoCaptureSource::clearSession):
+        (WebCore::AVVideoCaptureSource::stopProducingData):
+        (WebCore::AVVideoCaptureSource::setupSession):
+
+2019-02-04  Antoine Quint  <graouts@apple.com>
+
+        Use a dedicated type instead of int32_t for pointer identifiers
+        https://bugs.webkit.org/show_bug.cgi?id=194217
+
+        Reviewed by Antti Koivisto.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/PointerEvent.h:
+        * dom/PointerID.h: Added.
+        * page/PointerCaptureController.cpp:
+        (WebCore::PointerCaptureController::setPointerCapture):
+        (WebCore::PointerCaptureController::releasePointerCapture):
+        (WebCore::PointerCaptureController::hasPointerCapture):
+        (WebCore::PointerCaptureController::touchEndedOrWasCancelledForIdentifier):
+        (WebCore::PointerCaptureController::hasCancelledPointerEventForIdentifier):
+        (WebCore::PointerCaptureController::cancelPointer):
+        * page/PointerCaptureController.h:
+
+2019-02-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Unable to make a selection in jsfiddle.net using arrow keys when requesting desktop site
+        Followup to https://bugs.webkit.org/show_bug.cgi?id=193758
+
+        Reviewed by Daniel Bates.
+
+        Put the iOS-specific behavior behind an EditingBehavior check, rather than a compile-time guard. No change in
+        behavior.
+
+        * editing/EditingBehavior.h:
+        (WebCore::EditingBehavior::shouldMoveSelectionToEndWhenFocusingTextInput const):
+        * html/HTMLInputElement.cpp:
+        (WebCore::HTMLInputElement::setDefaultSelectionAfterFocus):
+
+2019-02-04  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Make InlineFormattingContext::collectInlineContent non-recursive.
+        https://bugs.webkit.org/show_bug.cgi?id=194210
+
+        Reviewed by Antti Koivisto.
+
+        Use iterative algorithm to collect inline content (and add breaking rules).
+        This is in preparation for fixing the inline preferred width computation.  
+
+        * layout/Verification.cpp:
+        (WebCore::Layout::resolveForRelativePositionIfNeeded):
+        * layout/inlineformatting/InlineFormattingContext.cpp:
+        (WebCore::Layout::addDetachingRules):
+        (WebCore::Layout::createAndAppendInlineItem):
+        (WebCore::Layout::InlineFormattingContext::collectInlineContent const):
+        (WebCore::Layout::InlineFormattingContext::collectInlineContentForSubtree const): Deleted.
+        * layout/inlineformatting/InlineFormattingContext.h:
+
+2019-02-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix unused variable warnings introduced in r240912
+        https://bugs.webkit.org/show_bug.cgi?id=194198
+        <rdar://problem/47776051>
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::setNeedsCompositingConfigurationUpdate):
+        (WebCore::FrameView::setNeedsCompositingGeometryUpdate):
+
+2019-02-04  Frederic Wang  <fwang@igalia.com>
+
+        [css-scroll-snap] scroll-snap-align not honored on child with non-visible overflow
+        https://bugs.webkit.org/show_bug.cgi?id=191816
+
+        Reviewed by Wenson Hsieh.
+
+        This patch fixes a bug that prevents children of a scroll container to create snap positions
+        when they have non-visible overflow. This happens because for such a child, the function
+        RenderBox::findEnclosingScrollableContainer() will return the child itself rather than the
+        scroll container. To address that issue, we introduce a new
+        RenderObject::enclosingScrollableContainerForSnapping() helper function that ensures that
+        a real RenderBox ancestor is returned.
+
+        Test: css3/scroll-snap/scroll-snap-children-with-overflow.html
+
+        * page/scrolling/AxisScrollSnapOffsets.cpp:
+        (WebCore::updateSnapOffsetsForScrollableArea): Use enclosingScrollableContainerForSnapping()
+        so that we don't skip children with non-visible overflow.
+        * rendering/RenderLayerModelObject.cpp:
+        (WebCore::RenderLayerModelObject::styleDidChange): Ditto. The new function calls
+        enclosingBox().
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::enclosingScrollableContainerForSnapping const): Return
+        the scrollable container of the enclosing box. If it is actually the render object itself
+        then start the search from the parent box instead.
+        * rendering/RenderObject.h: Declare enclosingScrollableContainerForSnapping(). 
+
+2019-02-04  Antti Koivisto  <antti@apple.com>
+
+        Rename GraphicsLayer and PlatformCALayer scrolling layer type enum values to be less ambiguous
+        https://bugs.webkit.org/show_bug.cgi?id=194215
+
+        Reviewed by Frédéric Wang.
+
+        GraphicsLayer::Type::Scrolling -> GraphicsLayer::Type::ScrollContainer
+        PlatformCALayer::LayerTypeScrollingLayer -> PlatformCALayer::LayerTypeScrollContainerLayer
+
+        * platform/graphics/GraphicsLayer.cpp:
+        (WebCore::GraphicsLayer::supportsLayerType):
+        * platform/graphics/GraphicsLayer.h:
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayer::supportsLayerType):
+        (WebCore::GraphicsLayerCA::initialize):
+        * platform/graphics/ca/PlatformCALayer.cpp:
+        (WebCore::operator<<):
+        * platform/graphics/ca/PlatformCALayer.h:
+        * platform/graphics/ca/cocoa/PlatformCALayerCocoa.mm:
+        (WebCore::PlatformCALayerCocoa::PlatformCALayerCocoa):
+        (WebCore::PlatformCALayerCocoa::commonInit):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateScrollingLayers):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::ensureRootLayer):
+
+2019-02-03  Antti Koivisto  <antti@apple.com>
+
+        [iOS] Tiles not created in large scrollable iframes
+        https://bugs.webkit.org/show_bug.cgi?id=193665
+
+        Reviewed by Simon Fraser.
+
+        We are not syncing scroll position back to the graphics layer tree correctly.
+
+        Test by Frédéric Wang.
+
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::frameViewRootLayerDidChange):
+        (WebCore::AsyncScrollingCoordinator::reconcileScrollingState):
+        (WebCore::AsyncScrollingCoordinator::reconcileScrollPosition):
+
+        Factor setting and syncing scrolling layer positions into a function.
+        Use bounds.origin scrolling mechanic when scrollContainerLayer is present.
+
+        (WebCore::AsyncScrollingCoordinator::scrollableAreaScrollbarLayerDidChange):
+        (WebCore::AsyncScrollingCoordinator::setSynchronousScrollingReasons):
+        (WebCore::AsyncScrollingCoordinator::updateScrollLayerPosition): Deleted.
+        * page/scrolling/AsyncScrollingCoordinator.h:
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::scrollContainerLayerForFrameView):
+        (WebCore::ScrollingCoordinator::scrolledContentsLayerForFrameView):
+        (WebCore::ScrollingCoordinator::scrollLayerForFrameView): Deleted.
+        * page/scrolling/ScrollingCoordinator.h:
+        * rendering/RenderLayerCompositor.cpp:
+
+        Rename scrollLayer to scrolledContentsLayer according to out preferred naming scheme and use it in that role only.
+        Add scrollContainerLayer as a separate layer. It is only constructed when using async scrolling on iOS.
+
+        (WebCore::RenderLayerCompositor::~RenderLayerCompositor):
+        (WebCore::RenderLayerCompositor::customPositionForVisibleRectComputation const):
+        (WebCore::RenderLayerCompositor::visibleRectForLayerFlushing const):
+        (WebCore::RenderLayerCompositor::didChangePlatformLayerForLayer):
+        (WebCore::RenderLayerCompositor::frameViewDidChangeSize):
+        (WebCore::RenderLayerCompositor::updateScrollLayerPosition):
+        (WebCore::RenderLayerCompositor::frameViewDidScroll):
+        (WebCore::RenderLayerCompositor::updateLayerForTopOverhangArea):
+        (WebCore::RenderLayerCompositor::updateLayerForBottomOverhangArea):
+        (WebCore::RenderLayerCompositor::updateLayerForHeader):
+        (WebCore::RenderLayerCompositor::updateLayerForFooter):
+        (WebCore::RenderLayerCompositor::updateOverflowControlsLayers):
+        (WebCore::RenderLayerCompositor::ensureRootLayer):
+        (WebCore::RenderLayerCompositor::destroyRootLayer):
+        (WebCore::RenderLayerCompositor::updateScrollingNodeForScrollingRole):
+        * rendering/RenderLayerCompositor.h:
+
+2019-02-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Make setNeedsLayout on the root more explicitly about triggering its side-effects
+        https://bugs.webkit.org/show_bug.cgi?id=194198
+
+        Reviewed by Antti Koivisto.
+
+        Calling setNeedsLayout() on the FrameView or RenderView is an odd concept; the render tree
+        generally manages its own dirty state.
+
+        Most callers of setNeedsLayout() on the root are really trying to trigger the side-effects
+        of layout, like compositing updates, which are required when view configuration state, like
+        headers, footers and transparency, change. These dependencies are currently implicit and
+        poorly defined.
+
+        Renaming "setNeedsLayout" on FrameView is a step towards being more explicit about pure
+        rendering updates, vs updates of downstream data strutures like compositing. It's now called
+        setNeedsLayoutAfterViewConfigurationChange(). In addition, expose
+        setNeedsCompositingConfigurationUpdate() and setNeedsCompositingGeometryUpdate() so callers
+        can trigger the appropriate types of compositing updates on the root layer.
+
+        In addition, FrameViewLayoutContext::setNeedsLayoutAfterViewConfigurationChange() schedules a
+        layout. Withtout this, some callers would dirty the RenderView's layout but rely on some
+        other trigger to make the layout happen.
+
+        This cleanup was prompted by noticing that FrameView::setHeaderHeight() dirtied layout
+        but never scheduled it, making banner insertion in MiniBrowser unreliable.
+
+        This patch also removes the aliasing of headerHeight/footerHeight between Page and
+        FrameView. Banners are a property of Page, so FrameView fetches the banner heights
+        from Page.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::headerHeight const):
+        (WebCore::FrameView::footerHeight const):
+        (WebCore::FrameView::availableContentSizeChanged):
+        (WebCore::FrameView::setNeedsLayoutAfterViewConfigurationChange):
+        (WebCore::FrameView::setNeedsCompositingConfigurationUpdate):
+        (WebCore::FrameView::setNeedsCompositingGeometryUpdate):
+        (WebCore::FrameView::scheduleSelectionUpdate):
+        (WebCore::FrameView::setTransparent):
+        (WebCore::FrameView::setBaseBackgroundColor):
+        (WebCore::FrameView::setAutoSizeFixedMinimumHeight):
+        (WebCore::FrameView::enableAutoSizeMode):
+        (WebCore::FrameView::setHeaderHeight): Deleted.
+        (WebCore::FrameView::setFooterHeight): Deleted.
+        (WebCore::FrameView::setNeedsLayout): Deleted.
+        * page/FrameView.h:
+        * page/FrameViewLayoutContext.cpp:
+        (WebCore::FrameViewLayoutContext::setNeedsLayoutAfterViewConfigurationChange):
+        (WebCore::FrameViewLayoutContext::setNeedsLayout): Deleted.
+        * page/FrameViewLayoutContext.h:
+        * page/Page.cpp:
+        (WebCore::Page::setPageScaleFactor):
+        (WebCore::Page::setHeaderHeight):
+        (WebCore::Page::setFooterHeight):
+        (WebCore::Page::addHeaderWithHeight): Deleted.
+        (WebCore::Page::addFooterWithHeight): Deleted.
+        * page/Page.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::updateBacking):
+        * testing/Internals.cpp:
+        (WebCore::Internals::resetToConsistentState):
+        (WebCore::Internals::setHeaderHeight):
+        (WebCore::Internals::setFooterHeight):
+
+2019-02-03  John Wilander  <wilander@apple.com>
+
+        Parse and handle Ad Click Attribution attributes in HTMLAnchorElement::handleClick()
+        https://bugs.webkit.org/show_bug.cgi?id=194104
+        <rdar://problem/47649991>
+
+        Reviewed by Chris Dumez, Daniel Bates, and Darin Adler.
+
+        Test: http/tests/adClickAttribution/anchor-tag-attributes-validation.html
+
+        This patch adds parsing and validation of the two new Ad Click Attribution
+        attributes in anchor elements: adcampaignid and addestination. The data is
+        not yet forwarded into the loader.
+
+        * html/HTMLAnchorElement.cpp:
+        (WebCore::HTMLAnchorElement::parseAdClickAttribution const):
+        (WebCore::HTMLAnchorElement::handleClick):
+            Now calls HTMLAnchorElement::parseAdClickAttribution().
+        * html/HTMLAnchorElement.h:
+        * loader/AdClickAttribution.h:
+            Made WebCore::AdClickAttribution copyable since it's needed to have it be
+            WTF::Optional. Also made AdClickAttribution::MaxEntropy public. Changed
+            numeric types from unsigned short to uint32_t.
+        (WebCore::AdClickAttribution::Campaign::isValid const):
+        (WebCore::AdClickAttribution::Conversion::isValid const):
+
+2019-02-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Validate navigation policy decisions to avoid crashes in continueLoadAfterNavigationPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=194189
+
+        Reviewed by Geoffrey Garen.
+
+        Introduced PolicyCheckIdentifier to pair each navigation policy check request with a decision,
+        and deployed it in PolicyChecker. The identifier is passed from WebContent process to UI process
+        in WebKit2, and passed it back with the policy decision.
+
+        Because PolicyCheckIdentifier embeds the process identifier from which a navigation policy is checked,
+        we would be able to detect when UI process had sent the decision to a wrong WebContent process.
+
+        This patch also adds release assertions to make sure history().provisionalItem() is set whenever
+        we're requesting a navigation policy check.
+
+        These code changes should either:
+        1. Fix crashes in FrameLoader::continueLoadAfterNavigationPolicy where isBackForwardLoadType would
+           return true yet history().provisionalItem() is null.
+        2. Detect a bug that UI process can send a navigation policy decision to a wrong WebContent process.
+        3. Rule out the possibility that (2) exists.
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::willSendRequest):
+        (WebCore::DocumentLoader::responseReceived):
+        * loader/EmptyClients.cpp:
+        (WebCore::EmptyFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebCore::EmptyFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        * loader/EmptyFrameLoaderClient.h:
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::checkContentPolicy):
+        (WebCore::FrameLoader::loadURL):
+        (WebCore::FrameLoader::load):
+        (WebCore::FrameLoader::loadWithDocumentLoader):
+        (WebCore::FrameLoader::loadPostRequest):
+        * loader/FrameLoader.h:
+        * loader/FrameLoaderClient.h:
+        * loader/FrameLoaderTypes.h:
+        (WebCore::PolicyCheckIdentifier): Added.
+        (WebCore::PolicyCheckIdentifier::operator== const): Added.
+        (WebCore::PolicyCheckIdentifier::PolicyCheckIdentifier): Added.
+        (WebCore::PolicyCheckIdentifier::encode const): Added.
+        (WebCore::PolicyCheckIdentifier::decode): Added.
+        * loader/PolicyChecker.cpp:
+        (WebCore::PolicyCheckIdentifier::generate):
+        (WebCore::PolicyCheckIdentifier::isValidFor): Returns true if the identifer matches. Also release asserts
+        that the process ID is same, and that m_check is always not zero (meaning it's a generated value).
+        The failure of these release assertions would indicate that there is a bug in UI process, which results in
+        a policy decision response being sent to a wrong Web process.
+        (WebCore::PolicyChecker::checkNavigationPolicy): Exit early if isValidFor fails.
+        (WebCore::PolicyChecker::checkNewWindowPolicy):
+
+2019-02-03  Antti Koivisto  <antti@apple.com>
+
+        Don't include ScrollCoordinator.h from Element.h
+        https://bugs.webkit.org/show_bug.cgi?id=194206
+
+        Reviewed by Daniel Bates.
+
+        * dom/Element.h:
+
+2019-02-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unable to move selection into editable roots with 0 height
+        https://bugs.webkit.org/show_bug.cgi?id=194143
+        <rdar://problem/47767284>
+
+        Reviewed by Ryosuke Niwa.
+
+        Currently, positions inside editable elements of height 0 are not considered to be candidates when
+        canonicalizing a position to its visible counterpart. This prevents us from moving the selection into these
+        editable roots at all. To fix this, we relax this constraint by allowing positions anchored by root editable
+        elements to be candidates.
+
+        Test: editing/selection/insert-text-in-empty-content-editable.html
+
+        * dom/Position.cpp:
+        (WebCore::Position::isCandidate const):
+
+2019-02-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Tidyup of Pagination and FrameView m_mediaType initialization
+        https://bugs.webkit.org/show_bug.cgi?id=194203
+
+        Reviewed by Darin Adler.
+
+        Fix post-commit feedback on lines around code changed in r240901.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::FrameView):
+        * page/FrameView.h:
+        * rendering/Pagination.h:
+        (WebCore::Pagination::operator!= const):
+
+2019-02-03  Megan Gardner  <megan_gardner@apple.com>
+
+        Turn on Smart Paste
+        https://bugs.webkit.org/show_bug.cgi?id=193786
+
+        Reviewed by Ryosuke Niwa.
+
+        Turned on a modified tests:
+        LayoutTests/editing/pasteboard/smart-paste-001.html
+        LayoutTests/editing/pasteboard/smart-paste-002.html
+        LayoutTests/editing/pasteboard/smart-paste-003.html
+        LayoutTests/editing/pasteboard/smart-paste-004.html
+        LayoutTests/editing/pasteboard/smart-paste-005.html
+        LayoutTests/editing/pasteboard/smart-paste-006.html
+        LayoutTests/editing/pasteboard/smart-paste-007.html
+        LayoutTests/editing/pasteboard/smart-paste-008.html
+
+        * platform/ios/PasteboardIOS.mm:
+        (WebCore::Pasteboard::canSmartReplace):
+        Turn on smart replace.
+
+2019-02-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Tidy up data memebers of FrameView and related classes to shrink class sizes
+        https://bugs.webkit.org/show_bug.cgi?id=194197
+
+        Reviewed by Zalan Bujtas.
+
+        Make various enums 8-bit. Re-order data members of FrameView, FrameViewLayoutContext, Widget
+        and ScrollView to optimize padding.
+
+        Use more data member initializers.
+
+        This shrinks FrameView from 1168 (144 padding bytes) to 1096 (96 padding bytes).
+
+        * dom/Element.h:
+        * page/FrameView.cpp:
+        (WebCore::FrameView::FrameView):
+        * page/FrameView.h:
+        * page/FrameViewLayoutContext.h:
+        * platform/ScrollTypes.h:
+        * platform/ScrollView.h: Data members should come after member functions.
+        * platform/Widget.h:
+        * rendering/Pagination.h:
+        (WebCore::Pagination::Pagination): Deleted.
+
+2019-02-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename "scrollingLayer" in RenderLayerBacking to "scrollContainerLayer" for clarity
+        https://bugs.webkit.org/show_bug.cgi?id=194194
+
+        Rubber-stampted by Antti Koivisto.
+
+        Our desired terminology is "scrollContainerLayer" for the outer, clipping layer
+        for scrolling, and "scrolledContentsLayer" for the contents that move when you scroll.
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateDebugIndicators):
+        (WebCore::RenderLayerBacking::destroyGraphicsLayers):
+        (WebCore::RenderLayerBacking::updateGeometry):
+        (WebCore::RenderLayerBacking::setLocationOfScrolledContents):
+        (WebCore::RenderLayerBacking::updateAfterDescendants):
+        (WebCore::RenderLayerBacking::updateInternalHierarchy):
+        (WebCore::RenderLayerBacking::updateDrawsContent):
+        (WebCore::RenderLayerBacking::updateScrollingLayers):
+        * rendering/RenderLayerBacking.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::didChangePlatformLayerForLayer):
+        (WebCore::RenderLayerCompositor::updateScrollingNodeForScrollingRole):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::registerAllViewportConstrainedLayers):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::updateScrollingLayer):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::unregisterAllScrollingLayers):
+        (WebCore::LegacyWebKitScrollingLayerCoordinator::removeScrollingLayer):
+
+2019-02-02  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Fix GPURenderPassEncoder::setVertexBuffers and allow overlapping indices with GPUBindGroups
+        https://bugs.webkit.org/show_bug.cgi?id=194125
+
+        Reviewed by Myles C. Maxfield.
+
+        GPURenderPassEncoder::setVertexBuffers is now actually written to set all buffers provided. In addition,
+        shift vertex input buffer indices so that any resource bindings can bind vertex buffer resources to the same indices. 
+
+        Existing tests cover setVertexBuffers. Updated buffer-resource-triangles to assign bind groups and vertex buffers to the same index.
+
+        * Modules/webgpu/WHLSL/Metal/WHLSLVertexBufferIndexCalculator.cpp: Added.
+        (WebCore::WHLSL::Metal::calculateVertexBufferIndex): Simple shifting function for vertex input buffer indices.
+        * Modules/webgpu/WHLSL/Metal/WHLSLVertexBufferIndexCalculator.h: Added.
+        * Modules/webgpu/WebGPUProgrammablePassEncoder.cpp:
+        (WebCore::WebGPUProgrammablePassEncoder::setBindGroup const): Limit maximum bind group indices to 0 to 3.
+        * Modules/webgpu/WebGPURenderPassEncoder.cpp: 
+        (WebCore::WebGPURenderPassEncoder::setVertexBuffers): Limit vertex input indices to 0 to 15.
+        * Modules/webgpu/WebGPURenderPassEncoder.h: Move IDL/bindings bug note to IDL file.
+        * Modules/webgpu/WebGPURenderPassEncoder.idl: Ditto.
+        * platform/graphics/gpu/GPULimits.h: Added. Home for Web GPU limits constants shared between files.
+        * platform/graphics/gpu/GPURenderPassEncoder.h: Change IDL/bindings bug workaround to unsigned long long to prevent narrowing compared to spec.
+        * platform/graphics/gpu/cocoa/GPURenderPassEncoderMetal.mm:
+        (WebCore::GPURenderPassEncoder::setVertexBuffers): Now properly calls Metal's setVertexBuffers. 
+        * platform/graphics/gpu/cocoa/GPURenderPipelineMetal.mm:
+        (WebCore::setInputStateForPipelineDescriptor): Fix validation checks for vertex attribute numbers and vertex buffer indices. 
+
+        Add symbols to project:
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+
+2019-02-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Async overflow scroll is jumpy on macOS if the main thread is busy
+        https://bugs.webkit.org/show_bug.cgi?id=194184
+        <rdar://problem/47758655>
+
+        Reviewed by Antti Koivisto.
+
+        This change extends to macOS some existing overflow-scroll functionality for iOS.
+        When an async scroll is in process in the scroll thread (or UI process), we periodically
+        message back to the web process main thread with scroll position updates. These
+        can trigger post-scroll compositing updates, but we need to ensure that this update
+        doesn't clobber the scroll position of the native layers, which would trigger
+        stutters.
+
+        To do this we have the notion of a scroll position "sync" (ScrollingLayerPositionAction::Sync) which
+        pokes the new value into the GraphicsLayer (hence making visible rect computations work), but doesn't
+        propagate it to the platform layer. This patch wires up syncs for macOS during async overflow scrolling,
+        coming out of AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll().
+
+        In RenderLayerBacking, m_scrollingContentsLayer is renamed to m_scrolledContentsLayer, and I added
+        updateScrollOffset() and setLocationOfScrolledContents() to handle the set vs. sync, and to keep
+        the iOS vs macOS differences in one function. This allows for more code sharing in RenderLayerBacking::updateGeometry().
+
+        There's a confusing bit in the m_childClippingMaskLayer code (trac.webkit.org/178029) where the setOffsetFromRenderer()
+        just looks wrong; it should match m_scrollingLayer. This code is never hit for Cocoa, which never has m_childClippingMaskLayer.
+
+        * page/scrolling/mac/ScrollingTreeOverflowScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::setScrollPosition): Logging
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::setScrollLayerPosition): Logging
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::RenderLayer):
+        (WebCore::RenderLayer::scrollTo):
+        * rendering/RenderLayer.h: Rename m_requiresScrollBoundsOriginUpdate to m_requiresScrollPositionReconciliation
+        and make it available on all platforms. Just reorder m_adjustForIOSCaretWhenScrolling to reduce #ifdef nesting confusion.
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateDebugIndicators):
+        (WebCore::RenderLayerBacking::destroyGraphicsLayers):
+        (WebCore::RenderLayerBacking::updateGeometry):
+        (WebCore::RenderLayerBacking::setLocationOfScrolledContents):
+        (WebCore::RenderLayerBacking::updateScrollOffset):
+        (WebCore::RenderLayerBacking::updateDrawsContent):
+        (WebCore::RenderLayerBacking::updateScrollingLayers):
+        (WebCore::RenderLayerBacking::paintingPhaseForPrimaryLayer const):
+        (WebCore::RenderLayerBacking::parentForSublayers const):
+        (WebCore::RenderLayerBacking::setContentsNeedDisplay):
+        (WebCore::RenderLayerBacking::setContentsNeedDisplayInRect):
+        (WebCore::RenderLayerBacking::paintContents):
+        (WebCore::RenderLayerBacking::backingStoreMemoryEstimate const):
+        * rendering/RenderLayerBacking.h:
+
+2019-02-02  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Initialize ICB's style with fixed width/height.
+        https://bugs.webkit.org/show_bug.cgi?id=194188
+
+        Reviewed by Antti Koivisto.
+
+        Let's set ICB's logical width/height to Fixed so that it's available when we try to resolve a box's height
+        in FormattingContext::Geometry::computedHeightValue() by using the containing block's height (ICB in this case).
+
+        * layout/LayoutState.cpp:
+        (WebCore::Layout::LayoutState::LayoutState):
+        * layout/LayoutState.h:
+        * layout/layouttree/LayoutTreeBuilder.cpp:
+        (WebCore::Layout::TreeBuilder::createLayoutTree):
+
+2019-02-02  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add missing case to out-of-flow non-replaced horizontal used margin value computation
+        https://bugs.webkit.org/show_bug.cgi?id=194185
+
+        Reviewed by Antti Koivisto.
+
+        If none of horizontal values (left, right, width, margin-left/right) are auto, then usedHorizontalMarginValues = computedHorizontalMarginValues.
+
+        Test: fast/block/block-only/absolute-position-left-right-margin.html
+
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+
+2018-12-16  Darin Adler  <darin@apple.com>
+
+        Convert additional String::format clients to alternative approaches
+        https://bugs.webkit.org/show_bug.cgi?id=192746
+
+        Reviewed by Alexey Proskuryakov.
+
+        This round of conversions covers less-trivial cases such as floating
+        point numerals and hexadecimal. Not yet taking on pointer serialization
+        ("%p") or padding with spaces of zero digits, so call sites using those
+        have been left untouched.
+
+        In some cases these new idioms are a bit clumsy, and we could follow up
+        with additional convenience functions to make them more elegant.
+
+        * Modules/indexeddb/IDBKeyData.cpp:
+        (WebCore::IDBKeyData::loggingString const): Use more ASCIILiteral and
+        more appendLiteral for efficiency. Use upperNibbleToLowercaseASCIIHexDigit,
+        lowerNibbleToLowercaseASCIIHexDigit, and also makeString and FormattedNumber.
+
+        * css/MediaQueryEvaluator.cpp:
+        (WebCore::aspectRatioValueAsString): Use makeString and FormattedNumber.
+        Doing it this way makes it a little clearer that we have an unpleasant
+        use of fixed 6-digit precision here.
+
+        * html/FTPDirectoryDocument.cpp:
+        (WebCore::processFilesizeString): Use makeString and FormattedNumber.
+        * html/track/VTTCue.cpp:
+        (WebCore::VTTCueBox::applyCSSProperties): Ditto.
+        * page/CaptionUserPreferencesMediaAF.cpp:
+        (WebCore::CaptionUserPreferencesMediaAF::windowRoundedCornerRadiusCSS const): Ditto.
+        * page/History.cpp:
+        (WebCore::History::stateObjectAdded): Ditto.
+        * page/cocoa/ResourceUsageOverlayCocoa.mm:
+        (WebCore::formatByteNumber): Ditto.
+        (WebCore::gcTimerString): Use String::number.
+        (WebCore::ResourceUsageOverlay::platformDraw): Use makeString and FormattedNumber.
+
+        * page/scrolling/AxisScrollSnapOffsets.cpp:
+        (WebCore::snapOffsetsToString): Removed some unnecessary copying in the for loop,
+        use appendLiteral, and use appendFixedWidthNumber.
+        (WebCore::snapOffsetRangesToString): Ditto.
+        (WebCore::snapPortOrAreaToString): Use makeString and FormattedNumber.
+
+        * platform/animation/TimingFunction.cpp:
+        (WebCore::TimingFunction::cssText const): Use makeString.
+
+        * platform/cocoa/KeyEventCocoa.mm:
+        (WebCore::keyIdentifierForCharCode): Use makeString and the ASCIIHexDigit
+        functions.
+        * platform/graphics/Color.cpp:
+        (WebCore::Color::nameForRenderTreeAsText const): Ditto.
+
+        * platform/mock/MockRealtimeVideoSource.cpp:
+        (WebCore::MockRealtimeVideoSource::drawText): Use makeString and FormattedNumber.
+
+        * platform/text/PlatformLocale.cpp:
+        (WebCore::DateTimeStringBuilder::visitField): Use String::numberToStringFixedWidth.
+
+2019-02-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove the unused layerForScrolling()
+        https://bugs.webkit.org/show_bug.cgi?id=194180
+
+        Reviewed by Zalan Bujtas.
+
+        Remove ScrollableArea::layerForScrolling() and derivations. This was unused.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::layerForScrolling const): Deleted.
+        * page/FrameView.h:
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::scrollLayerForScrollableArea): Deleted.
+        * page/scrolling/ScrollingCoordinator.h:
+        * platform/ScrollableArea.h:
+        (WebCore::ScrollableArea::layerForScrolling const): Deleted.
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::calculateClipRects const):
+        * rendering/RenderLayer.h:
+
+2019-02-01  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Fix statically positioned replaced out-of-flow horizontal geometry
+        https://bugs.webkit.org/show_bug.cgi?id=194163
+
+        Reviewed by Simon Fraser.
+
+        Fix a typo.
+
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry):
+
+2019-02-01  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: Flaky ASSERTION FAILED: m_uncommittedState.state == State::Committed on http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page.html
+        https://bugs.webkit.org/show_bug.cgi?id=193740
+        <rdar://problem/47527267>
+
+        Reviewed by Alex Christensen.
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::willSendRequest):
+        (WebCore::DocumentLoader::continueAfterContentPolicy):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::loadURL):
+        (WebCore::FrameLoader::loadWithDocumentLoader):
+        (WebCore::FrameLoader::continueLoadAfterNavigationPolicy):
+        * loader/FrameLoader.h:
+        * loader/FrameLoaderTypes.h:
+        * loader/PolicyChecker.cpp:
+        (WebCore::PolicyChecker::checkNavigationPolicy):
+        (WebCore::PolicyChecker::checkNewWindowPolicy):
+        * loader/PolicyChecker.h:
+
+2019-02-01  Antoine Quint  <graouts@apple.com>
+
+        Dispatch pointercancel events when content is panned or zoomed on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=193962
+        <rdar://problem/47629134>
+
+        Reviewed by Dean Jackson.
+
+        Expose two new methods on PointerCaptureController so that, given a pointer id, it can be established whether this pointer
+        has been cancelled, which is important because a cancelled pointer should no longer dispatch any further pointer events, and
+        to cancel a pointer.
+
+        Tests: pointerevents/ios/touch-action-pointercancel-pan-x.html
+               pointerevents/ios/touch-action-pointercancel-pan-y.html
+               pointerevents/ios/touch-action-pointercancel-pinch-zoom.html
+
+        * WebCore.xcodeproj/project.pbxproj: Make PointerCaptureController.h Private so that it can be imported from WebKit.
+        * dom/PointerEvent.h: Remove an unnecessary #if ENABLE(POINTER_EVENTS) since the entire file is already contained in one.
+        Then we add a new create() method that takes an event type, a pointer id and a pointer type (touch vs. pen) that we use
+        to create pointercancel events in PointerCaptureController::cancelPointer().
+        * page/Page.cpp:
+        (WebCore::Page::Page): Pass the Page as a parameter when creating the PointerCaptureController.
+        * page/PointerCaptureController.cpp:
+        (WebCore::PointerCaptureController::PointerCaptureController): Add a Page reference to the constructor since we'll need
+        the page to access its main frame's EventHandler to perform hit testing in case we do not have a capture target override
+        in cancelPointer().
+        (WebCore::PointerCaptureController::releasePointerCapture): Drive-by, remove the the implicit parameter since on iOS we
+        don't need to differentiate. We'll bring this back for the macOS work.
+        (WebCore::PointerCaptureController::hasCancelledPointerEventForIdentifier): New method we'll use when dispatching pointer
+        events to identify whether a pointer id has already been cancelled which will allow for _not_ dispatching any further
+        pointer events for this pointer id.
+        (WebCore::PointerCaptureController::pointerEventWillBeDispatched): Keep track of the pointer type so we can preserve it
+        when dispatching pointercancel events for a given pointer id.
+        (WebCore::PointerCaptureController::cancelPointer): Dispatch a pointercancel for the provided pointer id, using the capture
+        target override as the event's target, if there is one, and otherwise hit-testing at the provided location to figure out
+        what the target should be.
+        * page/PointerCaptureController.h: Switch the target overrides from Element* to RefPtr<Element> to ensure it may not be
+        deleted while we still need them. Existing code already ensures these get set to nullptr.
+
+2019-02-01  Jer Noble  <jer.noble@apple.com>
+
+        Make the WebKit default for media source based on the WebCore default.
+        https://bugs.webkit.org/show_bug.cgi?id=194172
+
+        Reviewed by Eric Carlson.
+
+        * page/SettingsBase.h:
+
+2019-02-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Memory timeline starts from zero when both CPU and Memory timeline are enabled
+        https://bugs.webkit.org/show_bug.cgi?id=194111
+        <rdar://problem/47714555>
+
+        Rubber-stamped by Devin Rousso.
+
+        * page/ResourceUsageThread.cpp:
+        (WebCore::ResourceUsageThread::waitUntilObservers):
+        (WebCore::ResourceUsageThread::threadBody):
+        Wait a short period of time before the first listener registers
+        and we start sampling. This will allow multiple listeners to
+        register, each that wants different data.
+
+2019-02-01  Antti Koivisto  <antti@apple.com>
+
+        Don't use base layer() as the scroll layer in scrolling tree.
+        https://bugs.webkit.org/show_bug.cgi?id=194160
+
+        Reviewed by Simon Fraser.
+
+        Maintain scrollContainerLayer() and scrolledContentsLayer() separately in ScrollingTreeScrollingNode.
+
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::frameViewRootLayerDidChange):
+        (WebCore::AsyncScrollingCoordinator::setNodeLayers):
+        * page/scrolling/AsyncScrollingCoordinator.h:
+        * page/scrolling/ScrollingCoordinator.h:
+        (WebCore::ScrollingCoordinator::setNodeLayers):
+
+        Turn the long layer parameter list into a struct.
+
+        * page/scrolling/ScrollingStateNode.cpp:
+        (WebCore::ScrollingStateNode::ScrollingStateNode):
+        (WebCore::ScrollingStateNode::setAllPropertiesChanged):
+        (WebCore::ScrollingStateNode::setLayer):
+        * page/scrolling/ScrollingStateNode.h:
+        * page/scrolling/ScrollingStateScrollingNode.cpp:
+        (WebCore::ScrollingStateScrollingNode::ScrollingStateScrollingNode):
+        (WebCore::ScrollingStateScrollingNode::setAllPropertiesChanged):
+        (WebCore::ScrollingStateScrollingNode::setScrollContainerLayer):
+        (WebCore::ScrollingStateScrollingNode::dumpProperties const):
+        * page/scrolling/ScrollingStateScrollingNode.h:
+        (WebCore::ScrollingStateScrollingNode::scrollContainerLayer const):
+        * page/scrolling/ScrollingTree.cpp:
+        (WebCore::ScrollingTree::commitTreeState):
+        * page/scrolling/ScrollingTreeScrollingNode.cpp:
+        (WebCore::ScrollingTreeScrollingNode::commitStateBeforeChildren):
+        * page/scrolling/ScrollingTreeScrollingNode.h:
+        (WebCore::ScrollingTreeScrollingNode::scrollContainerLayer const):
+        (WebCore::ScrollingTreeScrollingNode::scrolledContentsLayer const):
+        * page/scrolling/ios/ScrollingTreeFrameScrollingNodeIOS.h:
+        * page/scrolling/ios/ScrollingTreeFrameScrollingNodeIOS.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeIOS::commitStateBeforeChildren):
+        (WebCore::ScrollingTreeFrameScrollingNodeIOS::scrollPosition const):
+        (WebCore::ScrollingTreeFrameScrollingNodeIOS::setScrollLayerPosition):
+        (WebCore::ScrollingTreeFrameScrollingNodeIOS::scrollLayer const): Deleted.
+        * page/scrolling/mac/ScrollingTreeFixedNode.mm:
+        (WebCore::ScrollingTreeFixedNode::commitStateBeforeChildren):
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.h:
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::commitStateBeforeChildren):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::commitStateAfterChildren):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::scrollPosition const):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::setScrollLayerPosition):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::exposedUnfilledArea const):
+        * page/scrolling/mac/ScrollingTreeOverflowScrollingNodeMac.h:
+        * page/scrolling/mac/ScrollingTreeOverflowScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::commitStateBeforeChildren):
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::scrollPosition const):
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::setScrollLayerPosition):
+        * page/scrolling/mac/ScrollingTreeStickyNode.mm:
+        (WebCore::ScrollingTreeStickyNode::commitStateBeforeChildren):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::didChangePlatformLayerForLayer):
+        (WebCore::RenderLayerCompositor::updateScrollingNodeForViewportConstrainedRole):
+        (WebCore::RenderLayerCompositor::updateScrollingNodeForScrollingRole):
+        (WebCore::RenderLayerCompositor::updateScrollingNodeForFrameHostingRole):
+
+2019-02-01  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r240698): fast/scrolling/sticky-to-fixed.html can cause a crash
+        https://bugs.webkit.org/show_bug.cgi?id=194134
+        rdar://problem/47721210
+
+        Reviewed by Daniel Bates.
+
+        fast/scrolling/sticky-to-fixed.html changes the scrolling node type, which causes
+        scrollingCoordinator->insertNode() to return a different ScrollingNodeID to the one
+        passed in. We have to handle this, removing the node for the nodeID and unregistering
+        the layer with the old nodeID.
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::attachScrollingNode):
+
+2019-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r239915): css3/font-feature-font-face-local.html failing on WPE
+        https://bugs.webkit.org/show_bug.cgi?id=194008
+
+        Reviewed by Žan Doberšek.
+
+        We need to replace control characters with zero width space too.
+
+        * platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp:
+        (WebCore::GlyphPage::fill):
+        * platform/text/CharacterProperties.h:
+        (WebCore::isControlCharacter):
+
+2019-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        ComplexText: Test fast/text/word-space-nbsp.html fails when using complex text path
+        https://bugs.webkit.org/show_bug.cgi?id=193279
+
+        Reviewed by Michael Catanzaro.
+
+        The fix applied in r135884 to WidthIterator should also be applied to ComplexTextController.
+
+        * platform/graphics/ComplexTextController.cpp:
+        (WebCore::ComplexTextController::adjustGlyphsAndAdvances):
+
+2019-02-01  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Adjust replaced element's intrinsic ratio
+        https://bugs.webkit.org/show_bug.cgi?id=194154
+
+        Reviewed by Antti Koivisto.
+
+        Decouple image and iframe replaced types and set intrinsic ratio accordingly.
+
+        * layout/layouttree/LayoutBox.cpp:
+        (WebCore::Layout::Box::Box):
+        * layout/layouttree/LayoutBox.h:
+        (WebCore::Layout::Box::isReplaced const):
+        (WebCore::Layout::Box::isIFrame const):
+        (WebCore::Layout::Box::isImage const):
+        * layout/layouttree/LayoutReplaced.cpp:
+        (WebCore::Layout::Replaced::hasIntrinsicRatio const):
+        (WebCore::Layout::Replaced::intrinsicRatio const):
+        (WebCore::Layout::Replaced::hasAspectRatio const):
+        * layout/layouttree/LayoutReplaced.h:
+        * layout/layouttree/LayoutTreeBuilder.cpp:
+        (WebCore::Layout::TreeBuilder::createSubTree):
+
+2019-02-01  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Set intrinsic size on Layout::Replaced
+        https://bugs.webkit.org/show_bug.cgi?id=194139
+
+        Reviewed by Antti Koivisto.
+
+        Eventually Layout::Replaced will track intrinsic size internally until then let's query the RenderReplaced. 
+
+        * layout/layouttree/LayoutBox.h:
+        (WebCore::Layout::Box::replaced):
+        * layout/layouttree/LayoutReplaced.cpp:
+        (WebCore::Layout::Replaced::hasIntrinsicWidth const):
+        (WebCore::Layout::Replaced::hasIntrinsicHeight const):
+        (WebCore::Layout::Replaced::intrinsicWidth const):
+        (WebCore::Layout::Replaced::intrinsicHeight const):
+        * layout/layouttree/LayoutReplaced.h:
+        (WebCore::Layout::Replaced::setIntrinsicSize):
+        (WebCore::Layout::Replaced::setIntrinsicRatio):
+        * layout/layouttree/LayoutTreeBuilder.cpp:
+        (WebCore::Layout::TreeBuilder::createSubTree):
+        * rendering/RenderReplaced.h:
+
+2019-02-01  Claudio Saavedra  <csaavedra@igalia.com>
+
+        Race-condition during scrolling thread creation
+        https://bugs.webkit.org/show_bug.cgi?id=194016
+
+        Reviewed by Saam Barati.
+
+        There is a threading issue during the initialization
+        of the scrolling thread caused by createThreadIfNeeded
+        locking only on the creation of the thread but not on
+        the initialization of the main loop, making it possible
+        for a thread to try to spin the main loop before it's
+        created.
+
+        Fix this by unconditionally waiting on the main loop
+        being created. This makes it necessary to always hold
+        the lock, even when the thread is already created.
+
+        * page/scrolling/ScrollingThread.cpp:
+        (WebCore::ScrollingThread::createThreadIfNeeded):
+
+2019-02-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Use ScrollingNodeID in more places, and improve the name of a ScrollableArea function that returns a ScrollingNodeID
+        https://bugs.webkit.org/show_bug.cgi?id=194126
+
+        Reviewed by Frédéric Wang.
+        
+        Change uint64_t ScrollableArea::scrollLayerID() to ScrollingNodeID ScrollableArea::scrollingNodeID()
+        and fix callers.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollingNodeID const):
+        (WebCore::FrameView::scrollLayerID const): Deleted.
+        * page/FrameView.h:
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::frameViewLayoutUpdated):
+        (WebCore::AsyncScrollingCoordinator::updateExpectsWheelEventTestTriggerWithFrameView):
+        (WebCore::AsyncScrollingCoordinator::frameViewRootLayerDidChange):
+        (WebCore::AsyncScrollingCoordinator::requestScrollPositionUpdate):
+        (WebCore::AsyncScrollingCoordinator::frameViewForScrollingNode const):
+        (WebCore::AsyncScrollingCoordinator::updateScrollPositionAfterAsyncScroll):
+        (WebCore::AsyncScrollingCoordinator::reconcileScrollingState):
+        (WebCore::AsyncScrollingCoordinator::scrollableAreaScrollbarLayerDidChange):
+        (WebCore::AsyncScrollingCoordinator::ensureRootStateNodeForFrameView):
+        (WebCore::AsyncScrollingCoordinator::setSynchronousScrollingReasons):
+        (WebCore::AsyncScrollingCoordinator::setActiveScrollSnapIndices):
+        (WebCore::AsyncScrollingCoordinator::updateScrollSnapPropertiesWithFrameView):
+        * page/scrolling/ScrollingCoordinatorTypes.h:
+        * platform/ScrollTypes.h:
+        * platform/ScrollableArea.h:
+        (WebCore::ScrollableArea::scrollingNodeID const):
+        (WebCore::ScrollableArea::scrollLayerID const): Deleted.
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::parentFrameContentLayers):
+        (WebCore::RenderLayerCompositor::detachRootLayer):
+
+2019-01-31  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Expressions can't be copyable
+        https://bugs.webkit.org/show_bug.cgi?id=194116
+
+        Reviewed by Keith Rollin.
+
+        Expressions have UniqueRef members, which can't be copied. Describe this constraint explicitly rather than implicitly.
+
+        No new tests because there is no behavior change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLEnumerationMemberLiteral.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLExpression.h:
+
+2019-01-31  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Remove unnecessary member from NetworkStorageSession.
+        https://bugs.webkit.org/show_bug.cgi?id=194137
+
+        Reviewed by Don Olmstead.
+
+        No new tests since there is no behavior change.
+
+        * platform/network/NetworkStorageSession.h:
+        * platform/network/curl/NetworkStorageSessionCurl.cpp:
+        (WebCore::NetworkStorageSession::NetworkStorageSession):
+        (WebCore::NetworkStorageSession::context const): Deleted.
+
+2019-01-31  Jer Noble  <jer.noble@apple.com>
+
+        NSInvalidArgumentException in [WebAVSampleBufferErrorListener observeValueForKeyPath:ofObject:change:context:]
+        https://bugs.webkit.org/show_bug.cgi?id=194123
+        <rdar://problem/47721094>
+
+        Reviewed by Eric Carlson.
+
+        According to crash logs, AVSampleBufferDisplayLayer.error can go from an NSError* to nil; when such a change is KVO'd,
+        the NSKeyValueChangeNewKey is a NSNull. Detect this state and bail out early.
+
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm:
+        (-[WebAVSampleBufferErrorListener observeValueForKeyPath:ofObject:change:context:]):
+
+2019-01-31  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa][EME] AirPlaying a FairPlay-protected HLS stream fails to decrypt
+        https://bugs.webkit.org/show_bug.cgi?id=194114
+
+        Reviewed by Eric Carlson.
+
+        The AVAssetResourceLoaderDelegate must explicitly... delegate responsibility for FairPlay key
+        requests to the AVContentKeySession.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource):
+
+2019-01-31  Megan Gardner  <megan_gardner@apple.com>
+
+        Don't insert spaces at the beginning of a newline when using smart-copy-paste
+        https://bugs.webkit.org/show_bug.cgi?id=194070
+
+        Reviewed by Tim Horton.
+
+        If our inserted content end is at the beginning of a paragraph, do not insert a space.
+        Also, if our inserted content beginning is at the end of a paragraph, do not insert a space.
+
+        Test: editing/pasteboard/mac/copy-smartpaste-first-line-in-textarea.html
+
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplaceSelectionCommand::addSpacesForSmartReplace):
+
+2019-01-31  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Build fix: disable MTLCopyAllDevices call on non-Mac platforms
+        https://bugs.webkit.org/show_bug.cgi?id=194120
+
+        Unreviewed build fix. 
+
+        No new tests; no change in behavior.
+
+        * platform/graphics/gpu/cocoa/GPUDeviceMetal.mm:
+        (WebCore::GPUDevice::create): Wrap problem code in #if PLATFORM(MAC).
+
+2019-01-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Basic scrollability for async overflow scrolling on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=194093
+
+        Reviewed by Antti Koivisto.
+
+        Give a ScrollingTreeOverflowScrollingNodeMac a ScrollingTreeScrollingNodeDelegateMac and have it keep track
+        of its layers so basic scrolling works for async overflow scroll.
+
+        * page/scrolling/mac/ScrollingTreeOverflowScrollingNodeMac.h:
+        * page/scrolling/mac/ScrollingTreeOverflowScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::create):
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::ScrollingTreeOverflowScrollingNodeMac):
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::commitStateBeforeChildren):
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::commitStateAfterChildren):
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::handleWheelEvent):
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::scrollPosition const):
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::setScrollPosition):
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::setScrollPositionWithoutContentEdgeConstraints):
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::setScrollLayerPosition):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateScrollingLayers):
+
+2019-01-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Generalize ScrollingTreeScrollingNodeDelegate for use in macOS too, add a macOS subclass for frame/overflow scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=194080
+
+        Reviewed by Antti Koivisto.
+
+        To share code between ScrollingTreeFrameScrollingNodeMac and ScrollingTreeOverflowScrollingNodeMac, build ScrollingTreeScrollingNodeDelegate
+        for macOS too, and add some helper functions to ScrollingTreeScrollingNodeDelegate.
+
+        Add a macOS subclass, ScrollingTreeScrollingNodeDelegateMac, which takes over the basic scrolling, rubber-banding
+        and scroll snapping functionality from ScrollingTreeFrameScrollingNodeMac. The delegate owns the ScrollController and
+        implements ScrollControllerClient.
+
+        ScrollingTreeFrameScrollingNodeMac now owns a ScrollingTreeScrollingNodeDelegateMac. A future patch
+        will add one to ScrollingTreeOverflowScrollingNodeMac.
+
+        No behavior change.
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * page/scrolling/ScrollingTreeFrameScrollingNode.cpp:
+        (WebCore::ScrollingTreeFrameScrollingNode::scrollBy): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNode::scrollByWithoutContentEdgeConstraints): Deleted.
+        * page/scrolling/ScrollingTreeFrameScrollingNode.h:
+        (WebCore::ScrollingTreeFrameScrollingNode::frameScaleFactor const):
+        * page/scrolling/ScrollingTreeNode.cpp:
+        (WebCore::ScrollingTreeNode::isRootNode const):
+        * page/scrolling/ScrollingTreeNode.h:
+        * page/scrolling/ScrollingTreeScrollingNode.cpp:
+        (WebCore::ScrollingTreeScrollingNode::commitStateBeforeChildren):
+        (WebCore::ScrollingTreeScrollingNode::scrollBy):
+        (WebCore::ScrollingTreeScrollingNode::scrollByWithoutContentEdgeConstraints):
+        * page/scrolling/ScrollingTreeScrollingNode.h:
+        (WebCore::ScrollingTreeScrollingNode::expectsWheelEventTestTrigger const):
+        * page/scrolling/ScrollingTreeScrollingNodeDelegate.cpp:
+        * page/scrolling/ScrollingTreeScrollingNodeDelegate.h:
+        (WebCore::ScrollingTreeScrollingNodeDelegate::scrollPosition const):
+        (WebCore::ScrollingTreeScrollingNodeDelegate::minimumScrollPosition const):
+        (WebCore::ScrollingTreeScrollingNodeDelegate::maximumScrollPosition const):
+        (WebCore::ScrollingTreeScrollingNodeDelegate::scrollableAreaSize const):
+        (WebCore::ScrollingTreeScrollingNodeDelegate::totalContentsSize const):
+        (WebCore::ScrollingTreeScrollingNodeDelegate::hasEnabledHorizontalScrollbar const):
+        (WebCore::ScrollingTreeScrollingNodeDelegate::hasEnabledVerticalScrollbar const):
+        (WebCore::ScrollingTreeScrollingNodeDelegate::horizontalScrollElasticity const):
+        (WebCore::ScrollingTreeScrollingNodeDelegate::verticalScrollElasticity const):
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.h:
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::ScrollingTreeFrameScrollingNodeMac):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::commitStateBeforeChildren):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::handleWheelEvent):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::minimumScrollPosition const):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::maximumScrollPosition const):
+        (WebCore::newGestureIsStarting): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::isAlreadyPinnedInDirectionOfGesture): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::allowsHorizontalStretching): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::allowsVerticalStretching): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::stretchAmount): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::pinnedInDirection): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::canScrollHorizontally): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::canScrollVertically): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::shouldRubberBandInDirection): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::immediateScrollBy): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::immediateScrollByWithoutContentEdgeConstraints): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::stopSnapRubberbandTimer): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::adjustScrollPositionToBoundsIfNecessary): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::scrollOffset const): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::immediateScrollOnAxis): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::pageScaleFactor const): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::startScrollSnapTimer): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::stopScrollSnapTimer): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::scrollExtent const): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::viewportSize const): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::deferTestsForReason const): Deleted.
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::removeTestDeferralForReason const): Deleted.
+        * page/scrolling/mac/ScrollingTreeScrollingNodeDelegateMac.h: Copied from Source/WebCore/page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.h.
+        * page/scrolling/mac/ScrollingTreeScrollingNodeDelegateMac.mm: Added.
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::ScrollingTreeScrollingNodeDelegateMac):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::updateScrollSnapPoints):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::setActiveScrollSnapIndexForAxis):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::activeScrollSnapIndexForAxis const):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::activeScrollSnapIndexDidChange const):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::handleWheelEvent):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::isScrollSnapInProgress const):
+        (WebCore::newGestureIsStarting):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::isAlreadyPinnedInDirectionOfGesture):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::allowsHorizontalStretching):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::allowsVerticalStretching):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::stretchAmount):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::pinnedInDirection):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::canScrollHorizontally):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::canScrollVertically):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::shouldRubberBandInDirection):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::immediateScrollBy):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::immediateScrollByWithoutContentEdgeConstraints):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::stopSnapRubberbandTimer):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::adjustScrollPositionToBoundsIfNecessary):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::scrollOffset const):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::immediateScrollOnAxis):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::pageScaleFactor const):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::startScrollSnapTimer):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::stopScrollSnapTimer):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::scrollExtent const):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::viewportSize const):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::deferTestsForReason const):
+        (WebCore::ScrollingTreeScrollingNodeDelegateMac::removeTestDeferralForReason const):
+
+2019-01-31  Jer Noble  <jer.noble@apple.com>
+
+        [Mac] Requesting PiP from two different WebViews gets PiP window "stuck"
+        https://bugs.webkit.org/show_bug.cgi?id=194099
+        <rdar://problem/47271323>
+
+        Reviewed by Eric Carlson.
+
+        When a different client requests the PiP window, the PiP framework will call -pipDidClose: without
+        first calling -pipActionStop:. This leaves the internal fullscreen state in a confused state where
+        the WebView will attempt to re-enter PiP once it gets focus, and can lead to a state where the two
+        WebViews will constantly try to steal PiP from one another, ad infinitum.
+
+        When receiving a notification that the PiP window closed when our internal state tells us that the
+        close was not requested, notify the client that PiP mode was exited, allowing them to set their
+        expected state to a correct and sane value.
+
+        * platform/mac/VideoFullscreenInterfaceMac.mm:
+        (-[WebVideoFullscreenInterfaceMacObjC pipDidClose:]):
+
+2019-01-31  Keith Rollin  <krollin@apple.com>
+
+        WebCore::WHLSL::AST::Expression copy constructor needs to be be default, not delete
+        https://bugs.webkit.org/show_bug.cgi?id=194055
+        <rdar://problem/47684570>
+
+        Reviewed by Myles C. Maxfield.
+
+        WebCore::WHLSL::AST::Expression has a deleted copy constructor.
+        EnumerationMemberLiteral, a subclass, has a default copy constructor.
+        Some compilers may complain that the latter's c'tor can't access the
+        former's, because it doesn't exist. Fix this by marking Expression's
+        c'tor as default.
+
+        No new tests since there should be no observable behavior difference.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLExpression.h:
+
+2019-01-31  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r238819 which is unneeded and caused a performance regression.
+        https://bugs.webkit.org/show_bug.cgi?id=192272
+        <rdar://problem/46664625>
+
+        * loader/EmptyFrameLoaderClient.h:
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::prepareForLoadStart):
+        (WebCore::FrameLoader::continueLoadAfterNavigationPolicy):
+        (WebCore::FrameLoader::loadProvisionalItemFromCachedPage):
+        * loader/FrameLoader.h:
+        * loader/FrameLoaderClient.h:
+
+2019-01-31  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] WebGPUAdapterDescriptor -> GPURequestAdapterOptions and take powerPreference into account
+        https://bugs.webkit.org/show_bug.cgi?id=194068
+        <rdar://problem/47680215>
+
+        Reviewed by Dean Jackson.
+        
+        Per the Web GPU IDL, WebGPUAdapterDescriptor is now known as GPURequestAdapterOptions and is optional.
+        In addition, Web GPU now actually attempts to return an integrated GPU when a low-power adapter is requested.
+
+        Test: adapter-options.html
+
+        * Modules/webgpu/GPURequestAdapterOptions.idl: Renamed from Source/WebCore/Modules/webgpu/WebGPUAdapterDescriptor.idl.
+        * Modules/webgpu/WebGPU.cpp:
+        (WebCore::WebGPU::requestAdapter const):
+        * Modules/webgpu/WebGPU.h:
+        * Modules/webgpu/WebGPU.idl:
+        * Modules/webgpu/WebGPUAdapter.cpp:
+        (WebCore::WebGPUAdapter::create):
+        (WebCore::WebGPUAdapter::WebGPUAdapter):
+        * Modules/webgpu/WebGPUAdapter.h:
+        (WebCore::WebGPUAdapter::options const):
+        * Modules/webgpu/WebGPUDevice.cpp:
+        (WebCore::WebGPUDevice::create):
+        * platform/graphics/gpu/GPUDevice.h:
+        * platform/graphics/gpu/GPURequestAdapterOptions.h: Renamed from Source/WebCore/Modules/webgpu/WebGPUAdapterDescriptor.h.
+        * platform/graphics/gpu/cocoa/GPUDeviceMetal.mm:
+        (WebCore::GPUDevice::create):
+
+2019-01-31  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Formalize WebKitAdditions mechanism of LoadOptimizer
+        https://bugs.webkit.org/show_bug.cgi?id=193886
+        <rdar://problem/47696809>
+
+        Reviewed by Brent Fulgham.
+
+        Covered by existing tests.
+
+        * platform/network/ResourceRequestBase.h:
+        Export isolatedCopy().
+
+2019-01-31  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa][EME] Modern EME uses a different path for SecureStop data than Legacy EME
+        https://bugs.webkit.org/show_bug.cgi?id=193988
+
+        Reviewed by Jon Lee.
+
+        Modern EME is writing SecureStop data as a file at the same path as the
+        directory used by Legacy EME; meaning, when Modern EME attempts to write
+        to that file, it will fail because a directory exists at the same path.
+
+        Add a migration step to take care of those instances where Modern EME Secure
+        Stop data was already written to disk, and move that previously written data
+        to the correct file path.
+
+        * platform/graphics/avfoundation/objc/CDMInstanceFairPlayStreamingAVFObjC.h:
+        * platform/graphics/avfoundation/objc/CDMInstanceFairPlayStreamingAVFObjC.mm:
+        (WebCore::CDMInstanceFairPlayStreamingAVFObjC::initializeWithConfiguration):
+        (WebCore::CDMInstanceFairPlayStreamingAVFObjC::setStorageDirectory):
+        (WebCore::CDMInstanceSessionFairPlayStreamingAVFObjC::updateLicense):
+        (WebCore::CDMInstanceSessionFairPlayStreamingAVFObjC::loadSession):
+        (WebCore::CDMInstanceSessionFairPlayStreamingAVFObjC::removeSessionData):
+        (WebCore::CDMInstanceSessionFairPlayStreamingAVFObjC::ensureSession):
+
+2019-01-31  Antti Koivisto  <antti@apple.com>
+
+        Call the frame main contents layer "rootContentsLayer" consistently.
+        https://bugs.webkit.org/show_bug.cgi?id=194089
+
+        Reviewed by Simon Fraser.
+
+        This is currently called "rootContentLayer" in the compositor and "scrolledContentsLayer" in the scrolling tree.
+        We want to reserve term "scrolledContentsLayer" to mean the direct child layer of the  scroll container layer
+        without any positioning oddities (which this isn't).
+
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::frameViewRootLayerDidChange):
+        (WebCore::AsyncScrollingCoordinator::reconcileScrollingState):
+        (WebCore::AsyncScrollingCoordinator::setNodeLayers):
+
+        Set the rootContentsLayer for frame. It is only used by the Mac frame scrolling code.
+
+        * page/scrolling/AsyncScrollingCoordinator.h:
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::rootContentsLayerForFrameView):
+        (WebCore::ScrollingCoordinator::rootContentLayerForFrameView): Deleted.
+        * page/scrolling/ScrollingCoordinator.h:
+        (WebCore::ScrollingCoordinator::setNodeLayers):
+        * page/scrolling/ScrollingStateFrameScrollingNode.cpp:
+        (WebCore::ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode):
+        (WebCore::ScrollingStateFrameScrollingNode::setAllPropertiesChanged):
+        (WebCore::ScrollingStateFrameScrollingNode::setRootContentsLayer):
+        (WebCore::ScrollingStateFrameScrollingNode::dumpProperties const):
+        * page/scrolling/ScrollingStateFrameScrollingNode.h:
+
+        Introduce rootContentLayer for frames only.
+
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.h:
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::commitStateBeforeChildren):
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::setScrollLayerPosition):
+
+        Switch to using rootContentsLayer.
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::didChangePlatformLayerForLayer):
+        (WebCore::RenderLayerCompositor::updateCompositingLayers):
+        (WebCore::RenderLayerCompositor::updateRootContentLayerClipping):
+        (WebCore::RenderLayerCompositor::layerTreeAsText):
+        (WebCore::RenderLayerCompositor::rootGraphicsLayer const):
+        (WebCore::RenderLayerCompositor::updateRootLayerPosition):
+        (WebCore::RenderLayerCompositor::updateLayerForTopOverhangArea):
+        (WebCore::RenderLayerCompositor::updateLayerForBottomOverhangArea):
+        (WebCore::RenderLayerCompositor::updateLayerForHeader):
+        (WebCore::RenderLayerCompositor::updateLayerForFooter):
+        (WebCore::RenderLayerCompositor::updateOverflowControlsLayers):
+        (WebCore::RenderLayerCompositor::ensureRootLayer):
+        (WebCore::RenderLayerCompositor::destroyRootLayer):
+        (WebCore::RenderLayerCompositor::attachRootLayer):
+        (WebCore::RenderLayerCompositor::detachRootLayer):
+        (WebCore::RenderLayerCompositor::rootLayerAttachmentChanged):
+        (WebCore::RenderLayerCompositor::updateScrollingNodeForScrollingRole):
+
+        Pass rootContentsLayer separately for frames only.
+        Pass null as frame scrolledContentsLayer until these are rearranged (it is not used).
+
+        * rendering/RenderLayerCompositor.h:
+
+2019-01-31  Keith Rollin  <krollin@apple.com>
+
+        GCGamepad is deprecated
+        https://bugs.webkit.org/show_bug.cgi?id=194056
+        <rdar://problem/47685010>
+
+        Reviewed by Brady Eidson.
+
+        GCGamepad is deprecated, resulting in compiler warnings. Address this
+        for now by employing ALLOW_DEPRECATED_DECLARATIONS_BEGIN/END.
+
+        No new tests since there should be no observable behavior difference.
+
+        * platform/gamepad/cocoa/GameControllerGamepad.mm:
+        (WebCore::GameControllerGamepad::setupAsGamepad):
+
+2019-01-31  Darin Adler  <darin@apple.com>
+
+        Simplify and streamline code that creates an appropriate document based on MIME type
+        https://bugs.webkit.org/show_bug.cgi?id=193756
+
+        Reviewed by Chris Dumez.
+
+        * dom/DOMImplementation.cpp:
+        (WebCore::DOMImplementation::createDocument): Use equalLettersIgnoringASCIICase rather
+        than == for all the MIME type checks. Use MIMETypeRegistry::isSupportedImageMIMEType
+        instead of Image::supportsType. Rearranged checks so that all the combinations that
+        that take precedence over plug-ins are checked first, fixing some unimportant edge
+        cases where the plug-in database is initialized and doesn't need to be. Straightened
+        out the logic for various special types so that the checks are more independent from
+        each other and hence easier to understand.
+
+2019-01-31  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] Unreviewed debug build fix, obsolete assert
+
+        Since m_playerPrivate is now a reference, it no longer has a default
+        cast to bool. But there is also no longer a need to assert it's non
+        null, so just remove the assert.
+
+        * platform/graphics/gstreamer/mse/MediaSourceClientGStreamerMSE.cpp:
+        (WebCore::MediaSourceClientGStreamerMSE::append):
+
 2019-01-31  Alicia Boya García  <aboya@igalia.com>
 
         [MSE][GStreamer] Use reference instead of pointer in m_playerPrivate

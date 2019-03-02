@@ -37,7 +37,6 @@
 #include "LegacyCustomProtocolManager.h"
 #endif
 #include "Logging.h"
-#include "NetworkBlobRegistry.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkContentRuleListManagerMessages.h"
 #include "NetworkProcessCreationParameters.h"
@@ -150,9 +149,10 @@ NetworkProcess::NetworkProcess(AuxiliaryProcessInitializationParameters&& parame
     });
 #endif
 
-    NetworkStateNotifier::singleton().addListener([this](bool isOnLine) {
-        auto webProcessConnections = m_webProcessConnections;
-        for (auto& webProcessConnection : webProcessConnections)
+    NetworkStateNotifier::singleton().addListener([weakThis = makeWeakPtr(*this)](bool isOnLine) {
+        if (!weakThis)
+            return;
+        for (auto& webProcessConnection : weakThis->m_webProcessConnections)
             webProcessConnection->setOnLineState(isOnLine);
     });
 
@@ -186,10 +186,10 @@ NetworkProximityManager& NetworkProcess::proximityManager()
 
 void NetworkProcess::removeNetworkConnectionToWebProcess(NetworkConnectionToWebProcess& connection)
 {
-    size_t vectorIndex = m_webProcessConnections.find(&connection);
-    ASSERT(vectorIndex != notFound);
-
-    m_webProcessConnections.remove(vectorIndex);
+    auto count = m_webProcessConnections.removeAllMatching([&] (const auto& c) {
+        return c.ptr() == &connection;
+    });
+    ASSERT_UNUSED(count, count == 1);
 }
 
 bool NetworkProcess::shouldTerminate()
@@ -477,6 +477,8 @@ void NetworkProcess::switchToNewTestingSession()
     m_defaultNetworkStorageSession = std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID(), WTFMove(session), WTFMove(cookieStorage));
 #elif USE(SOUP)
     m_defaultNetworkStorageSession = std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID(), std::make_unique<WebCore::SoupNetworkSession>());
+#elif USE(CURL)
+    m_defaultNetworkStorageSession = std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID());
 #endif
 }
 
@@ -509,6 +511,8 @@ void NetworkProcess::ensureSession(const PAL::SessionID& sessionID, const String
     addResult.iterator->value = std::make_unique<NetworkStorageSession>(sessionID, WTFMove(storageSession), WTFMove(cookieStorage));
 #elif USE(SOUP)
     addResult.iterator->value = std::make_unique<NetworkStorageSession>(sessionID, std::make_unique<SoupNetworkSession>(sessionID));
+#elif USE(CURL)
+    addResult.iterator->value = std::make_unique<NetworkStorageSession>(sessionID);
 #endif
 }
 
@@ -1680,7 +1684,7 @@ void NetworkProcess::removeCacheEngine(const PAL::SessionID& sessionID)
 
 void NetworkProcess::downloadRequest(PAL::SessionID sessionID, DownloadID downloadID, const ResourceRequest& request, const String& suggestedFilename)
 {
-    downloadManager().startDownload(nullptr, sessionID, downloadID, request, suggestedFilename);
+    downloadManager().startDownload(sessionID, downloadID, request, suggestedFilename);
 }
 
 void NetworkProcess::resumeDownload(PAL::SessionID sessionID, DownloadID downloadID, const IPC::DataReference& resumeData, const String& path, WebKit::SandboxExtension::Handle&& sandboxExtensionHandle)

@@ -59,6 +59,7 @@
 #import "WKTextInputListViewController.h"
 #import "WKTimePickerViewController.h"
 #import "WKUIDelegatePrivate.h"
+#import "WKWebEvent.h"
 #import "WKWebViewConfiguration.h"
 #import "WKWebViewConfigurationPrivate.h"
 #import "WKWebViewInternal.h"
@@ -120,10 +121,6 @@
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #import "WKFormColorControl.h"
-#endif
-
-#if !USE(UIKIT_KEYBOARD_ADDITIONS)
-#import "WKWebEvent.h"
 #endif
 
 #if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKPlatformFileUploadPanel.mm>)
@@ -1146,6 +1143,22 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     return superDidResign;
 }
 
+#if ENABLE(POINTER_EVENTS)
+- (void)cancelPointersForGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
+{
+    // FIXME: <rdar://problem/47714562>
+    if (![_touchEventGestureRecognizer respondsToSelector:@selector(activeTouchesByIdentifier)])
+        return;
+
+    NSMapTable<NSNumber *, UITouch *> *activeTouches = [_touchEventGestureRecognizer activeTouchesByIdentifier];
+    for (NSNumber *touchIdentifier in activeTouches) {
+        UITouch *touch = [activeTouches objectForKey:touchIdentifier];
+        if ([touch.gestureRecognizers containsObject:gestureRecognizer])
+            _page->cancelPointer([touchIdentifier unsignedIntValue], WebCore::roundedIntPoint([touch locationInView:self]));
+    }
+}
+#endif
+
 - (void)_webTouchEventsRecognized:(UIWebTouchEventsGestureRecognizer *)gestureRecognizer
 {
     if (!_page->isValid())
@@ -1467,9 +1480,9 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     [_textSelectionAssistant didEndScrollingOverflow];
 }
 
-- (BOOL)shouldShowAutomaticKeyboardUI
+- (BOOL)_requiresKeyboardWhenFirstResponder
 {
-    // FIXME: Make this function knowledgeable about the HTML attribute inputmode.
+    // FIXME: We should add the logic to handle keyboard visibility during focus redirects.
     switch (_focusedElementInformation.elementType) {
     case WebKit::InputType::None:
     case WebKit::InputType::Drawing:
@@ -1487,25 +1500,6 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         return !_focusedElementInformation.isReadOnly;
     }
     return NO;
-}
-
-#if USE(UIKIT_KEYBOARD_ADDITIONS)
-- (BOOL)_disableAutomaticKeyboardUI
-{
-    // Always enable automatic keyboard UI if we are not the first responder to avoid
-    // interfering with other focused views (e.g. Find-in-page).
-    return [self isFirstResponder] && ![self shouldShowAutomaticKeyboardUI];
-}
-#endif
-
-- (BOOL)_requiresKeyboardWhenFirstResponder
-{
-#if USE(UIKIT_KEYBOARD_ADDITIONS)
-    return YES;
-#else
-    // FIXME: We should add the logic to handle keyboard visibility during focus redirects.
-    return [self shouldShowAutomaticKeyboardUI];
-#endif
 }
 
 - (BOOL)_requiresKeyboardResetOnReload
@@ -1747,7 +1741,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if ([self _hasValidOutstandingPositionInformationRequest:request])
         return connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidReceivePositionInformation>(_page->pageID(), 1_s, IPC::WaitForOption::InterruptWaitingIfSyncMessageArrives);
 
-    _hasValidPositionInformation = _page->process().sendSync(Messages::WebPage::GetPositionInformation(request), Messages::WebPage::GetPositionInformation::Reply(_positionInformation), _page->pageID(), 1_s);
+    bool receivedResponse = _page->process().sendSync(Messages::WebPage::GetPositionInformation(request), Messages::WebPage::GetPositionInformation::Reply(_positionInformation), _page->pageID(), 1_s);
+    _hasValidPositionInformation = receivedResponse && _positionInformation.canBeValid;
     
     // FIXME: We need to clean up these handlers in the event that we are not able to collect data, or if the WebProcess crashes.
     if (_hasValidPositionInformation)
@@ -2268,7 +2263,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     newInfo.mergeCompatibleOptionalInformation(_positionInformation);
 
     _positionInformation = newInfo;
-    _hasValidPositionInformation = YES;
+    _hasValidPositionInformation = _positionInformation.canBeValid;
     if (_actionSheetAssistant)
         [_actionSheetAssistant updateSheetPosition];
     [self _invokeAndRemovePendingHandlersValidForCurrentPositionInformation];
@@ -3912,12 +3907,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if (!_traits)
         _traits = adoptNS([[UITextInputTraits alloc] init]);
 
-#if USE(UIKIT_KEYBOARD_ADDITIONS)
-    // Do not change traits when dismissing the keyboard.
-    if (_isBlurringFocusedNode)
-        return _traits.get();
-#endif
-
     [_traits setSecureTextEntry:_focusedElementInformation.elementType == WebKit::InputType::Password || [_formInputSession forceSecureTextEntry]];
     [_traits setShortcutConversionType:_focusedElementInformation.elementType == WebKit::InputType::Password ? UITextShortcutConversionTypeNo : UITextShortcutConversionTypeDefault];
 
@@ -4075,7 +4064,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     return YES;
 }
 
-#if !USE(UIKIT_KEYBOARD_ADDITIONS)
 - (void)_handleKeyUIEvent:(::UIEvent *)event
 {
     bool isHardwareKeyboardEvent = !!event._hidEvent;
@@ -4100,7 +4088,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     
     [self handleKeyWebEvent:webEvent.get()];
 }
-#endif
 
 - (void)handleKeyWebEvent:(::WebEvent *)theEvent
 {
@@ -4128,7 +4115,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         return;
     }
 
-#if !USE(UIKIT_KEYBOARD_ADDITIONS)
     // If we aren't interacting with editable content, we still need to call [super _handleKeyUIEvent:]
     // so that keyboard repeat will work correctly. If we are interacting with editable content,
     // we already did so in _handleKeyUIEvent.
@@ -4147,7 +4133,6 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     _uiEventBeingResent = [(WKWebEvent *)event uiEvent];
     [super _handleKeyUIEvent:_uiEventBeingResent.get()];
     _uiEventBeingResent = nil;
-#endif
 }
 
 - (BOOL)_interpretKeyEvent:(::WebEvent *)event isCharEvent:(BOOL)isCharEvent
@@ -4752,10 +4737,6 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
 
 #if HAVE(PENCILKIT)
     [_drawingCoordinator uninstallInkPicker];
-#endif
-
-#if USE(UIKIT_KEYBOARD_ADDITIONS)
-    [self _endEditing];
 #endif
 
     [_formInputSession invalidate];

@@ -41,6 +41,7 @@ class SessionID;
 
 namespace WebCore {
 class BlobDataFileReference;
+class BlobRegistryImpl;
 class ResourceError;
 class ResourceRequest;
 struct SameSiteInfo;
@@ -121,6 +122,10 @@ public:
     Optional<NetworkActivityTracker> startTrackingResourceLoad(uint64_t pageID, ResourceLoadIdentifier resourceID, bool isMainResource, const PAL::SessionID&);
     void stopTrackingResourceLoad(ResourceLoadIdentifier resourceID, NetworkActivityTracker::CompletionCode);
 
+    WebCore::BlobRegistryImpl& blobRegistry();
+    Vector<RefPtr<WebCore::BlobDataFileReference>> filesInBlob(const URL&);
+    Vector<RefPtr<WebCore::BlobDataFileReference>> resolveBlobReferences(const NetworkResourceLoadParameters&);
+
 private:
     NetworkConnectionToWebProcess(NetworkProcess&, IPC::Connection::Identifier);
 
@@ -175,7 +180,6 @@ private:
 #if ENABLE(INDEXED_DATABASE)
     // Messages handlers (Modern IDB).
     void establishIDBConnectionToServer(PAL::SessionID, uint64_t& serverConnectionIdentifier);
-    void removeIDBConnectionToServer(uint64_t serverConnectionIdentifier);
 #endif
 
 #if ENABLE(SERVICE_WORKER)

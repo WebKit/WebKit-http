@@ -29,6 +29,7 @@
 #pragma once
 
 #include "IntRect.h"
+#include "ProcessIdentifier.h"
 
 namespace WebCore {
 
@@ -44,6 +45,7 @@ enum class PolicyAction : uint8_t {
     Use,
     Download,
     Ignore,
+    StopAllLoads
 };
 
 enum class ReloadOption : uint8_t {
@@ -64,6 +66,48 @@ enum class FrameLoadType : uint8_t {
     ReloadFromOrigin,
     ReloadExpiredOnly
 };
+
+class PolicyCheckIdentifier {
+public:
+    PolicyCheckIdentifier() = default;
+
+    static PolicyCheckIdentifier create();
+
+    bool isValidFor(PolicyCheckIdentifier);
+    bool operator==(const PolicyCheckIdentifier& other) const { return m_process == other.m_process && m_policyCheck == other.m_policyCheck; }
+
+    template<class Encoder> void encode(Encoder&) const;
+    template<class Decoder> static Optional<PolicyCheckIdentifier> decode(Decoder&);
+
+private:
+    PolicyCheckIdentifier(ProcessIdentifier process, uint64_t policyCheck)
+        : m_process(process)
+        , m_policyCheck(policyCheck)
+    { }
+
+    ProcessIdentifier m_process;
+    uint64_t m_policyCheck { 0 };
+};
+
+template<class Encoder>
+void PolicyCheckIdentifier::encode(Encoder& encoder) const
+{
+    encoder << m_process << m_policyCheck;
+}
+
+template<class Decoder>
+Optional<PolicyCheckIdentifier> PolicyCheckIdentifier::decode(Decoder& decoder)
+{
+    auto process = ProcessIdentifier::decode(decoder);
+    if (!process)
+        return WTF::nullopt;
+
+    uint64_t policyCheck;
+    if (!decoder.decode(policyCheck))
+        return WTF::nullopt;
+
+    return PolicyCheckIdentifier { *process, policyCheck };
+}
 
 enum class NewFrameOpenerPolicy : uint8_t {
     Suppress,
@@ -152,7 +196,8 @@ template<> struct EnumTraits<WebCore::PolicyAction> {
         WebCore::PolicyAction,
         WebCore::PolicyAction::Use,
         WebCore::PolicyAction::Download,
-        WebCore::PolicyAction::Ignore
+        WebCore::PolicyAction::Ignore,
+        WebCore::PolicyAction::StopAllLoads
     >;
 };
 

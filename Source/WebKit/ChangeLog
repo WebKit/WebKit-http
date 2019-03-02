@@ -1,3 +1,1494 @@
+2019-02-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r240785): [SOUP] Broke cookie persistent storage
+        https://bugs.webkit.org/show_bug.cgi?id=194209
+
+        Reviewed by Carlos Garcia Campos.
+
+        I missed a spot when moving the persistent storage parameters from NetworkProcess to
+        NetworkSession. They have to be initialized separately for the default session.
+
+        * UIProcess/soup/WebProcessPoolSoup.cpp:
+        (WebKit::WebProcessPool::platformInitializeNetworkProcess):
+
+2019-02-05  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using blobRegistry in NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=194027
+
+        Reviewed by Youenn Fablet.
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::startDownload):
+        * NetworkProcess/Downloads/PendingDownload.cpp:
+        (WebKit::PendingDownload::PendingDownload):
+        * NetworkProcess/Downloads/PendingDownload.h:
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.cpp:
+        (WebKit::NetworkBlobRegistry::registerFileBlobURL):
+        (WebKit::NetworkBlobRegistry::registerBlobURL):
+        (WebKit::NetworkBlobRegistry::registerBlobURLOptionallyFileBacked):
+        (WebKit::NetworkBlobRegistry::registerBlobURLForSlice):
+        (WebKit::NetworkBlobRegistry::unregisterBlobURL):
+        (WebKit::NetworkBlobRegistry::blobSize):
+        (WebKit::NetworkBlobRegistry::writeBlobsToTemporaryFiles):
+        (WebKit::NetworkBlobRegistry::writeBlobToFilePath):
+        (WebKit::NetworkBlobRegistry::connectionToWebProcessDidClose):
+        (WebKit::NetworkBlobRegistry::filesInBlob):
+        (WebKit::NetworkBlobRegistry::singleton): Deleted.
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.h:
+        (WebKit::NetworkBlobRegistry::blobRegistry):
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::didClose):
+        (WebKit::NetworkConnectionToWebProcess::resolveBlobReferences):
+        (WebKit::NetworkConnectionToWebProcess::scheduleResourceLoad):
+        (WebKit::NetworkConnectionToWebProcess::performSynchronousLoad):
+        (WebKit::NetworkConnectionToWebProcess::loadPing):
+        (WebKit::NetworkConnectionToWebProcess::preconnectTo):
+        (WebKit::NetworkConnectionToWebProcess::registerFileBlobURL):
+        (WebKit::NetworkConnectionToWebProcess::registerBlobURL):
+        (WebKit::NetworkConnectionToWebProcess::registerBlobURLFromURL):
+        (WebKit::NetworkConnectionToWebProcess::registerBlobURLOptionallyFileBacked):
+        (WebKit::NetworkConnectionToWebProcess::registerBlobURLForSlice):
+        (WebKit::NetworkConnectionToWebProcess::unregisterBlobURL):
+        (WebKit::NetworkConnectionToWebProcess::blobSize):
+        (WebKit::NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles):
+        (WebKit::NetworkConnectionToWebProcess::filesInBlob):
+        (WebKit::NetworkConnectionToWebProcess::blobRegistry):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkDataTask.cpp:
+        (WebKit::NetworkDataTask::create):
+        * NetworkProcess/NetworkDataTaskBlob.cpp:
+        (WebKit::NetworkDataTaskBlob::NetworkDataTaskBlob):
+        * NetworkProcess/NetworkDataTaskBlob.h:
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::NetworkLoad):
+        (WebKit::NetworkLoad::initialize):
+        * NetworkProcess/NetworkLoad.h:
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::NetworkProcess):
+        (WebKit::NetworkProcess::removeNetworkConnectionToWebProcess):
+        * NetworkProcess/NetworkProcess.h:
+        (WebKit::NetworkProcess::networkBlobRegistry):
+        * NetworkProcess/NetworkProcessPlatformStrategies.cpp:
+        (WebKit::NetworkProcessPlatformStrategies::createBlobRegistry):
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::m_shouldCaptureExtraNetworkLoadMetrics):
+        (WebKit::NetworkResourceLoader::startNetworkLoad):
+        * NetworkProcess/PreconnectTask.cpp:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::SpeculativeLoad):
+
+2019-02-05  Daniel Bates  <dabates@apple.com>
+
+        Fix a typo in r241006. Substitute Modifier for Modifiers.
+
+        * Shared/mac/NativeWebGestureEventMac.mm:
+        (WebKit::NativeWebGestureEvent::NativeWebGestureEvent):
+
+2019-02-05  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the build following r241000
+        (https://bugs.webkit.org/show_bug.cgi?id=194241)
+
+        Substitute OptionSet<WebEvent::Modifier> for Modifiers.
+
+        * Shared/mac/NativeWebGestureEventMac.mm:
+        (WebKit::NativeWebGestureEvent::NativeWebGestureEvent):
+        * Shared/mac/WebGestureEvent.h:
+        (WebKit::WebGestureEvent::WebGestureEvent):
+
+2019-02-05  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r240984.
+
+        Revision casued two API timeouts
+
+        Reverted changeset:
+
+        "Stop using blobRegistry in NetworkProcess"
+        https://bugs.webkit.org/show_bug.cgi?id=194027
+        https://trac.webkit.org/changeset/240984
+
+2019-02-05  Youenn Fablet  <youenn@apple.com>
+
+        UserMediaPermissionRequestManagerProxy lambdas should check for 'this' being valid
+        https://bugs.webkit.org/show_bug.cgi?id=194246
+
+        Reviewed by Eric Carlson.
+
+        With PSON enabled, the manager proxy can be destroyed.
+        It is thus important for its callbacks to check for 'this' to be valid.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::captureDevicesChanged):
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame):
+        (WebKit::UserMediaPermissionRequestManagerProxy::enumerateMediaDevicesForFrame):
+
+2019-02-05  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the build following r241000
+        (https://bugs.webkit.org/show_bug.cgi?id=194241)
+
+        Substitute WebEvent::Modifier::CapsLockKey for WebEvent::CapsLockKey.
+
+        * Shared/gtk/WebEventFactory.cpp:
+        (WebKit::modifiersForEvent):
+        * Shared/mac/WebEventFactory.mm:
+        (WebKit::modifiersForEvent):
+        * UIProcess/API/Cocoa/WKNavigationAction.mm:
+        (toNSEventModifierFlags):
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::protocolModifierToWebEventModifier):
+        * UIProcess/Automation/gtk/WebAutomationSessionGtk.cpp:
+        (WebKit::modifiersToEventState):
+        * UIProcess/Automation/mac/WebAutomationSessionMac.mm:
+        (WebKit::WebAutomationSession::platformSimulateMouseInteraction):
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::toNSEventModifierFlags):
+
+2019-02-05  Daniel Bates  <dabates@apple.com>
+
+        Make WebEvent::Modifiers an OptionSet
+        https://bugs.webkit.org/show_bug.cgi?id=194241
+
+        Reviewed by Simon Fraser.
+
+        Use an OptionSet to represent the bitmask of keyboard modifier flags. This improves type safety
+        and makes debugging more enjoyable because our LLDB pretty-printers have built-in support for
+        OptionSet.
+
+        While I am at it, make WebEvent::Modifier an enum class. It is currently an enum. This makes
+        this enum more closely match WebCore::PlatformEvent::Modifier.
+
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::toAPI):
+        * Shared/NavigationActionData.cpp:
+        (WebKit::NavigationActionData::encode const):
+        (WebKit::NavigationActionData::decode):
+        * Shared/NavigationActionData.h:
+        * Shared/WebEvent.cpp:
+        (WebKit::WebEvent::WebEvent):
+        * Shared/WebEvent.h:
+        (WebKit::WebEvent::shiftKey const):
+        (WebKit::WebEvent::controlKey const):
+        (WebKit::WebEvent::altKey const):
+        (WebKit::WebEvent::metaKey const):
+        (WebKit::WebEvent::capsLockKey const):
+        (WebKit::WebEvent::modifiers const):
+        (WebKit::WebTouchEvent::WebTouchEvent):
+        * Shared/WebEventConversion.cpp:
+        (WebKit::WebKit2PlatformMouseEvent::WebKit2PlatformMouseEvent):
+        * Shared/WebKeyboardEvent.cpp:
+        (WebKit::WebKeyboardEvent::WebKeyboardEvent):
+        * Shared/WebMouseEvent.cpp:
+        (WebKit::WebMouseEvent::WebMouseEvent):
+        * Shared/WebTouchEvent.cpp:
+        (WebKit::WebTouchEvent::WebTouchEvent):
+        * Shared/WebWheelEvent.cpp:
+        (WebKit::WebWheelEvent::WebWheelEvent):
+        * Shared/gtk/WebEventFactory.cpp:
+        (WebKit::modifiersForEvent):
+        * Shared/ios/NativeWebTouchEventIOS.mm:
+        (WebKit::NativeWebTouchEvent::NativeWebTouchEvent):
+        * Shared/ios/WebIOSEventFactory.mm:
+        (modifiersForEvent):
+        (WebIOSEventFactory::createWebKeyboardEvent):
+        (WebIOSEventFactory::createWebMouseEvent):
+        * Shared/libwpe/WebEventFactory.cpp:
+        (WebKit::modifiersForEventModifiers):
+        (WebKit::WebEventFactory::createWebWheelEvent):
+        (WebKit::WebEventFactory::createWebTouchEvent):
+        * Shared/mac/WebEventFactory.mm:
+        (WebKit::modifiersForEvent):
+        (WebKit::WebEventFactory::createWebMouseEvent):
+        (WebKit::WebEventFactory::createWebWheelEvent):
+        (WebKit::WebEventFactory::createWebKeyboardEvent):
+        * Shared/win/WebEventFactory.cpp:
+        (WebKit::modifiersForEvent):
+        (WebKit::modifiersForCurrentKeyState):
+        (WebKit::WebEventFactory::createWebMouseEvent):
+        (WebKit::WebEventFactory::createWebWheelEvent):
+        (WebKit::WebEventFactory::createWebKeyboardEvent):
+        * UIProcess/API/APINavigationAction.h:
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::mouseDidMoveOverElement):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageUIClient):
+        * UIProcess/API/Cocoa/WKNavigationAction.mm:
+        (toNSEventModifierFlags):
+        * UIProcess/API/glib/WebKitPrivate.cpp:
+        (toPlatformModifiers):
+        * UIProcess/API/glib/WebKitPrivate.h:
+        * UIProcess/API/glib/WebKitUIClient.cpp:
+        * UIProcess/API/glib/WebKitWebView.cpp:
+        (webkitWebViewMouseTargetChanged):
+        * UIProcess/API/glib/WebKitWebViewPrivate.h:
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::simulateMouseInteraction):
+        (WebKit::protocolModifierToWebEventModifier):
+        (WebKit::WebAutomationSession::performMouseInteraction):
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Automation/gtk/WebAutomationSessionGtk.cpp:
+        (WebKit::modifiersToEventState):
+        (WebKit::WebAutomationSession::platformSimulateMouseInteraction):
+        * UIProcess/Automation/mac/WebAutomationSessionMac.mm:
+        (WebKit::WebAutomationSession::platformSimulateMouseInteraction):
+        * UIProcess/Automation/wpe/WebAutomationSessionWPE.cpp:
+        (WebKit::modifiersToEventState):
+        (WebKit::WebAutomationSession::platformSimulateMouseInteraction):
+        * UIProcess/Cocoa/UIDelegate.h:
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::toNSEventModifierFlags):
+        (WebKit::UIDelegate::UIClient::mouseDidMoveOverElement):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::mouseDidMoveOverElement):
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageUIClient.h:
+        (API::InjectedBundle::PageUIClient::mouseDidMoveOverElement):
+        * WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp:
+        (WebKit::InjectedBundleNavigationAction::modifiersForNavigationAction):
+        * WebProcess/InjectedBundle/InjectedBundleNavigationAction.h:
+        (WebKit::InjectedBundleNavigationAction::modifiers const):
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.cpp:
+        (WebKit::InjectedBundlePageUIClient::mouseDidMoveOverElement):
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.h:
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::showContextMenuAtPoint):
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::createWebEvent const):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::mouseDidMoveOverElement):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::simulateMouseDown):
+        (WebKit::WebPage::simulateMouseUp):
+        (WebKit::WebPage::simulateMouseMotion):
+
+2019-02-05  Tim Horton  <timothy_horton@apple.com>
+
+        Reproducible crash under WKShareSheet presentWithParameters when cancelling a share
+        https://bugs.webkit.org/show_bug.cgi?id=194301
+        <rdar://problem/47719379>
+
+        Reviewed by Beth Dakin.
+
+        * UIProcess/Cocoa/WKShareSheet.mm:
+        (-[WKShareSheet presentWithParameters:completionHandler:]):
+        NSSharingServicePicker's delegate callbacks can be called synchronously.
+        We release the WKShareSheet (which holds our reference to the NSSharingServicePicker)
+        under sharingServicePicker:didChooseSharingService:. On older versions of macOS,
+        there was nothing keeping the NSSharingServicePicker alive inside
+        showRelativeToRect:ofView:preferredEdge:, thus the whole chain of references would
+        fall and result in sending a message to a released NSSharingServicePicker.
+        To resolve this, keep an extra reference to the WKShareSheet until
+        presentation is complete.
+
+2019-02-05  Keith Rollin  <krollin@apple.com>
+
+        Enable the automatic checking and regenerations of .xcfilelists during builds
+        https://bugs.webkit.org/show_bug.cgi?id=194124
+        <rdar://problem/47721277>
+
+        Reviewed by Tim Horton.
+
+        Bug 193790 add a facility for checking -- during build time -- that
+        any needed .xcfilelist files are up-to-date and for updating them if
+        they are not. This facility was initially opt-in by setting
+        WK_ENABLE_CHECK_XCFILELISTS until other pieces were in place and until
+        the process seemed robust. Its now time to enable this facility and
+        make it opt-out. If there is a need to disable this facility, set and
+        export WK_DISABLE_CHECK_XCFILELISTS=1 in your environment before
+        running `make` or `build-webkit`, or before running Xcode from the
+        command line.
+
+        Additionally, remove the step that generates a list of source files
+        going into the UnifiedSources build step. It's only necessarily to
+        specify Sources.txt and SourcesCocoa.txt as inputs.
+
+        * UnifiedSources-input.xcfilelist: Removed.
+        * WebKit.xcodeproj/project.pbxproj:
+
+2019-02-05  Brady Eidson  <beidson@apple.com>
+
+        Add a new DownloadMap type that manages taking an assertion automatically.
+        https://bugs.webkit.org/show_bug.cgi?id=194294
+
+        Reviewed by Alex Christensen.
+
+        If we don't need the download assertion, we use a vanilla HashMap like today.
+        If we need the download assertion, we use the new DownloadMap class instead.
+
+        The new DownloadMap is a wrapper around a HashMap that also creates/destroys the assertion as needed.
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::dataTaskBecameDownloadTask):
+        (WebKit::DownloadManager::downloadFinished):
+        * NetworkProcess/Downloads/DownloadManager.h:
+
+        * NetworkProcess/Downloads/DownloadMap.cpp: Added.
+        (WebKit::DownloadMap::get const):
+        (WebKit::DownloadMap::isEmpty const):
+        (WebKit::DownloadMap::size const):
+        (WebKit::DownloadMap::contains const):
+        (WebKit::DownloadMap::add):
+        (WebKit::DownloadMap::remove):
+        * NetworkProcess/Downloads/DownloadMap.h: Added.
+
+        * Sources.txt:
+
+        * UIProcess/ios/ProcessAssertionIOS.mm:
+        (WebKit::ProcessAssertion::ProcessAssertion):
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2019-02-05  Brady Eidson  <beidson@apple.com>
+
+        Fix iOS simulator build after r240954
+
+        Unreviewed.
+
+        * UIProcess/ios/ProcessAssertionIOS.mm:
+        (WebKit::ProcessAssertion::ProcessAssertion): Implement the new constructor.
+
+2019-02-05  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using blobRegistry in NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=194027
+
+        Reviewed by Youenn Fablet.
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::startDownload):
+        * NetworkProcess/Downloads/PendingDownload.cpp:
+        (WebKit::PendingDownload::PendingDownload):
+        * NetworkProcess/Downloads/PendingDownload.h:
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.cpp:
+        (WebKit::NetworkBlobRegistry::registerFileBlobURL):
+        (WebKit::NetworkBlobRegistry::registerBlobURL):
+        (WebKit::NetworkBlobRegistry::registerBlobURLOptionallyFileBacked):
+        (WebKit::NetworkBlobRegistry::registerBlobURLForSlice):
+        (WebKit::NetworkBlobRegistry::unregisterBlobURL):
+        (WebKit::NetworkBlobRegistry::blobSize):
+        (WebKit::NetworkBlobRegistry::writeBlobsToTemporaryFiles):
+        (WebKit::NetworkBlobRegistry::writeBlobToFilePath):
+        (WebKit::NetworkBlobRegistry::connectionToWebProcessDidClose):
+        (WebKit::NetworkBlobRegistry::filesInBlob):
+        (WebKit::NetworkBlobRegistry::singleton): Deleted.
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.h:
+        (WebKit::NetworkBlobRegistry::blobRegistry):
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::didClose):
+        (WebKit::NetworkConnectionToWebProcess::resolveBlobReferences):
+        (WebKit::NetworkConnectionToWebProcess::scheduleResourceLoad):
+        (WebKit::NetworkConnectionToWebProcess::performSynchronousLoad):
+        (WebKit::NetworkConnectionToWebProcess::loadPing):
+        (WebKit::NetworkConnectionToWebProcess::preconnectTo):
+        (WebKit::NetworkConnectionToWebProcess::registerFileBlobURL):
+        (WebKit::NetworkConnectionToWebProcess::registerBlobURL):
+        (WebKit::NetworkConnectionToWebProcess::registerBlobURLFromURL):
+        (WebKit::NetworkConnectionToWebProcess::registerBlobURLOptionallyFileBacked):
+        (WebKit::NetworkConnectionToWebProcess::registerBlobURLForSlice):
+        (WebKit::NetworkConnectionToWebProcess::unregisterBlobURL):
+        (WebKit::NetworkConnectionToWebProcess::blobSize):
+        (WebKit::NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles):
+        (WebKit::NetworkConnectionToWebProcess::filesInBlob):
+        (WebKit::NetworkConnectionToWebProcess::blobRegistry):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkDataTask.cpp:
+        (WebKit::NetworkDataTask::create):
+        * NetworkProcess/NetworkDataTaskBlob.cpp:
+        (WebKit::NetworkDataTaskBlob::NetworkDataTaskBlob):
+        * NetworkProcess/NetworkDataTaskBlob.h:
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::NetworkLoad):
+        (WebKit::NetworkLoad::initialize):
+        * NetworkProcess/NetworkLoad.h:
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::NetworkProcess):
+        (WebKit::NetworkProcess::removeNetworkConnectionToWebProcess):
+        * NetworkProcess/NetworkProcess.h:
+        (WebKit::NetworkProcess::networkBlobRegistry):
+        * NetworkProcess/NetworkProcessPlatformStrategies.cpp:
+        (WebKit::NetworkProcessPlatformStrategies::createBlobRegistry):
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::m_shouldCaptureExtraNetworkLoadMetrics):
+        (WebKit::NetworkResourceLoader::startNetworkLoad):
+        * NetworkProcess/PreconnectTask.cpp:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::SpeculativeLoad):
+
+2019-02-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r240742.
+
+        Causes crashes on iOS simulator.
+
+        Reverted changeset:
+
+        "[iOS] Keyups for non-modifier keys identified as "Dead" when
+        not focused in a content-editable element"
+        https://bugs.webkit.org/show_bug.cgi?id=192824
+        https://trac.webkit.org/changeset/240742
+
+2019-02-05  Alex Christensen  <achristensen@webkit.org>
+
+        Protect globalWebSocketStreamMap with a Lock
+        https://bugs.webkit.org/show_bug.cgi?id=194224
+        <rdar://problem/47581081>
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebProcess/Network/WebSocketStream.cpp:
+        (WebKit::WebSocketStream::streamWithIdentifier):
+        (WebKit::WebSocketStream::networkProcessCrashed):
+        (WebKit::WebSocketStream::WebSocketStream):
+        (WebKit::WebSocketStream::~WebSocketStream):
+
+2019-02-04  Alex Christensen  <achristensen@webkit.org>
+
+        Add Networking Daemon skeleton
+        https://bugs.webkit.org/show_bug.cgi?id=194278
+
+        Reviewed by Zalan Bujtas.
+
+        Daemon skeletons? This is spooky stuff.
+
+        * NetworkProcess/EntryPoint/Cocoa/Daemon/DaemonEntryPoint.h: Added.
+        * NetworkProcess/EntryPoint/Cocoa/Daemon/DaemonEntryPoint.mm: Added.
+        (WebKit::DaemonMain):
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTaskCocoa::restrictRequestReferrerToOriginIfNeeded):
+        * Shared/API/Cocoa/WKMain.h:
+        * Shared/API/Cocoa/WKMain.mm:
+        (WKDaemonMain):
+        * Shared/EntryPointUtilities/Cocoa/AuxiliaryProcessMain.cpp:
+        (main):
+        * SourcesCocoa.txt:
+        * UnifiedSources-input.xcfilelist:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2019-02-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Shrink size of VM by lazily allocating IsoSubspaces for non-common types
+        https://bugs.webkit.org/show_bug.cgi?id=193993
+
+        Reviewed by Keith Miller.
+
+        * WebProcess/Plugins/Netscape/JSNPMethod.h:
+        * WebProcess/Plugins/Netscape/JSNPObject.h:
+
+2019-02-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Move some macOS/iOS scrolling code into the scrolling/cocoa directory
+        https://bugs.webkit.org/show_bug.cgi?id=194245
+
+        Reviewed by Zalan Bujtas.
+
+        Use PLATFORM(MAC), not !PLATFORM(IOS_FAMILY).
+
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.h:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+
+2019-02-04  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK][WPE] Need a function to convert internal URI to display ("pretty") URI
+        https://bugs.webkit.org/show_bug.cgi?id=174816
+
+        Reviewed by Michael Catanzaro.
+
+        Add webkit_uri_for_display for GTK and WPE.
+
+        * PlatformGTK.cmake:
+        * PlatformWPE.cmake:
+        * SourcesGTK.txt:
+        * SourcesWPE.txt:
+        * UIProcess/API/glib/WebKitURIUtilities.cpp: Added.
+        (webkit_uri_for_display):
+        * UIProcess/API/gtk/WebKitURIUtilities.h: Added.
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0-sections.txt:
+        * UIProcess/API/gtk/docs/webkit2gtk-docs.sgml:
+        * UIProcess/API/gtk/webkit2.h:
+        * UIProcess/API/wpe/WebKitURIUtilities.h: Added.
+        * UIProcess/API/wpe/docs/wpe-0.1-sections.txt:
+        * UIProcess/API/wpe/docs/wpe-docs.sgml:
+        * UIProcess/API/wpe/webkit.h:
+
+2019-02-04  Alex Christensen  <achristensen@webkit.org>
+
+        Move XPCService main to a shared file calling a C function
+        https://bugs.webkit.org/show_bug.cgi?id=194256
+
+        Reviewed by Brady Eidson.
+
+        This not only reduces a few kilobytes of duplicated binary from the XPCService executables,
+        It will allow me to introduce a new kind of executable which will need to parse argv and call a different C function.
+        This is similar to r236075 but more general.
+
+        * Shared/API/Cocoa/WKMain.h: Added.
+        * Shared/API/Cocoa/WKMain.mm: Added.
+        (WKXPCServiceMain):
+        * Shared/EntryPointUtilities/Cocoa/AuxiliaryProcessMain.cpp: Added.
+        (main):
+        * Shared/EntryPointUtilities/Cocoa/XPCService/XPCServiceMain.mm:
+        (main): Deleted.
+        * SourcesCocoa.txt:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2019-02-04  Alex Christensen  <achristensen@webkit.org>
+
+        Make MessageSender functions const
+        https://bugs.webkit.org/show_bug.cgi?id=194247
+
+        Reviewed by Brady Eidson.
+
+        * NetworkProcess/Downloads/Download.cpp:
+        (WebKit::Download::messageSenderConnection const):
+        (WebKit::Download::messageSenderDestinationID const):
+        (WebKit::Download::messageSenderConnection): Deleted.
+        (WebKit::Download::messageSenderDestinationID): Deleted.
+        * NetworkProcess/Downloads/Download.h:
+        * NetworkProcess/Downloads/PendingDownload.cpp:
+        (WebKit::PendingDownload::messageSenderConnection const):
+        (WebKit::PendingDownload::messageSenderDestinationID const):
+        (WebKit::PendingDownload::messageSenderConnection): Deleted.
+        (WebKit::PendingDownload::messageSenderDestinationID): Deleted.
+        * NetworkProcess/Downloads/PendingDownload.h:
+        * NetworkProcess/IndexedDB/WebIDBConnectionToClient.cpp:
+        (WebKit::WebIDBConnectionToClient::messageSenderConnection const):
+        (WebKit::WebIDBConnectionToClient::messageSenderConnection): Deleted.
+        * NetworkProcess/IndexedDB/WebIDBConnectionToClient.h:
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::messageSenderConnection const):
+        (WebKit::NetworkResourceLoader::messageSenderConnection): Deleted.
+        * NetworkProcess/NetworkResourceLoader.h:
+        * NetworkProcess/NetworkSocketStream.cpp:
+        (WebKit::NetworkSocketStream::messageSenderConnection const):
+        (WebKit::NetworkSocketStream::messageSenderDestinationID const):
+        (WebKit::NetworkSocketStream::messageSenderConnection): Deleted.
+        (WebKit::NetworkSocketStream::messageSenderDestinationID): Deleted.
+        * NetworkProcess/NetworkSocketStream.h:
+        * NetworkProcess/ServiceWorker/WebSWServerConnection.h:
+        * NetworkProcess/ServiceWorker/WebSWServerToContextConnection.cpp:
+        (WebKit::WebSWServerToContextConnection::messageSenderConnection const):
+        (WebKit::WebSWServerToContextConnection::messageSenderDestinationID const):
+        (WebKit::WebSWServerToContextConnection::messageSenderConnection): Deleted.
+        (WebKit::WebSWServerToContextConnection::messageSenderDestinationID): Deleted.
+        * NetworkProcess/ServiceWorker/WebSWServerToContextConnection.h:
+        * Platform/IPC/MessageSender.h:
+        * Shared/AuxiliaryProcess.cpp:
+        (WebKit::AuxiliaryProcess::messageSenderConnection const):
+        (WebKit::AuxiliaryProcess::messageSenderDestinationID const):
+        (WebKit::AuxiliaryProcess::messageSenderConnection): Deleted.
+        (WebKit::AuxiliaryProcess::messageSenderDestinationID): Deleted.
+        * Shared/AuxiliaryProcess.h:
+        * UIProcess/WebConnectionToWebProcess.cpp:
+        (WebKit::WebConnectionToWebProcess::messageSenderConnection const):
+        (WebKit::WebConnectionToWebProcess::messageSenderDestinationID const):
+        (WebKit::WebConnectionToWebProcess::messageSenderConnection): Deleted.
+        (WebKit::WebConnectionToWebProcess::messageSenderDestinationID): Deleted.
+        * UIProcess/WebConnectionToWebProcess.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::messageSenderConnection const):
+        (WebKit::WebPageProxy::messageSenderDestinationID const):
+        (WebKit::WebPageProxy::messageSenderConnection): Deleted.
+        (WebKit::WebPageProxy::messageSenderDestinationID): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::WebIDBConnectionToServer::messageSenderConnection const):
+        (WebKit::WebIDBConnectionToServer::messageSenderConnection): Deleted.
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.h:
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::messageSenderConnection const):
+        (WebKit::WebResourceLoader::messageSenderDestinationID const):
+        (WebKit::WebResourceLoader::messageSenderConnection): Deleted.
+        (WebKit::WebResourceLoader::messageSenderDestinationID): Deleted.
+        * WebProcess/Network/WebResourceLoader.h:
+        * WebProcess/Network/WebSocketStream.cpp:
+        (WebKit::WebSocketStream::messageSenderConnection const):
+        (WebKit::WebSocketStream::messageSenderDestinationID const):
+        (WebKit::WebSocketStream::messageSenderConnection): Deleted.
+        (WebKit::WebSocketStream::messageSenderDestinationID): Deleted.
+        * WebProcess/Network/WebSocketStream.h:
+        * WebProcess/Storage/WebSWClientConnection.h:
+        * WebProcess/WebConnectionToUIProcess.cpp:
+        (WebKit::WebConnectionToUIProcess::messageSenderConnection const):
+        (WebKit::WebConnectionToUIProcess::messageSenderDestinationID const):
+        (WebKit::WebConnectionToUIProcess::messageSenderConnection): Deleted.
+        (WebKit::WebConnectionToUIProcess::messageSenderDestinationID): Deleted.
+        * WebProcess/WebConnectionToUIProcess.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::messageSenderConnection const):
+        (WebKit::WebPage::messageSenderDestinationID const):
+        (WebKit::WebPage::messageSenderConnection): Deleted.
+        (WebKit::WebPage::messageSenderDestinationID): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+
+2019-02-04  Brady Eidson  <beidson@apple.com>
+
+        Take additional process assertion while downloading.
+        <rdar://problem/47741356> and https://bugs.webkit.org/show_bug.cgi?id=194239
+
+        Reviewed by Chris Dumez.
+
+        When the first download starts, grab this new assertion.
+        When the last download ends, release it.
+
+        * Configurations/Network-iOS.entitlements:
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::dataTaskBecameDownloadTask):
+        (WebKit::DownloadManager::downloadFinished):
+        * NetworkProcess/Downloads/DownloadManager.h:
+
+        * Platform/spi/ios/AssertionServicesSPI.h:
+
+        * UIProcess/ProcessAssertion.cpp:
+        (WebKit::ProcessAssertion::ProcessAssertion):
+        * UIProcess/ProcessAssertion.h:
+        (WebKit::ProcessAssertion::ProcessAssertion):
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::didSetAssertionState):
+
+        * UIProcess/ios/ProcessAssertionIOS.mm:
+        (WebKit::flagsForState):
+        (WebKit::reasonForState):
+        (WebKit::ProcessAssertion::ProcessAssertion):
+
+2019-02-04  Said Abou-Hallawa  <said@apple.com>
+
+        [CG] Enable setAdditionalSupportedImageTypes for WK1
+        https://bugs.webkit.org/show_bug.cgi?id=194190
+
+        Reviewed by Tim Horton.
+
+        Move the function webCoreStringVectorFromNSStringArray from WebKit to
+        WebCore so it can be used by both WebKit and WebKitLegacy.
+
+        * Platform/mac/StringUtilities.h:
+        * Platform/mac/StringUtilities.mm:
+        (WebKit::webCoreStringVectorFromNSStringArray): Deleted.
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+
+2019-02-04  Benjamin Poulain  <benjamin@webkit.org>
+
+        Use deferrable timer to restart the Responsiveness Timer on each wheel event
+        https://bugs.webkit.org/show_bug.cgi?id=194135
+
+        Reviewed by Simon Fraser.
+
+        Simon Fraser suggested a neat improvement over my previous optimization
+        of ResponsivenessTimer.
+
+        Instead of reseting the deadline with every event, we can let the timer
+        fire and add the missing time from the last start.
+
+        I implemented that behavior in the new Deferrable Timer class and use
+        it from ResponsivenessTimer.
+
+        * NetworkProcess/watchos/NetworkProximityAssertion.h:
+        * UIProcess/ResponsivenessTimer.h:
+        * WebProcess/Plugins/PluginView.h:
+
+2019-02-04  Simon Fraser  <simon.fraser@apple.com>
+
+        PageOverlayController's layers should be created lazily
+        https://bugs.webkit.org/show_bug.cgi?id=194199
+        rdar://problem/46571593
+
+        Reviewed by Tim Horton.
+        
+        Expose PageOverlayController::hasDocumentOverlays() and hasViewOverlays()
+        and use them to only parent the overlay-hosting layers when necessary.
+
+        For document overlays, RenderLayerCompositor::appendDocumentOverlayLayers() can
+        simply do nothing if there are none. Updates are triggered via Page::installedPageOverlaysChanged(),
+        which calls FrameView::setNeedsCompositingConfigurationUpdate() to trigger the root layer
+        compositing updates that parents the layerWithDocumentOverlays().
+
+        View overlays are added to the layer tree via the DrawingArea. When we go between having
+        none and some view overlays, Page::installedPageOverlaysChanged() calls attachViewOverlayGraphicsLayer()
+        on the ChromeClient, and the DrawingArea responds by calling updateRootLayers() and scheduling a
+        compositing flush (this has to be done manually because view overlay layers are outside the
+        subtree managed by RenderLayerCompositor).
+        
+        Now that GraphicsLayers are ref-counted, we can let the DrawingArea simply retain its m_viewOverlayRootLayer;
+        there is no need for RenderLayerCompositor::attachRootLayer()/detachRootLayer() to do anything with view
+        overlay layers. This implies that a page can navigate (new FrameView) and view overlays will persist, without
+        having to be manually removed and re-added. We can also remove the Frame argument to attachViewOverlayGraphicsLayer().
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::attachViewOverlayGraphicsLayer):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::attachViewOverlayGraphicsLayer):
+        * WebProcess/WebPage/AcceleratedDrawingArea.h:
+        * WebProcess/WebPage/DrawingArea.h:
+        (WebKit::DrawingArea::attachViewOverlayGraphicsLayer):
+        * WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::attachViewOverlayGraphicsLayer):
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.h:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::attachViewOverlayGraphicsLayer):
+        (WebKit::TiledCoreAnimationDrawingArea::mainFrameContentSizeChanged):
+
+2019-02-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, improve preprocessor guard
+        https://bugs.webkit.org/show_bug.cgi?id=194166
+        <rdar://problem/47694328>
+
+        AC mode is only optional in GTK port. Requested by Zan.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2019-02-04  Sihui Liu  <sihui_liu@apple.com>
+
+        IndexedDB: leak WebIDBConnectionToServer in layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=193688
+        <rdar://problem/47353263>
+
+        Reviewed by Geoffrey Garen.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::didClose):
+        (WebKit::NetworkConnectionToWebProcess::establishIDBConnectionToServer):
+        (WebKit::NetworkConnectionToWebProcess::removeIDBConnectionToServer): Deleted.
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in:
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        (WebKit::WebIDBConnectionToServer::~WebIDBConnectionToServer):
+
+2019-02-04  Antoine Quint  <graouts@apple.com>
+
+        <rdar://problem/47788802>
+
+        Unreviewed build fix.
+
+        * Platform/spi/ios/UIKitSPI.h:
+
+2019-02-04  Youenn Fablet  <youenn@apple.com>
+
+        Capture state should be managed consistently when doing process swapping
+        https://bugs.webkit.org/show_bug.cgi?id=194122
+        <rdar://problem/47609293>
+
+        Reviewed by Eric Carlson.
+
+        When doing PSON, WebPageProxy::resetState is called.
+        It resets the media state, but does not call the client delegates.
+        Instead of directly updating the media state, call the routine used to update it so that client delegates are called.
+
+        Covered by new API test and layout test.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _mediaCaptureState]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::resetState):
+        (WebKit::WebPageProxy::isPlayingMediaDidChange):
+        (WebKit::WebPageProxy::updatePlayingMediaDidChange):
+        * UIProcess/WebPageProxy.h:
+
+2019-02-04  Antoine Quint  <graouts@apple.com>
+
+        Use a dedicated type instead of int32_t for pointer identifiers
+        https://bugs.webkit.org/show_bug.cgi?id=194217
+
+        Reviewed by Antti Koivisto.
+
+        * Scripts/webkit/messages.py:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::cancelPointer):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::cancelPointer):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2019-02-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, avoid -Wswitch warnings introduced in r240880
+        https://bugs.webkit.org/show_bug.cgi?id=193740
+        <rdar://problem/47527267>
+
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::dispatchDidReceiveResponse):
+
+2019-02-04  Alexander Mikhaylenko  <exalm7659@gmail.com>
+
+        [GTK] Allow pinch zoom on touchpad
+        https://bugs.webkit.org/show_bug.cgi?id=194201
+
+        Reviewed by Michael Catanzaro.
+
+        Enable touchpad events for WebkitWebViewBase, then feed touchpad
+        pinch events to GestureController.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseRealize): Added GDK_TOUCHPAD_GESTURE_MASK to event mask.
+        (webkitWebViewBaseEvent): Added.
+        (webkit_web_view_base_class_init): Override event vfunc.
+
+2019-02-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, only force settings.acceleratedCompositingEnabled() to true for Cocoa ports
+        https://bugs.webkit.org/show_bug.cgi?id=194166
+        <rdar://problem/47694328>
+
+        Accelerated compositing is broken for me at least. We're a long way from being able to force
+        it.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2019-02-04  Abderrahim Kitouni  <akitouni@gnome.org>
+
+        [GTK] Remove last python2 dependency from CMake build process
+        https://bugs.webkit.org/show_bug.cgi?id=194218
+
+        Reviewed by Michael Catanzaro.
+
+        * InspectorGResources.cmake:
+
+2019-02-04  Antti Koivisto  <antti@apple.com>
+
+        Rename GraphicsLayer and PlatformCALayer type enum values to match "scroll container layer" convention
+        https://bugs.webkit.org/show_bug.cgi?id=194215
+
+        Reviewed by Frédéric Wang.
+
+        * Shared/RemoteLayerTree/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::drawInContext):
+        * UIProcess/RemoteLayerTree/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::makeNode):
+        * UIProcess/RemoteLayerTree/ios/RemoteLayerTreeHostIOS.mm:
+        (WebKit::RemoteLayerTreeHost::makeNode):
+
+2019-02-03  Antti Koivisto  <antti@apple.com>
+
+        [iOS] Tiles not created in large scrollable iframes
+        https://bugs.webkit.org/show_bug.cgi?id=193665
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeFrameScrollingNodeRemoteIOS.mm:
+        (WebKit::ScrollingTreeFrameScrollingNodeRemoteIOS::commitStateBeforeChildren):
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.mm:
+        (WebKit::ScrollingTreeScrollingNodeDelegateIOS::commitStateBeforeChildren):
+
+        We now use scrollContainerLayer consistently so remove the special cases.
+
+2019-02-03  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [curl] [WebKit] Assertion failures of missing networkStorageSession for storage/indexeddb tests
+        https://bugs.webkit.org/show_bug.cgi?id=194141
+
+        Reviewed by Ross Kirsling.
+
+        Implemented WebKit::NetworkProcess::switchToNewTestingSession and
+        WebKit::NetworkProcess::ensureSession for curl port.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::switchToNewTestingSession):
+        (WebKit::NetworkProcess::ensureSession):
+
+2019-02-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Make setNeedsLayout on the root more explicitly about triggering its side-effects
+        https://bugs.webkit.org/show_bug.cgi?id=194198
+
+        Reviewed by Antti Koivisto.
+
+        Call the newly named functions.
+
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::updateScrollbars):
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::didInitializePlugin):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setHeaderBannerHeightForTesting):
+        (WebKit::WebPage::setFooterBannerHeightForTesting):
+        * WebProcess/WebPage/mac/PageBannerMac.mm:
+        (WebKit::PageBanner::addToPage):
+        (WebKit::PageBanner::detachFromPage):
+        (WebKit::PageBanner::hide):
+
+2019-02-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Validate navigation policy decisions to avoid crashes in continueLoadAfterNavigationPolicy
+        https://bugs.webkit.org/show_bug.cgi?id=194189
+
+        Reviewed by Geoffrey Garen.
+
+        Pass the policy check identifier around functions and store it in PolicyDecisionSender
+        so that we can send it back to WebCore with the navigation policy decision.
+
+        We also store it in WebFrame in the case the policy decision had to be invalidated
+        before the decision was received (via WebFrame::invalidatePolicyListener).
+
+        * Scripts/webkit/messages.py:
+        * UIProcess/ProvisionalPageProxy.cpp:
+        (WebKit::ProvisionalPageProxy::decidePolicyForNavigationActionAsync):
+        (WebKit::ProvisionalPageProxy::decidePolicyForResponse):
+        * UIProcess/ProvisionalPageProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::PolicyDecisionSender): Added PolicyCheckIdentifier as a member.
+        (WebKit::WebPageProxy::PolicyDecisionSender::create):
+        (WebKit::WebPageProxy::PolicyDecisionSender::send):
+        (WebKit::WebPageProxy::PolicyDecisionSender::PolicyDecisionSender):
+        (WebKit::WebPageProxy::receivedNavigationPolicyDecision):
+        (WebKit::WebPageProxy::decidePolicyForNavigationActionAsync):
+        (WebKit::WebPageProxy::decidePolicyForNavigationActionAsyncShared):
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        (WebKit::WebPageProxy::decidePolicyForNavigationActionSync):
+        (WebKit::WebPageProxy::decidePolicyForNewWindowAction):
+        (WebKit::WebPageProxy::decidePolicyForResponse):
+        (WebKit::WebPageProxy::decidePolicyForResponseShared):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::setUpPolicyListener):
+        (WebKit::WebFrame::invalidatePolicyListener):
+        (WebKit::WebFrame::didReceivePolicyDecision):
+        * WebProcess/WebPage/WebFrame.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::didReceivePolicyDecision):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2019-02-03  Megan Gardner  <megan_gardner@apple.com>
+
+        Turn on Smart Paste
+        https://bugs.webkit.org/show_bug.cgi?id=193786
+
+        Reviewed by Ryosuke Niwa.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/ios/TextCheckerIOS.mm:
+        (WebKit::TextChecker::isSmartInsertDeleteEnabled):
+        Use the flag from UIKit to determine if smart copy paste should be
+        turned on.
+
+2019-02-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Tidy up data memebers of FrameView and related classes to shrink class sizes
+        https://bugs.webkit.org/show_bug.cgi?id=194197
+
+        Reviewed by Zalan Bujtas.
+
+        * UIProcess/PageClient.h: Declare enum size.
+
+2018-12-16  Darin Adler  <darin@apple.com>
+
+        Convert additional String::format clients to alternative approaches
+        https://bugs.webkit.org/show_bug.cgi?id=192746
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UIProcess/Cocoa/ViewGestureController.cpp:
+        (WebKit::ViewGestureController::SnapshotRemovalTracker::startWatchdog):
+        Use makeString and FormattedNumber.
+
+        * UIProcess/WebAuthentication/Cocoa/LocalAuthenticator.mm:
+        (WebKit::LocalAuthenticator::getAssertion): Added a comment about an
+        incorrect format specifier and left this code as is for now.
+
+2019-02-01  David Kilzer  <ddkilzer@apple.com>
+
+        Move soft-linking of TelephonyUtilities.framework out of TUCallSPI.h
+        <https://webkit.org/b/193866>
+
+        Reviewed by Alex Christensen.
+
+        * Platform/mac/MenuUtilities.mm:
+        - Update for rename of TUCallSPI.h to TelephonyUtilitiesSPI.h.
+        - Add soft-linking code formerly in TUCallSPI.h.
+
+2019-02-01  Alex Christensen  <achristensen@webkit.org>
+
+        Move XPCService entry points from mac directory to new Cocoa directory
+        https://bugs.webkit.org/show_bug.cgi?id=194129
+
+        Reviewed by Chris Dumez.
+
+        * Configurations/NetworkService.xcconfig:
+        * Configurations/PluginService.64.xcconfig:
+        * Configurations/WebContentService.xcconfig:
+        * NetworkProcess/EntryPoint/Cocoa: Copied from Source/WebKit/NetworkProcess/EntryPoint/mac.
+        * NetworkProcess/EntryPoint/mac: Removed.
+        * PluginProcess/EntryPoint/Cocoa: Copied from Source/WebKit/PluginProcess/EntryPoint/mac.
+        * PluginProcess/EntryPoint/mac: Removed.
+        * Shared/EntryPointUtilities/Cocoa: Copied from Source/WebKit/Shared/EntryPointUtilities/mac.
+        * Shared/EntryPointUtilities/Cocoa/XPCService/XPCServiceEntryPoint.h:
+        * Shared/EntryPointUtilities/Cocoa/XPCService/XPCServiceEntryPoint.mm:
+        * Shared/EntryPointUtilities/Cocoa/XPCService/XPCServiceMain.mm:
+        * Shared/EntryPointUtilities/mac: Removed.
+        * SourcesCocoa.txt:
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/EntryPoint/Cocoa: Copied from Source/WebKit/WebProcess/EntryPoint/mac.
+        * WebProcess/EntryPoint/mac: Removed.
+
+2019-02-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Consistent 1 sec hang when triggering modal alerts while handling synchronous touch events
+        https://bugs.webkit.org/show_bug.cgi?id=194140
+        <rdar://problem/47728098>
+
+        Reviewed by Tim Horton.
+
+        Currently, the UI process hangs when attempting to synchronously present modal UI from the web process while the
+        UI process is waiting for sync IPC in the web process. While we have logic to generally mitigate IPC deadlock in
+        this scenario by dispatching the web process' sync IPC immediately with the intention of allowing the web
+        process to finish processing sync IPC (and consequently unblock the UI process), this fails in the case where
+        the sync IPC message from the web process to the UI process requires main thread execution for an arbitrary
+        amount of time (for instance, modal alert dialogs). In this case, we'll end up in a state where we've handled
+        the web process' sync IPC in the UI process, yet we can't resume execution since the web process is still
+        blocked.
+
+        By far the most egregious scenario in which this manifests is during synchronous gesture recognizer IPC, i.e.
+        grabbing position information from the UI process, and handling touch events synchronously. Luckily, these are
+        also cases where (1) we know sync IPC may safely time out, and (2) the presentation of modal UI from the web
+        process should cause the gesture recognizers to fail anyways. As such, we can mitigate these scenarios in the
+        web process by responding to the these pending sync IPC messages *before* sending our own sync IPC to the UI
+        process.
+
+        Test: fast/events/touch/ios/show-modal-alert-during-touch-start.html
+
+        * Shared/ios/InteractionInformationAtPosition.h:
+        (WebKit::InteractionInformationAtPosition::invalidInformation):
+        * Shared/ios/InteractionInformationAtPosition.mm:
+        (WebKit::InteractionInformationAtPosition::encode const):
+        (WebKit::InteractionInformationAtPosition::decode):
+
+        Add a new flag to indicate whether an interaction information response can be valid. Interaction information
+        cannot be valid in the case where the interaction information request was interrupted by certain sync IPC
+        messages from the web process.
+
+        * UIProcess/API/C/WKContextConfigurationRef.cpp:
+        (WKContextConfigurationIgnoreSynchronousMessagingTimeoutsForTesting):
+        (WKContextConfigurationSetIgnoreSynchronousMessagingTimeoutsForTesting):
+
+        Add some testing SPI to ignore sync IPC timeouts, for the purposes of testing. Rather than use the existing
+        Objective-C SPI in WKWebProcessPoolConfiguration, I decided to add C API plumbing for this flag, so that other
+        non-Cocoa ports may also support the new layout test option to ignore sync IPC timeouts.
+
+        * UIProcess/API/C/WKContextConfigurationRef.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView ensurePositionInformationIsUpToDate:]):
+        (-[WKContentView _positionInformationDidChange:]):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::runBeforeUnloadConfirmPanel):
+        (WebKit::WebChromeClient::runJavaScriptAlert):
+        (WebKit::WebChromeClient::runJavaScriptConfirm):
+        (WebKit::WebChromeClient::runJavaScriptPrompt):
+        (WebKit::WebChromeClient::print):
+        (WebKit::WebChromeClient::exceededDatabaseQuota):
+        (WebKit::WebChromeClient::reachedApplicationCacheOriginQuota):
+
+        Cancel any pending sync IPC replies prior to sending sync IPC messages to the UI process which may result in
+        sync IPC deadlock, by using the new helper method, sendSyncWithDelayedReply, instead of just sendSync.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::cancelGesturesBlockedOnSynchronousReplies):
+
+        Add a helper to cancel pending sync messages coming in from the UI process that are being called from within
+        gesture recognizer delegate hooks.
+
+        (WebKit::WebPage::touchEventSync):
+        * WebProcess/WebPage/WebPage.h:
+
+        Add a new helper, sendSyncWithDelayedReply, to be used when sending a sync IPC message to the UI process that
+        cannot be immediately completed upon arrival. Importantly, this cancels pending sync replies, and also passes
+        IPC::SendSyncOption::InformPlatformProcessWillSuspend.
+
+        * WebProcess/WebPage/WebPage.messages.in:
+
+        Change these from LegacySync to Delayed messages.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+
+        Make this sync IPC handler (as well as WebPage::touchEventSync) store the IPC reply during the scope of the
+        method, and invoke the stored reply at the end of the method if it wasn't interrupted due to something calling
+        cancelGesturesBlockedOnSynchronousReplies().
+
+        (WebKit::WebPage::positionInformation):
+
+        Refactor getPositionInformation by pulling out the logic for building an InteractionInformationAtPosition into
+        a separate helper.
+
+        (WebKit::WebPage::requestPositionInformation):
+
+2019-02-01  David Quesada  <david_quesada@apple.com>
+
+        Network Process crash when resuming downloads: '-[__NSDictionaryI setObject:forKey:]: unrecognized selector sent to instance %p'
+        https://bugs.webkit.org/show_bug.cgi?id=194144
+        rdar://problem/47553456
+
+        Reviewed by Geoffrey Garen.
+
+        * NetworkProcess/Downloads/cocoa/DownloadCocoa.mm:
+        (WebKit::Download::resume):
+            Make a mutable copy of the root object decoded from the resume data.
+            It might have been originally encoded as an immutable dictionary.
+
+2019-02-01  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION: Flaky ASSERTION FAILED: m_uncommittedState.state == State::Committed on http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page.html
+        https://bugs.webkit.org/show_bug.cgi?id=193740
+        <rdar://problem/47527267>
+
+        Reviewed by Alex Christensen.
+
+        The issue was happening when the page is triggering a cross-site navigation while in the middle of parsing. This would cause us to
+        start a new provisional load in a new process before the previous process sends the DidFinishLoadForFrame() IPC to the UIProcess.
+        Getting such IPC after a provisional load has started would mess up our state machine and trip assertions.
+
+        This patch restores non-PSON behavior which is that the previous load in the old process now gets stopped so that no DidFinishLoadForFrame()
+        / DidFailLoadForFrame() gets sent. To achieve this behavior, I introduced a new "StopAllLoads" PolicyAction that we now send the old
+        process when the load is continuing in a new process, instead of sending it "Ignore".
+
+        * NetworkProcess/NetworkDataTaskBlob.cpp:
+        (WebKit::NetworkDataTaskBlob::dispatchDidReceiveResponse):
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (toNSURLSessionResponseDisposition):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::receivedNavigationPolicyDecision):
+
+2019-02-01  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix; Respect the 'condition:' field in the WebPreferences.yaml when generating
+        WebPreferencesStoreDefaultsMap.cpp.
+
+        * page/SettingsBase.h:
+
+2019-02-01  Antoine Quint  <graouts@apple.com>
+
+        Dispatch pointercancel events when content is panned or zoomed on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=193962
+        <rdar://problem/47629134>
+
+        Reviewed by Dean Jackson.
+
+        When a user-agent-provided interaction, such as panning or zooming on iOS, uses a set of touches, we should dispatch a pointercancel
+        event for the pointer ids of the touches involved. To facilitate this, we add a new method on WKContentView to cancel all the pointers
+        matching active touches for a provided UIGestureRecognizer through an async IPC call into the Web process using the new method
+        PointerCaptureController::cancelPointer().
+
+        * Platform/spi/ios/UIKitSPI.h: Add the necessary forward declaration for a necessary UIKit SPI allowing us to get the set of last-seen
+        UITouches by the identifier generated for the matching WebKit touch.
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView scrollViewWillBeginZooming:withView:]): Dispatch touchcancel events for all pointers involved in a pinch gesture on the
+        top-level UIScrollView.
+        (-[WKWebView _scrollView:adjustedOffsetForOffset:translation:startPoint:locationInView:horizontalVelocity:verticalVelocity:]): Dispatch
+        touchcancel events for all pointers involved in a pan gesture on the top-level UIScrollView. We can infer this by looking at whether the
+        adjusted content offset, after accounting for the permitted touch actions, is different from the original content offset.
+        * UIProcess/PageClient.h: Expose a new virtual cancelPointersForGestureRecognizer() method which will allow the iOS implementation to
+        forward the call to WKContentViewInteraction.
+        (WebKit::PageClient::cancelPointersForGestureRecognizer):
+        * UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.h: Expose the WebPageProxy such that we may access it to cancel pointers for
+        a given gesture recognizer from within ScrollingTreeScrollingNodeDelegateIOS.
+        (WebKit::RemoteScrollingCoordinatorProxy::webPageProxy const):
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.h:
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.mm:
+        (-[WKScrollingNodeScrollViewDelegate _scrollView:adjustedOffsetForOffset:translation:startPoint:locationInView:horizontalVelocity:verticalVelocity:]):
+        Dispatch touchcancel events for all pointers involved in a pan gesture on a nested UIScrollView. We can infer this by looking at
+        whether the adjusted content offset, after accounting for the permitted touch actions, is different from the original content offset.
+        (-[WKScrollingNodeScrollViewDelegate scrollViewWillBeginZooming:withView:]): Dispatch touchcancel events for all pointers involved in a
+        pinch gesture on a nested UIScrollView.
+        (-[WKScrollingNodeScrollViewDelegate cancelPointersForGestureRecognizer:]):
+        (WebKit::ScrollingTreeScrollingNodeDelegateIOS::cancelPointersForGestureRecognizer):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::cancelPointer):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::cancelPointersForGestureRecognizer):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView cancelPointersForGestureRecognizer:]): Obtain all active UITouch objects for the view and dispatch a pointercancel event,
+        through the WebPageProxy, for all touches associated with the provided gesture recognizer.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::cancelPointer):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2019-02-01  Jer Noble  <jer.noble@apple.com>
+
+        Make the WebKit default for media source based on the WebCore default.
+        https://bugs.webkit.org/show_bug.cgi?id=194172
+
+        Reviewed by Eric Carlson.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _setMediaSourceEnabled:]):
+        (-[WKPreferences _mediaSourceEnabled]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2019-02-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Force settings.acceleratedCompositingEnabled() to true for WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=194166
+        rdar://problem/47694328
+
+        Reviewed by Tim Horton.
+
+        WebKit relies on accelerated compositing for its drawing areas to function correctly,
+        and sometimes clients (*cough* Safari *cough*) have bugs where they clobber the settings,
+        so force this setting to be always on (and release log if this happens).
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2019-02-01  Antti Koivisto  <antti@apple.com>
+
+        Don't use base layer() as the scroll layer in scrolling tree.
+        https://bugs.webkit.org/show_bug.cgi?id=194160
+
+        Reviewed by Simon Fraser.
+
+        * Shared/RemoteLayerTree/RemoteScrollingCoordinatorTransaction.cpp:
+        (ArgumentCoder<ScrollingStateNode>::encode):
+        (ArgumentCoder<ScrollingStateNode>::decode):
+        (ArgumentCoder<ScrollingStateScrollingNode>::encode):
+        (ArgumentCoder<ScrollingStateScrollingNode>::decode):
+        (WebKit::dump):
+        * UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::connectStateNodeLayers):
+        * UIProcess/RemoteLayerTree/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::connectStateNodeLayers):
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeFrameScrollingNodeRemoteIOS.mm:
+        (WebKit::ScrollingTreeFrameScrollingNodeRemoteIOS::commitStateBeforeChildren):
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeOverflowScrollingNodeIOS.mm:
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::commitStateBeforeChildren):
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.mm:
+        (WebKit::ScrollingTreeScrollingNodeDelegateIOS::commitStateBeforeChildren):
+        (WebKit::ScrollingTreeScrollingNodeDelegateIOS::commitStateAfterChildren):
+
+2019-02-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [SOUP] Improve use of SoupCookiePersistentStorageType
+        https://bugs.webkit.org/show_bug.cgi?id=194103
+
+        Reviewed by Carlos Garcia Campos.
+
+        Turn it into an enum class, and stop casting it to and from uint32_t.
+
+        * NetworkProcess/Cookies/WebCookieManager.h:
+        * NetworkProcess/Cookies/WebCookieManager.messages.in:
+        * NetworkProcess/Cookies/soup/WebCookieManagerSoup.cpp:
+        (WebKit::WebCookieManager::setCookiePersistentStorage):
+        * NetworkProcess/NetworkSessionCreationParameters.cpp:
+        (WebKit::NetworkSessionCreationParameters::privateSessionParameters):
+        (WebKit::NetworkSessionCreationParameters::decode):
+        * NetworkProcess/NetworkSessionCreationParameters.h:
+        * Shared/soup/SoupCookiePersistentStorageType.h:
+        (): Deleted.
+        * UIProcess/API/glib/WebKitCookieManager.cpp:
+        * UIProcess/WebCookieManagerProxy.h:
+        * UIProcess/soup/WebCookieManagerProxySoup.cpp:
+        (WebKit::WebCookieManagerProxy::setCookiePersistentStorage):
+        (WebKit::WebCookieManagerProxy::getCookiePersistentStorage const):
+
+2019-02-01  Per Arne Vollan  <pvollan@apple.com>
+
+        [macOS] Revert parts of r240811, since it causes kernel panics.
+        https://bugs.webkit.org/show_bug.cgi?id=194061
+
+        Unreviewed crash fix.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2019-02-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [SOUP] Improve use of PAL::SessionID in WebKitCookieManager
+        https://bugs.webkit.org/show_bug.cgi?id=194092
+
+        Reviewed by Carlos Garcia Campos.
+
+        Always get it from the data store instead of assuming the default session ID, and add a
+        helper function for this.
+
+        * UIProcess/API/glib/WebKitCookieManager.cpp:
+        (_WebKitCookieManagerPrivate::sessionID const):
+        (_WebKitCookieManagerPrivate::~_WebKitCookieManagerPrivate):
+        (webkitCookieManagerCreate):
+        (webkit_cookie_manager_set_persistent_storage):
+        (webkit_cookie_manager_set_accept_policy):
+        (webkit_cookie_manager_get_accept_policy):
+        (webkit_cookie_manager_add_cookie):
+        (webkit_cookie_manager_get_cookies):
+        (webkit_cookie_manager_delete_cookie):
+
+2019-01-31  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Remove unnecessary member from NetworkStorageSession.
+        https://bugs.webkit.org/show_bug.cgi?id=194137
+
+        Reviewed by Don Olmstead.
+
+        * NetworkProcess/curl/NetworkProcessCurl.cpp:
+        (WebKit::NetworkProcess::platformCreateDefaultStorageSession const):
+
+2019-01-31  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, build fix after r240805
+
+        This patch reverts the BlockPtr change since it breaks iOS builds.
+
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::tryInterceptNavigation):
+
+2019-01-31  Chris Dumez  <cdumez@apple.com>
+
+        Page zoom level is lost after a process swap or a crash
+        https://bugs.webkit.org/show_bug.cgi?id=194105
+        <rdar://problem/47610781>
+
+        Reviewed by Alex Christensen.
+
+        Previously, when the client would call setPageAndTextZoomFactors() on the WebPageProxy,
+        we would update the WebPageProxy's corresponding data members and send an IPC to the
+        WebProcess to apply the zoom factors.
+
+        The issue is that on process crash or process-swap, we never communicate those zoom factors
+        to the new WebProcess. Even if the client were to call setPageAndTextZoomFactors() with
+        the same factors again, it would be a no-op since the WebPageProxy's data members already
+        reflect the expected values.
+
+        To address the issue, pass both the page zoom and the text zoom factors to the WebProcess
+        via WebPageCreationParameters. This way, there is no need to send an extra IPC and we're
+        sure the WebPageProxy's factors are properly applied to the WebPage on WebContent process
+        side upon creation (whether after a crash or a process swap).
+
+        * Shared/WebPageCreationParameters.cpp:
+        (WebKit::WebPageCreationParameters::encode const):
+        (WebKit::WebPageCreationParameters::decode):
+        * Shared/WebPageCreationParameters.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::creationParameters):
+        * WebProcess/WebPage/WebPage.cpp:
+
+2019-01-31  Per Arne Vollan  <pvollan@apple.com>
+
+        [macOS] Disable permissive call logging in sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=194061
+
+        Reviewed by Alexey Proskuryakov.
+
+        Strict call filtering should be reenabled.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2019-01-31  Per Arne Vollan  <pvollan@apple.com>
+
+        [macOS] Crash when control-clicking or copying text rendered with a web font
+        https://bugs.webkit.org/show_bug.cgi?id=193913
+        <rdar://problem/47541039>
+
+        Reviewed by Brent Fulgham.
+
+        On older versions of macOS, allowing mach lookup to com.apple.FontObjectsServer is needed.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2019-01-31  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove WKPageIsWebProcessResponsive
+        https://bugs.webkit.org/show_bug.cgi?id=194096
+
+        Reviewed by Alex Christensen.
+
+        It is not used by any client.
+
+        It is also bad API. It is better to let WebKit track
+        responsiveness and tell the client with processDidBecomeResponsive.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageIsWebProcessResponsive): Deleted.
+        * UIProcess/API/C/WKPagePrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::isWebProcessResponsive): Deleted.
+        * UIProcess/WebPageProxy.h:
+
+2019-01-31  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r238819 which is unneeded and caused a performance regression.
+        https://bugs.webkit.org/show_bug.cgi?id=192272
+        <rdar://problem/46664625>
+
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageLoaderClient.h:
+        (API::InjectedBundle::PageLoaderClient::didStartProvisionalLoadForFrame):
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInLoadDelegate.h:
+        * WebProcess/InjectedBundle/API/glib/WebKitWebPage.cpp:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (PageLoaderClient::didStartProvisionalLoadForFrame):
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.cpp:
+        (WebKit::InjectedBundlePageLoaderClient::didStartProvisionalLoadForFrame):
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.h:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidStartProvisionalLoad):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+
+2019-01-31  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Formalize WebKitAdditions mechanism of LoadOptimizer
+        https://bugs.webkit.org/show_bug.cgi?id=193886
+        <rdar://problem/47696809>
+
+        Reviewed by Brent Fulgham.
+
+        This patch does the following few things:
+        1) formalizes WebKitAdditions mechanism of LoadOptimizer;
+        2) modernizes AppLinks code in tryInterceptNavigation to use BlockPtr;
+        3) lets AppLinks have higher precedence than LoadOptimizer.
+
+        * SourcesCocoa.txt:
+        * UIProcess/Cocoa/LoadOptimizer.h: Removed.
+        * UIProcess/Cocoa/LoadOptimizer.mm: Removed.
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::tryOptimizingLoad):
+        (WebKit::tryInterceptNavigation):
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::WebsiteDataStore):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        (WebKit::WebsiteDataStore::loadOptimizer): Deleted.
+        * WebKit.xcodeproj/project.pbxproj:
+
+2019-01-31  Chris Dumez  <cdumez@apple.com>
+
+        Regression(PSON) Crash under WebProcessProxy::canTerminateChildProcess()
+        https://bugs.webkit.org/show_bug.cgi?id=194094
+        <rdar://problem/47580753>
+
+        Reviewed by Ryosuke Niwa.
+
+        If a SuspendedPageProxy gets destroyed while a WebPageProxy is waiting for its to finish to suspend,
+        call the "failure to suspend" completion handler asynchronously instead of synchronouly to make sure
+        the completion handler cannot try and use the suspended page proxy while it is being destroyed.
+
+        * UIProcess/SuspendedPageProxy.cpp:
+        (WebKit::SuspendedPageProxy::~SuspendedPageProxy):
+
+2019-01-31  Timothy Hatcher  <timothy@apple.com>
+
+        Fix LSAppLink deprecation warnings.
+        https://bugs.webkit.org/show_bug.cgi?id=194097
+
+        Unreviewed build fix.
+
+        * UIProcess/ios/WKActionSheetAssistant.mm:
+        (-[WKActionSheetAssistant _appendOpenActionsForURL:actions:elementInfo:]):
+
 2019-01-30  Simon Fraser  <simon.fraser@apple.com>
 
         [Mac] Implement basic hit testing in the scrolling tree

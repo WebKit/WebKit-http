@@ -80,6 +80,11 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
 
         this._maxUsage = -Infinity;
 
+        this.clear();
+    }
+
+    clear()
+    {
         this._cpuUsageView.clear();
     }
 
@@ -114,8 +119,10 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         // Don't include the record before the graph start if the graph start is within a gap.
         let includeRecordBeforeStart = !discontinuities.length || discontinuities[0].startTime > graphStartTime;
         let visibleRecords = this.representedObject.recordsInTimeRange(graphStartTime, visibleEndTime, includeRecordBeforeStart);
-        if (!visibleRecords.length)
+        if (!visibleRecords.length || (visibleRecords.length === 1 && visibleRecords[0].endTime < graphStartTime)) {
+            this.clear();
             return;
+        }
 
         // Update total usage chart with the last record's data.
         let lastRecord = visibleRecords.lastValue;
@@ -133,10 +140,13 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
             let usage = record.usage;
 
             if (discontinuities.length && discontinuities[0].endTime < time) {
-                let discontinuity = discontinuities.shift();
-                dataPoints.push({time: discontinuity.startTime, size: 0});
-                dataPoints.push({time: discontinuity.endTime, size: 0});
-                dataPoints.push({time: discontinuity.endTime, size: usage});
+                let startDiscontinuity = discontinuities.shift();
+                let endDiscontinuity = startDiscontinuity;
+                while (discontinuities.length && discontinuities[0].endTime < time)
+                    endDiscontinuity = discontinuities.shift();
+                dataPoints.push({time: startDiscontinuity.startTime, size: 0});
+                dataPoints.push({time: endDiscontinuity.endTime, size: 0});
+                dataPoints.push({time: endDiscontinuity.endTime, size: usage});
             }
 
             dataPoints.push({time, size: usage});

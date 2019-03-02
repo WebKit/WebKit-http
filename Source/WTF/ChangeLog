@@ -1,3 +1,176 @@
+2019-02-05  Keith Rollin  <krollin@apple.com>
+
+        Enable the automatic checking and regenerations of .xcfilelists during builds
+        https://bugs.webkit.org/show_bug.cgi?id=194124
+        <rdar://problem/47721277>
+
+        Reviewed by Tim Horton.
+
+        Bug 193790 add a facility for checking -- during build time -- that
+        any needed .xcfilelist files are up-to-date and for updating them if
+        they are not. This facility was initially opt-in by setting
+        WK_ENABLE_CHECK_XCFILELISTS until other pieces were in place and until
+        the process seemed robust. Its now time to enable this facility and
+        make it opt-out. If there is a need to disable this facility, set and
+        export WK_DISABLE_CHECK_XCFILELISTS=1 in your environment before
+        running `make` or `build-webkit`, or before running Xcode from the
+        command line.
+
+        Additionally, remove the step that generates a list of source files
+        going into the UnifiedSources build step. It's only necessarily to
+        specify Sources.txt and SourcesCocoa.txt as inputs.
+
+        * Scripts/generate-unified-source-bundles.rb:
+
+2019-02-05  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Shrink sizeof(UnlinkedCodeBlock)
+        https://bugs.webkit.org/show_bug.cgi?id=194281
+
+        Reviewed by Michael Saboff.
+
+        * wtf/TriState.h:
+
+2019-02-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] Stop URI-escaping file system representations
+        https://bugs.webkit.org/show_bug.cgi?id=194213
+
+        Reviewed by Carlos Garcia Campos.
+
+        Stop URI-escaping of file representation strings in
+        FileSystem::stringFromFileSystemRepresentation(), and URI-unescaping
+        of strings in FileSystem::fileSystemRepresentation().
+
+        This behavior deviates from POSIX and CF implementations and is
+        currently breaking IndexedDB-specific calculation of database sizes due
+        to directory components used in that process that are URL-based and are
+        as such URI-escaped. When unescaped, those single directory components
+        explode into multiple directory components, leading to incorrect total
+        database size calculation when iterating the database directory.
+
+        FileSystem::stringFromFileSystemRepresentation() now retrieves GLib's
+        filename charsets and in worst case converts the filesystem
+        representation to UTF-8 before String::fromUTF8() is used.
+        FileSystem::fileSystemRepresentation() reverses that process, taking
+        String's UTF-8 data and converting it to target charset if necessary.
+
+        Other FileSystem functions are adjusted to convert passed-in String
+        objects to filesystem representations.
+
+        * wtf/glib/FileSystemGlib.cpp:
+        (WTF::FileSystemImpl::stringFromFileSystemRepresentation):
+        (WTF::FileSystemImpl::fileSystemRepresentation):
+        (WTF::FileSystemImpl::validRepresentation):
+        (WTF::FileSystemImpl::filenameForDisplay):
+        (WTF::FileSystemImpl::fileExists):
+        (WTF::FileSystemImpl::deleteFile):
+        (WTF::FileSystemImpl::deleteEmptyDirectory):
+        (WTF::FileSystemImpl::getFileStat):
+        (WTF::FileSystemImpl::getFileLStat):
+        (WTF::FileSystemImpl::makeAllDirectories):
+        (WTF::FileSystemImpl::createSymbolicLink):
+        (WTF::FileSystemImpl::pathGetFileName):
+        (WTF::FileSystemImpl::getVolumeFreeSpace):
+        (WTF::FileSystemImpl::directoryName):
+        (WTF::FileSystemImpl::listDirectory):
+        (WTF::FileSystemImpl::openFile):
+        (WTF::FileSystemImpl::moveFile):
+        (WTF::FileSystemImpl::hardLinkOrCopyFile):
+        (WTF::FileSystemImpl::getFileDeviceId): Align with POSIX implementation
+        and treat input CString as an existing filesystem representation.
+        (WTF::FileSystemImpl::unescapedFilename): Deleted.
+
+2019-02-04  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK][WPE] Need a function to convert internal URI to display ("pretty") URI
+        https://bugs.webkit.org/show_bug.cgi?id=174816
+
+        Reviewed by Michael Catanzaro.
+
+        Translate userVisibleString and dependent code into platform-neutral C++
+        in wtf/URLHelpers.{h,cpp}.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/URLHelpers.cpp: Added.
+        (WTF::URLHelpers::loadIDNScriptWhiteList):
+        (WTF::URLHelpers::isArmenianLookalikeCharacter):
+        (WTF::URLHelpers::isArmenianScriptCharacter):
+        (WTF::URLHelpers::isASCIIDigitOrValidHostCharacter):
+        (WTF::URLHelpers::isLookalikeCharacter):
+        (WTF::URLHelpers::whiteListIDNScript):
+        (WTF::URLHelpers::initializeDefaultIDNScriptWhiteList):
+        (WTF::URLHelpers::allCharactersInIDNScriptWhiteList):
+        (WTF::URLHelpers::isSecondLevelDomainNameAllowedByTLDRules):
+        (WTF::URLHelpers::isRussianDomainNameCharacter):
+        (WTF::URLHelpers::allCharactersAllowedByTLDRules):
+        (WTF::URLHelpers::mapHostName):
+        (WTF::URLHelpers::collectRangesThatNeedMapping):
+        (WTF::URLHelpers::applyHostNameFunctionToMailToURLString):
+        (WTF::URLHelpers::applyHostNameFunctionToURLString):
+        (WTF::URLHelpers::mapHostNames):
+        (WTF::URLHelpers::createStringWithEscapedUnsafeCharacters):
+        (WTF::URLHelpers::toNormalizationFormC):
+        (WTF::URLHelpers::userVisibleURL):
+        * wtf/URLHelpers.h: Added.
+        * wtf/cocoa/NSURLExtras.mm:
+        (WTF::URLHelpers::loadIDNScriptWhiteList):
+        (WTF::decodePercentEscapes):
+        (WTF::decodeHostName):
+        (WTF::encodeHostName):
+        (WTF::URLWithUserTypedString):
+        (WTF::userVisibleString):
+
+2019-02-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r240896.
+        https://bugs.webkit.org/show_bug.cgi?id=194202
+
+        "Fixes leaks, but is probably not the correct fix." (Requested
+        by ddkilzer on #webkit).
+
+        Reverted changeset:
+
+        "Leak of WTF::StringImpl under SymbolImpl::createNullSymbol()
+        (48 bytes) in com.apple.WebKit.WebContent running layout
+        tests"
+        https://bugs.webkit.org/show_bug.cgi?id=193291
+        https://trac.webkit.org/changeset/240896
+
+2019-02-02  David Kilzer  <ddkilzer@apple.com>
+
+        Leak of WTF::StringImpl under SymbolImpl::createNullSymbol() (48 bytes) in com.apple.WebKit.WebContent running layout tests
+        <https://webkit.org/b/193291>
+        <rdar://problem/46655953>
+
+        Reviewed by Keith Miller.
+
+        * wtf/text/SymbolImpl.h:
+        (WTF::SymbolImpl::~SymbolImpl): Fix the leak by implementing the
+        class destructor that calls StringImpl::deref() on `m_owner`.
+        Two of the three constructors leak the StringImpl when setting
+        `m_owner`, so we need to balance that by manually calling
+        deref().
+
+2018-12-16  Darin Adler  <darin@apple.com>
+
+        Convert additional String::format clients to alternative approaches
+        https://bugs.webkit.org/show_bug.cgi?id=192746
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/JSONValues.cpp:
+        (WTF::appendDoubleQuotedStringEscapedCharacter): Renamed from
+        escapeChar and reordered arguments to make sense as an append function.
+        (WTF::appendDoubleQuotedString): Renamed from doubleQuoteString,
+        reordered arguments to make sense as an append function, take a
+        StringView instead of a String, used early exit to make the code
+        a bit easier to read. Use the ASCIIHexDigit functions to construct
+        a hex number a nibble at a time rather than using String::format.
+        (WTF::JSONImpl::Value::writeJSON const): Update for name change.
+        (WTF::JSONImpl::ObjectBase::writeJSON const): Ditto.
+
 2019-01-31  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Fix WPE compile warnings due to deprecated glib API.

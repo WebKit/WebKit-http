@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "AllocatorForMode.h"
 #include "AllocatorInlines.h"
 #include "CompleteSubspaceInlines.h"
 #include "CPU.h"
@@ -145,12 +146,20 @@ ALWAYS_INLINE VM& ExecState::vm() const
     return *callee->markedBlock().vm();
 }
 
-template<typename CellType>
+template<typename CellType, SubspaceAccess>
 CompleteSubspace* JSCell::subspaceFor(VM& vm)
 {
     if (CellType::needsDestruction)
         return &vm.destructibleCellSpace;
-    return &vm.cellDangerousBitsSpace;
+    return &vm.cellSpace;
+}
+
+template<typename Type>
+inline Allocator allocatorForNonVirtualConcurrently(VM& vm, size_t allocationSize, AllocatorForMode mode)
+{
+    if (auto* subspace = subspaceForConcurrently<Type>(vm))
+        return subspace->allocatorForNonVirtual(allocationSize, mode);
+    return { };
 }
 
 template<typename T>
@@ -382,16 +391,20 @@ inline bool JSCellLock::isLocked() const
     return IndexingTypeLockAlgorithm::isLocked(*lock);
 }
 
-inline bool JSCell::mayBePrototype() const
+inline bool JSCell::perCellBit() const
 {
-    return TypeInfo::mayBePrototype(inlineTypeFlags());
+    return TypeInfo::perCellBit(inlineTypeFlags());
 }
 
-inline void JSCell::didBecomePrototype()
+inline void JSCell::setPerCellBit(bool value)
 {
-    if (mayBePrototype())
+    if (value == perCellBit())
         return;
-    m_flags |= static_cast<TypeInfo::InlineTypeFlags>(TypeInfoMayBePrototype);
+
+    if (value)
+        m_flags |= static_cast<TypeInfo::InlineTypeFlags>(TypeInfoPerCellBit);
+    else
+        m_flags &= ~static_cast<TypeInfo::InlineTypeFlags>(TypeInfoPerCellBit);
 }
 
 inline JSObject* JSCell::toObject(ExecState* exec, JSGlobalObject* globalObject) const

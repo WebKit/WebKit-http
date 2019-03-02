@@ -183,36 +183,12 @@ Pagination::Mode paginationModeForRenderStyle(const RenderStyle& style)
 
 FrameView::FrameView(Frame& frame)
     : m_frame(frame)
-    , m_canHaveScrollbars(true)
+    , m_layoutContext(*this)
     , m_updateEmbeddedObjectsTimer(*this, &FrameView::updateEmbeddedObjectsTimerFired)
     , m_updateWidgetPositionsTimer(*this, &FrameView::updateWidgetPositionsTimerFired)
-    , m_isTransparent(false)
-    , m_baseBackgroundColor(Color::white)
-    , m_mediaType("screen")
-    , m_overflowStatusDirty(true)
-    , m_wasScrolledByUser(false)
-    , m_inProgrammaticScroll(false)
     , m_delayedScrollEventTimer(*this, &FrameView::sendScrollEvent)
-    , m_selectionRevealModeForFocusedElement(SelectionRevealMode::DoNotReveal)
     , m_delayedScrollToFocusedElementTimer(*this, &FrameView::scrollToFocusedElementTimerFired)
-    , m_isTrackingRepaints(false)
-    , m_shouldUpdateWhileOffscreen(true)
-    , m_speculativeTilingEnabled(false)
     , m_speculativeTilingEnableTimer(*this, &FrameView::speculativeTilingEnableTimerFired)
-#if PLATFORM(IOS_FAMILY)
-    , m_useCustomFixedPositionLayoutRect(false)
-    , m_useCustomSizeForResizeEvent(false)
-#endif
-    , m_shouldAutoSize(false)
-    , m_inAutoSize(false)
-    , m_didRunAutosize(false)
-    , m_autoSizeFixedMinimumHeight(0)
-    , m_headerHeight(0)
-    , m_footerHeight(0)
-    , m_visualUpdatesAllowedByClient(true)
-    , m_hasFlippedBlockRenderers(false)
-    , m_scrollPinningBehavior(DoNotPin)
-    , m_layoutContext(*this)
 {
     init();
 
@@ -848,14 +824,6 @@ void FrameView::updateCompositingLayersAfterLayout()
     renderView->compositor().updateCompositingLayers(CompositingUpdateType::AfterLayout);
 }
 
-GraphicsLayer* FrameView::layerForScrolling() const
-{
-    RenderView* renderView = this->renderView();
-    if (!renderView)
-        return nullptr;
-    return renderView->compositor().scrollLayer();
-}
-
 GraphicsLayer* FrameView::layerForHorizontalScrollbar() const
 {
     RenderView* renderView = this->renderView();
@@ -893,7 +861,7 @@ TiledBacking* FrameView::tiledBacking() const
     return backing->tiledBacking();
 }
 
-uint64_t FrameView::scrollLayerID() const
+ScrollingNodeID FrameView::scrollingNodeID() const
 {
     RenderView* renderView = this->renderView();
     if (!renderView)
@@ -1079,24 +1047,20 @@ LayoutPoint FrameView::scrollPositionRespectingCustomFixedPosition() const
     return scrollPositionForFixedPosition();
 }
 
-void FrameView::setHeaderHeight(int headerHeight)
+int FrameView::headerHeight() const
 {
-    if (frame().page())
-        ASSERT(frame().isMainFrame());
-    m_headerHeight = headerHeight;
-
-    if (RenderView* renderView = this->renderView())
-        renderView->setNeedsLayout();
+    if (!frame().isMainFrame())
+        return 0;
+    Page* page = frame().page();
+    return page ? page->headerHeight() : 0;
 }
 
-void FrameView::setFooterHeight(int footerHeight)
+int FrameView::footerHeight() const
 {
-    if (frame().page())
-        ASSERT(frame().isMainFrame());
-    m_footerHeight = footerHeight;
-
-    if (RenderView* renderView = this->renderView())
-        renderView->setNeedsLayout();
+    if (!frame().isMainFrame())
+        return 0;
+    Page* page = frame().page();
+    return page ? page->footerHeight() : 0;
 }
 
 float FrameView::topContentInset(TopContentInsetType contentInsetTypeToReturn) const
@@ -2705,7 +2669,7 @@ void FrameView::availableContentSizeChanged(AvailableSizeChangeReason reason)
     }
 
     updateLayoutViewport();
-    setNeedsLayout();
+    setNeedsLayoutAfterViewConfigurationChange();
     ScrollView::availableContentSizeChanged(reason);
 }
 
@@ -2950,9 +2914,29 @@ bool FrameView::needsLayout() const
     return layoutContext().needsLayout();
 }
 
-void FrameView::setNeedsLayout()
+void FrameView::setNeedsLayoutAfterViewConfigurationChange()
 {
-    layoutContext().setNeedsLayout();
+    layoutContext().setNeedsLayoutAfterViewConfigurationChange();
+}
+
+void FrameView::setNeedsCompositingConfigurationUpdate()
+{
+    RenderView* renderView = this->renderView();
+    if (renderView->usesCompositing()) {
+        if (auto* rootLayer = renderView->layer())
+            rootLayer->setNeedsCompositingConfigurationUpdate();
+        renderView->compositor().scheduleCompositingLayerUpdate();
+    }
+}
+
+void FrameView::setNeedsCompositingGeometryUpdate()
+{
+    RenderView* renderView = this->renderView();
+    if (renderView->usesCompositing()) {
+        if (auto* rootLayer = renderView->layer())
+            rootLayer->setNeedsCompositingGeometryUpdate();
+        renderView->compositor().scheduleCompositingLayerUpdate();
+    }
 }
 
 void FrameView::scheduleSelectionUpdate()
@@ -2961,8 +2945,7 @@ void FrameView::scheduleSelectionUpdate()
         return;
     // FIXME: We should not need to go through the layout process since selection update does not change dimension/geometry.
     // However we can't tell at this point if the tree is stable yet, so let's just schedule a root only layout for now.
-    setNeedsLayout();
-    layoutContext().scheduleLayout();
+    setNeedsLayoutAfterViewConfigurationChange();
 }
 
 bool FrameView::isTransparent() const
@@ -2984,8 +2967,8 @@ void FrameView::setTransparent(bool isTransparent)
     if (!isViewForDocumentInFrame())
         return;
 
-    renderView()->compositor().rootBackgroundColorOrTransparencyChanged();
-    setNeedsLayout();
+    setNeedsLayoutAfterViewConfigurationChange();
+    setNeedsCompositingConfigurationUpdate();
 }
 
 bool FrameView::hasOpaqueBackground() const
@@ -3006,9 +2989,8 @@ void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
         return;
 
     recalculateScrollbarOverlayStyle();
-    setNeedsLayout();
-
-    renderView()->compositor().rootBackgroundColorOrTransparencyChanged();
+    setNeedsLayoutAfterViewConfigurationChange();
+    setNeedsCompositingConfigurationUpdate();
 }
 
 void FrameView::updateBackgroundRecursively(bool transparent)
@@ -3548,7 +3530,7 @@ void FrameView::setAutoSizeFixedMinimumHeight(int fixedMinimumHeight)
 
     m_autoSizeFixedMinimumHeight = fixedMinimumHeight;
 
-    setNeedsLayout();
+    setNeedsLayoutAfterViewConfigurationChange();
 }
 
 RenderElement* FrameView::viewportRenderer() const
@@ -4464,7 +4446,7 @@ bool FrameView::qualifiesAsVisuallyNonEmpty() const
     if (frame().document()->styleScope().hasPendingSheetsBeforeBody())
         return false;
 
-    auto finishedParsingMainDocument = frame().loader().stateMachine().committedFirstRealDocumentLoad() && !frame().document()->parsing();
+    auto finishedParsingMainDocument = frame().loader().stateMachine().committedFirstRealDocumentLoad() && (frame().document()->readyState() == Document::Interactive || frame().document()->readyState() == Document::Complete);
     // Ensure that we always fire visually non-empty milestone eventually.
     if (finishedParsingMainDocument && frame().loader().isComplete())
         return true;
@@ -4495,11 +4477,8 @@ bool FrameView::qualifiesAsVisuallyNonEmpty() const
         return true;
 
     auto isMoreContentExpected = [&]() {
-        // Pending css/javascript/font loading/processing means we should wait a little longer.
-        auto hasPendingScriptExecution = frame().document()->scriptRunner().hasPendingScripts();
-        if (hasPendingScriptExecution)
-            return true;
-
+        ASSERT(finishedParsingMainDocument);
+        // Pending css/font loading means we should wait a little longer. Classic non-async, non-defer scripts are all processed by now.
         auto* documentLoader = frame().loader().documentLoader();
         if (!documentLoader)
             return false;
@@ -4512,7 +4491,7 @@ bool FrameView::qualifiesAsVisuallyNonEmpty() const
         for (auto& resource : resources) {
             if (resource.value->isLoaded())
                 continue;
-            if (resource.value->type() == CachedResource::Type::CSSStyleSheet || resource.value->type() == CachedResource::Type::Script || resource.value->type() == CachedResource::Type::FontResource)
+            if (resource.value->type() == CachedResource::Type::CSSStyleSheet || resource.value->type() == CachedResource::Type::FontResource)
                 return true;
         }
         return false;
@@ -4548,7 +4527,7 @@ void FrameView::enableAutoSizeMode(bool enable, const IntSize& minSize, const In
     m_maxAutoSize = maxSize;
     m_didRunAutosize = false;
 
-    setNeedsLayout();
+    setNeedsLayoutAfterViewConfigurationChange();
     layoutContext().scheduleLayout();
     if (m_shouldAutoSize) {
         overrideViewportSizeForCSSViewportUnits({ minSize.width(), m_overrideViewportSize ? m_overrideViewportSize->height : WTF::nullopt });

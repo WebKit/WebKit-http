@@ -204,9 +204,11 @@
 #import <WebCore/Settings.h>
 #import <WebCore/ShouldTreatAsContinuingLoad.h>
 #import <WebCore/SocketProvider.h>
+#import <WebCore/StringUtilities.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebCore/ThreadCheck.h>
+#import <WebCore/UTIRegistry.h>
 #import <WebCore/UserAgent.h>
 #import <WebCore/UserContentController.h>
 #import <WebCore/UserGestureIndicator.h>
@@ -2487,6 +2489,20 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     return newWindowWebView;
 }
 
+- (BOOL)_useDarkAppearance
+{
+    if (!_private || !_private->page)
+        return NO;
+    return _private->page->useDarkAppearance();
+}
+
+- (void)_setUseDarkAppearance:(BOOL)useDarkAppearance
+{
+    if (!_private || !_private->page)
+        return;
+    _private->page->setUseDarkAppearance(useDarkAppearance);
+}
+
 + (void)_setIconLoadingEnabled:(BOOL)enabled
 {
     iconLoadingEnabled = enabled;
@@ -2865,6 +2881,9 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setStandardFontFamily([preferences standardFontFamily]);
     settings.setLoadsImagesAutomatically([preferences loadsImagesAutomatically]);
     settings.setLoadsSiteIconsIgnoringImageLoadingSetting([preferences loadsSiteIconsIgnoringImageLoadingPreference]);
+
+    WebCore::setAdditionalSupportedImageTypes(WebCore::webCoreStringVectorFromNSStringArray([preferences additionalSupportedImageTypes]));
+
 #if PLATFORM(IOS_FAMILY)
     settings.setShouldPrintBackgrounds(true);
 #else

@@ -26,7 +26,7 @@
 #import "config.h"
 #import "TiledCoreAnimationDrawingArea.h"
 
-#if !PLATFORM(IOS_FAMILY)
+#if PLATFORM(MAC)
 
 #import "ColorSpaceData.h"
 #import "DrawingAreaProxyMessages.h"
@@ -270,18 +270,15 @@ void TiledCoreAnimationDrawingArea::updateRootLayers()
         [m_hostingLayer addSublayer:m_debugInfoLayer.get()];
 }
 
-void TiledCoreAnimationDrawingArea::attachViewOverlayGraphicsLayer(Frame* frame, GraphicsLayer* viewOverlayRootLayer)
+void TiledCoreAnimationDrawingArea::attachViewOverlayGraphicsLayer(GraphicsLayer* viewOverlayRootLayer)
 {
-    if (!frame->isMainFrame())
-        return;
-
     m_viewOverlayRootLayer = viewOverlayRootLayer;
     updateRootLayers();
+    scheduleCompositingLayerFlush();
 }
 
 void TiledCoreAnimationDrawingArea::mainFrameContentSizeChanged(const IntSize& size)
 {
-
 }
 
 void TiledCoreAnimationDrawingArea::updateIntrinsicContentSizeIfNeeded()
@@ -1002,4 +999,4 @@ void TiledCoreAnimationDrawingArea::layerFlushThrottlingTimerFired()
 
 } // namespace WebKit
 
-#endif // !PLATFORM(IOS_FAMILY)
+#endif // PLATFORM(MAC)

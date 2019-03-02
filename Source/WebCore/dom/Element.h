@@ -31,7 +31,6 @@
 #include "KeyframeAnimationOptions.h"
 #include "ScrollToOptions.h"
 #include "ScrollTypes.h"
-#include "ScrollingCoordinator.h"
 #include "ShadowRootMode.h"
 #include "SimulatedClickOptions.h"
 #include "StyleChange.h"
@@ -68,12 +67,6 @@ enum SpellcheckAttributeState {
     SpellcheckAttributeTrue,
     SpellcheckAttributeFalse,
     SpellcheckAttributeDefault
-};
-
-enum class SelectionRevealMode {
-    Reveal,
-    RevealUpToMainFrame, // Scroll overflow and iframes, but not the main frame.
-    DoNotReveal
 };
 
 #if ENABLE(POINTER_EVENTS)

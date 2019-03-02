@@ -58,6 +58,7 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         let usageTooltip = WI.UIString("Breakdown of each memory category at the end of the selected time range");
         let usageChartContainerElement = createChartContainer(overviewElement, WI.UIString("Breakdown"), usageTooltip);
         this._usageCircleChart = new WI.CircleChart({size: 120, innerRadiusRatio: 0.5});
+        this.addSubview(this._usageCircleChart);
         usageChartContainerElement.appendChild(this._usageCircleChart.element);
         this._usageLegendElement = usageChartContainerElement.appendChild(document.createElement("div"));
         this._usageLegendElement.classList.add("legend", "usage");
@@ -68,6 +69,7 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         let maxComparisonTooltip = WI.UIString("Comparison of total memory size at the end of the selected time range to the maximum memory size in this recording");
         let maxComparisonChartContainerElement = createChartContainer(overviewElement, WI.UIString("Max Comparison"), maxComparisonTooltip);
         this._maxComparisonCircleChart = new WI.CircleChart({size: 120, innerRadiusRatio: 0.5});
+        this.addSubview(this._maxComparisonCircleChart);
         maxComparisonChartContainerElement.appendChild(this._maxComparisonCircleChart.element);
         this._maxComparisonLegendElement = maxComparisonChartContainerElement.appendChild(document.createElement("div"));
         this._maxComparisonLegendElement.classList.add("legend", "maximum");
@@ -131,6 +133,11 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
 
         this._maxSize = 0;
 
+        this.clear();
+    }
+
+    clear()
+    {
         this._cachedLegendRecord = null;
         this._cachedLegendMaxSize = undefined;
         this._cachedLegendCurrentSize = undefined;
@@ -183,8 +190,10 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
 
         // FIXME: <https://webkit.org/b/153759> Web Inspector: Memory Timelines should better extend to future data
         let visibleRecords = this.representedObject.recordsInTimeRange(graphStartTime, visibleEndTime, includeRecordBeforeStart);
-        if (!visibleRecords.length)
+        if (!visibleRecords.length || (visibleRecords.length === 1 && visibleRecords[0].endTime < graphStartTime)) {
+            this.clear();
             return;
+        }
 
         // Update total usage chart with the last record's data.
         let lastRecord = visibleRecords.lastValue;
@@ -206,22 +215,27 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
 
         for (let record of visibleRecords) {
             let time = record.startTime;
-            let discontinuity = null;
-            if (discontinuities.length && discontinuities[0].endTime < time)
-                discontinuity = discontinuities.shift();
+            let startDiscontinuity = null;
+            let endDiscontinuity = null;
+            if (discontinuities.length && discontinuities[0].endTime < time) {
+                startDiscontinuity = discontinuities.shift();
+                endDiscontinuity = startDiscontinuity;
+                while (discontinuities.length && discontinuities[0].endTime < time)
+                    endDiscontinuity = discontinuities.shift();
+            }
 
             for (let category of record.categories) {
                 let categoryData = categoryDataMap[category.type];
 
-                if (discontinuity) {
+                if (startDiscontinuity) {
                     if (categoryData.dataPoints.length) {
                         let previousDataPoint = categoryData.dataPoints.lastValue;
-                        categoryData.dataPoints.push({time: discontinuity.startTime, size: previousDataPoint.size});
+                        categoryData.dataPoints.push({time: startDiscontinuity.startTime, size: previousDataPoint.size});
                     }
 
-                    categoryData.dataPoints.push({time: discontinuity.startTime, size: 0});
-                    categoryData.dataPoints.push({time: discontinuity.endTime, size: 0});
-                    categoryData.dataPoints.push({time: discontinuity.endTime, size: category.size});
+                    categoryData.dataPoints.push({time: startDiscontinuity.startTime, size: 0});
+                    categoryData.dataPoints.push({time: endDiscontinuity.endTime, size: 0});
+                    categoryData.dataPoints.push({time: endDiscontinuity.endTime, size: category.size});
                 }
 
                 categoryData.dataPoints.push({time, size: category.size});

@@ -224,15 +224,17 @@ void ScrollingCoordinator::frameViewFixedObjectsDidChange(FrameView& frameView)
     updateSynchronousScrollingReasons(frameView);
 }
 
-GraphicsLayer* ScrollingCoordinator::scrollLayerForScrollableArea(ScrollableArea& scrollableArea)
-{
-    return scrollableArea.layerForScrolling();
-}
-
-GraphicsLayer* ScrollingCoordinator::scrollLayerForFrameView(FrameView& frameView)
+GraphicsLayer* ScrollingCoordinator::scrollContainerLayerForFrameView(FrameView& frameView)
 {
     if (auto* renderView = frameView.frame().contentRenderer())
-        return renderView->compositor().scrollLayer();
+        return renderView->compositor().scrollContainerLayer();
+    return nullptr;
+}
+
+GraphicsLayer* ScrollingCoordinator::scrolledContentsLayerForFrameView(FrameView& frameView)
+{
+    if (auto* renderView = frameView.frame().contentRenderer())
+        return renderView->compositor().scrolledContentsLayer();
     return nullptr;
 }
 
@@ -287,10 +289,10 @@ GraphicsLayer* ScrollingCoordinator::contentShadowLayerForFrameView(FrameView& f
 #endif
 }
 
-GraphicsLayer* ScrollingCoordinator::rootContentLayerForFrameView(FrameView& frameView)
+GraphicsLayer* ScrollingCoordinator::rootContentsLayerForFrameView(FrameView& frameView)
 {
     if (auto* renderView = frameView.frame().contentRenderer())
-        return renderView->compositor().rootContentLayer();
+        return renderView->compositor().rootContentsLayer();
     return nullptr;
 }
 

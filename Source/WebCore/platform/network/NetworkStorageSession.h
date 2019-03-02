@@ -113,7 +113,7 @@ public:
     BUrlContext& platformSession() const;
     void setPlatformSession(BUrlContext*);
 #elif USE(CURL)
-    WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID, NetworkingContext*);
+    WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID);
     ~NetworkStorageSession();
 
     const CookieJarCurl& cookieStorage() const { return m_cookieStorage; };
@@ -121,8 +121,6 @@ public:
     WEBCORE_EXPORT void setCookieDatabase(UniqueRef<CookieJarDB>&&);
 
     WEBCORE_EXPORT void setProxySettings(CurlProxySettings&&);
-
-    NetworkingContext* context() const;
 #else
     WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID, NetworkingContext*);
     ~NetworkStorageSession();
@@ -179,8 +177,6 @@ private:
 #elif USE(HAIKU)
     BUrlContext* m_context;
 #elif USE(CURL)
-    RefPtr<NetworkingContext> m_context;
-
     UniqueRef<CookieJarCurl> m_cookieStorage;
     mutable UniqueRef<CookieJarDB> m_cookieDatabase;
 #else

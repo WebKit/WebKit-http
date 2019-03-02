@@ -332,6 +332,7 @@ Modules/webgpu/WHLSL/Metal/WHLSLMetalCodeGenerator.cpp
 Modules/webgpu/WHLSL/Metal/WHLSLNativeFunctionWriter.cpp
 Modules/webgpu/WHLSL/Metal/WHLSLEntryPointScaffolding.cpp
 Modules/webgpu/WHLSL/Metal/WHLSLNativeTypeWriter.cpp
+Modules/webgpu/WHLSL/Metal/WHLSLVertexBufferIndexCalculator.cpp
 Modules/webgpu/WHLSL/WHLSLFunctionStageChecker.cpp
 Modules/webgpu/WHLSL/AST/WHLSLTypeArgument.cpp
 Modules/webgpu/WHLSL/AST/WHLSLBuiltInSemantic.cpp
@@ -2770,6 +2771,7 @@ JSGeoposition.cpp
 JSGlobalCrypto.cpp
 JSGlobalEventHandlers.cpp
 JSGlobalPerformance.cpp
+JSGPURequestAdapterOptions.cpp
 JSHTMLAllCollection.cpp
 JSHTMLAnchorElement.cpp
 JSHTMLAppletElement.cpp
@@ -3294,7 +3296,6 @@ JSWaveShaperNode.cpp
 JSWebAnimation.cpp
 JSWebGPU.cpp
 JSWebGPUAdapter.cpp
-JSWebGPUAdapterDescriptor.cpp
 JSWebGPUBindGroup.cpp
 JSWebGPUBindGroupBinding.cpp
 JSWebGPUBindGroupDescriptor.cpp

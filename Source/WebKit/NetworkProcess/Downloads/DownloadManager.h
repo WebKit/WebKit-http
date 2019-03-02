@@ -26,6 +26,7 @@
 #pragma once
 
 #include "DownloadID.h"
+#include "DownloadMap.h"
 #include "NetworkDataTask.h"
 #include "PendingDownload.h"
 #include "SandboxExtension.h"
@@ -54,6 +55,7 @@ namespace WebKit {
 
 class AuthenticationManager;
 class Download;
+class NetworkBlobRegistry;
 class NetworkConnectionToWebProcess;
 class NetworkLoad;
 class PendingDownload;
@@ -73,13 +75,14 @@ public:
         virtual AuthenticationManager& downloadsAuthenticationManager() = 0;
         virtual void pendingDownloadCanceled(DownloadID) = 0;
         virtual NetworkSession* networkSession(const PAL::SessionID&) const = 0;
+        virtual NetworkBlobRegistry& networkBlobRegistry() = 0;
         virtual void ref() const = 0;
         virtual void deref() const = 0;
     };
 
     explicit DownloadManager(Client&);
 
-    void startDownload(NetworkConnectionToWebProcess*, PAL::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedName = { });
+    void startDownload(PAL::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedName = { });
     void dataTaskBecameDownloadTask(DownloadID, std::unique_ptr<Download>&&);
     void continueWillSendRequest(DownloadID, WebCore::ResourceRequest&&);
     void willDecidePendingDownloadDestination(NetworkDataTask&, ResponseCompletionHandler&&);
@@ -112,7 +115,7 @@ private:
     HashMap<DownloadID, std::unique_ptr<PendingDownload>> m_pendingDownloads;
     HashMap<DownloadID, std::pair<RefPtr<NetworkDataTask>, ResponseCompletionHandler>> m_downloadsWaitingForDestination;
     HashMap<DownloadID, RefPtr<NetworkDataTask>> m_downloadsAfterDestinationDecided;
-    HashMap<DownloadID, std::unique_ptr<Download>> m_downloads;
+    DownloadMap m_downloads;
 };
 
 } // namespace WebKit

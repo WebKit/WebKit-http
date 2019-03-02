@@ -6,6 +6,8 @@
 # Platform-specific tests. Skipped here, then re-enabled on the appropriate platform.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
+webgl [ Skip ]
+
 compositing/ios [ Skip ]
 css3/touch-action [ Skip ]
 accessibility/ios-simulator [ Skip ]
@@ -52,6 +54,7 @@ http/tests/cookies/same-site [ Skip ]
 system-preview [ Skip ]
 editing/images [ Skip ]
 pointerevents/ios [ Skip ]
+editing/pasteboard/mac [ Skip ]
 
 # window.showModalDialog is only tested in DumpRenderTree on Mac.
 editing/execCommand/show-modal-dialog-during-execCommand.html [ Skip ]
@@ -68,7 +71,6 @@ fast/forms/search/search-padding-cancel-results-buttons.html [ Skip ]
 fast/forms/search/search-results-hidden-crash.html [ Skip ]
 
 # These tests don't have to be platform-specific, but they are only implemented on Mac now.
-fast/url/user-visible [ Skip ]
 fast/images/eps-as-image.html [ Skip ]
 
 # Only Mac supports Dashboard widgets.

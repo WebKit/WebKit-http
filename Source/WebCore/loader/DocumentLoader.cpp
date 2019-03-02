@@ -56,6 +56,7 @@
 #include "HTTPHeaderField.h"
 #include "HTTPHeaderNames.h"
 #include "HistoryItem.h"
+#include "HistoryController.h"
 #include "IconLoader.h"
 #include "InspectorInstrumentation.h"
 #include "LinkIconCollector.h"
@@ -645,13 +646,14 @@ void DocumentLoader::willSendRequest(ResourceRequest&& newRequest, const Resourc
     if (!didReceiveRedirectResponse)
         return completionHandler(WTFMove(newRequest));
 
-    auto navigationPolicyCompletionHandler = [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] (ResourceRequest&& request, WeakPtr<FormState>&&, ShouldContinue shouldContinue) mutable {
+    auto navigationPolicyCompletionHandler = [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] (ResourceRequest&& request, WeakPtr<FormState>&&, NavigationPolicyDecision navigationPolicyDecision) mutable {
         m_waitingForNavigationPolicy = false;
-        switch (shouldContinue) {
-        case ShouldContinue::No:
+        switch (navigationPolicyDecision) {
+        case NavigationPolicyDecision::IgnoreLoad:
+        case NavigationPolicyDecision::StopAllLoads:
             stopLoadingForPolicyChange();
             break;
-        case ShouldContinue::Yes:
+        case NavigationPolicyDecision::ContinueLoad:
             break;
         }
 
@@ -661,7 +663,10 @@ void DocumentLoader::willSendRequest(ResourceRequest&& newRequest, const Resourc
     ASSERT(!m_waitingForNavigationPolicy);
     m_waitingForNavigationPolicy = true;
 
-    frameLoader()->policyChecker().checkNavigationPolicy(WTFMove(newRequest), redirectResponse, WTFMove(navigationPolicyCompletionHandler));
+    // FIXME: Add a load type check.
+    auto& policyChecker = frameLoader()->policyChecker();
+    RELEASE_ASSERT(!isBackForwardLoadType(policyChecker.loadType()) || frameLoader()->history().provisionalItem());
+    policyChecker.checkNavigationPolicy(WTFMove(newRequest), redirectResponse, WTFMove(navigationPolicyCompletionHandler));
 }
 
 bool DocumentLoader::tryLoadingRequestFromApplicationCache()
@@ -838,7 +843,10 @@ void DocumentLoader::responseReceived(const ResourceResponse& response, Completi
     RefPtr<SubresourceLoader> mainResourceLoader = this->mainResourceLoader();
     if (mainResourceLoader)
         mainResourceLoader->markInAsyncResponsePolicyCheck();
-    frameLoader()->checkContentPolicy(m_response, [this, protectedThis = makeRef(*this), mainResourceLoader = WTFMove(mainResourceLoader), completionHandler = completionHandlerCaller.release()] (PolicyAction policy) mutable {
+    auto requestIdentifier = PolicyCheckIdentifier::create();
+    frameLoader()->checkContentPolicy(m_response, requestIdentifier, [this, protectedThis = makeRef(*this), mainResourceLoader = WTFMove(mainResourceLoader),
+        completionHandler = completionHandlerCaller.release(), requestIdentifier] (PolicyAction policy, PolicyCheckIdentifier responseIdentifeir) mutable {
+        RELEASE_ASSERT(responseIdentifeir.isValidFor(requestIdentifier));
         continueAfterContentPolicy(policy);
         if (mainResourceLoader)
             mainResourceLoader->didReceiveResponsePolicy();
@@ -935,6 +943,11 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
             static_cast<ResourceLoader*>(mainResourceLoader())->didFail(interruptedForPolicyChangeError());
         return;
     }
+    case PolicyAction::StopAllLoads:
+        ASSERT_NOT_REACHED();
+#if ASSERT_DISABLED
+        FALLTHROUGH;
+#endif
     case PolicyAction::Ignore:
         if (ResourceLoader* mainResourceLoader = this->mainResourceLoader())
             InspectorInstrumentation::continueWithPolicyIgnore(*m_frame, mainResourceLoader->identifier(), *this, m_response);

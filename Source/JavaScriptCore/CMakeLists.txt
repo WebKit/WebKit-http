@@ -60,6 +60,7 @@ set(JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
 set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/ArrayConstructor.cpp
     runtime/ArrayIteratorPrototype.cpp
+    runtime/AsyncFromSyncIteratorPrototype.cpp
     runtime/AsyncGeneratorPrototype.cpp
     runtime/BigIntConstructor.cpp
     runtime/BigIntPrototype.cpp
@@ -936,6 +937,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/StructureRareData.h
     runtime/StructureRareDataInlines.h
     runtime/StructureTransitionTable.h
+    runtime/SubspaceAccess.h
     runtime/Symbol.h
     runtime/SymbolPrototype.h
     runtime/SymbolTable.h

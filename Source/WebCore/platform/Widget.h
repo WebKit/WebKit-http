@@ -216,6 +216,9 @@ private:
     static IntPoint convertFromContainingWindowToRoot(const Widget* rootWidget, const IntPoint&);
 
 private:
+    bool m_selfVisible { false };
+    bool m_parentVisible { false };
+
     WeakPtr<ScrollView> m_parent;
 #if !PLATFORM(COCOA)
     PlatformWidget m_widget;
@@ -226,9 +229,6 @@ private:
 #if PLATFORM(HAIKU)
     PlatformWidget m_topLevelPlatformWidget;
 #endif
-
-    bool m_selfVisible;
-    bool m_parentVisible;
 
     IntRect m_frame; // Not used when a native widget exists.
 };

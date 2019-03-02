@@ -1678,7 +1678,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.setStatusText(toAPI(page), toAPI(text.impl()), m_client.base.clientInfo);
         }
 
-        void mouseDidMoveOverElement(WebPageProxy& page, const WebHitTestResultData& data, WebKit::WebEvent::Modifiers modifiers, API::Object* userData) final
+        void mouseDidMoveOverElement(WebPageProxy& page, const WebHitTestResultData& data, OptionSet<WebKit::WebEvent::Modifier> modifiers, API::Object* userData) final
         {
             if (!m_client.mouseDidMoveOverElement && !m_client.mouseDidMoveOverElement_deprecatedForUseWithV0)
                 return;
@@ -2325,13 +2325,6 @@ void WKPageGetBytecodeProfile(WKPageRef pageRef, void* context, WKPageGetBytecod
 void WKPageGetSamplingProfilerOutput(WKPageRef pageRef, void* context, WKPageGetSamplingProfilerOutputFunction callback)
 {
     toImpl(pageRef)->getSamplingProfilerOutput(toGenericCallbackFunction(context, callback));
-}
-
-void WKPageIsWebProcessResponsive(WKPageRef pageRef, void* context, WKPageIsWebProcessResponsiveFunction callback)
-{
-    toImpl(pageRef)->isWebProcessResponsive([context, callback](bool isWebProcessResponsive) {
-        callback(isWebProcessResponsive, context);
-    });
 }
 
 void WKPageGetSelectionAsWebArchiveData(WKPageRef pageRef, void* context, WKPageGetSelectionAsWebArchiveDataFunction callback)

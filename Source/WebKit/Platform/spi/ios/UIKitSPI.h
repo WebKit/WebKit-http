@@ -259,6 +259,7 @@ typedef enum {
 @end
 
 @interface UIKeyboardImpl : UIView <UIKeyboardCandidateListDelegate>
+- (BOOL)smartInsertDeleteIsEnabled;
 @end
 
 @interface UIKeyboardImpl ()
@@ -1030,6 +1031,11 @@ typedef NSInteger UICompositingMode;
 @end
 
 #endif // USE(APPLE_INTERNAL_SDK)
+
+// FIXME: <rdar://problem/47714562>
+@interface UIWebTouchEventsGestureRecognizer (Staging_47634092)
+@property (nonatomic, readonly) NSMapTable<NSNumber *, UITouch *> *activeTouchesByIdentifier;
+@end
 
 @interface UIPhysicalKeyboardEvent : UIPressesEvent
 @end

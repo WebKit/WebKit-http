@@ -39,6 +39,7 @@ WI.CPUTimelineOverviewGraph = class CPUTimelineOverviewGraph extends WI.Timeline
 
         let size = new WI.Size(0, this.height);
         this._chart = new WI.ColumnChart(size);
+        this.addSubview(this._chart);
         this.element.appendChild(this._chart.element);
 
         this._legendElement = this.element.appendChild(document.createElement("div"));
@@ -116,7 +117,7 @@ WI.CPUTimelineOverviewGraph = class CPUTimelineOverviewGraph extends WI.Timeline
             let h = Math.max(minimumDisplayHeight, yScale(record.usage));
             let x = xScale(record.startTime - (samplingRatePerSecond / 2));
             let y = height - h;
-            this._chart.addBar(x, y, w, h);
+            this._chart.addColumn(x, y, w, h);
         }
 
         this._chart.updateLayout();

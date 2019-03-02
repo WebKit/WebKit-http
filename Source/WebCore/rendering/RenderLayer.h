@@ -449,6 +449,12 @@ public:
     void updateSnapOffsets() override;
 #endif
 
+    void setIsUserScroll(bool isUserScroll) override { m_inUserScroll = isUserScroll; }
+    bool isInUserScroll() const { return m_inUserScroll; }
+
+    bool requiresScrollPositionReconciliation() const { return m_requiresScrollPositionReconciliation; }
+    void setRequiresScrollPositionReconciliation(bool requiresReconciliation = true) { m_requiresScrollPositionReconciliation = requiresReconciliation; }
+
 #if PLATFORM(IOS_FAMILY)
 #if ENABLE(IOS_TOUCH_EVENTS)
     bool handleTouchEvent(const PlatformTouchEvent&) override;
@@ -457,12 +463,6 @@ public:
     void didStartScroll() override;
     void didEndScroll() override;
     void didUpdateScroll() override;
-    void setIsUserScroll(bool isUserScroll) override { m_inUserScroll = isUserScroll; }
-
-    bool isInUserScroll() const { return m_inUserScroll; }
-
-    bool requiresScrollBoundsOriginUpdate() const { return m_requiresScrollBoundsOriginUpdate; }
-    void setRequiresScrollBoundsOriginUpdate(bool requiresUpdate = true) { m_requiresScrollBoundsOriginUpdate = requiresUpdate; }
 #endif
 
     // Returns true when the layer could do touch scrolling, but doesn't look at whether there is actually scrollable overflow.
@@ -799,7 +799,6 @@ public:
     RenderLayerBacking* ensureBacking();
     void clearBacking(bool layerBeingDestroyed = false);
 
-    GraphicsLayer* layerForScrolling() const override;
     GraphicsLayer* layerForHorizontalScrollbar() const override;
     GraphicsLayer* layerForVerticalScrollbar() const override;
     GraphicsLayer* layerForScrollCorner() const override;
@@ -1193,14 +1192,14 @@ private:
     unsigned m_viewportConstrainedNotCompositedReason : 2;
 
 #if PLATFORM(IOS_FAMILY)
-    bool m_adjustForIOSCaretWhenScrolling : 1;
 #if ENABLE(IOS_TOUCH_EVENTS)
     bool m_registeredAsTouchEventListenerForScrolling : 1;
 #endif
-    bool m_inUserScroll : 1;
-    bool m_requiresScrollBoundsOriginUpdate : 1;
+    bool m_adjustForIOSCaretWhenScrolling : 1;
 #endif
 
+    bool m_inUserScroll : 1;
+    bool m_requiresScrollPositionReconciliation : 1;
     bool m_containsDirtyOverlayScrollbars : 1;
     bool m_updatingMarqueePosition : 1;
 

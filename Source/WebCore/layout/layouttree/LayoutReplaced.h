@@ -27,6 +27,7 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "LayoutSize.h"
 #include "LayoutUnit.h"
 #include <wtf/IsoMalloc.h>
 #include <wtf/WeakPtr.h>
@@ -43,6 +44,10 @@ public:
     Replaced(const Box&);
     ~Replaced() = default;
 
+    // FIXME: Temporary until after intrinsic size change is tracked internallys.
+    void setIntrinsicSize(LayoutSize size) { m_intrinsicSize = size; }
+    void setIntrinsicRatio(LayoutUnit ratio) { m_intrinsicRatio = ratio; };
+
     bool hasIntrinsicWidth() const;
     bool hasIntrinsicHeight() const;
     bool hasIntrinsicRatio() const;
@@ -51,7 +56,11 @@ public:
     LayoutUnit intrinsicRatio() const;
 
 private:
+    bool hasAspectRatio() const;
+
     WeakPtr<const Box> m_layoutBox;
+    Optional<LayoutSize> m_intrinsicSize;
+    Optional<LayoutUnit> m_intrinsicRatio;
 };
 
 }

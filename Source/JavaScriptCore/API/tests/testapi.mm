@@ -529,7 +529,7 @@ static void runJITThreadLimitTests()
     auto testDFG = [] {
         unsigned defaultNumberOfThreads = JSC::Options::numberOfDFGCompilerThreads();
         unsigned targetNumberOfThreads = 1;
-        unsigned initialNumberOfThreads = [JSVirtualMachine setNumberOfDFGCompilerThreads:1];
+        unsigned initialNumberOfThreads = [JSVirtualMachine setNumberOfDFGCompilerThreads:targetNumberOfThreads];
         checkResult(@"Initial number of DFG threads should be the value provided through Options", initialNumberOfThreads == defaultNumberOfThreads);
         unsigned updatedNumberOfThreads = [JSVirtualMachine setNumberOfDFGCompilerThreads:initialNumberOfThreads];
         checkResult(@"Number of DFG threads should have been updated", updatedNumberOfThreads == targetNumberOfThreads);
@@ -538,7 +538,7 @@ static void runJITThreadLimitTests()
     auto testFTL = [] {
         unsigned defaultNumberOfThreads = JSC::Options::numberOfFTLCompilerThreads();
         unsigned targetNumberOfThreads = 3;
-        unsigned initialNumberOfThreads = [JSVirtualMachine setNumberOfFTLCompilerThreads:1];
+        unsigned initialNumberOfThreads = [JSVirtualMachine setNumberOfFTLCompilerThreads:targetNumberOfThreads];
         checkResult(@"Initial number of FTL threads should be the value provided through Options", initialNumberOfThreads == defaultNumberOfThreads);
         unsigned updatedNumberOfThreads = [JSVirtualMachine setNumberOfFTLCompilerThreads:initialNumberOfThreads];
         checkResult(@"Number of FTL threads should have been updated", updatedNumberOfThreads == targetNumberOfThreads);
@@ -2002,6 +2002,7 @@ static void testBytecodeCache()
         [bazSource writeToURL:bazPath atomically:NO encoding:NSASCIIStringEncoding error:nil];
 
         auto block = ^(JSContext *context, JSValue *identifier, JSValue *resolve, JSValue *reject) {
+            JSC::Options::forceDiskCache() = true;
             if ([identifier isEqualToObject:@"file:///directory/bar.js"])
                 [resolve callWithArguments:@[[JSScript scriptFromASCIIFile:fooPath inVirtualMachine:context.virtualMachine withCodeSigning:nil andBytecodeCache:fooCachePath]]];
             else if ([identifier isEqualToObject:@"file:///foo.js"])
@@ -2013,7 +2014,6 @@ static void testBytecodeCache()
         };
 
         @autoreleasepool {
-            JSC::Options::forceDiskCache() = true;
             auto *context = [JSContextFetchDelegate contextWithBlockForFetch:block];
             context.moduleLoaderDelegate = context;
             JSValue *promise = [context evaluateScript:@"import('../otherDirectory/baz.js');" withSourceURL:[NSURL fileURLWithPath:@"/directory" isDirectory:YES]];

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -130,7 +130,7 @@ void SpeculativeJIT::emitAllocateRawObject(GPRReg resultGPR, RegisteredStructure
     }
 
     size_t allocationSize = JSFinalObject::allocationSize(inlineCapacity);
-    Allocator allocator = subspaceFor<JSFinalObject>(*m_jit.vm())->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
+    Allocator allocator = allocatorForNonVirtualConcurrently<JSFinalObject>(*m_jit.vm(), allocationSize, AllocatorForMode::AllocatorIfExists);
     if (allocator) {
         emitAllocateJSObject(resultGPR, JITAllocator::constant(allocator), scratchGPR, TrustedImmPtr(structure), storageGPR, scratch2GPR, slowCases);
         m_jit.emitInitializeInlineStorage(resultGPR, structure->inlineCapacity());
@@ -2282,7 +2282,7 @@ void SpeculativeJIT::compileFromCharCode(Node* node)
     GPRReg smallStringsReg = smallStrings.gpr();
 
     JITCompiler::JumpList slowCases;
-    slowCases.append(m_jit.branch32(MacroAssembler::AboveOrEqual, propertyReg, TrustedImm32(0xff)));
+    slowCases.append(m_jit.branch32(MacroAssembler::AboveOrEqual, propertyReg, TrustedImm32(maxSingleCharacterString)));
     m_jit.move(TrustedImmPtr(m_jit.vm()->smallStrings.singleCharacterStrings()), smallStringsReg);
     m_jit.loadPtr(MacroAssembler::BaseIndex(smallStringsReg, propertyReg, MacroAssembler::ScalePtr, 0), scratchReg);
 
@@ -2585,8 +2585,6 @@ void SpeculativeJIT::compileDoubleRep(Node* node)
     
     case NotCellUse:
     case NumberUse: {
-        ASSERT(!node->child1()->isNumberConstant()); // This should have been constant folded.
-
         SpeculatedType possibleTypes = m_state.forNode(node->child1()).m_type;
         if (isInt32Speculation(possibleTypes)) {
             SpeculateInt32Operand op1(this, node->child1(), ManualOperandSpeculation);
@@ -4361,7 +4359,7 @@ void SpeculativeJIT::compileMakeRope(Node* node)
     GPRReg scratchGPR = scratch.gpr();
     
     JITCompiler::JumpList slowPath;
-    Allocator allocatorValue = subspaceFor<JSRopeString>(*m_jit.vm())->allocatorForNonVirtual(sizeof(JSRopeString), AllocatorForMode::AllocatorIfExists);
+    Allocator allocatorValue = allocatorForNonVirtualConcurrently<JSRopeString>(*m_jit.vm(), sizeof(JSRopeString), AllocatorForMode::AllocatorIfExists);
     emitAllocateJSCell(resultGPR, JITAllocator::constant(allocatorValue), allocatorGPR, TrustedImmPtr(m_jit.graph().registerStructure(m_jit.vm()->stringStructure.get())), scratchGPR, slowPath);
         
     m_jit.storePtr(TrustedImmPtr(nullptr), JITCompiler::Address(resultGPR, JSString::offsetOfValue()));
@@ -12542,8 +12540,7 @@ void SpeculativeJIT::compileNewObject(Node* node)
 
     RegisteredStructure structure = node->structure();
     size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
-    Allocator allocatorValue = subspaceFor<JSFinalObject>(*m_jit.vm())->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
-
+    Allocator allocatorValue = allocatorForNonVirtualConcurrently<JSFinalObject>(*m_jit.vm(), allocationSize, AllocatorForMode::AllocatorIfExists);
     if (!allocatorValue)
         slowPath.append(m_jit.jump());
     else {

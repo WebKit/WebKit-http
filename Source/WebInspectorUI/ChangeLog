@@ -1,3 +1,368 @@
+2019-02-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: PropertiesChanged shouldn't fire when old and new text are both empty
+        https://bugs.webkit.org/show_bug.cgi?id=194318
+
+        Reviewed by Devin Rousso.
+
+        Previously, WI.CSSStyleDeclaration.Event.PropertiesChanged fired when
+        old text and new text were empty strings.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+
+2019-02-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Lots of time spent updating related resources in ResourceDetailsSidebar when loading a page with lots of resources
+        https://bugs.webkit.org/show_bug.cgi?id=159577
+        <rdar://problem/27251461>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WI.ResourceDetailsSidebarPanel.prototype._refreshRelatedResourcesSection):
+        (WI.ResourceDetailsSidebarPanel.prototype._applyResourceEventListeners):
+
+2019-02-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Elements tab: selection is broken after deleting the selected node
+        https://bugs.webkit.org/show_bug.cgi?id=194300
+        <rdar://problem/47829275>
+
+        Reviewed by Devin Rousso.
+
+        Deleting a TreeElement can cause an IndexSet including indexes
+        outside the deleted range to be passed to SelectionController,
+        corrupting the internal selection state.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype._indexesForSubtree.numberOfElementsInSubtree): Added.
+        (WI.TreeOutline.prototype._indexesForSubtree):
+        Finding the last (rightmost leaf) TreeElement in the subtree used
+        TreeElement.prototype.traverseNextElement to do a depth first traversal.
+        This method did not stay within the subtree rooted at `treeElement`.
+
+2019-02-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r240947): Resources tab: can't select main frame after refreshing page
+        https://bugs.webkit.org/show_bug.cgi?id=194254
+        <rdar://problem/47805023>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.selectionControllerSelectionDidChange):
+        TreeOutline should always call the TreeElement `select` and `deselect`
+        methods while processing selection changes. Having notifications
+        suppressed by `this._suppressNextSelectionDidChangeEvent` should only
+        affect the dispatching of TreeOutline events.
+
+2019-02-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: remove harmless "property was unlocked" asserts
+        https://bugs.webkit.org/show_bug.cgi?id=194262
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.remove):
+        (WI.SpreadsheetStyleProperty.prototype.update):
+        (WI.SpreadsheetStyleProperty.prototype._handleNameChange):
+        (WI.SpreadsheetStyleProperty.prototype._handleValueChange):
+
+2019-02-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: undefined is not an object (evaluating 'classes.includes')
+        https://bugs.webkit.org/show_bug.cgi?id=194280
+        <rdar://problem/47811159>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._populateClassToggles):
+        Add a fallback value in case the `class` attribute isn't specified for the selected node.
+
+2019-02-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Resources: missing resource data for document on reload
+        https://bugs.webkit.org/show_bug.cgi?id=194243
+        <rdar://problem/47559021>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WI.ResourceDetailsSidebarPanel.prototype.set resource):
+        (WI.ResourceDetailsSidebarPanel.prototype._applyResourceEventListeners):
+
+        * UserInterface/Base/Object.js:
+        (WI.Object.removeEventListener):
+        Drive-by: there's no need to iterate over the entire table to check if `thisObject` exists,
+        as that is handled for us by `ListMultimap`, which we later call anyways.
+
+2019-02-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION: Resources: WI.TreeOutline assertions when refreshing the page
+        https://bugs.webkit.org/show_bug.cgi?id=194242
+        <rdar://problem/47802027>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/FolderizedTreeElement.js:
+        (WI.FolderizedTreeElement.prototype.removeChildren):
+        FolderTreeElements are removed by the base class call to removeChildren.
+        Calling `removeChildren` for detached TreeElements is unnecessary.
+
+2019-02-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION: clicking a selected call frame doesn't re-scroll
+        https://bugs.webkit.org/show_bug.cgi?id=194169
+        <rdar://problem/47743864>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype._handleMouseDown):
+        Add a special case for a single-selection TreeOutline with
+        allowsRepeatSelection enabled. Since the element is already
+        selected, bypass the SelectionCongroller and dispatch an
+        event with event.data.selectedByUser set to true.
+
+2019-02-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: fix race conditions when editing
+        https://bugs.webkit.org/show_bug.cgi?id=192739
+        <rdar://problem/46752925>
+
+        Reviewed by Devin Rousso.
+
+        Editing CSS property in the style editor syncronously updates CSSStyleDeclaration on the front-end
+        and asyncronously updates the backend by calling CSSAgent.setStyleText. After the new style text is applied
+        on the backend, CSSStyleDeclaration (on the front-end) gets updated.
+
+        Unsure there's no race conditions by introducing `_updatesInProgressCount`:
+
+          - Increment it before calling CSSAgent.setStyleText.
+          - Decrement it after CSSAgent.setStyleText is finished.
+
+        Prevent updates of CSSStyleDeclaration when _updatesInProgressCount isn't 0.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype._updateOwnerStyleText):
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration):
+        (WI.CSSStyleDeclaration.prototype.set text): Removed.
+        (WI.CSSStyleDeclaration.prototype.setText): Added.
+        Change the setter to a method since it has side effects including an asynchronous backend call.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype.changeStyleText):
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.get nameTextField): Removed.
+        (WI.SpreadsheetStyleProperty.prototype.get valueTextField): Removed.
+        Drive-by: remove unused code.
+
+2019-02-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create icons for media event types instead of using a blue circle
+        https://bugs.webkit.org/show_bug.cgi?id=190381
+        <rdar://problem/45507995>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode.isPlayEvent): Added.
+        (WI.DOMNode.isPauseEvent): Added.
+        (WI.DOMNode.isStopEvent): Added.
+
+        * UserInterface/Views/DOMEventsBreakdownView.js:
+        (WI.DOMEventsBreakdownView.prototype.layout):
+        * UserInterface/Views/DOMEventsBreakdownView.css:
+        (.dom-events-breakdown tr > :matches(th, td)):
+        (.dom-events-breakdown .graph):
+        (.dom-events-breakdown .graph > :matches(img, .area)): Added.
+        (.dom-events-breakdown .graph > img): Added.
+        (.dom-events-breakdown .inherited > .name, .dom-events-breakdown .inherited > .graph > img): Added.
+        (.dom-events-breakdown .graph > :matches(.point, .area)): Deleted.
+        (.dom-events-breakdown .graph > .point): Deleted.
+        (.dom-events-breakdown .inherited > .name, .dom-events-breakdown .inherited > .graph > .point): Deleted.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateWaterfallGraph.createDOMEventLine):
+
+        * UserInterface/Images/EventPause.svg: Added.
+        * UserInterface/Images/EventPlay.svg: Added.
+        * UserInterface/Images/EventProcessing.svg: Added.
+        * UserInterface/Images/EventStop.svg: Added.
+
+2019-02-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make WI.ColumnChart a WI.View subclass
+        https://bugs.webkit.org/show_bug.cgi?id=194171
+
+        Rubber-stamped by Devin Rousso.
+
+        * UserInterface/Views/CPUTimelineOverviewGraph.js:
+        (WI.CPUTimelineOverviewGraph):
+        * UserInterface/Views/ColumnChart.js:
+        (WI.ColumnChart):
+        (WI.ColumnChart.prototype.set size):
+        (WI.ColumnChart.prototype.layout):
+        (WI.ColumnChart.prototype.get element): Deleted.
+        (WI.ColumnChart.prototype.needsLayout): Deleted.
+        (WI.ColumnChart.prototype.updateLayout): Deleted.
+
+2019-02-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make WI.StackedLineChart a WI.View subclass
+        https://bugs.webkit.org/show_bug.cgi?id=194119
+
+        Rubber-stamped by Devin Rousso.
+
+        * UserInterface/Views/LineChart.js:
+        (WI.LineChart.prototype.layout):
+        (WI.LineChart):
+        * UserInterface/Views/MemoryTimelineOverviewGraph.js:
+        (WI.MemoryTimelineOverviewGraph):
+        * UserInterface/Views/StackedLineChart.js:
+        (WI.StackedLineChart):
+        (WI.StackedLineChart.prototype.set size):
+        (WI.StackedLineChart.prototype.layout):
+        (WI.StackedLineChart.prototype.get element): Deleted.
+        (WI.StackedLineChart.prototype.get points): Deleted.
+        (WI.StackedLineChart.prototype.needsLayout): Deleted.
+        (WI.StackedLineChart.prototype.updateLayout): Deleted.
+
+2019-02-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make WI.CircleChart a WI.View subclass
+        https://bugs.webkit.org/show_bug.cgi?id=194118
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CircleChart.js:
+        (WI.CircleChart.prototype.get centerElement):
+        (WI.CircleChart.prototype.layout):
+        (WI.CircleChart.prototype.get element): Deleted.
+        (WI.CircleChart.prototype.needsLayout): Deleted.
+        (WI.CircleChart.prototype.updateLayout): Deleted.
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WI.MemoryTimelineView):
+
+2019-02-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline Detail Views do not reset properly when new time range selection contains nothing
+        https://bugs.webkit.org/show_bug.cgi?id=194115
+        <rdar://problem/47716693>
+
+        Rubber-stamped by Devin Rousso.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype.reset):
+        (WI.CPUTimelineView.prototype.clear):
+        (WI.CPUTimelineView.prototype.layout):
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WI.MemoryTimelineView.prototype.reset):
+        (WI.MemoryTimelineView.prototype.clear):
+        (WI.MemoryTimelineView.prototype.layout):
+        When there are no visible records in the selected range clear our UI.
+        Introduce a `clear` method that clears the UI but keeps
+        non-range-specific values (e.g. maximums).
+
+2019-02-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline graphs have drawing issues with multiple discontinuities
+        https://bugs.webkit.org/show_bug.cgi?id=194110
+        <rdar://problem/47714356>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView):
+        (WI.CPUTimelineView.prototype.layout.xScale): Deleted.
+        * UserInterface/Views/MemoryTimelineOverviewGraph.js:
+        (WI.MemoryTimelineOverviewGraph.prototype.layout.insertDiscontinuity):
+        (WI.MemoryTimelineOverviewGraph.prototype.layout):
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WI.MemoryTimelineView.prototype.layout.xScale):
+        (WI.MemoryTimelineView.prototype.layout.yScale):
+        (WI.MemoryTimelineView.prototype.layout):
+        Handle if multiple discontinuities exist between records.
+
+2019-02-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline time range selection should show duration alongside start and end
+        https://bugs.webkit.org/show_bug.cgi?id=194109
+        <rdar://problem/47714279>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView.prototype._updateTimeRangePathComponents):
+        Include the duration when not obvious.
+
+2019-02-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve API and documentation of ColumnChart
+        https://bugs.webkit.org/show_bug.cgi?id=193982
+
+        Reviewed by Devin Rousso.
+
+        This used to be named "BarChart". Convert remaining instances
+        of "bar" to "column" and clean up related things.
+
+        * UserInterface/Views/CPUTimelineOverviewGraph.css:
+        (body[dir=rtl] .timeline-overview-graph.cpu > .column-chart):
+        (.timeline-overview-graph.cpu > .column-chart > svg > rect):
+        (body[dir=rtl] .timeline-overview-graph.cpu > .bar-chart): Deleted.
+        (.timeline-overview-graph.cpu > .bar-chart > svg > rect): Deleted.
+        * UserInterface/Views/CPUTimelineOverviewGraph.js:
+        (WI.CPUTimelineOverviewGraph.prototype.layout):
+        * UserInterface/Views/ColumnChart.js:
+        (WI.ColumnChart):
+        (WI.ColumnChart.prototype.get columns):
+        (WI.ColumnChart.prototype.addColumn):
+        (WI.ColumnChart.prototype.clear):
+        (WI.ColumnChart.prototype.updateLayout):
+        (WI.ColumnChart.prototype.get bars): Deleted.
+        (WI.ColumnChart.prototype.addBar): Deleted.
+        * UserInterface/Views/StackedLineChart.js:
+        (WI.StackedLineChart.prototype.get element):
+        (WI.StackedLineChart.prototype.get points):
+
+2019-01-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline time range selection sometimes shows 0.000, should be just 0
+        https://bugs.webkit.org/show_bug.cgi?id=194108
+        <rdar://problem/47714273>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Utilities.js:
+        Check under epsilon for the zero case.
+
+2019-01-31  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION(r?): Web Inspector: Clicking on text doesn't move text caret when editing innerHTML/tagName/attribute
+        https://bugs.webkit.org/show_bug.cgi?id=192652
+        <rdar://problem/46684612>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.canSelectOnMouseDown):
+        Call to Event.preventDefault() should be made here instead of at the
+        TreeOutline level.
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype.selectOnMouseDown): Deleted.
+        Remove dead code.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline._handleMouseDown):
+        Do not prevent default event handling when the item cannot be selected.
+        This matches TreeOutline behavior prior to introducing SelectionController.
+
 2019-01-30  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Memory Timeline View should be responsive / resizable

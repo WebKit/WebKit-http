@@ -52,7 +52,8 @@ public:
         TableRowGroup,
         TableHeaderGroup,
         TableFooterGroup,
-        Replaced,
+        Image,
+        IFrame,
         GenericElement
     };
 
@@ -110,6 +111,9 @@ public:
     bool isDocumentBox() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::Document; }
     bool isBodyBox() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::Body; }
     bool isTableCell() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::TableCell; }
+    bool isReplaced() const { return isImage() || isIFrame(); }
+    bool isIFrame() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::IFrame; }
+    bool isImage() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::Image; }
 
     const Container* parent() const { return m_parent; }
     const Box* nextSibling() const { return m_nextSibling; }
@@ -131,6 +135,8 @@ public:
     const RenderStyle& style() const { return m_style; }
 
     const Replaced* replaced() const { return m_replaced.get(); }
+    // FIXME: Temporary until after intrinsic size change is tracked by Replaced.
+    Replaced* replaced() { return m_replaced.get(); }
 
     void setParent(Container& parent) { m_parent = &parent; }
     void setNextSibling(Box& nextSibling) { m_nextSibling = &nextSibling; }
@@ -147,9 +153,9 @@ private:
     Box* m_previousSibling { nullptr };
     Box* m_nextSibling { nullptr };
 
-    std::unique_ptr<const Replaced> m_replaced;
+    std::unique_ptr<Replaced> m_replaced;
 
-    unsigned m_baseTypeFlags : 4;
+    unsigned m_baseTypeFlags : 5;
 };
 
 }

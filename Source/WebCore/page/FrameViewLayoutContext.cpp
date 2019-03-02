@@ -59,7 +59,7 @@ static void layoutUsingFormattingContext(const RenderView& renderView)
     if (!RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextEnabled())
         return;
     auto initialContainingBlock = Layout::TreeBuilder::createLayoutTree(renderView);
-    auto layoutState = std::make_unique<Layout::LayoutState>(*initialContainingBlock, renderView.size());
+    auto layoutState = std::make_unique<Layout::LayoutState>(*initialContainingBlock);
     layoutState->setInQuirksMode(renderView.document().inQuirksMode());
     layoutState->updateLayout();
     layoutState->verifyAndOutputMismatchingLayoutTree(renderView);
@@ -313,7 +313,7 @@ bool FrameViewLayoutContext::needsLayout() const
         || (m_disableSetNeedsLayoutCount && m_setNeedsLayoutWasDeferred);
 }
 
-void FrameViewLayoutContext::setNeedsLayout()
+void FrameViewLayoutContext::setNeedsLayoutAfterViewConfigurationChange()
 {
     if (m_disableSetNeedsLayoutCount) {
         m_setNeedsLayoutWasDeferred = true;
@@ -323,6 +323,7 @@ void FrameViewLayoutContext::setNeedsLayout()
     if (auto* renderView = this->renderView()) {
         ASSERT(!renderView->inHitTesting());
         renderView->setNeedsLayout();
+        scheduleLayout();
     }
 }
 

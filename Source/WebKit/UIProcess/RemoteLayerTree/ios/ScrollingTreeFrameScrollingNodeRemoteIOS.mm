@@ -52,8 +52,8 @@ void ScrollingTreeFrameScrollingNodeRemoteIOS::commitStateBeforeChildren(const S
 {
     ScrollingTreeFrameScrollingNodeIOS::commitStateBeforeChildren(stateNode);
 
-    if (stateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollLayer)) {
-        if (scrollLayer() && [[scrollLayer() delegate] isKindOfClass:[UIScrollView self]])
+    if (stateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollContainerLayer)) {
+        if (scrollContainerLayer())
             m_scrollingNodeDelegate = std::make_unique<ScrollingTreeScrollingNodeDelegateIOS>(*this);
         else
             m_scrollingNodeDelegate = nullptr;

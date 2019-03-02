@@ -322,6 +322,7 @@ public:
     void setUserMediaPersistentPermissionForOrigin(bool permission, JSStringRef origin, JSStringRef parentOrigin);
     unsigned userMediaPermissionRequestCountForOrigin(JSStringRef origin, JSStringRef parentOrigin) const;
     void resetUserMediaPermissionRequestCountForOrigin(JSStringRef origin, JSStringRef parentOrigin);
+    bool isDoingMediaCapture() const;
 
     void setPageVisibility(JSStringRef state);
     void resetPageVisibility();
@@ -450,6 +451,9 @@ public:
 
     // Open panel
     void setOpenPanelFiles(JSValueRef);
+
+    // Modal alerts
+    void setShouldDismissJavaScriptAlertsAsynchronously(bool);
 
     void terminateNetworkProcess();
     void terminateServiceWorkerProcess();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -51,7 +51,6 @@
 #include "JITCode.h"
 #include "JITCodeMap.h"
 #include "JITMathICForwards.h"
-#include "JSCPoison.h"
 #include "JSCast.h"
 #include "JSGlobalObject.h"
 #include "JumpTable.h"
@@ -115,7 +114,7 @@ public:
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
     static const bool needsDestruction = true;
 
-    template<typename>
+    template<typename, SubspaceAccess>
     static void subspaceFor(VM&) { }
 
     DECLARE_INFO;
@@ -192,6 +191,7 @@ public:
 
     static size_t estimatedSize(JSCell*, VM&);
     static void visitChildren(JSCell*, SlotVisitor&);
+    static void destroy(JSCell*);
     void visitChildren(SlotVisitor&);
     void finalizeUnconditionally(VM&);
 
@@ -249,6 +249,31 @@ public:
     void getICStatusMap(ICStatusMap& result);
     
 #if ENABLE(JIT)
+    struct JITData {
+        WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
+        Bag<StructureStubInfo> m_stubInfos;
+        Bag<JITAddIC> m_addICs;
+        Bag<JITMulIC> m_mulICs;
+        Bag<JITNegIC> m_negICs;
+        Bag<JITSubIC> m_subICs;
+        Bag<ByValInfo> m_byValInfos;
+        Bag<CallLinkInfo> m_callLinkInfos;
+        SentinelLinkedList<CallLinkInfo, BasicRawSentinelNode<CallLinkInfo>> m_incomingCalls;
+        SentinelLinkedList<PolymorphicCallNode, BasicRawSentinelNode<PolymorphicCallNode>> m_incomingPolymorphicCalls;
+        SegmentedVector<RareCaseProfile, 8> m_rareCaseProfiles;
+        std::unique_ptr<PCToCodeOriginMap> m_pcToCodeOriginMap;
+        JITCodeMap m_jitCodeMap;
+    };
+
+    JITData& ensureJITData(const ConcurrentJSLocker& locker)
+    {
+        if (LIKELY(m_jitData))
+            return *m_jitData;
+        return ensureJITDataSlow(locker);
+    }
+    JITData& ensureJITDataSlow(const ConcurrentJSLocker&);
+
     JITAddIC* addJITAddIC(ArithProfile*, const Instruction*);
     JITMulIC* addJITMulIC(ArithProfile*, const Instruction*);
     JITNegIC* addJITNegIC(ArithProfile*, const Instruction*);
@@ -267,8 +292,6 @@ public:
     JITSubIC* addMathIC(ArithProfile* profile, const Instruction* instruction) { return addJITSubIC(profile, instruction); }
 
     StructureStubInfo* addStubInfo(AccessType);
-    auto stubInfoBegin() { return m_stubInfos.begin(); }
-    auto stubInfoEnd() { return m_stubInfos.end(); }
 
     // O(n) operation. Use getStubInfoMap() unless you really only intend to get one
     // stub info.
@@ -277,14 +300,48 @@ public:
     ByValInfo* addByValInfo();
 
     CallLinkInfo* addCallLinkInfo();
-    auto callLinkInfosBegin() { return m_callLinkInfos.begin(); }
-    auto callLinkInfosEnd() { return m_callLinkInfos.end(); }
 
     // This is a slow function call used primarily for compiling OSR exits in the case
     // that there had been inlining. Chances are if you want to use this, you're really
     // looking for a CallLinkInfoMap to amortize the cost of calling this.
     CallLinkInfo* getCallLinkInfoForBytecodeIndex(unsigned bytecodeIndex);
     
+    void setJITCodeMap(JITCodeMap&& jitCodeMap)
+    {
+        ConcurrentJSLocker locker(m_lock);
+        ensureJITData(locker).m_jitCodeMap = WTFMove(jitCodeMap);
+    }
+    const JITCodeMap& jitCodeMap()
+    {
+        ConcurrentJSLocker locker(m_lock);
+        return ensureJITData(locker).m_jitCodeMap;
+    }
+
+    void setPCToCodeOriginMap(std::unique_ptr<PCToCodeOriginMap>&&);
+    Optional<CodeOrigin> findPC(void* pc);
+
+    RareCaseProfile* addRareCaseProfile(int bytecodeOffset);
+    RareCaseProfile* rareCaseProfileForBytecodeOffset(const ConcurrentJSLocker&, int bytecodeOffset);
+    unsigned rareCaseProfileCountForBytecodeOffset(const ConcurrentJSLocker&, int bytecodeOffset);
+
+    bool likelyToTakeSlowCase(int bytecodeOffset)
+    {
+        if (!hasBaselineJITProfiling())
+            return false;
+        ConcurrentJSLocker locker(m_lock);
+        unsigned value = rareCaseProfileCountForBytecodeOffset(locker, bytecodeOffset);
+        return value >= Options::likelyToTakeSlowCaseMinimumCount();
+    }
+
+    bool couldTakeSlowCase(int bytecodeOffset)
+    {
+        if (!hasBaselineJITProfiling())
+            return false;
+        ConcurrentJSLocker locker(m_lock);
+        unsigned value = rareCaseProfileCountForBytecodeOffset(locker, bytecodeOffset);
+        return value >= Options::couldTakeSlowCaseMinimumCount();
+    }
+
     // We call this when we want to reattempt compiling something with the baseline JIT. Ideally
     // the baseline JIT would not add data to CodeBlock, but instead it would put its data into
     // a newly created JITCode, which could be thrown away if we bail on JIT compilation. Then we
@@ -301,17 +358,6 @@ public:
 #endif // ENABLE(JIT)
 
     void linkIncomingCall(ExecState* callerFrame, LLIntCallLinkInfo*);
-
-#if ENABLE(JIT)
-    void setJITCodeMap(JITCodeMap&& jitCodeMap)
-    {
-        m_jitCodeMap = WTFMove(jitCodeMap);
-    }
-    const JITCodeMap& jitCodeMap() const
-    {
-        return m_jitCodeMap;
-    }
-#endif
 
     const Instruction* outOfLineJumpTarget(const Instruction* pc);
     int outOfLineJumpOffset(const Instruction* pc);
@@ -379,7 +425,7 @@ public:
     
     ExecutableToCodeBlockEdge* ownerEdge() const { return m_ownerEdge.get(); }
 
-    VM* vm() const { return m_poisonedVM.unpoisoned(); }
+    VM* vm() const { return m_vm; }
 
     void setThisRegister(VirtualRegister thisRegister) { m_thisRegister = thisRegister; }
     VirtualRegister thisRegister() const { return m_thisRegister; }
@@ -442,27 +488,6 @@ public:
     template<typename Functor> void forEachObjectAllocationProfile(const Functor&);
     template<typename Functor> void forEachLLIntCallLinkInfo(const Functor&);
 
-    RareCaseProfile* addRareCaseProfile(int bytecodeOffset);
-    unsigned numberOfRareCaseProfiles() { return m_rareCaseProfiles.size(); }
-    RareCaseProfile* rareCaseProfileForBytecodeOffset(int bytecodeOffset);
-    unsigned rareCaseProfileCountForBytecodeOffset(int bytecodeOffset);
-
-    bool likelyToTakeSlowCase(int bytecodeOffset)
-    {
-        if (!hasBaselineJITProfiling())
-            return false;
-        unsigned value = rareCaseProfileCountForBytecodeOffset(bytecodeOffset);
-        return value >= Options::likelyToTakeSlowCaseMinimumCount();
-    }
-
-    bool couldTakeSlowCase(int bytecodeOffset)
-    {
-        if (!hasBaselineJITProfiling())
-            return false;
-        unsigned value = rareCaseProfileCountForBytecodeOffset(bytecodeOffset);
-        return value >= Options::couldTakeSlowCaseMinimumCount();
-    }
-
     ArithProfile* arithProfileForBytecodeOffset(InstructionStream::Offset bytecodeOffset);
     ArithProfile* arithProfileForPC(const Instruction*);
 
@@ -499,7 +524,7 @@ public:
         return codeOrigins()[index.bits()];
     }
 
-    CompressedLazyOperandValueProfileHolder& lazyOperandValueProfiles()
+    CompressedLazyOperandValueProfileHolder& lazyOperandValueProfiles(const ConcurrentJSLocker&)
     {
         return m_lazyOperandValueProfiles;
     }
@@ -521,7 +546,7 @@ public:
     {
         unsigned result = m_constantRegisters.size();
         m_constantRegisters.append(WriteBarrier<Unknown>());
-        m_constantRegisters.last().set(*m_poisonedVM, this, v);
+        m_constantRegisters.last().set(*m_vm, this, v);
         m_constantsSourceCodeRepresentation.append(SourceCodeRepresentation::Other);
         return result;
     }
@@ -544,10 +569,9 @@ public:
     int numberOfFunctionDecls() { return m_functionDecls.size(); }
     FunctionExecutable* functionExpr(int index) { return m_functionExprs[index].get(); }
     
-    const Vector<BitVector>& bitVectors() const { return m_unlinkedCode->bitVectors(); }
     const BitVector& bitVector(size_t i) { return m_unlinkedCode->bitVector(i); }
 
-    Heap* heap() const { return &m_poisonedVM->heap; }
+    Heap* heap() const { return &m_vm->heap; }
     JSGlobalObject* globalObject() { return m_globalObject.get(); }
 
     JSGlobalObject* globalObjectFor(CodeOrigin);
@@ -847,11 +871,6 @@ public:
 
     void ensureCatchLivenessIsComputedForBytecodeOffset(InstructionStream::Offset bytecodeOffset);
 
-#if ENABLE(JIT)
-    void setPCToCodeOriginMap(std::unique_ptr<PCToCodeOriginMap>&&);
-    Optional<CodeOrigin> findPC(void* pc);
-#endif
-
     bool hasTailCalls() const { return m_unlinkedCode->hasTailCalls(); }
 
     template<typename Metadata>
@@ -868,8 +887,9 @@ public:
 
 protected:
     void finalizeLLIntInlineCaches();
+#if ENABLE(JIT)
     void finalizeBaselineJITInlineCaches();
-
+#endif
 #if ENABLE(DFG_JIT)
     void tallyFrequentExitSites();
 #else
@@ -897,7 +917,7 @@ private:
     void replaceConstant(int index, JSValue value)
     {
         ASSERT(isConstantRegisterIndex(index) && static_cast<size_t>(index - FirstConstantRegisterIndex) < m_constantRegisters.size());
-        m_constantRegisters[index - FirstConstantRegisterIndex].set(*m_poisonedVM, this, value);
+        m_constantRegisters[index - FirstConstantRegisterIndex].set(*m_vm, this, value);
     }
 
     bool shouldVisitStrongly(const ConcurrentJSLocker&);
@@ -945,7 +965,7 @@ private:
     WriteBarrier<UnlinkedCodeBlock> m_unlinkedCode;
     WriteBarrier<ExecutableBase> m_ownerExecutable;
     WriteBarrier<ExecutableToCodeBlockEdge> m_ownerEdge;
-    Poisoned<CodeBlockPoison, VM*> m_poisonedVM;
+    VM* m_vm;
 
     const InstructionStream* m_instructions;
     const void* m_instructionsRawPointer { nullptr };
@@ -954,28 +974,18 @@ private:
     VirtualRegister m_scopeRegister;
     mutable CodeBlockHash m_hash;
 
-    PoisonedRefPtr<CodeBlockPoison, SourceProvider> m_source;
+    RefPtr<SourceProvider> m_source;
     unsigned m_sourceOffset;
     unsigned m_firstLineColumnOffset;
 
     SentinelLinkedList<LLIntCallLinkInfo, BasicRawSentinelNode<LLIntCallLinkInfo>> m_incomingLLIntCalls;
     StructureWatchpointMap m_llintGetByIdWatchpointMap;
-    PoisonedRefPtr<CodeBlockPoison, JITCode> m_jitCode;
+    RefPtr<JITCode> m_jitCode;
 #if !ENABLE(C_LOOP)
     std::unique_ptr<RegisterAtOffsetList> m_calleeSaveRegisters;
 #endif
 #if ENABLE(JIT)
-    PoisonedBag<CodeBlockPoison, StructureStubInfo> m_stubInfos;
-    PoisonedBag<CodeBlockPoison, JITAddIC> m_addICs;
-    PoisonedBag<CodeBlockPoison, JITMulIC> m_mulICs;
-    PoisonedBag<CodeBlockPoison, JITNegIC> m_negICs;
-    PoisonedBag<CodeBlockPoison, JITSubIC> m_subICs;
-    PoisonedBag<CodeBlockPoison, ByValInfo> m_byValInfos;
-    PoisonedBag<CodeBlockPoison, CallLinkInfo> m_callLinkInfos;
-    SentinelLinkedList<CallLinkInfo, BasicRawSentinelNode<CallLinkInfo>> m_incomingCalls;
-    SentinelLinkedList<PolymorphicCallNode, BasicRawSentinelNode<PolymorphicCallNode>> m_incomingPolymorphicCalls;
-    std::unique_ptr<PCToCodeOriginMap> m_pcToCodeOriginMap;
-    JITCodeMap m_jitCodeMap;
+    std::unique_ptr<JITData> m_jitData;
 #endif
 #if ENABLE(DFG_JIT)
     // This is relevant to non-DFG code blocks that serve as the profiled code block
@@ -984,7 +994,6 @@ private:
 #endif
     RefCountedArray<ValueProfile> m_argumentValueProfiles;
     Vector<std::unique_ptr<ValueProfileAndOperandBuffer>> m_catchProfiles;
-    SegmentedVector<RareCaseProfile, 8> m_rareCaseProfiles;
 
     // Constant Pool
     COMPILE_ASSERT(sizeof(Register) == sizeof(WriteBarrier<Unknown>), Register_must_be_same_size_as_WriteBarrier_Unknown);
