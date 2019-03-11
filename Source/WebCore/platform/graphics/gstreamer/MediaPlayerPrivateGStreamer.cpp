@@ -382,6 +382,9 @@ MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
             return MediaTime::zeroTime();
         }
     }
+#elif PLATFORM(BCM_NEXUS)
+    // implement getting pts time from broadcom decoder directly for seek functionality
+    positionElement = findVideoDecoder(m_pipeline.get());
 #else
     positionElement = m_pipeline.get();
 #endif
@@ -397,21 +400,6 @@ MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
         playbackPosition = MediaTime(gstreamerPosition, GST_SECOND);
     else if (m_canFallBackToLastFinishedSeekPosition)
         playbackPosition = m_seekTime;
-
-#if PLATFORM(BCM_NEXUS)
-    // implement getting pts time from broadcom decoder directly for seek functionality
-    gint64 currentPts = -1;
-    GstElement* videoDec = findVideoDecoder(m_pipeline.get());
-    const char* videoPtsPropertyName = "video_pts";
-    if (videoDec)
-        g_object_get(videoDec, videoPtsPropertyName, &currentPts, nullptr);
-    if (currentPts > -1) {
-        playbackPosition = MediaTime(((currentPts * GST_MSECOND) / 45), GST_SECOND);
-        GST_DEBUG("Using position reported by the video decoder: %s", toString(playbackPosition).utf8().data());
-    }
-    if (!playbackPosition && m_seekTime.isValid())
-        playbackPosition = m_seekTime;
-#endif
 
     m_cachedPosition = playbackPosition;
     return playbackPosition;
