@@ -26,6 +26,7 @@
 
 #include <glib-object.h>
 #include <wpe/WebKitDefines.h>
+#include <wpe/WebKitSecurityOrigin.h>
 #include <wpe/WebKitUserMessage.h>
 #include <wpe/WebKitWebPage.h>
 
@@ -82,6 +83,23 @@ webkit_web_extension_get_type                       (void);
 WEBKIT_API WebKitWebPage *
 webkit_web_extension_get_page                       (WebKitWebExtension *extension,
                                                      guint64             page_id);
+
+WEBKIT_API void
+webkit_web_extension_add_origin_access_whitelist_entry    (WebKitWebExtension   *extension,
+                                                           WebKitSecurityOrigin *origin,
+                                                           const gchar          *protocol,
+                                                           const gchar          *host,
+                                                           gboolean              allow_subdomains);
+
+WEBKIT_API void
+webkit_web_extension_remove_origin_access_whitelist_entry (WebKitWebExtension   *extension,
+                                                           WebKitSecurityOrigin *origin,
+                                                           const gchar          *protocol,
+                                                           const gchar          *host,
+                                                           gboolean              allow_subdomains);
+
+WEBKIT_API void
+webkit_web_extension_reset_origin_access_whitelists       (WebKitWebExtension   *extension);
 
 WEBKIT_API void
 webkit_web_extension_send_message_to_context        (WebKitWebExtension *extension,

@@ -23,6 +23,7 @@
 #include "APIDictionary.h"
 #include "APIInjectedBundleBundleClient.h"
 #include "APIString.h"
+#include "WebKitSecurityOriginPrivate.h"
 #include "WebKitUserMessagePrivate.h"
 #include "WebKitWebExtensionPrivate.h"
 #include "WebKitWebPagePrivate.h"
@@ -122,6 +123,7 @@ enum {
 typedef HashMap<WebPage*, GRefPtr<WebKitWebPage> > WebPageMap;
 
 struct _WebKitWebExtensionPrivate {
+    RefPtr<InjectedBundle> bundle;
     WebPageMap pages;
 #if ENABLE(DEVELOPER_MODE)
     bool garbageCollectOnPageDestroy;
@@ -211,6 +213,7 @@ private:
 WebKitWebExtension* webkitWebExtensionCreate(InjectedBundle* bundle)
 {
     WebKitWebExtension* extension = WEBKIT_WEB_EXTENSION(g_object_new(WEBKIT_TYPE_WEB_EXTENSION, NULL));
+    extension->priv->bundle = bundle;
     bundle->setClient(makeUnique<WebExtensionInjectedBundleClient>(extension));
     return extension;
 }
@@ -250,6 +253,33 @@ WebKitWebPage* webkit_web_extension_get_page(WebKitWebExtension* extension, guin
             return it->value.get();
 
     return 0;
+}
+
+void webkit_web_extension_add_origin_access_whitelist_entry(WebKitWebExtension* extension, WebKitSecurityOrigin* origin, const char* protocol, const char* host, gboolean allowSubdomains)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_EXTENSION(extension));
+    g_return_if_fail(origin);
+    g_return_if_fail(!webkit_security_origin_is_opaque(origin));
+    g_return_if_fail(protocol);
+
+    extension->priv->bundle->addOriginAccessWhitelistEntry(webkitSecurityOriginGetSecurityOrigin(origin).toString(), String::fromUTF8(protocol), String::fromUTF8(host), host ? allowSubdomains : true);
+}
+
+void webkit_web_extension_remove_origin_access_whitelist_entry(WebKitWebExtension* extension, WebKitSecurityOrigin* origin, const char* protocol, const char* host, gboolean allowSubdomains)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_EXTENSION(extension));
+    g_return_if_fail(origin);
+    g_return_if_fail(!webkit_security_origin_is_opaque(origin));
+    g_return_if_fail(protocol);
+
+    extension->priv->bundle->removeOriginAccessWhitelistEntry(webkitSecurityOriginGetSecurityOrigin(origin).toString(), String::fromUTF8(protocol), String::fromUTF8(host), host ? allowSubdomains : true);
+}
+
+void webkit_web_extension_reset_origin_access_whitelists(WebKitWebExtension* extension)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_EXTENSION(extension));
+
+    extension->priv->bundle->resetOriginAccessWhitelists();
 }
 
 /**
