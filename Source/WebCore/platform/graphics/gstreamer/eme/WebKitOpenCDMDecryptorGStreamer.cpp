@@ -28,6 +28,7 @@
 #include "CDMOpenCDM.h"
 #include <GStreamerCommon.h>
 #include <open_cdm.h>
+#include <open_cdm_adapter.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/Lock.h>
 #include <wtf/PrintStream.h>
@@ -36,7 +37,8 @@
 
 struct _WebKitOpenCDMDecryptPrivate {
     String m_session;
-    std::unique_ptr<media::OpenCdm> m_openCdm;
+    struct OpenCDMAccessor* m_openCdmAccessor;
+    struct OpenCDMSession* m_openCdm;
     Lock m_mutex;
 };
 
@@ -127,7 +129,6 @@ static void webkit_media_opencdm_decrypt_init(WebKitOpenCDMDecrypt* self)
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(self);
     self->priv = priv;
     new (priv) WebKitOpenCDMDecryptPrivate();
-    self->priv->m_openCdm = std::make_unique<media::OpenCdm>();
     GST_TRACE_OBJECT(self, "created");
 }
 
@@ -153,9 +154,10 @@ static SessionResult webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded
         GST_DEBUG_OBJECT(self, "session %s is empty or unusable, resetting", session.utf8().data());
         priv->m_session = String();
         priv->m_openCdm = nullptr;
+        priv->m_openCdmAccessor = nullptr;
     } else if (session != priv->m_session) {
         priv->m_session = session;
-        priv->m_openCdm = std::make_unique<media::OpenCdm>(priv->m_session.utf8().data());
+        priv->m_openCdmAccessor = opencdm_create_system();
         GST_DEBUG_OBJECT(self, "new session %s is usable", session.utf8().data());
         returnValue = NewSession;
     } else {
@@ -190,80 +192,27 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
 
     GST_MEMDUMP_OBJECT(self, "IV for sample", mappedIV.data(), mappedIV.size());
 
-    GstMappedBuffer mappedBuffer(buffer, GST_MAP_READWRITE);
-    if (!mappedBuffer) {
-        GST_ERROR_OBJECT(self, "Failed to map buffer");
-        return false;
-    }
-
     GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
     if (!mappedKeyID) {
         GST_ERROR_OBJECT(self, "Failed to map key ID buffer");
         return false;
     }
-
-    int errorCode;
-    if (subSamplesBuffer) {
-        GstMappedBuffer mappedSubSamples(subSamplesBuffer, GST_MAP_READ);
-        if (!mappedSubSamples) {
-            GST_ERROR_OBJECT(self, "Failed to map subsample buffer");
-            return false;
-        }
-
-        GUniquePtr<GstByteReader> reader(gst_byte_reader_new(mappedSubSamples.data(), mappedSubSamples.size()));
-        uint16_t inClear = 0;
-        uint32_t inEncrypted = 0;
-        uint32_t totalEncrypted = 0;
-        unsigned position;
-        // Find out the total size of the encrypted data.
-        for (position = 0; position < subSampleCount; position++) {
-            gst_byte_reader_get_uint16_be(reader.get(), &inClear);
-            gst_byte_reader_get_uint32_be(reader.get(), &inEncrypted);
-            totalEncrypted += inEncrypted;
-        }
-        gst_byte_reader_set_pos(reader.get(), 0);
-
-        // Build a new buffer storing the entire encrypted cipher.
-        GUniquePtr<uint8_t> holdEncryptedData(reinterpret_cast<uint8_t*>(malloc(totalEncrypted)));
-        uint8_t* encryptedData = holdEncryptedData.get();
-        unsigned index = 0;
-        for (position = 0; position < subSampleCount; position++) {
-            gst_byte_reader_get_uint16_be(reader.get(), &inClear);
-            gst_byte_reader_get_uint32_be(reader.get(), &inEncrypted);
-            memcpy(encryptedData, mappedBuffer.data() + index + inClear, inEncrypted);
-            index += inClear + inEncrypted;
-            encryptedData += inEncrypted;
-        }
-        gst_byte_reader_set_pos(reader.get(), 0);
-
-        // Decrypt cipher.
-        GST_TRACE_OBJECT(self, "decrypting (subsample)");
-        if ((errorCode = priv->m_openCdm->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted), mappedIV.data(), static_cast<uint32_t>(mappedIV.size()), mappedKeyID.size(), mappedKeyID.data(), WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT.millisecondsAs<uint32_t>()))) {
-            GST_ERROR_OBJECT(self, "subsample decryption failed, error code %d", errorCode);
-            return false;
-        }
-
-        // Re-build sub-sample data.
-        index = 0;
-        encryptedData = holdEncryptedData.get();
-        unsigned total = 0;
-        for (position = 0; position < subSampleCount; position++) {
-            gst_byte_reader_get_uint16_be(reader.get(), &inClear);
-            gst_byte_reader_get_uint32_be(reader.get(), &inEncrypted);
-
-            memcpy(mappedBuffer.data() + total + inClear, encryptedData + index, inEncrypted);
-            index += inEncrypted;
-            total += inClear + inEncrypted;
-        }
-    } else {
-        GST_TRACE_OBJECT(self, "decrypting (no subsamples)");
-
-        if ((errorCode = priv->m_openCdm->Decrypt(mappedBuffer.data(), static_cast<uint32_t>(mappedBuffer.size()), mappedIV.data(), static_cast<uint32_t>(mappedIV.size()), mappedKeyID.size(), mappedKeyID.data(), WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT.millisecondsAs<uint32_t>()))) {
-            GST_ERROR_OBJECT(self, "decryption failed, error code %d", errorCode);
+    
+    if (!priv->m_openCdm) {
+        priv->m_openCdm =  opencdm_get_session(priv->m_openCdmAccessor, mappedKeyID.data(), mappedKeyID.size(), WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT.millisecondsAs<uint32_t>());
+        if(!priv->m_openCdm) {
+            GST_ERROR_OBJECT(self, "session is empty or unusable");
             return false;
         }
     }
 
+    // Decrypt cipher.
+    GST_TRACE_OBJECT(self, "decrypting");
+    if (int errorCode = adapter_session_decrypt(priv->m_openCdm, reinterpret_cast<void*>(buffer), reinterpret_cast<void*>(subSamplesBuffer), subSampleCount, mappedIV.data(), static_cast<uint32_t>(mappedIV.size()))) {
+        GST_ERROR_OBJECT(self, "subsample decryption failed, error code %d", errorCode);
+        return false;
+    }
+    
     return true;
 }
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
