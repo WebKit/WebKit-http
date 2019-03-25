@@ -81,17 +81,17 @@ static void addKeySystemToSinkPadCaps(GRefPtr<GstCaps>& caps, const char* uuid)
 
 static GRefPtr<GstCaps> createSinkPadTemplateCaps()
 {
-    media::OpenCdm& openCdm = media::OpenCdm::Instance();
+    std::unique_ptr<OpenCDMAccessor, OpenCDMError(*)(OpenCDMAccessor*)> openCDMAccessor(opencdm_create_system(), opencdm_destruct_system);
     std::string emptyString;
     GRefPtr<GstCaps> caps = adoptGRef(gst_caps_new_empty());
 
-    if (openCdm.IsTypeSupported(WebCore::GStreamerEMEUtilities::s_ClearKeyKeySystem, emptyString))
+    if (!opencdm_is_type_supported(openCDMAccessor.get(), WebCore::GStreamerEMEUtilities::s_ClearKeyKeySystem, emptyString.c_str()))
         addKeySystemToSinkPadCaps(caps, WEBCORE_GSTREAMER_EME_UTILITIES_CLEARKEY_UUID);
 
-    if (openCdm.IsTypeSupported(WebCore::GStreamerEMEUtilities::s_PlayReadyKeySystems[0], emptyString))
+    if (!opencdm_is_type_supported(openCDMAccessor.get(), WebCore::GStreamerEMEUtilities::s_PlayReadyKeySystems[0], emptyString.c_str()))
         addKeySystemToSinkPadCaps(caps, WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID);
 
-    if (openCdm.IsTypeSupported(WebCore::GStreamerEMEUtilities::s_WidevineKeySystem, emptyString))
+    if (!opencdm_is_type_supported(openCDMAccessor.get(), WebCore::GStreamerEMEUtilities::s_WidevineKeySystem, emptyString.c_str()))
         addKeySystemToSinkPadCaps(caps, WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID);
 
     return caps;
@@ -212,7 +212,7 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
         GST_ERROR_OBJECT(self, "subsample decryption failed, error code %d", errorCode);
         return false;
     }
-    
+
     return true;
 }
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
