@@ -44,7 +44,7 @@ template<> JSValue JSImageConstructor::prototypeForStructure(VM& vm, const JSDOM
     return JSHTMLElement::getConstructor(vm, &globalObject);
 }
 
-template<> EncodedJSValue JSImageConstructor::construct(ExecState* state)
+template<> EncodedJSValue JSC_HOST_CALL JSImageConstructor::construct(ExecState* state)
 {
     JSImageConstructor* jsConstructor = jsCast<JSImageConstructor*>(state->callee());
     Document* document = jsConstructor->document();
