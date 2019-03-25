@@ -29,9 +29,9 @@
 #include <GStreamerCommon.h>
 #include <open_cdm.h>
 #include <open_cdm_adapter.h>
-#include <wtf/text/WTFString.h>
 #include <wtf/Lock.h>
 #include <wtf/PrintStream.h>
+#include <wtf/text/WTFString.h>
 
 #define GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecryptPrivate))
 
@@ -39,8 +39,8 @@ using WebCore::GstMappedBuffer;
 
 struct _WebKitOpenCDMDecryptPrivate {
     String m_session;
-    struct OpenCDMAccessor* m_openCdmAccessor;
-    struct OpenCDMSession* m_openCdm;
+    WebCore::ScopedOCDMAccessor m_openCdmAccessor;
+    OpenCDMSession* m_openCdm;
     Lock m_mutex;
 };
 
@@ -55,12 +55,12 @@ static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS(
-    "video/webm; "
-    "audio/webm; "
-    "video/mp4; "
-    "audio/mp4; "
-    "audio/mpeg; "
-    "video/x-h264"));
+        "video/webm; "
+        "audio/webm; "
+        "video/mp4; "
+        "audio/mp4; "
+        "audio/mpeg; "
+        "video/x-h264"));
 
 GST_DEBUG_CATEGORY(webkit_media_opencdm_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
@@ -83,7 +83,7 @@ static void addKeySystemToSinkPadCaps(GRefPtr<GstCaps>& caps, const char* uuid)
 
 static GRefPtr<GstCaps> createSinkPadTemplateCaps()
 {
-    std::unique_ptr<OpenCDMAccessor, OpenCDMError(*)(OpenCDMAccessor*)> openCDMAccessor(opencdm_create_system(), opencdm_destruct_system);
+    WebCore::ScopedOCDMAccessor openCDMAccessor { opencdm_create_system() };
     std::string emptyString;
     GRefPtr<GstCaps> caps = adoptGRef(gst_caps_new_empty());
 
@@ -129,6 +129,8 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
 static void webkit_media_opencdm_decrypt_init(WebKitOpenCDMDecrypt* self)
 {
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(self);
+    priv->m_openCdmAccessor = nullptr;
+    priv->m_openCdm = nullptr;
     self->priv = priv;
     new (priv) WebKitOpenCDMDecryptPrivate();
     GST_TRACE_OBJECT(self, "created");
@@ -159,7 +161,8 @@ static SessionResult webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded
         priv->m_openCdmAccessor = nullptr;
     } else if (session != priv->m_session) {
         priv->m_session = session;
-        priv->m_openCdmAccessor = opencdm_create_system();
+        priv->m_openCdm = nullptr;
+        priv->m_openCdmAccessor.reset(opencdm_create_system());
         GST_DEBUG_OBJECT(self, "new session %s is usable", session.utf8().data());
         returnValue = NewSession;
     } else {
@@ -199,10 +202,10 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
         GST_ERROR_OBJECT(self, "Failed to map key ID buffer");
         return false;
     }
-    
+
     if (!priv->m_openCdm) {
-        priv->m_openCdm =  opencdm_get_session(priv->m_openCdmAccessor, mappedKeyID.data(), mappedKeyID.size(), WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT.millisecondsAs<uint32_t>());
-        if(!priv->m_openCdm) {
+        priv->m_openCdm = opencdm_get_session(priv->m_openCdmAccessor.get(), mappedKeyID.data(), mappedKeyID.size(), WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT.millisecondsAs<uint32_t>());
+        if (!priv->m_openCdm) {
             GST_ERROR_OBJECT(self, "session is empty or unusable");
             return false;
         }
