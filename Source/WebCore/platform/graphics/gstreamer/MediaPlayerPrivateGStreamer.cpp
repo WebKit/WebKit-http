@@ -39,6 +39,7 @@
 #include "TimeRanges.h"
 #include "WebKitWebSourceGStreamer.h"
 #include <glib.h>
+#include <gst/audio/gstaudiodecoder.h>
 #include <gst/gst.h>
 #include <gst/pbutils/missing-plugins.h>
 #include <gst/video/gstvideodecoder.h>
@@ -312,9 +313,11 @@ void MediaPlayerPrivateGStreamer::commitLoad()
 
 #if PLATFORM(BCM_NEXUS)
 // utility function for bcm nexus seek functionality
-static GstElement* findVideoDecoder(GstElement *element)
+static void findDecoders(GstElement *element, GstElement **videoDecoder, GstElement **audioDecoder)
 {
-    GstElement* re = nullptr;
+    if (!(videoDecoder || audioDecoder))
+        return;
+
     if (GST_IS_BIN(element)) {
         GstIterator* it = gst_bin_iterate_elements(GST_BIN(element));
         GValue item = G_VALUE_INIT;
@@ -324,7 +327,8 @@ static GstElement* findVideoDecoder(GstElement *element)
                 case GST_ITERATOR_OK:
                 {
                     GstElement *next = GST_ELEMENT(g_value_get_object(&item));
-                    done = (re = findVideoDecoder(next));
+                    findDecoders(next, videoDecoder, audioDecoder);
+                    done = (!((videoDecoder && !*videoDecoder) || (audioDecoder && !*audioDecoder)));
                     g_value_reset (&item);
                     break;
                 }
@@ -339,9 +343,11 @@ static GstElement* findVideoDecoder(GstElement *element)
         }
         g_value_unset (&item);
         gst_iterator_free(it);
-    } else if (GST_IS_VIDEO_DECODER(element) || g_str_has_suffix(G_OBJECT_TYPE_NAME(G_OBJECT(element)), "VideoDecoder"))
-        re = element;
-    return re;
+    } else if (videoDecoder && (GST_IS_VIDEO_DECODER(element) || g_str_has_suffix(G_OBJECT_TYPE_NAME(G_OBJECT(element)), "VideoDecoder")))
+        *videoDecoder = element;
+    else if (audioDecoder && (GST_IS_AUDIO_DECODER(element) || g_str_has_suffix(G_OBJECT_TYPE_NAME(G_OBJECT(element)), "AudioDecoder")))
+        *audioDecoder = element;
+    return;
 }
 #endif
 
@@ -383,12 +389,39 @@ MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
         }
     }
 #elif PLATFORM(BCM_NEXUS)
-    // implement getting pts time from broadcom decoder directly for seek functionality
-    positionElement = findVideoDecoder(m_pipeline.get());
+    // Implement getting pts time from broadcom decoder directly for seek functionality.
+    // In some cases one stream (audio or video) is shorter than the other and its position doesn't
+    // increase anymore. We need to query both decoders (if available) and choose the highest position.
+    GstElement* videoDecoder = nullptr;
+    GstElement* audioDecoder = nullptr;
+    GstClockTime videoPosition = GST_CLOCK_TIME_NONE;
+    GstClockTime audioPosition = GST_CLOCK_TIME_NONE;
+
+    findDecoders(m_pipeline.get(), &videoDecoder, &audioDecoder);
+
+    GST_TRACE("videoDecoder: %s, audioDecoder: %s", videoDecoder ? GST_ELEMENT_NAME(videoDecoder) : "null", audioDecoder ? GST_ELEMENT_NAME(audioDecoder) : "null");
+
+    if (!(videoDecoder || audioDecoder))
+        return MediaTime::zeroTime();
+    if (videoDecoder && gst_element_query(videoDecoder, query))
+        gst_query_parse_position(query, 0, (gint64*)&videoPosition);
+    if (audioDecoder) {
+        g_object_set(audioDecoder, "use-audio-position", true, nullptr);
+        if (gst_element_query(audioDecoder, query))
+            gst_query_parse_position(query, 0, (gint64*)&audioPosition);
+    }
+    if (videoPosition == GST_CLOCK_TIME_NONE)
+        videoPosition = 0;
+    if (audioPosition == GST_CLOCK_TIME_NONE)
+        audioPosition = 0;
+
+    GST_TRACE("videoPosition: %" GST_TIME_FORMAT ", audioPosition: %" GST_TIME_FORMAT, GST_TIME_ARGS(videoPosition), GST_TIME_ARGS(audioPosition));
+
+    position = max(videoPosition, audioPosition);
 #else
     positionElement = m_pipeline.get();
 #endif
-    if (gst_element_query(positionElement, query))
+    if (positionElement && gst_element_query(positionElement, query))
         gst_query_parse_position(query, 0, &position);
     gst_query_unref(query);
 
