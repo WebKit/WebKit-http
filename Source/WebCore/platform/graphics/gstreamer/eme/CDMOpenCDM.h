@@ -35,9 +35,16 @@
 
 namespace WebCore {
 
+struct OCDMAccessorDeleter {
+    OpenCDMError operator()(OpenCDMAccessor* ptr) const { return opencdm_destruct_system(ptr); }
+};
+
+using ScopedOCDMAccessor = std::unique_ptr<OpenCDMAccessor, OCDMAccessorDeleter>;
+
 class CDMFactoryOpenCDM : public CDMFactory {
 private:
-    CDMFactoryOpenCDM() = default;
+    CDMFactoryOpenCDM()
+        : m_openCDMAccessor(opencdm_create_system()) { }
     CDMFactoryOpenCDM(const CDMFactoryOpenCDM&) = delete;
     CDMFactoryOpenCDM& operator=(const CDMFactoryOpenCDM&) = delete;
 
@@ -48,9 +55,7 @@ public:
 
     virtual std::unique_ptr<CDMPrivate> createCDM(const String&) final;
     virtual bool supportsKeySystem(const String&) final;
-
-private:
-    media::OpenCdm m_openCDM;
+    ScopedOCDMAccessor m_openCDMAccessor;
 };
 
 class CDMInstanceOpenCDM final : public CDMInstance {
@@ -62,7 +67,7 @@ private:
     class Session;
 
 public:
-    CDMInstanceOpenCDM(media::OpenCdm&, const String&);
+    CDMInstanceOpenCDM(OpenCDMAccessor&, const String&);
     virtual ~CDMInstanceOpenCDM() = default;
 
     // Metadata getters, just for some DRM characteristics.
@@ -90,13 +95,13 @@ public:
     bool isSessionIdUsable(const String&) const;
 
 private:
-    bool addSession(const String& sessionId, Session* session);
+    bool addSession(const String& sessionId, RefPtr<Session>&& session);
     bool removeSession(const String& sessionId);
     RefPtr<Session> lookupSession(const String& sessionId) const;
 
     String m_keySystem;
     const char* m_mimeType;
-    media::OpenCdm m_openCDM;
+    OpenCDMAccessor& m_openCDMAccessor;
     // Protects against concurrent access to m_sessionsMap. In addition to the main thread
     // the GStreamer decryptor elements running in the streaming threads have a need to
     // lookup values in this map.
