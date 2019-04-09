@@ -40,7 +40,7 @@ using WebCore::GstMappedBuffer;
 struct _WebKitOpenCDMDecryptPrivate {
     String m_session;
     WebCore::ScopedOCDMAccessor m_openCdmAccessor;
-    OpenCDMSession* m_openCdm;
+    WebCore::ScopedSession m_openCdm;
     Lock m_mutex;
 };
 
@@ -204,7 +204,7 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
     }
 
     if (!priv->m_openCdm) {
-        priv->m_openCdm = opencdm_get_session(priv->m_openCdmAccessor.get(), mappedKeyID.data(), mappedKeyID.size(), WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT.millisecondsAs<uint32_t>());
+        priv->m_openCdm.reset(opencdm_get_session(priv->m_openCdmAccessor.get(), mappedKeyID.data(), mappedKeyID.size(), WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT.millisecondsAs<uint32_t>()));
         if (!priv->m_openCdm) {
             GST_ERROR_OBJECT(self, "session is empty or unusable");
             return false;
@@ -213,7 +213,7 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
 
     // Decrypt cipher.
     GST_TRACE_OBJECT(self, "decrypting");
-    if (int errorCode = adapter_session_decrypt(priv->m_openCdm, reinterpret_cast<void*>(buffer), reinterpret_cast<void*>(subSamplesBuffer), subSampleCount, mappedIV.data(), static_cast<uint32_t>(mappedIV.size()))) {
+    if (int errorCode = adapter_session_decrypt(priv->m_openCdm.get(), reinterpret_cast<void*>(buffer), reinterpret_cast<void*>(subSamplesBuffer), subSampleCount, mappedIV.data(), static_cast<uint32_t>(mappedIV.size()))) {
         GST_ERROR_OBJECT(self, "subsample decryption failed, error code %d", errorCode);
         return false;
     }
