@@ -41,7 +41,8 @@
 #endif
 
 #if OS(DARWIN)
-#include "CommonCryptoSPI.h"
+#include <CommonCrypto/CommonCryptoError.h>
+#include <CommonCrypto/CommonRandom.h>
 #endif
 
 namespace WTF {
@@ -61,7 +62,7 @@ NEVER_INLINE NO_RETURN_DUE_TO_CRASH static void crashUnableToReadFromURandom()
 void cryptographicallyRandomValuesFromOS(unsigned char* buffer, size_t length)
 {
 #if OS(DARWIN)
-    RELEASE_ASSERT(!CCRandomCopyBytes(kCCRandomDefault, buffer, length));
+    RELEASE_ASSERT(!CCRandomGenerateBytes(buffer, length));
 #elif OS(UNIX)
     int fd = open("/dev/urandom", O_RDONLY, 0);
     if (fd < 0)
