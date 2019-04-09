@@ -45,7 +45,7 @@
 #endif
 #endif
 
-#if OS(DARWIN) && !USE(UNIX_DOMAIN_SOCKETS)
+#if USE(MACH_PORTS)
 #include <servers/bootstrap.h>
 
 extern "C" kern_return_t bootstrap_look_up2(mach_port_t, const name_t, mach_port_t*, pid_t, uint64_t);
@@ -139,7 +139,7 @@ Q_DECL_EXPORT int WebProcessMainQt(QGuiApplication* app)
         return 1;
     }
 
-#if OS(DARWIN)
+#if USE(MACH_PORTS)
     QString serviceName = app->arguments().value(1);
 
     // Get the server port.

@@ -45,7 +45,7 @@ bool ChildProcessMainBase::parseCommandLine(int argc, char** argv)
     if (argc < 2)
         return false;
 
-#if OS(DARWIN)
+#if USE(MACH_PORTS)
     QByteArray serviceName(argv[1]);
 
     // Get the server port.

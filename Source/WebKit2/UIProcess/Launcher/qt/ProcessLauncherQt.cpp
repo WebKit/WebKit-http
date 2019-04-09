@@ -62,7 +62,7 @@
 #include <QCoreApplication>
 #endif
 
-#if OS(DARWIN)
+#if USE(MACH_PORTS)
 #include <mach/mach_init.h>
 #include <servers/bootstrap.h>
 
@@ -134,7 +134,7 @@ void ProcessLauncher::launchProcess()
         ASSERT_NOT_REACHED();
     }
 
-#if OS(DARWIN)
+#if USE(MACH_PORTS)
     // Create the listening port.
     mach_port_t connector;
     mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &connector);
@@ -216,7 +216,7 @@ void ProcessLauncher::launchProcess()
     if (!webProcessOrSUIDHelper->waitForStarted()) {
         qDebug() << "Failed to start" << commandLine;
         ASSERT_NOT_REACHED();
-#if OS(DARWIN)
+#if USE(MACH_PORTS)
         mach_port_deallocate(mach_task_self(), connector);
         mach_port_mod_refs(mach_task_self(), connector, MACH_PORT_RIGHT_RECEIVE, -1);
 #endif
