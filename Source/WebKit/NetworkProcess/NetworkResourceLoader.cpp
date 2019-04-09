@@ -524,9 +524,18 @@ void NetworkResourceLoader::startBufferingTimerIfNeeded()
 {
     if (isSynchronous())
         return;
-    if (m_bufferingTimer.isActive())
+    if (m_bufferingTimer.isActive()) {
+        MonotonicTime now = MonotonicTime::now();
+        // If the timer is starved more than 3 times its triggering period, trigger it manually as a workaround.
+        if (now > (m_bufferingTimerLastFired + m_parameters.maximumBufferingTime + m_parameters.maximumBufferingTime
+           + m_parameters.maximumBufferingTime)) {
+            RELEASE_LOG_IF_ALLOWED("startBufferingTimerIfNeeded: Buffering timer starvation detected, firing it manually");
+            bufferingTimerFired();
+        }
         return;
+    }
     m_bufferingTimer.startOneShot(m_parameters.maximumBufferingTime);
+    m_bufferingTimerLastFired = MonotonicTime::now();
 }
 
 void NetworkResourceLoader::bufferingTimerFired()
@@ -534,6 +543,7 @@ void NetworkResourceLoader::bufferingTimerFired()
     ASSERT(m_bufferedData);
     ASSERT(m_networkLoad);
 
+    m_bufferingTimerLastFired = MonotonicTime::now();
     if (m_bufferedData->isEmpty())
         return;
 

@@ -159,6 +159,8 @@ private:
     unsigned m_retrievedDerivedDataCount { 0 };
 
     WebCore::Timer m_bufferingTimer;
+    // Safety workaround to call bufferingTimerFired() when the timer is starved.
+    MonotonicTime m_bufferingTimerLastFired;
 #if ENABLE(NETWORK_CACHE)
     RefPtr<NetworkCache::Cache> m_cache;
     RefPtr<WebCore::SharedBuffer> m_bufferedDataForCache;
