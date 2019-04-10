@@ -41,6 +41,11 @@ struct OCDMAccessorDeleter {
 
 using ScopedOCDMAccessor = std::unique_ptr<OpenCDMAccessor, OCDMAccessorDeleter>;
 
+struct SessionDeleter {
+    OpenCDMError operator()(OpenCDMSession* ptr) const { return opencdm_destruct_session(ptr); }
+};
+using ScopedSession = std::unique_ptr<OpenCDMSession, SessionDeleter>;
+
 class CDMFactoryOpenCDM : public CDMFactory {
 private:
     CDMFactoryOpenCDM()
