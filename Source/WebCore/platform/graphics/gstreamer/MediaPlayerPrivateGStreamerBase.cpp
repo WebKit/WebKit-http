@@ -1298,6 +1298,10 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
     m_videoSink = gst_element_factory_make( "db410csink", "optimized vsink");
 #endif
 
+#if PLATFORM(BCM_NEXUS)
+    m_videoSink = gst_element_factory_make( "brcmvideosink", nullptr);
+#endif
+
 #if USE(GSTREAMER_GL)
     if (m_renderingCanBeAccelerated)
         m_videoSink = createVideoSinkGL();
