@@ -42,102 +42,6 @@ namespace {
 
 using OCDMKeyStatus = KeyStatus;
 
-class OCDMSessionCallbacksNotifier {
-    WTF_MAKE_NONCOPYABLE(OCDMSessionCallbacksNotifier);
-
-public:
-    class Observer {
-    public:
-        virtual ~Observer() { }
-        virtual void challengeGeneratedCallback(RefPtr<WebCore::SharedBuffer>&&) = 0;
-        virtual void keyUpdatedCallback(RefPtr<WebCore::SharedBuffer>&&) = 0;
-        virtual void messageReceivedCallback(RefPtr<WebCore::SharedBuffer>&&) = 0;
-    };
-
-    static OCDMSessionCallbacksNotifier& singleton();
-    OpenCDMSessionCallbacks* callbacks() { return &m_callbacks; }
-    void addObserver(OpenCDMSession*, Observer*);
-    void removeObserver(Observer*);
-
-private:
-    using Notification = void (Observer::*)(RefPtr<WebCore::SharedBuffer>&&);
-    OCDMSessionCallbacksNotifier()
-    {
-        m_callbacks.process_challenge = [](OpenCDMSession* session, const char[], const uint8_t challenge[], const uint16_t challengeLength) {
-            OCDMSessionCallbacksNotifier::notify(session, &Observer::challengeGeneratedCallback, challenge, challengeLength);
-        };
-        m_callbacks.key_update = [](OpenCDMSession* session, const uint8_t key[], const uint8_t keyLength) {
-            OCDMSessionCallbacksNotifier::notify(session, &Observer::keyUpdatedCallback, key, keyLength);
-        };
-        m_callbacks.message = [](OpenCDMSession* session, const char message[]) {
-            OCDMSessionCallbacksNotifier::notify(session, &Observer::messageReceivedCallback, reinterpret_cast<const uint8_t*>(message), strlen(message));
-        };
-    }
-
-    static bool tryNotify(OpenCDMSession*, Notification, RefPtr<WebCore::SharedBuffer>&&);
-    static void notify(OpenCDMSession*, Notification, const uint8_t[], uint16_t);
-
-    friend class NeverDestroyed<OCDMSessionCallbacksNotifier>;
-    OpenCDMSessionCallbacks m_callbacks;
-    HashMap<OpenCDMSession*, Observer*> m_observers;
-    WebCore::GenericTaskQueue<WebCore::Timer> m_taskQueue;
-};
-
-OCDMSessionCallbacksNotifier& OCDMSessionCallbacksNotifier::singleton()
-{
-    static NeverDestroyed<OCDMSessionCallbacksNotifier> instance;
-    return instance;
-}
-
-void OCDMSessionCallbacksNotifier::addObserver(OpenCDMSession* session, Observer* observer)
-{
-    m_observers.set(session, observer);
-}
-
-void OCDMSessionCallbacksNotifier::removeObserver(Observer* observer)
-{
-    m_observers.removeIf([observer](const auto& keyAndValue) { return observer == keyAndValue.value; });
-}
-
-bool OCDMSessionCallbacksNotifier::tryNotify(OpenCDMSession* session, Notification method, RefPtr<WebCore::SharedBuffer>&& buffer)
-{
-    if (!isMainThread()) {
-        // Make sure all happens on the main thread to avoid locking.
-        callOnMainThread([session, method, buffer = WTFMove(buffer)]() mutable {
-            OCDMSessionCallbacksNotifier::tryNotify(session, method, WTFMove(buffer));
-        });
-        return true;
-    }
-
-    OCDMSessionCallbacksNotifier& self = OCDMSessionCallbacksNotifier::singleton();
-    auto entry = self.m_observers.find(session);
-    if (entry != self.m_observers.end()) {
-        (entry->value->*method)(WTFMove(buffer));
-        return true;
-    }
-
-    return false;
-}
-
-void OCDMSessionCallbacksNotifier::notify(OpenCDMSession* session, Notification method, const uint8_t message[], uint16_t messageLength)
-{
-    // The sharedBuffer is effectively moved only in case tryNotify() returns true.
-    // Otherwise the reference is not touched and it's safe to move it again in the lambda below.
-    RefPtr<WebCore::SharedBuffer> sharedBuffer = WebCore::SharedBuffer::create(message, messageLength);
-    if (OCDMSessionCallbacksNotifier::tryNotify(session, method, WTFMove(sharedBuffer)))
-        return;
-
-    // FIXME: There's no observer interested in the notification. It might be due to the fact it hasn't had chance
-    // to register yet because e.g. the notification is sent synchronously.
-    // Currently this happens for opencdm_create_session() which synchronously calls the process_challenge() callback and
-    // the only way to figure out who is the receiver is by OpenCMDSession. Problem however is that the caller can't know
-    // what's its sesssion at this point - it's creating one now.
-    auto& self = OCDMSessionCallbacksNotifier::singleton();
-    self.m_taskQueue.enqueueTask([session, method, sharedBuffer = WTFMove(sharedBuffer)]() mutable {
-        OCDMSessionCallbacksNotifier::tryNotify(session, method, WTFMove(sharedBuffer));
-    });
-}
-
 }
 
 namespace WebCore {
@@ -180,14 +84,15 @@ private:
     ScopedOCDMAccessor m_openCDMAccessor;
 };
 
-class CDMInstanceOpenCDM::Session : public ThreadSafeRefCounted<CDMInstanceOpenCDM::Session>, public OCDMSessionCallbacksNotifier::Observer {
+class CDMInstanceOpenCDM::Session : public ThreadSafeRefCounted<CDMInstanceOpenCDM::Session> {
 public:
+    using Notification = void (Session::*)(RefPtr<WebCore::SharedBuffer>&&);
     using ChallengeGeneratedCallback = Function<void(Session*)>;
     using KeyUpdatedCallback = Function<void(Session*, OCDMKeyStatus, RefPtr<SharedBuffer>&&)>;
     using SessionChangedCallback = Function<void(Session*, bool success, RefPtr<SharedBuffer>&&)>;
 
     static Ref<Session> create(OpenCDMAccessor&, const String&, const char*, Ref<WebCore::SharedBuffer>&&, LicenseType, Ref<WebCore::SharedBuffer>&&);
-    ~Session() override;
+    ~Session();
 
     bool isValid() const { return m_session.get() && m_message && !m_message->isEmpty(); }
     const String& id() const { return m_id; }
@@ -210,12 +115,14 @@ public:
         return m_initData->size() >= initData.sizeInBytes() && memmem(m_initData->data(), m_initData->size(), initData.characters8(), initData.sizeInBytes());
     }
 
+    static void openCDMNotification(OpenCDMSession*, void*, Notification, const uint8_t[], uint16_t);
+
 private:
     Session() = delete;
     Session(OpenCDMAccessor&, const String&, const char*, Ref<WebCore::SharedBuffer>&&, LicenseType, Ref<WebCore::SharedBuffer>&&);
-    void challengeGeneratedCallback(RefPtr<SharedBuffer>&&) override;
-    void keyUpdatedCallback(RefPtr<SharedBuffer>&& = nullptr) override;
-    void messageReceivedCallback(RefPtr<SharedBuffer>&&) override;
+    void challengeGeneratedCallback(RefPtr<SharedBuffer>&&);
+    void keyUpdatedCallback(RefPtr<SharedBuffer>&& = nullptr);
+    void messageReceivedCallback(RefPtr<SharedBuffer>&&);
     void loadFailure() { keyUpdatedCallback(); }
     void removeFailure() { keyUpdatedCallback(); }
 
@@ -226,10 +133,17 @@ private:
     String m_id;
     bool m_needsIndividualization { false };
     Ref<WebCore::SharedBuffer> m_initData;
+    OpenCDMSessionCallbacks m_openCDMSessionCallbacks { };
     Vector<ChallengeGeneratedCallback> m_challengeCallbacks;
     Vector<KeyUpdatedCallback> m_keyUpdatedCallbacks;
     Vector<SessionChangedCallback> m_sessionChangedCallbacks;
+    // Accessed only on the main thread allowing to track if the Session is still valid and could be used.
+    // Needed due to the fact the Session pointer is passed to the OCDM as the userData for notifications which are no
+    // warranted to be called on the main thread the Session lives on.
+    static HashSet<Session*> m_validSessions;
 };
+
+HashSet<CDMInstanceOpenCDM::Session*> CDMInstanceOpenCDM::Session::m_validSessions;
 
 bool CDMPrivateOpenCDM::supportsConfiguration(const MediaKeySystemConfiguration& config) const
 {
@@ -355,26 +269,53 @@ Ref<CDMInstanceOpenCDM::Session> CDMInstanceOpenCDM::Session::create(OpenCDMAcce
     return adoptRef(*new Session(source, keySystem, type, WTFMove(initData), licenseType, WTFMove(customData)));
 }
 
+void CDMInstanceOpenCDM::Session::openCDMNotification(OpenCDMSession* ocdmSession, void* userData, Notification method, const uint8_t message[], uint16_t messageLength)
+{
+    Session* session = reinterpret_cast<Session*>(userData);
+    RefPtr<WebCore::SharedBuffer> sharedBuffer = WebCore::SharedBuffer::create(message, messageLength);
+    if (!isMainThread()) {
+        // Make sure all happens on the main thread to avoid locking.
+        callOnMainThread([session, method, buffer = WTFMove(sharedBuffer)]() mutable {
+            if (!Session::m_validSessions.contains(session)) {
+                // Became invalid in the meantime. It's possible due to leaping through the different threads.
+                return;
+            }
+            (session->*method)(WTFMove(buffer));
+        });
+        return;
+    }
+
+    (session->*method)(WTFMove(sharedBuffer));
+}
+
 CDMInstanceOpenCDM::Session::Session(OpenCDMAccessor& source, const String& keySystem, const char* mimeType, Ref<WebCore::SharedBuffer>&& initData, LicenseType licenseType, Ref<WebCore::SharedBuffer>&& customData)
     : m_initData(WTFMove(initData))
 {
-    auto& callbacksNotifier = OCDMSessionCallbacksNotifier::singleton();
-
     OpenCDMSession* session = nullptr;
-    opencdm_create_session(&source, keySystem.utf8().data(), openCDMLicenseType(licenseType), mimeType, reinterpret_cast<const uint8_t*>(m_initData->data()), m_initData->size(),
-        !customData->isEmpty() ? reinterpret_cast<const uint8_t*>(customData->data()) : nullptr, customData->size(), callbacksNotifier.callbacks(), &session);
+    m_openCDMSessionCallbacks.process_challenge_callback = [](OpenCDMSession* session, void* userData, const char[], const uint8_t challenge[], const uint16_t challengeLength) {
+        Session::openCDMNotification(session, userData, &Session::challengeGeneratedCallback, challenge, challengeLength);
+    };
+    m_openCDMSessionCallbacks.key_update_callback = [](OpenCDMSession* session, void* userData, const uint8_t key[], const uint8_t keyLength) {
+        Session::openCDMNotification(session, userData, &Session::keyUpdatedCallback, key, keyLength);
+    };
+    m_openCDMSessionCallbacks.message_callback = [](OpenCDMSession* session, void* userData, const char message[]) {
+        Session::openCDMNotification(session, userData, &Session::messageReceivedCallback, reinterpret_cast<const uint8_t*>(message), strlen(message));
+    };
+
+    opencdm_construct_session(&source, keySystem.utf8().data(), openCDMLicenseType(licenseType), mimeType, reinterpret_cast<const uint8_t*>(m_initData->data()), m_initData->size(),
+        !customData->isEmpty() ? reinterpret_cast<const uint8_t*>(customData->data()) : nullptr, customData->size(), &m_openCDMSessionCallbacks, this, &session);
     if (!session) {
         GST_ERROR("Could not create session");
         return;
     }
     m_session.reset(session);
     m_id = String::fromUTF8(opencdm_session_id(m_session.get()));
-    callbacksNotifier.addObserver(m_session.get(), this);
+    Session::m_validSessions.add(this);
 }
 
 CDMInstanceOpenCDM::Session::~Session()
 {
-    OCDMSessionCallbacksNotifier::singleton().removeObserver(this);
+    Session::m_validSessions.remove(this);
 }
 
 void CDMInstanceOpenCDM::Session::challengeGeneratedCallback(RefPtr<SharedBuffer>&& buffer)
