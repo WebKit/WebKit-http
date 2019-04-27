@@ -351,7 +351,7 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #endif /* PLATFORM(WIN_CAIRO) */
 
 /* --------- Gtk port (Unix, Windows, Mac) and WPE --------- */
-#if PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(GTK) || PLATFORM(WPE) || PLATFORM(HAIKU)
 #if !defined(ENABLE_KEYBOARD_KEY_ATTRIBUTE)
 #define ENABLE_KEYBOARD_KEY_ATTRIBUTE 1
 #endif
@@ -359,7 +359,7 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #if !defined(ENABLE_KEYBOARD_CODE_ATTRIBUTE)
 #define ENABLE_KEYBOARD_CODE_ATTRIBUTE 1
 #endif
-#endif /* PLATFORM(GTK) || PLATFORM(WPE) */
+#endif /* PLATFORM(GTK) || PLATFORM(WPE) || PLATFORM(HAIKU) */
 
 /* ENABLE macro defaults for WebCore */
 /* Do not use PLATFORM() tests in this section ! */
