@@ -29,11 +29,12 @@ window.UIHelper = class UIHelper {
         eventSender.mouseUp();
     }
 
-    static tapAt(x, y)
+    static tapAt(x, y, modifiers=[])
     {
         console.assert(this.isIOS());
 
         if (!this.isWebKit2()) {
+            console.assert(!modifiers || !modifiers.length);
             eventSender.addTouchPoint(x, y);
             eventSender.touchStart();
             eventSender.releaseTouchPoint(0);
@@ -43,7 +44,7 @@ window.UIHelper = class UIHelper {
 
         return new Promise((resolve) => {
             testRunner.runUIScript(`
-                uiController.singleTapAtPoint(${x}, ${y}, function() {
+                uiController.singleTapAtPointWithModifiers(${x}, ${y}, ${JSON.stringify(modifiers)}, function() {
                     uiController.uiScriptComplete();
                 });`, resolve);
         });
@@ -216,6 +217,37 @@ window.UIHelper = class UIHelper {
                     };
                     uiController.singleTapAtPoint(${x}, ${y}, function() { });
                 })()`, resolve);
+        });
+    }
+
+    static isShowingKeyboard()
+    {
+        return new Promise(resolve => {
+            testRunner.runUIScript("uiController.isShowingKeyboard", result => resolve(result === "true"));
+        });
+    }
+
+    static isPresentingModally()
+    {
+        return new Promise(resolve => {
+            testRunner.runUIScript("uiController.isPresentingModally", result => resolve(result === "true"));
+        });
+    }
+
+    static deactivateFormControl(element)
+    {
+        if (!this.isWebKit2() || !this.isIOS()) {
+            element.blur();
+            return Promise.resolve();
+        }
+
+        return new Promise(async resolve => {
+            element.blur();
+            while (await this.isPresentingModally())
+                continue;
+            while (await this.isShowingKeyboard())
+                continue;
+            resolve();
         });
     }
 
@@ -418,7 +450,7 @@ window.UIHelper = class UIHelper {
         return new Promise(resolve => {
             testRunner.runUIScript(`(() => {
                 uiController.uiScriptComplete(uiController.isShowingDataListSuggestions);
-            })()`, result => resolve(result === "true" ? true : false));
+            })()`, result => resolve(result === "true"));
         });
     }
 
@@ -534,14 +566,14 @@ window.UIHelper = class UIHelper {
         return new Promise(resolve => testRunner.runUIScript(`uiController.drawSquareInEditableImage()`, resolve));
     }
 
-    static stylusTapAt(x, y)
+    static stylusTapAt(x, y, modifiers=[])
     {
         if (!this.isWebKit2())
             return Promise.resolve();
 
         return new Promise((resolve) => {
             testRunner.runUIScript(`
-                uiController.stylusTapAtPoint(${x}, ${y}, 2, 1, 0.5, function() {
+                uiController.stylusTapAtPointWithModifiers(${x}, ${y}, 2, 1, 0.5, ${JSON.stringify(modifiers)}, function() {
                     uiController.uiScriptComplete();
                 });`, resolve);
         });

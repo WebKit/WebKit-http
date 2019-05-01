@@ -699,10 +699,12 @@ NativeExecutable* VM::getHostFunction(NativeFunction function, Intrinsic intrins
     }
 #endif // ENABLE(JIT)
     UNUSED_PARAM(intrinsic);
+    UNUSED_PARAM(signature);
+
     return NativeExecutable::create(*this,
-        adoptRef(*new NativeJITCode(LLInt::getCodeRef<JSEntryPtrTag>(llint_native_call_trampoline), JITCode::HostCallThunk)), function,
-        adoptRef(*new NativeJITCode(LLInt::getCodeRef<JSEntryPtrTag>(llint_native_construct_trampoline), JITCode::HostCallThunk)), constructor,
-        NoIntrinsic, signature, name);
+        adoptRef(*new NativeJITCode(LLInt::getCodeRef<JSEntryPtrTag>(llint_native_call_trampoline), JITCode::HostCallThunk, NoIntrinsic)), function,
+        adoptRef(*new NativeJITCode(LLInt::getCodeRef<JSEntryPtrTag>(llint_native_construct_trampoline), JITCode::HostCallThunk, NoIntrinsic)), constructor,
+        name);
 }
 
 MacroAssemblerCodePtr<JSEntryPtrTag> VM::getCTIInternalFunctionTrampolineFor(CodeSpecializationKind kind)
@@ -1259,8 +1261,7 @@ DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(webAssemblyWrapperFunctionSpace, cellHea
     }
 
 DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW(inferredValueSpace, destructibleCellHeapCellType.get(), InferredValue)
-DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW(directEvalExecutableSpace, destructibleCellHeapCellType.get(), DirectEvalExecutable)
-DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW(indirectEvalExecutableSpace, destructibleCellHeapCellType.get(), IndirectEvalExecutable)
+DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW(evalExecutableSpace, destructibleCellHeapCellType.get(), EvalExecutable)
 DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW(moduleProgramExecutableSpace, destructibleCellHeapCellType.get(), ModuleProgramExecutable)
 
 #undef DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW

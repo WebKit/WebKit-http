@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -227,13 +227,6 @@ static ExceptionOr<ApplePaySessionPaymentRequest> convertAndValidate(unsigned ve
         return lineItems.releaseException();
     result.setLineItems(lineItems.releaseReturnValue());
 
-    if (paymentRequest.requiredShippingContactFields) {
-        auto requiredShippingContactFields = convertAndValidate(version, WTFMove(*paymentRequest.requiredShippingContactFields));
-        if (requiredShippingContactFields.hasException())
-            return requiredShippingContactFields.releaseException();
-        result.setRequiredShippingContactFields(requiredShippingContactFields.releaseReturnValue());
-    }
-
     result.setShippingType(paymentRequest.shippingType);
 
     if (paymentRequest.shippingMethods) {
@@ -414,7 +407,7 @@ ExceptionOr<Ref<ApplePaySession>> ApplePaySession::create(Document& document, un
 }
 
 ApplePaySession::ApplePaySession(Document& document, unsigned version, ApplePaySessionPaymentRequest&& paymentRequest)
-    : ActiveDOMObject { &document }
+    : ActiveDOMObject { document }
     , m_paymentRequest { WTFMove(paymentRequest) }
     , m_version { version }
 {

@@ -46,7 +46,9 @@ namespace JSC {
 const ClassInfo ScriptExecutable::s_info = { "ScriptExecutable", &ExecutableBase::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ScriptExecutable) };
 
 ScriptExecutable::ScriptExecutable(Structure* structure, VM& vm, const SourceCode& source, bool isInStrictContext, DerivedContextType derivedContextType, bool isInArrowFunctionContext, EvalContextType evalContextType, Intrinsic intrinsic)
-    : ExecutableBase(vm, structure, NUM_PARAMETERS_NOT_COMPILED, intrinsic)
+    : ExecutableBase(vm, structure)
+    , m_source(source)
+    , m_intrinsic(intrinsic)
     , m_features(isInStrictContext ? StrictModeFeature : 0)
     , m_hasCapturedVariables(false)
     , m_neverInline(false)
@@ -56,7 +58,6 @@ ScriptExecutable::ScriptExecutable(Structure* structure, VM& vm, const SourceCod
     , m_canUseOSRExitFuzzing(true)
     , m_derivedContextType(static_cast<unsigned>(derivedContextType))
     , m_evalContextType(static_cast<unsigned>(evalContextType))
-    , m_source(source)
 {
 }
 
@@ -67,7 +68,46 @@ void ScriptExecutable::destroy(JSCell* cell)
 
 void ScriptExecutable::clearCode(IsoCellSet& clearableCodeSet)
 {
-    Base::clearCode();
+#if ENABLE(JIT)
+    m_jitCodeForCall = nullptr;
+    m_jitCodeForConstruct = nullptr;
+    m_jitCodeForCallWithArityCheck = MacroAssemblerCodePtr<JSEntryPtrTag>();
+    m_jitCodeForConstructWithArityCheck = MacroAssemblerCodePtr<JSEntryPtrTag>();
+#endif
+    m_numParametersForCall = NUM_PARAMETERS_NOT_COMPILED;
+    m_numParametersForConstruct = NUM_PARAMETERS_NOT_COMPILED;
+
+    switch (type()) {
+    case FunctionExecutableType: {
+        FunctionExecutable* executable = static_cast<FunctionExecutable*>(this);
+        executable->m_codeBlockForCall.clear();
+        executable->m_codeBlockForConstruct.clear();
+        break;
+    }
+    case EvalExecutableType: {
+        EvalExecutable* executable = static_cast<EvalExecutable*>(this);
+        executable->m_evalCodeBlock.clear();
+        executable->m_unlinkedEvalCodeBlock.clear();
+        break;
+    }
+    case ProgramExecutableType: {
+        ProgramExecutable* executable = static_cast<ProgramExecutable*>(this);
+        executable->m_programCodeBlock.clear();
+        executable->m_unlinkedProgramCodeBlock.clear();
+        break;
+    }
+    case ModuleProgramExecutableType: {
+        ModuleProgramExecutable* executable = static_cast<ModuleProgramExecutable*>(this);
+        executable->m_moduleProgramCodeBlock.clear();
+        executable->m_unlinkedModuleProgramCodeBlock.clear();
+        executable->m_moduleEnvironmentSymbolTable.clear();
+        break;
+    }
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
+
     ASSERT(&VM::SpaceAndSet::setFor(*subspace()) == &clearableCodeSet);
     clearableCodeSet.remove(this);
 }
@@ -150,7 +190,7 @@ void ScriptExecutable::installCode(VM& vm, CodeBlock* genericCodeBlock, CodeType
     }
 
     auto& clearableCodeSet = VM::SpaceAndSet::setFor(*subspace());
-    if (hasClearableCode())
+    if (hasClearableCode(vm))
         clearableCodeSet.add(this);
     else
         clearableCodeSet.remove(this);
@@ -176,6 +216,41 @@ void ScriptExecutable::installCode(VM& vm, CodeBlock* genericCodeBlock, CodeType
     vm.heap.writeBarrier(this);
 }
 
+bool ScriptExecutable::hasClearableCode(VM& vm) const
+{
+#if ENABLE(JIT)
+    if (m_jitCodeForCall
+        || m_jitCodeForConstruct
+        || m_jitCodeForCallWithArityCheck
+        || m_jitCodeForConstructWithArityCheck)
+        return true;
+#endif
+
+    if (structure(vm)->classInfo() == FunctionExecutable::info()) {
+        auto* executable = static_cast<const FunctionExecutable*>(this);
+        if (executable->m_codeBlockForCall || executable->m_codeBlockForConstruct)
+            return true;
+
+    } else if (structure(vm)->classInfo() == EvalExecutable::info()) {
+        auto* executable = static_cast<const EvalExecutable*>(this);
+        if (executable->m_evalCodeBlock || executable->m_unlinkedEvalCodeBlock)
+            return true;
+
+    } else if (structure(vm)->classInfo() == ProgramExecutable::info()) {
+        auto* executable = static_cast<const ProgramExecutable*>(this);
+        if (executable->m_programCodeBlock || executable->m_unlinkedProgramCodeBlock)
+            return true;
+
+    } else if (structure(vm)->classInfo() == ModuleProgramExecutable::info()) {
+        auto* executable = static_cast<const ModuleProgramExecutable*>(this);
+        if (executable->m_moduleProgramCodeBlock
+            || executable->m_unlinkedModuleProgramCodeBlock
+            || executable->m_moduleEnvironmentSymbolTable)
+            return true;
+    }
+    return false;
+}
+
 CodeBlock* ScriptExecutable::newCodeBlockFor(
     CodeSpecializationKind kind, JSFunction* function, JSScope* scope, JSObject*& exception)
 {
@@ -194,8 +269,7 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
         RELEASE_ASSERT(!executable->m_evalCodeBlock);
         RELEASE_ASSERT(!function);
         auto codeBlock = EvalCodeBlock::create(vm,
-            executable, executable->m_unlinkedEvalCodeBlock.get(), scope,
-            executable->source().provider());
+            executable, executable->m_unlinkedEvalCodeBlock.get(), scope);
         EXCEPTION_ASSERT(throwScope.exception() || codeBlock);
         if (!codeBlock) {
             exception = throwException(
@@ -212,8 +286,7 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
         RELEASE_ASSERT(!executable->m_programCodeBlock);
         RELEASE_ASSERT(!function);
         auto codeBlock = ProgramCodeBlock::create(vm,
-            executable, executable->m_unlinkedProgramCodeBlock.get(), scope,
-            executable->source().provider(), startColumn());
+            executable, executable->m_unlinkedProgramCodeBlock.get(), scope);
         EXCEPTION_ASSERT(throwScope.exception() || codeBlock);
         if (!codeBlock) {
             exception = throwException(
@@ -230,8 +303,7 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
         RELEASE_ASSERT(!executable->m_moduleProgramCodeBlock);
         RELEASE_ASSERT(!function);
         auto codeBlock = ModuleProgramCodeBlock::create(vm,
-            executable, executable->m_unlinkedModuleProgramCodeBlock.get(), scope,
-            executable->source().provider(), startColumn());
+            executable, executable->m_unlinkedModuleProgramCodeBlock.get(), scope);
         EXCEPTION_ASSERT(throwScope.exception() || codeBlock);
         if (!codeBlock) {
             exception = throwException(
@@ -263,8 +335,7 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
         return nullptr;
     }
 
-    RELEASE_AND_RETURN(throwScope, FunctionCodeBlock::create(vm, executable, unlinkedCodeBlock, scope, 
-        source().provider(), source().startOffset(), startColumn()));
+    RELEASE_AND_RETURN(throwScope, FunctionCodeBlock::create(vm, executable, unlinkedCodeBlock, scope));
 }
 
 CodeBlock* ScriptExecutable::newReplacementCodeBlockFor(

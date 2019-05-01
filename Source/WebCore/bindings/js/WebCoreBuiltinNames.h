@@ -81,6 +81,8 @@ namespace WebCore {
     macro(Gamepad) \
     macro(GamepadButton) \
     macro(GamepadEvent) \
+    macro(GPUBufferUsage) \
+    macro(GPUTextureUsage) \
     macro(HTMLAttachmentElement) \
     macro(HTMLAudioElement) \
     macro(HTMLDataListElement) \
@@ -195,7 +197,6 @@ namespace WebCore {
     macro(WebGPUBindGroup) \
     macro(WebGPUBindGroupLayout) \
     macro(WebGPUBuffer) \
-    macro(WebGPUBufferUsage) \
     macro(WebGPUCommandBuffer) \
     macro(WebGPUDevice) \
     macro(WebGPUIndexFormat) \
@@ -279,6 +280,7 @@ namespace WebCore {
     macro(getTracks) \
     macro(getUserMedia) \
     macro(header) \
+    macro(href) \
     macro(indexedDB) \
     macro(initializeWith) \
     macro(isDisturbed) \

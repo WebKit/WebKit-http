@@ -122,6 +122,8 @@ private:
     OSStatus startInternal();
     void stopInternal();
 
+    void unduck();
+
     void verifyIsCapturing();
     void devicesChanged();
     void captureFailed();
@@ -339,7 +341,16 @@ OSStatus CoreAudioSharedUnit::setupAudioUnit()
     m_ioUnitInitialized = true;
     m_suspended = false;
 
+    unduck();
+
     return err;
+}
+
+void CoreAudioSharedUnit::unduck()
+{
+    uint32_t outputDevice;
+    if (!defaultOutputDevice(&outputDevice))
+        AudioDeviceDuck(outputDevice, 1.0, nullptr, 0);
 }
 
 OSStatus CoreAudioSharedUnit::configureMicrophoneProc()
@@ -612,9 +623,7 @@ OSStatus CoreAudioSharedUnit::startInternal()
         ASSERT(m_ioUnit);
     }
 
-    uint32_t outputDevice;
-    if (!defaultOutputDevice(&outputDevice))
-        AudioDeviceDuck(outputDevice, 1.0, nullptr, 0);
+    unduck();
 
     err = AudioOutputUnitStart(m_ioUnit);
     if (err) {
@@ -643,11 +652,10 @@ void CoreAudioSharedUnit::verifyIsCapturing()
     captureFailed();
 }
 
-
 void CoreAudioSharedUnit::captureFailed()
 {
 #if !RELEASE_LOG_DISABLED
-    RELEASE_LOG_ERROR(Media, "CoreAudioSharedUnit::captureFailed - capture failed\n");
+    RELEASE_LOG_ERROR(Media, "CoreAudioSharedUnit::captureFailed - capture failed");
 #endif
     for (CoreAudioCaptureSource& client : m_clients)
         client.captureFailed();
@@ -667,6 +675,7 @@ void CoreAudioSharedUnit::stopProducingData()
         return;
 
     stopInternal();
+    cleanupAudioUnit();
 }
 
 OSStatus CoreAudioSharedUnit::suspend()
@@ -740,9 +749,8 @@ CaptureSourceOrError CoreAudioCaptureSource::create(String&& deviceID, String&& 
 #endif
 
     if (constraints) {
-        auto result = source->applyConstraints(*constraints);
-        if (result)
-            return WTFMove(result.value().first);
+        if (auto result = source->applyConstraints(*constraints))
+            return WTFMove(result->badConstraint);
     }
     return CaptureSourceOrError(WTFMove(source));
 }
@@ -821,6 +829,15 @@ CoreAudioCaptureSource::CoreAudioCaptureSource(String&& deviceID, String&& label
     : RealtimeMediaSource(RealtimeMediaSource::Type::Audio, WTFMove(label), WTFMove(deviceID), WTFMove(hashSalt))
     , m_captureDeviceID(captureDeviceID)
 {
+}
+
+void CoreAudioCaptureSource::initializeToStartProducingData()
+{
+    if (m_isReadyToStart)
+        return;
+
+    m_isReadyToStart = true;
+
     auto& unit = CoreAudioSharedUnit::singleton();
     unit.setCaptureDevice(String { persistentID() }, m_captureDeviceID);
 
@@ -869,6 +886,7 @@ void CoreAudioCaptureSource::startProducingData()
         return;
     }
 
+    initializeToStartProducingData();
     unit.startProducingData();
 }
 

@@ -163,6 +163,16 @@ IntRect PageClientImpl::rootViewToScreen(const IntRect& rect)
     return IntRect();
 }
 
+WebCore::IntPoint PageClientImpl::accessibilityScreenToRootView(const WebCore::IntPoint& point)
+{
+    return screenToRootView(point);
+}
+
+WebCore::IntRect PageClientImpl::rootViewToAccessibilityScreen(const WebCore::IntRect& rect)    
+{
+    return rootViewToScreen(rect);
+}
+
 void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent& event, bool wasEventHandled)
 {
     notImplemented();
@@ -355,6 +365,11 @@ void PageClientImpl::derefView()
 HWND PageClientImpl::viewWidget()
 {
     return m_view.window();
+}
+
+void PageClientImpl::requestDOMPasteAccess(const IntRect&, CompletionHandler<void(bool)>&& completionHandler)
+{
+    completionHandler(false);
 }
 
 } // namespace WebKit

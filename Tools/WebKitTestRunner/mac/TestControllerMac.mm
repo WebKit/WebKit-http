@@ -118,7 +118,7 @@ void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions& optio
     options.shouldShowWebView = shouldShowWebView();
 }
 
-void TestController::platformConfigureViewForTest(const TestInvocation& test)
+void TestController::configureContentExtensionForTest(const TestInvocation& test)
 {
 #if WK_API_ENABLED
     if (!test.urlContains("contentextensions/"))
@@ -151,6 +151,10 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
     }];
     platformRunUntil(doneCompiling, noTimeout);
 #endif
+}
+
+void TestController::platformConfigureViewForTest(const TestInvocation& test)
+{
 }
 
 static NSSet *allowedFontFamilySet()
@@ -222,6 +226,7 @@ static NSSet *allowedFontFamilySet()
         @"Hiragino Maru Gothic ProN",
         @"Hiragino Mincho Pro",
         @"Hiragino Mincho ProN",
+        @"Hiragino Sans",
         @"Hiragino Sans GB",
         @"Hoefler Text",
         @"Impact",
@@ -231,6 +236,7 @@ static NSSet *allowedFontFamilySet()
         @"Kokonor",
         @"Krungthep",
         @"KufiStandardGK",
+        @"Lao Sangam MN",
         @"LastResort",
         @"LiHei Pro",
         @"LiSong Pro",
@@ -248,11 +254,15 @@ static NSSet *allowedFontFamilySet()
         @"Papyrus",
         @"PCMyungjo",
         @"PilGi",
+        @"PingFang HK",
+        @"PingFang SC",
+        @"PingFang TC",
         @"Plantagenet Cherokee",
         @"Raanana",
         @"Sathu",
         @"Silom",
         @"Skia",
+        @"Snell Roundhand",
         @"Songti SC",
         @"Songti TC",
         @"STFangsong",

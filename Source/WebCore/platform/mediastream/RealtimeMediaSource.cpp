@@ -41,6 +41,7 @@
 #include "NotImplemented.h"
 #include "RealtimeMediaSourceCapabilities.h"
 #include "RealtimeMediaSourceCenter.h"
+#include <wtf/CompletionHandler.h>
 #include <wtf/MainThread.h>
 #include <wtf/UUID.h>
 #include <wtf/text/StringHash.h>
@@ -172,7 +173,7 @@ void RealtimeMediaSource::audioSamplesAvailable(const MediaTime& time, const Pla
 
 void RealtimeMediaSource::start()
 {
-    if (m_isProducingData)
+    if (m_isProducingData || m_isEnded)
         return;
 
     m_isProducingData = true;
@@ -195,7 +196,7 @@ void RealtimeMediaSource::stop()
     stopProducingData();
 }
 
-void RealtimeMediaSource::requestStop(Observer* callingObserver)
+void RealtimeMediaSource::requestToEnd(Observer& callingObserver)
 {
     if (!m_isProducingData)
         return;
@@ -208,10 +209,14 @@ void RealtimeMediaSource::requestStop(Observer* callingObserver)
     if (hasObserverPreventingStopping)
         return;
 
+    auto protectedThis = makeRef(*this);
+
     stop();
+    m_isEnded = true;
+    hasEnded();
 
     forEachObserver([callingObserver](auto& observer) {
-        if (&observer != callingObserver)
+        if (&observer != &callingObserver)
             observer.sourceStopped();
     });
 }
@@ -838,26 +843,22 @@ void RealtimeMediaSource::applyConstraints(const FlattenedConstraint& constraint
     commitConfiguration();
 }
 
-Optional<std::pair<String, String>> RealtimeMediaSource::applyConstraints(const MediaConstraints& constraints)
+Optional<RealtimeMediaSource::ApplyConstraintsError> RealtimeMediaSource::applyConstraints(const MediaConstraints& constraints)
 {
     ASSERT(constraints.isValid);
 
     FlattenedConstraint candidates;
     String failedConstraint;
     if (!selectSettings(constraints, candidates, failedConstraint, SelectType::ForApplyConstraints))
-        return { { failedConstraint, "Constraint not supported"_s } };
+        return ApplyConstraintsError { failedConstraint, "Constraint not supported"_s };
 
     applyConstraints(candidates);
-    return WTF::nullopt;
+    return { };
 }
 
-void RealtimeMediaSource::applyConstraints(const MediaConstraints& constraints, SuccessHandler&& successHandler, FailureHandler&& failureHandler)
+void RealtimeMediaSource::applyConstraints(const MediaConstraints& constraints, ApplyConstraintsHandler&& completionHandler)
 {
-    auto result = applyConstraints(constraints);
-    if (!result && successHandler)
-        successHandler();
-    else if (result && failureHandler)
-        failureHandler(result.value().first, result.value().second);
+    completionHandler(applyConstraints(constraints));
 }
 
 void RealtimeMediaSource::setSize(const IntSize& size)

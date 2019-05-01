@@ -43,6 +43,10 @@ class WebPage;
 - (id)accessibilityRootObjectWrapper;
 - (id)accessibilityFocusedUIElement;
 
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+- (BOOL)clientSupportsIsolatedTree;
+#endif
+
 @end
 
 #endif // WKAccessibilityWebPageObjectBase_h

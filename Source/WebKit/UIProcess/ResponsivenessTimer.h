@@ -26,7 +26,7 @@
 #ifndef ResponsivenessTimer_h
 #define ResponsivenessTimer_h
 
-#include <WebCore/Timer.h>
+#include <wtf/RunLoop.h>
 
 namespace WebKit {
 
@@ -46,7 +46,7 @@ public:
 
     explicit ResponsivenessTimer(ResponsivenessTimer::Client&);
     ~ResponsivenessTimer();
-    
+
     void start();
 
     // A responsiveness timer with lazy stop does not stop the underlying system timer when stopped.
@@ -62,8 +62,12 @@ public:
     void stop();
 
     void invalidate();
-    
+
+    // Return true if stop() was not called betfore the responsiveness timeout.
     bool isResponsive() const { return m_isResponsive; }
+
+    // Return true if there is an active timer. The state could be responsive or not.
+    bool hasActiveTimer() const { return m_waitingForTimer; }
 
     void processTerminated();
 
@@ -71,7 +75,10 @@ private:
     void timerFired();
 
     ResponsivenessTimer::Client& m_client;
-    WebCore::DeferrableOneShotTimer m_timer;
+
+    RunLoop::Timer<ResponsivenessTimer> m_timer;
+    MonotonicTime m_restartFireTime;
+
     bool m_isResponsive { true };
     bool m_waitingForTimer { false };
     bool m_useLazyStop { false };

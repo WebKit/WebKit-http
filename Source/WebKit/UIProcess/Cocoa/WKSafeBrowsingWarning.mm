@@ -33,11 +33,16 @@
 #import <wtf/BlockPtr.h>
 #import <wtf/Language.h>
 
+#if PLATFORM(WATCHOS)
+#import "UIKitSPI.h"
+#import <PepperUICore/UIScrollView+PUICAdditionsPrivate.h>
+#endif
+
 constexpr CGFloat exclamationPointSize = 30;
 constexpr CGFloat boxCornerRadius = 6;
 #if HAVE(SAFE_BROWSING)
 #if PLATFORM(WATCHOS)
-constexpr CGFloat marginSize = 10;
+constexpr CGFloat marginSize = 9;
 #else
 constexpr CGFloat marginSize = 20;
 #endif
@@ -88,7 +93,7 @@ static FontType *fontOfSize(WarningTextSize size)
     switch (size) {
     case WarningTextSize::Title:
 #if PLATFORM(WATCHOS)
-        return [UIFont preferredFontForTextStyle:UIFontTextStyleHeadline];
+        return [UIFont preferredFontForTextStyle:UIFontTextStyleSubheadline];
 #else
         return [UIFont preferredFontForTextStyle:UIFontTextStyleLargeTitle];
 #endif
@@ -274,11 +279,21 @@ static void setBackground(ViewType *view, ColorType *color)
         completionHandler(WebKit::ContinueUnsafeLoad::Yes);
         return nil;
     }
-    _completionHandler = WTFMove(completionHandler);
+    _completionHandler = [weakSelf = WeakObjCPtr<WKSafeBrowsingWarning>(self), completionHandler = WTFMove(completionHandler)] (Variant<WebKit::ContinueUnsafeLoad, URL>&& result) mutable {
+#if PLATFORM(WATCHOS)
+        if (auto strongSelf = weakSelf.get())
+            [strongSelf.get()->_previousFirstResponder becomeFirstResponder];
+#endif
+        completionHandler(WTFMove(result));
+    };
     _warning = makeRef(warning);
     setBackground(self, colorForItem(WarningItem::Background, self));
 #if PLATFORM(MAC)
     [self addContent];
+#endif
+
+#if PLATFORM(WATCHOS)
+    self.crownInputScrollDirection = PUICCrownInputScrollDirectionVertical;
 #endif
     return self;
 }
@@ -289,10 +304,16 @@ static void setBackground(ViewType *view, ColorType *color)
     auto title = makeLabel([[[NSAttributedString alloc] initWithString:_warning->title() attributes:@{
         NSFontAttributeName:fontOfSize(WarningTextSize::Title),
         NSForegroundColorAttributeName:colorForItem(WarningItem::TitleText, self)
+#if PLATFORM(WATCHOS)
+        , NSHyphenationFactorDocumentAttribute:@1
+#endif
     }] autorelease]);
     auto warning = makeLabel([[[NSAttributedString alloc] initWithString:_warning->warning() attributes:@{
         NSFontAttributeName:fontOfSize(WarningTextSize::Body),
         NSForegroundColorAttributeName:colorForItem(WarningItem::MessageText, self)
+#if PLATFORM(WATCHOS)
+        , NSHyphenationFactorDocumentAttribute:@1
+#endif
     }] autorelease]);
     auto showDetails = makeButton(WarningItem::ShowDetailsButton, self, @selector(showDetailsClicked));
     auto goBack = makeButton(WarningItem::GoBackButton, self, @selector(goBackClicked));
@@ -362,13 +383,17 @@ static void setBackground(ViewType *view, ColorType *color)
     [self updateContentSize];
 #endif
 #endif
+    
+#if PLATFORM(WATCHOS)
+    self->_previousFirstResponder = [self firstResponder];
+    [self becomeFirstResponder];
+#endif
 }
 
 - (void)showDetailsClicked
 {
     ViewType *box = _box.get().get();
     ButtonType *showDetails = box.subviews.lastObject;
-    WTFLogAlways("SHOW DETAILS BUTTON? %@", showDetails);
     [showDetails removeFromSuperview];
 
     NSMutableAttributedString *text = [[_warning->details() mutableCopy] autorelease];
@@ -536,6 +561,9 @@ static void setBackground(ViewType *view, ColorType *color)
     self.editable = NO;
 #if !PLATFORM(MAC)
     self.scrollEnabled = NO;
+#endif
+#if PLATFORM(WATCHOS)
+    self.layoutManager.hyphenationFactor = 1;
 #endif
 
     return self;

@@ -1,3 +1,25 @@
+2019-02-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Allow pages to trigger programmatic paste from script on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=194271
+        <rdar://problem/47808810>
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2019-02-06  Daniel Bates  <dabates@apple.com>
+
+        Standardize on ControlKey instead of CtrlKey
+        https://bugs.webkit.org/show_bug.cgi?id=194317
+
+        Reviewed by Tim Horton.
+
+        * AccessibleBase.cpp:
+        (AccessibleBase::get_accKeyboardShortcut):
+        * WebView.cpp:
+        (WebView::keyDown):
+
 2019-02-04  Simon Fraser  <simon.fraser@apple.com>
 
         PageOverlayController's layers should be created lazily

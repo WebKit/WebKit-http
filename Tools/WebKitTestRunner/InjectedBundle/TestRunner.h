@@ -266,8 +266,6 @@ public:
 
     void setShouldStayOnPageAfterHandlingBeforeUnload(bool);
 
-    void setDefersLoading(bool);
-
     void setStopProvisionalFrameLoads() { m_shouldStopProvisionalFrameLoads = true; }
     bool shouldStopProvisionalFrameLoads() const { return m_shouldStopProvisionalFrameLoads; }
     

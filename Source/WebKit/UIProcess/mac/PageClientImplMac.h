@@ -30,6 +30,7 @@
 #include "CorrectionPanel.h"
 #include "PageClientImplCocoa.h"
 #include "WebFullScreenManagerProxy.h"
+#include <wtf/CompletionHandler.h>
 #include <wtf/RetainPtr.h>
 
 @class WKEditorUndoTarget;
@@ -120,10 +121,8 @@ private:
 #if PLATFORM(MAC)
     WebCore::IntRect rootViewToWindow(const WebCore::IntRect&) override;
 #endif
-#if PLATFORM(IOS_FAMILY)
-    virtual WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) = 0;
-    virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) = 0;
-#endif
+    WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) override;
+    WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) override;
 
     void pinnedStateWillChange() final;
     void pinnedStateDidChange() final;
@@ -214,6 +213,8 @@ private:
     void navigationGestureDidEnd() override;
     void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
     void didRemoveNavigationGestureSnapshot() override;
+
+    void requestDOMPasteAccess(const WebCore::IntRect&, CompletionHandler<void(bool)>&& completion) final { completion(false); }
 
     NSView *activeView() const;
     NSWindow *activeWindow() const;

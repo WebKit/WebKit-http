@@ -189,10 +189,13 @@
 #include "TouchBarMenuItemData.h"
 #include "VideoFullscreenManagerProxy.h"
 #include "VideoFullscreenManagerProxyMessages.h"
-#include "ViewSnapshotStore.h"
 #include <WebCore/RunLoopObserver.h>
 #include <WebCore/TextIndicatorWindow.h>
 #include <wtf/MachSendRight.h>
+#endif
+
+#if PLATFORM(COCOA) || PLATFORM(GTK)
+#include "ViewSnapshotStore.h"
 #endif
 
 #if PLATFORM(GTK)
@@ -1348,7 +1351,7 @@ void WebPageProxy::recordNavigationSnapshot(WebBackForwardListItem& item)
     if (!m_shouldRecordNavigationSnapshots)
         return;
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
     ViewSnapshotStore::singleton().recordSnapshot(*this, item);
 #else
     UNUSED_PARAM(item);
@@ -1532,7 +1535,7 @@ void WebPageProxy::clearInspectorTargets()
 
 void WebPageProxy::createInspectorTargets()
 {
-    String pageTargetId = makeString("page-", String::number(m_pageID));
+    String pageTargetId = makeString("page-", m_pageID);
     m_inspectorController->createInspectorTarget(pageTargetId, Inspector::InspectorTargetType::Page);
 }
 
@@ -2229,15 +2232,19 @@ void WebPageProxy::processNextQueuedMouseEvent()
     ASSERT(!m_mouseEventQueue.isEmpty());
 
     const NativeWebMouseEvent& event = m_mouseEventQueue.first();
-    
+
     if (pageClient().windowIsFrontWindowUnderMouse(event))
         setToolTip(String());
 
-    // NOTE: This does not start the responsiveness timer because mouse move should not indicate interaction.
-    if (event.type() != WebEvent::MouseMove)
+    WebEvent::Type eventType = event.type();
+    if (eventType == WebEvent::MouseDown || eventType == WebEvent::MouseForceChanged || eventType == WebEvent::MouseForceDown)
+        m_process->responsivenessTimer().startWithLazyStop();
+    else if (eventType != WebEvent::MouseMove) {
+        // NOTE: This does not start the responsiveness timer because mouse move should not indicate interaction.
         m_process->responsivenessTimer().start();
+    }
 
-    LOG(MouseHandling, "UIProcess: sent mouse event %s (queue size %zu)", webMouseEventTypeString(event.type()), m_mouseEventQueue.size());
+    LOG(MouseHandling, "UIProcess: sent mouse event %s (queue size %zu)", webMouseEventTypeString(eventType), m_mouseEventQueue.size());
     m_process->send(Messages::WebPage::MouseEvent(event), m_pageID);
 }
 
@@ -2390,7 +2397,12 @@ void WebPageProxy::handleKeyboardEvent(const NativeWebKeyboardEvent& event)
 
     m_keyEventQueue.append(event);
 
-    m_process->responsivenessTimer().start();
+    ResponsivenessTimer& responsivenessTimer = m_process->responsivenessTimer();
+    if (event.type() == WebEvent::KeyDown)
+        responsivenessTimer.startWithLazyStop();
+    else
+        responsivenessTimer.start();
+
     if (m_keyEventQueue.size() == 1) { // Otherwise, sent from DidReceiveEvent message handler.
         LOG(KeyHandling, " UI process: sent keyEvent from handleKeyboardEvent");
         m_process->send(Messages::WebPage::KeyEvent(event), m_pageID);
@@ -2497,6 +2509,9 @@ void WebPageProxy::updateTouchEventTracking(const WebTouchEvent& touchStartEvent
         updateTrackingType(m_touchAndPointerEventTracking.touchStartTracking, names.pointerdownEvent);
         updateTrackingType(m_touchAndPointerEventTracking.touchMoveTracking, names.pointermoveEvent);
         updateTrackingType(m_touchAndPointerEventTracking.touchEndTracking, names.pointerupEvent);
+        updateTrackingType(m_touchAndPointerEventTracking.touchStartTracking, names.mousedownEvent);
+        updateTrackingType(m_touchAndPointerEventTracking.touchMoveTracking, names.mousemoveEvent);
+        updateTrackingType(m_touchAndPointerEventTracking.touchEndTracking, names.mouseupEvent);
     }
 #else
     UNUSED_PARAM(touchStartEvent);
@@ -2552,7 +2567,12 @@ void WebPageProxy::handleGestureEvent(const NativeWebGestureEvent& event)
 
     m_gestureEventQueue.append(event);
     // FIXME: Consider doing some coalescing here.
-    m_process->responsivenessTimer().start();
+
+    ResponsivenessTimer& responsivenessTimer = m_process->responsivenessTimer();
+    if (event.type() == WebEvent::GestureStart || event.type() == WebEvent::GestureChange)
+        responsivenessTimer.startWithLazyStop();
+    else
+        responsivenessTimer.start();
 
     m_process->send(Messages::EventDispatcher::GestureEvent(m_pageID, event), 0);
 }
@@ -3933,7 +3953,7 @@ void WebPageProxy::didFailProvisionalLoadForFrameShared(Ref<WebProcessProxy>&& p
     PageClientProtector protector(pageClient());
 
     WebFrameProxy* frame = process->webFrame(frameID);
-    MESSAGE_CHECK(m_process, frame);
+    MESSAGE_CHECK(process, frame);
 
     if (m_controlledByAutomation) {
         if (auto* automationSession = process->processPool().automationSession())
@@ -5059,7 +5079,6 @@ IntRect WebPageProxy::syncRootViewToScreen(const IntRect& viewRect)
     return pageClient().rootViewToScreen(viewRect);
 }
 
-#if PLATFORM(IOS_FAMILY)
 void WebPageProxy::accessibilityScreenToRootView(const IntPoint& screenPoint, IntPoint& windowPoint)
 {
     windowPoint = pageClient().accessibilityScreenToRootView(screenPoint);
@@ -5069,7 +5088,6 @@ void WebPageProxy::rootViewToAccessibilityScreen(const IntRect& viewRect, IntRec
 {
     result = pageClient().rootViewToAccessibilityScreen(viewRect);
 }
-#endif
 
 void WebPageProxy::runBeforeUnloadConfirmPanel(uint64_t frameID, const SecurityOriginData& securityOrigin, const String& message, Messages::WebPageProxy::RunBeforeUnloadConfirmPanel::DelayedReply&& reply)
 {
@@ -5434,6 +5452,11 @@ void WebPageProxy::setNeedsHiddenContentEditableQuirk(bool needsHiddenContentEdi
 void WebPageProxy::setNeedsPlainTextQuirk(bool needsPlainTextQuirk)
 {
     m_needsPlainTextQuirk = needsPlainTextQuirk;
+}
+
+void WebPageProxy::requestDOMPasteAccess(const WebCore::IntRect& elementRect, CompletionHandler<void(bool)>&& completionHandler)
+{
+    m_pageClient->requestDOMPasteAccess(elementRect, WTFMove(completionHandler));
 }
 
 // BackForwardList
@@ -6500,7 +6523,6 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
 void WebPageProxy::provisionalProcessDidTerminate()
 {
     ASSERT(m_provisionalPage);
-    m_provisionalPage->cancel();
     m_provisionalPage = nullptr;
 }
 
@@ -6866,6 +6888,10 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
     parameters.overrideContentSecurityPolicy = m_overrideContentSecurityPolicy;
     parameters.cpuLimit = m_cpuLimit;
 
+#if PLATFORM(WPE)
+    parameters.hostFileDescriptor = pageClient().hostFileDescriptor();
+#endif
+
     for (auto& iterator : m_urlSchemeHandlersByScheme)
         parameters.urlSchemeHandlers.set(iterator.key, iterator.value->identifier());
 
@@ -7015,12 +7041,12 @@ UserMediaPermissionRequestManagerProxy& WebPageProxy::userMediaPermissionRequest
 }
 #endif
 
-void WebPageProxy::requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, const WebCore::SecurityOriginData&  userMediaDocumentOriginData, const WebCore::SecurityOriginData& topLevelDocumentOriginData, const WebCore::MediaStreamRequest& request)
+void WebPageProxy::requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, const WebCore::SecurityOriginData&  userMediaDocumentOriginData, const WebCore::SecurityOriginData& topLevelDocumentOriginData, WebCore::MediaStreamRequest&& request)
 {
 #if ENABLE(MEDIA_STREAM)
     MESSAGE_CHECK(m_process, m_process->webFrame(frameID));
 
-    userMediaPermissionRequestManager().requestUserMediaPermissionForFrame(userMediaID, frameID, userMediaDocumentOriginData.securityOrigin(), topLevelDocumentOriginData.securityOrigin(), request);
+    userMediaPermissionRequestManager().requestUserMediaPermissionForFrame(userMediaID, frameID, userMediaDocumentOriginData.securityOrigin(), topLevelDocumentOriginData.securityOrigin(), WTFMove(request));
 #else
     UNUSED_PARAM(userMediaID);
     UNUSED_PARAM(frameID);
@@ -7470,7 +7496,7 @@ void WebPageProxy::setEditableElementIsFocused(bool editableElementIsFocused)
 
 #endif // PLATFORM(MAC)
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
 RefPtr<ViewSnapshot> WebPageProxy::takeViewSnapshot()
 {
     return pageClient().takeViewSnapshot();

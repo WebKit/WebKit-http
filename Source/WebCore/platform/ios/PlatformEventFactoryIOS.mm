@@ -47,7 +47,7 @@ static OptionSet<PlatformEvent::Modifier> modifiersForEvent(WebEvent *event)
     if (event.modifierFlags & WebEventFlagMaskShiftKey)
         modifiers.add(PlatformEvent::Modifier::ShiftKey);
     if (event.modifierFlags & WebEventFlagMaskControlKey)
-        modifiers.add(PlatformEvent::Modifier::CtrlKey);
+        modifiers.add(PlatformEvent::Modifier::ControlKey);
     if (event.modifierFlags & WebEventFlagMaskOptionKey)
         modifiers.add(PlatformEvent::Modifier::AltKey);
     if (event.modifierFlags & WebEventFlagMaskCommandKey)
@@ -95,6 +95,7 @@ public:
         m_globalPosition = globalPointForEvent(event);
         m_button = LeftButton; // This has always been the LeftButton on iOS.
         m_clickCount = 1; // This has always been 1 on iOS.
+        m_modifiers = modifiersForEvent(event);
     }
 };
 

@@ -1,3 +1,300 @@
+2019-02-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Experimental setting for CPU Usage Timeline improvements
+        https://bugs.webkit.org/show_bug.cgi?id=194556
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/LegacyCPUTimelineView.css: Added.
+        * UserInterface/Views/LegacyCPUTimelineView.js: Added.
+        Copy of CPUTimelineView.js/css to be used when the setting is not set.
+
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.createFromRepresentedObject):
+        ContentView to create based on the setting.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+        Experimental switch.
+
+2019-02-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline.prototype.recordsInTimeRange uses a property most records do not have
+        https://bugs.webkit.org/show_bug.cgi?id=194549
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/Timeline.js:
+        (WI.Timeline.prototype.recordsInTimeRange):
+
+2019-02-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: clicking on an empty space in the overview should deselect any selected record bar
+        https://bugs.webkit.org/show_bug.cgi?id=194365
+        <rdar://problem/47868426>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineRecordBar.js:
+        (WI.TimelineRecordBar.prototype._handleClick):
+        Mark the "click" event so that later listeners know it was handled by `WI.TimelineRecordBar`.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview):
+        (WI.TimelineOverview.prototype._instrumentAdded):
+        (WI.TimelineOverview.prototype._instrumentRemoved):
+        (WI.TimelineOverview.prototype._handleGraphsContainerClick): Added.
+        (WI.TimelineOverview.prototype._handleOverviewGraphRecordSelected): Added.
+        (WI.TimelineOverview.prototype._recordSelected):
+        Listen for "click" on the graph container and deselect all records when fired, unless the
+        click was marked by a `WI.TimelineRecordBar`.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView.prototype._recordSelected):
+        Ensure that all `WI.TimelineView` update their selected record whenever it changes for any
+        other `WI.TimelineView` (or if there is no selected record).
+
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WI.TimelineOverviewGraph.prototype.didLayoutSubtree): Added.
+        Drive-by: since `WI.TimelineRecordBar` are reused when combining, we need to re-determine
+        which one holds the currently selected record.
+
+2019-02-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused maxUsage in CPUTimelineView
+        https://bugs.webkit.org/show_bug.cgi?id=194526
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView):
+        (WI.CPUTimelineView.prototype.shown):
+
+2019-02-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add context menu items to copy a resource's HTTP request/response data
+        https://bugs.webkit.org/show_bug.cgi?id=194261
+        <rdar://problem/21693696>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.stringifyHTTPRequest): Added.
+        (WI.Resource.prototype.stringifyHTTPResponse): Added.
+        Don't include the request/response data, as that can be very large, and can easily be
+        accessed by actually selecting the resource in the Resources/Network tab.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForSourceCode):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-02-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: show keyboard shortcut in export tooltip
+        https://bugs.webkit.org/show_bug.cgi?id=194454
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/AuditTestContentView.js:
+        (WI.AuditTestContentView):
+        (WI.AuditTestContentView.prototype.get saveData):
+        (WI.AuditTestContentView.prototype._exportResult): Added.
+        (WI.AuditTestContentView.prototype._handleExportButtonNavigationItemClicked):
+        (WI.AuditTestContentView.prototype._exportAudit): Deleted.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-02-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: easier way to select a single line
+        https://bugs.webkit.org/show_bug.cgi?id=193305
+
+        Reviewed by Devin Rousso.
+
+        Start property selection after mousedown when mouse cursor moves 8px,
+        which is ~1.5 times the width of a text character in the style editor.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleMouseDown):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleWindowMouseMove): Added.
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._stopSelection):
+
+2019-02-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Debugger Popover should work with value in template string `${identifier}`
+        https://bugs.webkit.org/show_bug.cgi?id=194459
+        <rdar://problem/47932564>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/CodeMirrorTokenTrackingController.js:
+        (WI.CodeMirrorTokenTrackingController.prototype._processJavaScriptExpression):
+        When walking backwards to get the full expression we were walking outside
+        of the interpolation group `outside ${inside}`. Stop walking backwards once
+        we cross the boundary.
+
+2019-02-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Import / Export Heap Snapshots
+        https://bugs.webkit.org/show_bug.cgi?id=194448
+        <rdar://problem/47928093>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New strings.
+
+        * UserInterface/Proxies/HeapSnapshotProxy.js:
+        (WI.HeapSnapshotProxy):
+        (WI.HeapSnapshotProxy.deserialize):
+        (WI.HeapSnapshotProxy.prototype.get imported):
+        (WI.HeapSnapshotProxy.prototype.get snapshotStringData):
+        (WI.HeapSnapshotProxy.prototype.set snapshotStringData):
+        Include an "imported" state on the HeapSnapshot and allow for
+        stashing the snapshotStringData on the main thread side.
+
+        * UserInterface/Proxies/HeapSnapshotWorkerProxy.js:
+        (WI.HeapSnapshotWorkerProxy.prototype.createImportedSnapshot):
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshotWorker.js:
+        (HeapSnapshotWorker.prototype.clearSnapshots):
+        (HeapSnapshotWorker.prototype.createSnapshot):
+        Provide a specialized way to create an imported HeapSnapshot.
+        Track imported snapshots separately since they won't want to
+        be searched for live/dead objects due to active recording GCs.
+
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshot.js:
+        (HeapSnapshot):
+        (HeapSnapshot.updateCategoriesAndMetadata):
+        (HeapSnapshot.allocationBucketCounts):
+        (HeapSnapshot.instancesWithClassName):
+        (HeapSnapshot.prototype.nodeWithIdentifier):
+        (HeapSnapshot.prototype.dominatedNodes):
+        (HeapSnapshot.prototype.retainedNodes):
+        (HeapSnapshot.prototype.retainers):
+        (HeapSnapshot.prototype.updateDeadNodesAndGatherCollectionData):
+        (HeapSnapshot.prototype.serialize):
+        (HeapSnapshot.prototype.serializeNode):
+        (HeapSnapshot.prototype._buildPostOrderIndexes):
+        (HeapSnapshot.prototype._buildDominatorIndexes):
+        (HeapSnapshot.prototype._buildRetainedSizes):
+        (HeapSnapshot.prototype._gcRootPathes.visitNode):
+        (HeapSnapshot.prototype._gcRootPathes):
+        Construct a HeapSnapshot knowinng whether or not it is imported.
+        Imported snapshots may be the "GCDebugging" snapshot type which
+        differs from "Inspector" by the number of node fields. So keep
+        the node field count a member instead of a global constant
+        in order to work with both snapshot types.
+
+        * UserInterface/Models/HeapAllocationsInstrument.js:
+        (WI.HeapAllocationsInstrument.prototype._takeHeapSnapshot):
+        * UserInterface/Protocol/ConsoleObserver.js:
+        (WI.ConsoleObserver.prototype.heapSnapshot):
+        * UserInterface/Protocol/HeapObserver.js:
+        (WI.HeapObserver.prototype.trackingStart):
+        (WI.HeapObserver.prototype.trackingComplete):
+        Stash the original string JSON data on the main thread side
+        where we already have the data.
+
+        * UserInterface/Views/HeapAllocationsTimelineOverviewGraph.js:
+        (WI.HeapAllocationsTimelineOverviewGraph.prototype.layout):
+        Don't show [S] icons for imported snapshots with no timestamp.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WI.HeapAllocationsTimelineView):
+        (WI.HeapAllocationsTimelineView.prototype.get navigationItems):
+        (WI.HeapAllocationsTimelineView.prototype._importButtonNavigationItemClicked):
+        (WI.HeapAllocationsTimelineView.prototype._takeHeapSnapshotClicked):
+        Import button that just creates a new snapshot.
+
+        * UserInterface/Views/HeapSnapshotContentView.js:
+        (WI.HeapSnapshotContentView):
+        (WI.HeapSnapshotContentView.prototype.get navigationItems):
+        (WI.HeapSnapshotContentView.prototype.get supportsSave):
+        (WI.HeapSnapshotContentView.prototype.get saveData):
+        (WI.HeapSnapshotContentView.prototype._exportSnapshot):
+        Export button that saves the original data.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView.displayNameForRecord):
+        Specialized display string for imported snapshots.
+
+2019-02-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Debug setting to show Internal Object Classes in Heap Snapshot
+        https://bugs.webkit.org/show_bug.cgi?id=194445
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/HeapSnapshotDataGridTree.js:
+        (WI.HeapSnapshotInstancesDataGridTree.prototype.populateTopLevel):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createDebugSettingsView):
+
+2019-02-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: close unbalanced quotes and parenthesis when editing values
+        https://bugs.webkit.org/show_bug.cgi?id=182523
+        <rdar://problem/37260209>
+
+        Reviewed by Devin Rousso.
+
+        Close CSS comments, append missing closed quotes and right parenthesis.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WI.CSSCompletions.completeUnbalancedValue):
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.set rawValue):
+
+2019-02-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make Timeline markers light gray instead of black in dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=194417
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.css:
+        (.timeline-overview-graph.rendering-frame > .divider):
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler > .markers > .divider):
+
+2019-02-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: don't send the entire function string with each event listener
+        https://bugs.webkit.org/show_bug.cgi?id=194293
+        <rdar://problem/47822809>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WI.EventListenerSectionGroup.prototype._functionTextOrLink):
+
+2019-02-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: "Worker not found" uncaught protocol errors
+        https://bugs.webkit.org/show_bug.cgi?id=194319
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        (WI.terminatePageTarget):
+        Remove Worker targets associated with the Page on navigation.
+        Eventually we will have to associate Workers with their parent
+        frame, but for now a transition can only happen at the Page
+        level, so we can eliminate all workers on the page.
+
+        * UserInterface/Controllers/WorkerManager.js:
+        (WI.WorkerManager.prototype.workerCreated):
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.WorkerConnection.sendMessageToBackend):
+        Allow any WorkerAgent domain message to fail silently. This can
+        happen if a Worker is created and destroyed before the frontend
+        hears about it and sends messages to the backend for that Worker.
+
 2019-02-05  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Styles: PropertiesChanged shouldn't fire when old and new text are both empty

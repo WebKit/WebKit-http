@@ -241,8 +241,10 @@ void AXObjectCache::detachWrapper(AccessibilityObject* obj, AccessibilityDetachm
 #if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
 void AXObjectCache::associateIsolatedTreeNode(AccessibilityObject& object, AXIsolatedTreeNode& node, AXIsolatedTreeID treeID)
 {
-    object.wrapper().isolatedTreeIdentifier = treeID;
-    node.setWrapper(object.wrapper());
+    auto wrapper = object.wrapper();
+    ASSERT(wrapper);
+    wrapper.isolatedTreeIdentifier = treeID;
+    node.setWrapper(wrapper);
 }
 #endif
 
@@ -345,6 +347,12 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotific
             break;
         case AXMenuListItemSelected:
             macNotification = (id)kAXMenuItemSelectedNotification;
+            break;
+        case AXPressDidSucceed:
+            macNotification = @"AXPressDidSucceed";
+            break;
+        case AXPressDidFail:
+            macNotification = @"AXPressDidFail";
             break;
         case AXMenuOpened:
             macNotification = (id)kAXMenuOpenedNotification;

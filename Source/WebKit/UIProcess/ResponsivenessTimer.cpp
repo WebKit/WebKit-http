@@ -32,7 +32,7 @@ static const Seconds responsivenessTimeout { 3_s };
 
 ResponsivenessTimer::ResponsivenessTimer(ResponsivenessTimer::Client& client)
     : m_client(client)
-    , m_timer(std::bind(&ResponsivenessTimer::timerFired, this))
+    , m_timer(RunLoop::main(), this, &ResponsivenessTimer::timerFired)
 {
 }
 
@@ -40,15 +40,27 @@ ResponsivenessTimer::~ResponsivenessTimer() = default;
 
 void ResponsivenessTimer::invalidate()
 {
+    m_timer.stop();
+    m_restartFireTime = MonotonicTime();
     m_waitingForTimer = false;
     m_useLazyStop = false;
-    m_timer.stop();
 }
 
 void ResponsivenessTimer::timerFired()
 {
     if (!m_waitingForTimer)
         return;
+
+    if (m_restartFireTime) {
+        MonotonicTime now = MonotonicTime::now();
+        MonotonicTime restartFireTime = m_restartFireTime;
+        m_restartFireTime = MonotonicTime();
+
+        if (restartFireTime > now) {
+            m_timer.startOneShot(now - restartFireTime);
+            return;
+        }
+    }
 
     m_waitingForTimer = false;
     m_useLazyStop = false;
@@ -76,7 +88,18 @@ void ResponsivenessTimer::start()
 
     m_waitingForTimer = true;
     m_useLazyStop = false;
-    m_timer.startOneShot(responsivenessTimeout);
+
+    if (m_timer.isActive()) {
+        // The timer is still active from a lazy stop.
+        // Instead of restarting the timer, we schedule a new delay after this one finishes.
+        //
+        // In most cases, stop is called before we get to schedule the second timer, saving us
+        // the scheduling of the timer entirely.
+        m_restartFireTime = MonotonicTime::now() + responsivenessTimeout;
+    } else {
+        m_restartFireTime = MonotonicTime();
+        m_timer.startOneShot(responsivenessTimeout);
+    }
 }
 
 void ResponsivenessTimer::startWithLazyStop()
@@ -108,9 +131,7 @@ void ResponsivenessTimer::stop()
 
 void ResponsivenessTimer::processTerminated()
 {
-    // Since there is no web process, we must not be waiting for it anymore.
-    m_waitingForTimer = false;
-    m_timer.stop();
+    invalidate();
 }
 
 } // namespace WebKit

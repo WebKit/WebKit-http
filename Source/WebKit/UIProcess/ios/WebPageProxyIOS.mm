@@ -46,6 +46,7 @@
 #import "VideoFullscreenManagerProxy.h"
 #import "ViewUpdateDispatcherMessages.h"
 #import "WKBrowsingContextControllerInternal.h"
+#import "WebAutocorrectionContext.h"
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
 #import <WebCore/FrameView.h>
@@ -166,7 +167,7 @@ void WebPageProxy::selectionContextCallback(const String& selectedText, const St
     callback->performCallbackWithReturnValue(selectedText, beforeText, afterText);
 }
 
-void WebPageProxy::autocorrectionContextCallback(const String& beforeText, const String& markedText, const String& selectedText, const String& afterText, uint64_t location, uint64_t length, CallbackID callbackID)
+void WebPageProxy::autocorrectionContextCallback(const WebAutocorrectionContext& context, CallbackID callbackID)
 {
     auto callback = m_callbacks.take<AutocorrectionContextCallback>(callbackID);
     if (!callback) {
@@ -174,7 +175,7 @@ void WebPageProxy::autocorrectionContextCallback(const String& beforeText, const
         return;
     }
 
-    callback->performCallbackWithReturnValue(beforeText, markedText, selectedText, afterText, location, length);
+    callback->performCallbackWithReturnValue(context);
 }
 
 void WebPageProxy::selectionRectsCallback(const Vector<WebCore::SelectionRect>& selectionRects, CallbackID callbackID)
@@ -566,20 +567,22 @@ void WebPageProxy::requestDictationContext(WTF::Function<void (const String&, co
     m_process->send(Messages::WebPage::RequestDictationContext(callbackID), m_pageID);
 }
 
-void WebPageProxy::requestAutocorrectionContext(WTF::Function<void (const String&, const String&, const String&, const String&, uint64_t, uint64_t, CallbackBase::Error)>&& callbackFunction)
+void WebPageProxy::requestAutocorrectionContext(Function<void(const WebAutocorrectionContext&, CallbackBase::Error)>&& callback)
 {
     if (!isValid()) {
-        callbackFunction(String(), String(), String(), String(), 0, 0, CallbackBase::Error::Unknown);
+        callback({ }, CallbackBase::Error::OwnerWasInvalidated);
         return;
     }
 
-    auto callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivityToken());
+    auto callbackID = m_callbacks.put(WTFMove(callback), m_process->throttler().backgroundActivityToken());
     m_process->send(Messages::WebPage::RequestAutocorrectionContext(callbackID), m_pageID);
 }
 
-void WebPageProxy::getAutocorrectionContext(String& beforeContext, String& markedText, String& selectedText, String& afterContext, uint64_t& location, uint64_t& length)
+WebAutocorrectionContext WebPageProxy::autocorrectionContextSync()
 {
-    m_process->sendSync(Messages::WebPage::GetAutocorrectionContext(), Messages::WebPage::GetAutocorrectionContext::Reply(beforeContext, markedText, selectedText, afterContext, location, length), m_pageID);
+    WebAutocorrectionContext context;
+    m_process->sendSync(Messages::WebPage::AutocorrectionContextSync(), Messages::WebPage::AutocorrectionContextSync::Reply(context), m_pageID);
+    return context;
 }
 
 void WebPageProxy::getSelectionContext(WTF::Function<void(const String&, const String&, const String&, CallbackBase::Error)>&& callbackFunction)
@@ -593,9 +596,9 @@ void WebPageProxy::getSelectionContext(WTF::Function<void(const String&, const S
     m_process->send(Messages::WebPage::GetSelectionContext(callbackID), m_pageID);
 }
 
-void WebPageProxy::handleTwoFingerTapAtPoint(const WebCore::IntPoint& point, uint64_t requestID)
+void WebPageProxy::handleTwoFingerTapAtPoint(const WebCore::IntPoint& point, OptionSet<WebEvent::Modifier> modifiers, uint64_t requestID)
 {
-    process().send(Messages::WebPage::HandleTwoFingerTapAtPoint(point, requestID), m_pageID);
+    process().send(Messages::WebPage::HandleTwoFingerTapAtPoint(point, modifiers, requestID), m_pageID);
 }
 
 void WebPageProxy::handleStylusSingleTapAtPoint(const WebCore::IntPoint& point, uint64_t requestID)
@@ -824,9 +827,9 @@ void WebPageProxy::potentialTapAtPosition(const WebCore::FloatPoint& position, u
     process().send(Messages::WebPage::PotentialTapAtPosition(requestID, position), m_pageID);
 }
 
-void WebPageProxy::commitPotentialTap(uint64_t layerTreeTransactionIdAtLastTouchStart)
+void WebPageProxy::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64_t layerTreeTransactionIdAtLastTouchStart)
 {
-    process().send(Messages::WebPage::CommitPotentialTap(layerTreeTransactionIdAtLastTouchStart), m_pageID);
+    process().send(Messages::WebPage::CommitPotentialTap(modifiers, layerTreeTransactionIdAtLastTouchStart), m_pageID);
 }
 
 void WebPageProxy::cancelPotentialTap()
@@ -839,9 +842,9 @@ void WebPageProxy::tapHighlightAtPosition(const WebCore::FloatPoint& position, u
     process().send(Messages::WebPage::TapHighlightAtPosition(requestID, position), m_pageID);
 }
 
-void WebPageProxy::handleTap(const FloatPoint& location, uint64_t layerTreeTransactionIdAtLastTouchStart)
+void WebPageProxy::handleTap(const FloatPoint& location, OptionSet<WebEvent::Modifier> modifiers, uint64_t layerTreeTransactionIdAtLastTouchStart)
 {
-    process().send(Messages::WebPage::HandleTap(roundedIntPoint(location), layerTreeTransactionIdAtLastTouchStart), m_pageID);
+    process().send(Messages::WebPage::HandleTap(roundedIntPoint(location), modifiers, layerTreeTransactionIdAtLastTouchStart), m_pageID);
 }
 
 void WebPageProxy::inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint& position)

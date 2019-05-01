@@ -85,6 +85,7 @@ private:
     // Messages::UserMediaCaptureManager
     void captureFailed(uint64_t id);
     void sourceStopped(uint64_t id);
+    void sourceEnded(uint64_t id);
     void sourceMutedChanged(uint64_t id, bool muted);
     void sourceSettingsChanged(uint64_t id, const WebCore::RealtimeMediaSourceSettings&);
     void storageChanged(uint64_t id, const SharedMemory::Handle&, const WebCore::CAAudioStreamDescription&, uint64_t numberOfFrames);
@@ -98,7 +99,7 @@ private:
     void setMuted(uint64_t, bool);
     void applyConstraints(uint64_t, const WebCore::MediaConstraints&);
     void applyConstraintsSucceeded(uint64_t, const WebCore::RealtimeMediaSourceSettings&);
-    void applyConstraintsFailed(uint64_t, const String&, const String&);
+    void applyConstraintsFailed(uint64_t, String&&, String&&);
 
     class Source;
     friend class Source;

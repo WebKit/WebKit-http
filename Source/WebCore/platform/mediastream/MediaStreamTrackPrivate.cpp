@@ -137,7 +137,7 @@ void MediaStreamTrackPrivate::endTrack()
     m_isEnded = true;
     updateReadyState();
 
-    m_source->requestStop(this);
+    m_source->requestToEnd(*this);
 
     forEachObserver([this](auto& observer) {
         observer.trackEnded(*this);
@@ -170,9 +170,9 @@ const RealtimeMediaSourceCapabilities& MediaStreamTrackPrivate::capabilities() c
     return m_source->capabilities();
 }
 
-void MediaStreamTrackPrivate::applyConstraints(const MediaConstraints& constraints, RealtimeMediaSource::SuccessHandler&& successHandler, RealtimeMediaSource::FailureHandler&& failureHandler)
+void MediaStreamTrackPrivate::applyConstraints(const MediaConstraints& constraints, RealtimeMediaSource::ApplyConstraintsHandler&& completionHandler)
 {
-    m_source->applyConstraints(constraints, WTFMove(successHandler), WTFMove(failureHandler));
+    m_source->applyConstraints(constraints, WTFMove(completionHandler));
 }
 
 AudioSourceProvider* MediaStreamTrackPrivate::audioSourceProvider()

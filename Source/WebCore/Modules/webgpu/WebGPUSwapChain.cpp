@@ -28,7 +28,7 @@
 
 #if ENABLE(WEBGPU)
 
-#include "GPUTextureFormatEnum.h"
+#include "GPUTextureFormat.h"
 
 namespace WebCore {
 

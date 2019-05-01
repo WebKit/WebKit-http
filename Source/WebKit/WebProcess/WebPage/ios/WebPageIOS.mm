@@ -45,6 +45,7 @@
 #import "UserData.h"
 #import "VisibleContentRectUpdateInfo.h"
 #import "WKAccessibilityWebPageObjectIOS.h"
+#import "WebAutocorrectionContext.h"
 #import "WebChromeClient.h"
 #import "WebCoreArgumentCoders.h"
 #import "WebFrame.h"
@@ -120,13 +121,6 @@
 #import <wtf/SoftLinking.h>
 #import <wtf/cocoa/Entitlements.h>
 #import <wtf/text/TextStream.h>
-
-#if ENABLE(MEDIA_STREAM)
-#import "CelestialSPI.h"
-SOFT_LINK_PRIVATE_FRAMEWORK_OPTIONAL(Celestial)
-SOFT_LINK_CLASS_OPTIONAL(Celestial, AVSystemController)
-SOFT_LINK_CONSTANT_MAY_FAIL(Celestial, AVSystemController_PIDToInheritApplicationStateFrom, NSString *)
-#endif
 
 namespace WebKit {
 using namespace WebCore;
@@ -517,7 +511,7 @@ void WebPage::advanceToNextMisspelling(bool)
     notImplemented();
 }
 
-IntRect WebPage::rectForElementAtInteractionLocation()
+IntRect WebPage::rectForElementAtInteractionLocation() const
 {
     HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(m_lastInteractionLocation, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent);
     Node* hitNode = result.innerNode();
@@ -533,7 +527,7 @@ void WebPage::updateSelectionAppearance()
         didChangeSelection();
 }
 
-void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location)
+void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebEvent::Modifier> modifiers)
 {
     IntPoint roundedAdjustedPoint = roundedIntPoint(location);
     Frame& mainframe = m_page->mainFrame();
@@ -542,7 +536,12 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
     WKStartObservingContentChanges();
     WKStartObservingDOMTimerScheduling();
 
-    mainframe.eventHandler().mouseMoved(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, WebCore::NoTap));
+    // FIXME: Pass caps lock state.
+    bool shiftKey = modifiers.contains(WebEvent::Modifier::ShiftKey);
+    bool ctrlKey = modifiers.contains(WebEvent::Modifier::ControlKey);
+    bool altKey = modifiers.contains(WebEvent::Modifier::AltKey);
+    bool metaKey = modifiers.contains(WebEvent::Modifier::MetaKey);
+    mainframe.eventHandler().mouseMoved(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), WebCore::ForceAtClick, WebCore::NoTap));
     mainframe.document()->updateStyleIfNeeded();
 
     WKStopObservingDOMTimerScheduling();
@@ -550,6 +549,7 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
 
     m_pendingSyntheticClickNode = nullptr;
     m_pendingSyntheticClickLocation = FloatPoint();
+    m_pendingSyntheticClickModifiers = { };
 
     if (m_isClosed)
         return;
@@ -559,15 +559,16 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
         // The move event caused new contents to appear. Don't send the click event.
         LOG(ContentObservation, "handleSyntheticClick: Observed meaningful visible change -> hover.");
         return;
-    case WKContentIndeterminateChange:
+    case WKContentIndeterminateChange: {
         // Wait for callback to completePendingSyntheticClickForContentChangeObserver() to decide whether to send the click event.
         m_pendingSyntheticClickNode = nodeRespondingToClick;
         m_pendingSyntheticClickLocation = location;
+        m_pendingSyntheticClickModifiers = modifiers;
         LOG(ContentObservation, "handleSyntheticClick: Observed some change, but can't decide it yet -> wait.");
         return;
-    case WKContentNoChange:
+    } case WKContentNoChange:
         LOG(ContentObservation, "handleSyntheticClick: No change was observed -> click.");
-        completeSyntheticClick(nodeRespondingToClick, location, WebCore::OneFingerTap);
+        completeSyntheticClick(nodeRespondingToClick, location, modifiers, WebCore::OneFingerTap);
         return;
     }
     ASSERT_NOT_REACHED();
@@ -581,15 +582,16 @@ void WebPage::completePendingSyntheticClickForContentChangeObserver()
     // Only dispatch the click if the document didn't get changed by any timers started by the move event.
     if (WKObservedContentChange() == WKContentNoChange) {
         LOG(ContentObservation, "No chage was observed -> click.");
-        completeSyntheticClick(m_pendingSyntheticClickNode.get(), m_pendingSyntheticClickLocation, WebCore::OneFingerTap);
+        completeSyntheticClick(m_pendingSyntheticClickNode.get(), m_pendingSyntheticClickLocation, m_pendingSyntheticClickModifiers, WebCore::OneFingerTap);
     } else
         LOG(ContentObservation, "Observed meaningful visible change -> hover.");
 
     m_pendingSyntheticClickNode = nullptr;
     m_pendingSyntheticClickLocation = FloatPoint();
+    m_pendingSyntheticClickModifiers = { };
 }
 
-void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location, SyntheticClickType syntheticClickType)
+void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebEvent::Modifier> modifiers, SyntheticClickType syntheticClickType)
 {
     IntPoint roundedAdjustedPoint = roundedIntPoint(location);
     Frame& mainframe = m_page->mainFrame();
@@ -602,11 +604,17 @@ void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore:
     bool tapWasHandled = false;
     m_lastInteractionLocation = roundedAdjustedPoint;
 
-    tapWasHandled |= mainframe.eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 1, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, syntheticClickType));
+    // FIXME: Pass caps lock state.
+    bool shiftKey = modifiers.contains(WebEvent::Modifier::ShiftKey);
+    bool ctrlKey = modifiers.contains(WebEvent::Modifier::ControlKey);
+    bool altKey = modifiers.contains(WebEvent::Modifier::AltKey);
+    bool metaKey = modifiers.contains(WebEvent::Modifier::MetaKey);
+
+    tapWasHandled |= mainframe.eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 1, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), WebCore::ForceAtClick, syntheticClickType));
     if (m_isClosed)
         return;
 
-    tapWasHandled |= mainframe.eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 1, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, syntheticClickType));
+    tapWasHandled |= mainframe.eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 1, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), WebCore::ForceAtClick, syntheticClickType));
     if (m_isClosed)
         return;
 
@@ -626,7 +634,7 @@ void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore:
     send(Messages::WebPageProxy::DidCompleteSyntheticClick());
 }
 
-void WebPage::handleTap(const IntPoint& point, uint64_t lastLayerTreeTransactionId)
+void WebPage::handleTap(const IntPoint& point, OptionSet<WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId)
 {
     FloatPoint adjustedPoint;
     Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(point, adjustedPoint);
@@ -643,7 +651,7 @@ void WebPage::handleTap(const IntPoint& point, uint64_t lastLayerTreeTransaction
     }
 #endif
     else
-        handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
+        handleSyntheticClick(nodeRespondingToClick, adjustedPoint, modifiers);
 }
 
 void WebPage::requestFocusedElementInformation(WebKit::CallbackID callbackID)
@@ -738,7 +746,7 @@ void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
 #endif
 }
 
-void WebPage::handleTwoFingerTapAtPoint(const WebCore::IntPoint& point, uint64_t requestID)
+void WebPage::handleTwoFingerTapAtPoint(const WebCore::IntPoint& point, OptionSet<WebKit::WebEvent::Modifier> modifiers, uint64_t requestID)
 {
     FloatPoint adjustedPoint;
     Node* nodeRespondingToClick = m_page->mainFrame().nodeRespondingToClickEvents(point, adjustedPoint);
@@ -754,7 +762,7 @@ void WebPage::handleTwoFingerTapAtPoint(const WebCore::IntPoint& point, uint64_t
         send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(adjustedPoint)));
     } else
 #endif
-        completeSyntheticClick(nodeRespondingToClick, adjustedPoint, WebCore::TwoFingerTap);
+        completeSyntheticClick(nodeRespondingToClick, adjustedPoint, modifiers, WebCore::TwoFingerTap);
 }
 
 void WebPage::handleStylusSingleTapAtPoint(const WebCore::IntPoint& point, uint64_t requestID)
@@ -799,7 +807,7 @@ void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoi
 #endif
 }
 
-void WebPage::commitPotentialTap(uint64_t lastLayerTreeTransactionId)
+void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId)
 {
     if (!m_potentialTapNode || (!m_potentialTapNode->renderer() && !is<HTMLAreaElement>(m_potentialTapNode.get()))) {
         commitPotentialTapFailed();
@@ -823,7 +831,7 @@ void WebPage::commitPotentialTap(uint64_t lastLayerTreeTransactionId)
             commitPotentialTapFailed();
         } else
 #endif
-            handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
+            handleSyntheticClick(nodeRespondingToClick, adjustedPoint, modifiers);
     } else
         commitPotentialTapFailed();
 
@@ -1888,9 +1896,7 @@ void WebPage::requestAutocorrectionData(const String& textForAutocorrection, Cal
 
 void WebPage::applyAutocorrection(const String& correction, const String& originalText, CallbackID callbackID)
 {
-    bool correctionApplied;
-    syncApplyAutocorrection(correction, originalText, correctionApplied);
-    send(Messages::WebPageProxy::StringCallback(correctionApplied ? correction : String(), callbackID));
+    send(Messages::WebPageProxy::StringCallback(applyAutocorrectionInternal(correction, originalText) ? correction : String(), callbackID));
 }
 
 Seconds WebPage::eventThrottlingDelay() const
@@ -1911,13 +1917,16 @@ Seconds WebPage::eventThrottlingDelay() const
     return std::min(m_estimatedLatency * 2, 1_s);
 }
 
-void WebPage::syncApplyAutocorrection(const String& correction, const String& originalText, bool& correctionApplied)
+void WebPage::syncApplyAutocorrection(const String& correction, const String& originalText, CompletionHandler<void(bool)>&& reply)
 {
-    correctionApplied = false;
+    reply(applyAutocorrectionInternal(correction, originalText));
+}
 
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
+bool WebPage::applyAutocorrectionInternal(const String& correction, const String& originalText)
+{
+    auto& frame = m_page->focusController().focusedOrMainFrame();
     if (!frame.selection().isCaretOrRange())
-        return;
+        return false;
 
     RefPtr<Range> range;
     String textForRange;
@@ -1950,17 +1959,14 @@ void WebPage::syncApplyAutocorrection(const String& correction, const String& or
     } else {
         // Range selection.
         range = frame.selection().toNormalizedRange();
-        if (!range) {
-            correctionApplied = false;
-            return;
-        }
+        if (!range)
+            return false;
+
         textForRange = plainTextReplacingNoBreakSpace(range.get());
     }
 
-    if (textForRange != originalText) {
-        correctionApplied = false;
-        return;
-    }
+    if (textForRange != originalText)
+        return false;
     
     // Correctly determine affinity, using logic currently only present in VisiblePosition
     EAffinity affinity = DOWNSTREAM;
@@ -1972,16 +1978,22 @@ void WebPage::syncApplyAutocorrection(const String& correction, const String& or
         frame.editor().insertText(correction, 0, originalText.isEmpty() ? TextEventInputKeyboard : TextEventInputAutocompletion);
     else
         frame.editor().deleteWithDirection(DirectionBackward, CharacterGranularity, false, true);
-    correctionApplied = true;
+    return true;
 }
 
-static void computeAutocorrectionContext(Frame& frame, String& contextBefore, String& markedText, String& selectedText, String& contextAfter, uint64_t& location, uint64_t& length)
+WebAutocorrectionContext WebPage::autocorrectionContext()
 {
+    String contextBefore;
+    String markedText;
+    String selectedText;
+    String contextAfter;
+    uint64_t location = NSNotFound;
+    uint64_t length = 0;
+
+    auto& frame = m_page->focusController().focusedOrMainFrame();
     RefPtr<Range> range;
     VisiblePosition startPosition = frame.selection().selection().start();
     VisiblePosition endPosition = frame.selection().selection().end();
-    location = NSNotFound;
-    length = 0;
     const unsigned minContextWordCount = 3;
     const unsigned minContextLenght = 12;
     const unsigned maxContextLength = 30;
@@ -2035,25 +2047,17 @@ static void computeAutocorrectionContext(Frame& frame, String& contextBefore, St
                 contextAfter = plainTextReplacingNoBreakSpace(Range::create(*frame.document(), endPosition, nextPosition).ptr());
         }
     }
+    return { WTFMove(contextBefore), WTFMove(markedText), WTFMove(selectedText), WTFMove(contextAfter), location, length };
 }
 
 void WebPage::requestAutocorrectionContext(CallbackID callbackID)
 {
-    String contextBefore;
-    String contextAfter;
-    String selectedText;
-    String markedText;
-    uint64_t location;
-    uint64_t length;
-
-    computeAutocorrectionContext(m_page->focusController().focusedOrMainFrame(), contextBefore, markedText, selectedText, contextAfter, location, length);
-
-    send(Messages::WebPageProxy::AutocorrectionContextCallback(contextBefore, markedText, selectedText, contextAfter, location, length, callbackID));
+    send(Messages::WebPageProxy::AutocorrectionContextCallback(autocorrectionContext(), callbackID));
 }
 
-void WebPage::getAutocorrectionContext(String& contextBefore, String& markedText, String& selectedText, String& contextAfter, uint64_t& location, uint64_t& length)
+void WebPage::autocorrectionContextSync(CompletionHandler<void(WebAutocorrectionContext&&)>&& completionHandler)
 {
-    computeAutocorrectionContext(m_page->focusController().focusedOrMainFrame(), contextBefore, markedText, selectedText, contextAfter, location, length);
+    completionHandler(autocorrectionContext());
 }
 
 static HTMLAnchorElement* containingLinkElement(Element* element)
@@ -3157,22 +3161,6 @@ bool WebPage::platformPrefersTextLegibilityBasedZoomScaling() const
     return false;
 #endif
 }
-
-#if ENABLE(MEDIA_STREAM)
-void WebPage::prepareToSendUserMediaPermissionRequest()
-{
-    static std::once_flag once;
-    std::call_once(once, [] {
-        if (!canLoadAVSystemController_PIDToInheritApplicationStateFrom())
-            return;
-
-        NSError *error = nil;
-        [[getAVSystemControllerClass() sharedAVSystemController] setAttribute:@(WebCore::presentingApplicationPID()) forKey:getAVSystemController_PIDToInheritApplicationStateFrom() error:&error];
-        if (error)
-            WTFLogAlways("Failed to set up PID proxying: %s", error.localizedDescription.UTF8String);
-    });
-}
-#endif
 
 } // namespace WebKit
 

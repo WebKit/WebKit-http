@@ -42,6 +42,7 @@
 #include "JSOverconstrainedError.h"
 #include "Logging.h"
 #include "MediaConstraints.h"
+#include "PlatformMediaSessionManager.h"
 #include "RealtimeMediaSourceCenter.h"
 #include "SchemeRegistry.h"
 #include "Settings.h"
@@ -57,7 +58,7 @@ Ref<UserMediaRequest> UserMediaRequest::create(Document& document, MediaStreamRe
 }
 
 UserMediaRequest::UserMediaRequest(Document& document, MediaStreamRequest&& request, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
-    : ActiveDOMObject(&document)
+    : ActiveDOMObject(document)
     , m_promise(WTFMove(promise))
     , m_request(WTFMove(request))
 {
@@ -209,6 +210,7 @@ void UserMediaRequest::start()
         return;
     }
 
+    PlatformMediaSessionManager::sharedManager().prepareToSendUserMediaPermissionRequest();
     controller->requestUserMediaAccess(*this);
 }
 

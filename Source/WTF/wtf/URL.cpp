@@ -31,7 +31,6 @@
 #include <stdio.h>
 #include <unicode/uidna.h>
 #include <wtf/HashMap.h>
-#include <wtf/HexNumber.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/UUID.h>
@@ -470,7 +469,7 @@ void URL::setPort(unsigned short i)
     bool colonNeeded = !m_portLength;
     unsigned portStart = (colonNeeded ? m_hostEnd : m_hostEnd + 1);
 
-    URLParser parser(makeString(StringView(m_string).left(portStart), (colonNeeded ? ":" : ""), String::number(i), StringView(m_string).substring(m_hostEnd + m_portLength)));
+    URLParser parser(makeString(StringView(m_string).left(portStart), (colonNeeded ? ":" : ""), static_cast<unsigned>(i), StringView(m_string).substring(m_hostEnd + m_portLength)));
     *this = parser.result();
 }
 

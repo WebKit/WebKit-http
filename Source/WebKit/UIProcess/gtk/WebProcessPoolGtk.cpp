@@ -31,6 +31,7 @@
 #include "APIProcessPoolConfiguration.h"
 #include "Logging.h"
 #include "WebCookieManagerProxy.h"
+#include "WebMemoryPressureHandler.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
 #include <JavaScriptCore/RemoteInspectorServer.h>
@@ -44,37 +45,44 @@
 namespace WebKit {
 
 #if ENABLE(REMOTE_INSPECTOR)
-static bool initializeRemoteInspectorServer(const char* address)
+static void initializeRemoteInspectorServer(const char* address)
 {
     if (Inspector::RemoteInspectorServer::singleton().isRunning())
-        return true;
+        return;
 
     if (!address[0])
-        return false;
+        return;
 
     GUniquePtr<char> inspectorAddress(g_strdup(address));
     char* portPtr = g_strrstr(inspectorAddress.get(), ":");
     if (!portPtr)
-        return false;
+        return;
 
     *portPtr = '\0';
     portPtr++;
     guint64 port = g_ascii_strtoull(portPtr, nullptr, 10);
     if (!port)
-        return false;
+        return;
 
-    return Inspector::RemoteInspectorServer::singleton().start(inspectorAddress.get(), port);
+    Inspector::RemoteInspectorServer::singleton().start(inspectorAddress.get(), port);
 }
 #endif
+
+static bool memoryPressureMonitorDisabled()
+{
+    static const char* disableMemoryPressureMonitor = getenv("WEBKIT_DISABLE_MEMORY_PRESSURE_MONITOR");
+    return disableMemoryPressureMonitor && !strcmp(disableMemoryPressureMonitor, "1");
+}
 
 void WebProcessPool::platformInitialize()
 {
 #if ENABLE(REMOTE_INSPECTOR)
-    if (const char* address = g_getenv("WEBKIT_INSPECTOR_SERVER")) {
-        if (!initializeRemoteInspectorServer(address))
-            g_unsetenv("WEBKIT_INSPECTOR_SERVER");
-    }
+    if (const char* address = g_getenv("WEBKIT_INSPECTOR_SERVER"))
+        initializeRemoteInspectorServer(address);
 #endif
+
+    if (!memoryPressureMonitorDisabled())
+        installMemoryPressureHandler();
 }
 
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
@@ -87,8 +95,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     if (forceComplexText && !strcmp(forceComplexText, "0"))
         parameters.shouldAlwaysUseComplexTextCodePath = m_alwaysUsesComplexTextCodePath;
 
-    const char* disableMemoryPressureMonitor = getenv("WEBKIT_DISABLE_MEMORY_PRESSURE_MONITOR");
-    if (disableMemoryPressureMonitor && !strcmp(disableMemoryPressureMonitor, "1"))
+    if (memoryPressureMonitorDisabled())
         parameters.shouldSuppressMemoryPressureHandler = true;
 
 #if USE(GSTREAMER)

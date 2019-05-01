@@ -29,9 +29,13 @@
 #include "config.h"
 #include "FetchRequest.h"
 
+#include "Document.h"
 #include "HTTPParsers.h"
+#include "JSAbortSignal.h"
+#include "Logging.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
+#include "Settings.h"
 
 namespace WebCore {
 
@@ -140,6 +144,31 @@ ExceptionOr<void> FetchRequest::initializeOptions(const Init& init)
     return { };
 }
 
+static inline bool needsSignalQuirk(ScriptExecutionContext& context)
+{
+    if (!is<Document>(context))
+        return false;
+
+    auto& document = downcast<Document>(context);
+    if (!document.settings().needsSiteSpecificQuirks())
+        return false;
+
+    auto host = document.topDocument().url().host();
+    return equalLettersIgnoringASCIICase(host, "leetcode.com") || equalLettersIgnoringASCIICase(host, "www.thrivepatientportal.com");
+}
+
+static inline Optional<Exception> processInvalidSignal(ScriptExecutionContext& context)
+{
+    ASCIILiteral message { "FetchRequestInit.signal should be undefined, null or an AbortSignal object."_s };
+    context.addConsoleMessage(MessageSource::JS, MessageLevel::Warning, message);
+
+    if (needsSignalQuirk(context))
+        return { };
+
+    RELEASE_LOG_ERROR(ResourceLoading, "FetchRequestInit.signal should be undefined, null or an AbortSignal object.");
+    return Exception { TypeError, message };
+}
+
 ExceptionOr<void> FetchRequest::initializeWith(const String& url, Init&& init)
 {
     ASSERT(scriptExecutionContext());
@@ -159,8 +188,14 @@ ExceptionOr<void> FetchRequest::initializeWith(const String& url, Init&& init)
     if (optionsResult.hasException())
         return optionsResult.releaseException();
 
-    if (init.signal && init.signal.value())
-        m_signal->follow(*init.signal.value());
+    if (init.signal) {
+        if (auto* signal = JSAbortSignal::toWrapped(scriptExecutionContext()->vm(), init.signal))
+            m_signal->follow(*signal);
+        else if (!init.signal.isUndefinedOrNull())  {
+            if (auto exception = processInvalidSignal(*scriptExecutionContext()))
+                return WTFMove(*exception);
+        }
+    }
 
     if (init.headers) {
         auto fillResult = m_headers->fill(*init.headers);
@@ -191,11 +226,16 @@ ExceptionOr<void> FetchRequest::initializeWith(FetchRequest& input, Init&& init)
     if (optionsResult.hasException())
         return optionsResult.releaseException();
 
-    if (init.signal) {
-        if (init.signal.value())
-            m_signal->follow(*init.signal.value());
+    if (init.signal && !init.signal.isUndefined()) {
+        if (auto* signal = JSAbortSignal::toWrapped(scriptExecutionContext()->vm(), init.signal))
+            m_signal->follow(*signal);
+        else if (!init.signal.isNull()) {
+            if (auto exception = processInvalidSignal(*scriptExecutionContext()))
+                return WTFMove(*exception);
+        }
+
     } else
-        m_signal->follow(input.m_signal);
+        m_signal->follow(input.m_signal.get());
 
     if (init.headers) {
         auto fillResult = m_headers->fill(*init.headers);

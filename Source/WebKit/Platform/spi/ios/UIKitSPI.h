@@ -321,6 +321,8 @@ typedef enum {
 @interface UIResponder ()
 - (void)_handleKeyUIEvent:(UIEvent *)event;
 - (void)_wheelChangedWithEvent:(UIEvent *)event;
+- (void)_beginPinningInputViews;
+- (void)_endPinningInputViews;
 @end
 
 @class FBSDisplayConfiguration;
@@ -978,6 +980,12 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 -(void)remove;
 @end
 
+@interface UIURLDragPreviewView : UIView
++ (instancetype)viewWithTitle:(NSString *)title URL:(NSURL *)url;
+@end
+
+#endif
+
 @interface UICalloutBar : UIView
 + (void)fadeSharedCalloutBar;
 @end
@@ -988,12 +996,6 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 @interface UITextEffectsWindow : UIAutoRotatingWindow
 + (UITextEffectsWindow *)sharedTextEffectsWindow;
 @end
-
-@interface UIURLDragPreviewView : UIView
-+ (instancetype)viewWithTitle:(NSString *)title URL:(NSURL *)url;
-@end
-
-#endif
 
 @interface _UIVisualEffectLayerConfig : NSObject
 + (instancetype)layerWithFillColor:(UIColor *)fillColor opacity:(CGFloat)opacity filterType:(NSString *)filterType;
@@ -1037,6 +1039,10 @@ typedef NSInteger UICompositingMode;
 @property (nonatomic, readonly) NSMapTable<NSNumber *, UITouch *> *activeTouchesByIdentifier;
 @end
 
+@interface UIGestureRecognizer (Staging_45970040)
+@property (nonatomic, readonly, getter=_modifierFlags) UIKeyModifierFlags modifierFlags;
+@end
+
 @interface UIPhysicalKeyboardEvent : UIPressesEvent
 @end
 
@@ -1074,9 +1080,6 @@ typedef NSInteger UICompositingMode;
 @end
 
 @interface UIPeripheralHost (IPI)
-- (void)_beginIgnoringReloadInputViews;
-- (int)_endIgnoringReloadInputViews;
-- (void)forceReloadInputViews;
 - (CGFloat)getVerticalOverlapForView:(UIView *)view usingKeyboardInfo:(NSDictionary *)info;
 @end
 

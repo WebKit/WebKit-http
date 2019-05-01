@@ -64,6 +64,7 @@
 #import "WKWebViewConfigurationPrivate.h"
 #import "WKWebViewInternal.h"
 #import "WKWebViewPrivate.h"
+#import "WebAutocorrectionContext.h"
 #import "WebDataListSuggestionsDropdownIOS.h"
 #import "WebEvent.h"
 #import "WebIOSEventFactory.h"
@@ -271,7 +272,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 @end
 
 @interface WKAutocorrectionContext : UIWKAutocorrectionContext
-+ (WKAutocorrectionContext *)autocorrectionContextWithData:(NSString *)beforeText markedText:(NSString *)markedText selectedText:(NSString *)selectedText afterText:(NSString *)afterText selectedRangeInMarkedText:(NSRange)range;
++ (WKAutocorrectionContext *)autocorrectionContextWithContext:(const WebKit::WebAutocorrectionContext&)context;
 @end
 
 @interface UITextInteractionAssistant (UITextInteractionAssistant_Internal)
@@ -739,7 +740,8 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 #endif
 
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
-    [center addObserver:self selector:@selector(_resetShowingTextStyle:) name:UIMenuControllerDidHideMenuNotification object:nil];
+    [center addObserver:self selector:@selector(_willHideMenu:) name:UIMenuControllerWillHideMenuNotification object:nil];
+    [center addObserver:self selector:@selector(_didHideMenu:) name:UIMenuControllerDidHideMenuNotification object:nil];
     [center addObserver:self selector:@selector(_keyboardDidRequestDismissal:) name:UIKeyboardPrivateDidRequestDismissalNotification object:nil];
 
     _showingTextStyleOptions = NO;
@@ -885,6 +887,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 #if ENABLE(POINTER_EVENTS)
     [self _resetPanningPreventionFlags];
 #endif
+    [self _handleDOMPasteRequestWithResult:NO];
 }
 
 - (void)_removeDefaultGestureRecognizers
@@ -1090,17 +1093,22 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     if (_resigningFirstResponder)
         return NO;
 
+    if (!_inputViewUpdateDeferrer)
+        _inputViewUpdateDeferrer = std::make_unique<WebKit::InputViewUpdateDeferrer>(self);
+
     BOOL didBecomeFirstResponder;
     {
         SetForScope<BOOL> becomingFirstResponder { _becomingFirstResponder, YES };
         didBecomeFirstResponder = [super becomeFirstResponder];
     }
 
-    if (didBecomeFirstResponder)
+    if (didBecomeFirstResponder) {
         _page->activityStateDidChange(WebCore::ActivityState::IsFocused);
 
-    if (didBecomeFirstResponder && [self canShowNonEmptySelectionView])
-        [_textSelectionAssistant activateSelection];
+        if ([self canShowNonEmptySelectionView])
+            [_textSelectionAssistant activateSelection];
+    } else
+        _inputViewUpdateDeferrer = nullptr;
 
     return didBecomeFirstResponder;
 }
@@ -1137,8 +1145,10 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
     bool superDidResign = [super resignFirstResponder];
 
-    if (superDidResign)
+    if (superDidResign) {
+        [self _handleDOMPasteRequestWithResult:NO];
         _page->activityStateDidChange(WebCore::ActivityState::IsFocused);
+    }
 
     return superDidResign;
 }
@@ -1159,6 +1169,11 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 }
 #endif
 
+inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecognizer *recognizer)
+{
+    return [recognizer respondsToSelector:@selector(_modifierFlags)] ? recognizer.modifierFlags : 0;
+}
+
 - (void)_webTouchEventsRecognized:(UIWebTouchEventsGestureRecognizer *)gestureRecognizer
 {
     if (!_page->isValid())
@@ -1167,11 +1182,13 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     const _UIWebTouchEvent* lastTouchEvent = gestureRecognizer.lastTouchEvent;
 
     _lastInteractionLocation = lastTouchEvent->locationInDocumentCoordinates;
-    if (lastTouchEvent->type == UIWebTouchEventTouchBegin)
+    if (lastTouchEvent->type == UIWebTouchEventTouchBegin) {
+        [self _handleDOMPasteRequestWithResult:NO];
         _layerTreeTransactionIdAtLastTouchStart = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).lastCommittedLayerTreeTransactionID();
+    }
 
 #if ENABLE(TOUCH_EVENTS)
-    WebKit::NativeWebTouchEvent nativeWebTouchEvent(lastTouchEvent);
+    WebKit::NativeWebTouchEvent nativeWebTouchEvent { lastTouchEvent, gestureRecognizerModifierFlags(gestureRecognizer) };
     nativeWebTouchEvent.setCanPreventNativeGestures(!_canSendTouchEventsAsynchronously || [gestureRecognizer isDefaultPrevented]);
 
 #if ENABLE(POINTER_EVENTS)
@@ -1829,6 +1846,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 {
     CGPoint point = [gestureRecognizer locationInView:self];
 
+    if (gestureRecognizer == _stylusSingleTapGestureRecognizer)
+        return _webView._stylusTapGestureShouldCreateEditableImage;
+
     if (gestureRecognizer == _highlightLongPressGestureRecognizer
         || gestureRecognizer == _doubleTapGestureRecognizer
         || gestureRecognizer == _nonBlockingDoubleTapGestureRecognizer
@@ -1966,6 +1986,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (!_webView.configuration._textInteractionGesturesEnabled)
         return NO;
 
+    if (_domPasteRequestHandler)
+        return NO;
+
     if (_suppressSelectionAssistantReasons)
         return NO;
 
@@ -2051,7 +2074,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         break;
     case UIGestureRecognizerStateEnded:
         if (_highlightLongPressCanClick && _positionInformation.isElement) {
-            [self _attemptClickAtLocation:[gestureRecognizer startPoint]];
+            [self _attemptClickAtLocation:gestureRecognizer.startPoint modifierFlags:gestureRecognizerModifierFlags(gestureRecognizer)];
             [self _finishInteraction];
         } else
             [self _cancelInteraction];
@@ -2070,14 +2093,12 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 {
     _isTapHighlightIDValid = YES;
     _isExpectingFastSingleTapCommit = YES;
-    _page->handleTwoFingerTapAtPoint(WebCore::roundedIntPoint(gestureRecognizer.centroid), ++_latestTapID);
+    _page->handleTwoFingerTapAtPoint(WebCore::roundedIntPoint(gestureRecognizer.centroid), WebKit::webEventModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer)), ++_latestTapID);
 }
 
 - (void)_stylusSingleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
 {
-    if (!_webView._stylusTapGestureShouldCreateEditableImage)
-        return;
-
+    ASSERT(_webView._stylusTapGestureShouldCreateEditableImage);
     ASSERT(gestureRecognizer == _stylusSingleTapGestureRecognizer);
     _page->handleStylusSingleTapAtPoint(WebCore::roundedIntPoint(gestureRecognizer.location), ++_latestTapID);
 }
@@ -2170,11 +2191,8 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
 
-    if (![self isFirstResponder]) {
-        if (!_inputViewUpdateDeferrer)
-            _inputViewUpdateDeferrer = std::make_unique<WebKit::InputViewUpdateDeferrer>();
+    if (![self isFirstResponder])
         [self becomeFirstResponder];
-    }
 
     ASSERT(_potentialTapInProgress);
 
@@ -2194,7 +2212,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     }
 
     [_inputPeripheral endEditing];
-    _page->commitPotentialTap(_layerTreeTransactionIdAtLastTouchStart);
+    _page->commitPotentialTap(WebKit::webEventModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer)), _layerTreeTransactionIdAtLastTouchStart);
 
     if (!_isExpectingFastSingleTapCommit)
         [self _finishInteraction];
@@ -2227,16 +2245,13 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     _smartMagnificationController->handleResetMagnificationGesture(gestureRecognizer.location);
 }
 
-- (void)_attemptClickAtLocation:(CGPoint)location
+- (void)_attemptClickAtLocation:(CGPoint)location modifierFlags:(UIKeyModifierFlags)modifierFlags
 {
-    if (![self isFirstResponder]) {
-        if (!_inputViewUpdateDeferrer)
-            _inputViewUpdateDeferrer = std::make_unique<WebKit::InputViewUpdateDeferrer>();
+    if (![self isFirstResponder])
         [self becomeFirstResponder];
-    }
 
     [_inputPeripheral endEditing];
-    _page->handleTap(location, _layerTreeTransactionIdAtLastTouchStart);
+    _page->handleTap(location, WebKit::webEventModifierFlags(modifierFlags), _layerTreeTransactionIdAtLastTouchStart);
 }
 
 - (void)setUpTextSelectionAssistant
@@ -2391,7 +2406,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 #define FORWARD_ACTION_TO_WKWEBVIEW(_action) \
     - (void)_action:(id)sender \
     { \
+        SEL action = @selector(_action:);\
+        [self _willPerformAction:action sender:sender];\
         [_webView _action:sender]; \
+        [self _didPerformAction:action sender:sender];\
     }
 
 FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
@@ -2636,11 +2654,17 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
 {
+    if (_domPasteRequestHandler)
+        return action == @selector(paste:);
+
     return [_webView canPerformAction:action withSender:sender];
 }
 
 - (BOOL)canPerformActionForWebView:(SEL)action withSender:(id)sender
 {
+    if (_domPasteRequestHandler)
+        return action == @selector(paste:);
+
     if (action == @selector(_nextAccessoryTab:))
         return hasFocusedElement(_focusedElementInformation) && _focusedElementInformation.hasNextNode;
     if (action == @selector(_previousAccessoryTab:))
@@ -2787,7 +2811,12 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
     return [super targetForAction:action withSender:sender];
 }
 
-- (void)_resetShowingTextStyle:(NSNotification *)notification
+- (void)_willHideMenu:(NSNotification *)notification
+{
+    [self _handleDOMPasteRequestWithResult:NO];
+}
+
+- (void)_didHideMenu:(NSNotification *)notification
 {
     _showingTextStyleOptions = NO;
     [_textSelectionAssistant hideTextStyleOptions];
@@ -2812,6 +2841,9 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 
 - (void)pasteForWebView:(id)sender
 {
+    if (sender == UIMenuController.sharedMenuController && [self _handleDOMPasteRequestWithResult:YES])
+        return;
+
     _page->executeEditCommand("paste"_s);
 }
 
@@ -2939,6 +2971,28 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 - (void)_accessibilityClearSelection
 {
     _page->storeSelectionForAccessibility(false);
+}
+
+- (BOOL)_handleDOMPasteRequestWithResult:(BOOL)allowPaste
+{
+    if (auto pasteHandler = WTFMove(_domPasteRequestHandler)) {
+        [self hideGlobalMenuController];
+        pasteHandler(allowPaste);
+        return YES;
+    }
+    return NO;
+}
+
+- (void)_willPerformAction:(SEL)action sender:(id)sender
+{
+    if (action != @selector(paste:))
+        [self _handleDOMPasteRequestWithResult:NO];
+}
+
+- (void)_didPerformAction:(SEL)action sender:(id)sender
+{
+    if (action == @selector(paste:))
+        [self _handleDOMPasteRequestWithResult:NO];
 }
 
 // UIWKInteractionViewProtocol
@@ -3215,13 +3269,12 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 - (void)requestAutocorrectionRectsForString:(NSString *)input withCompletionHandler:(void (^)(UIWKAutocorrectionRects *rectsForInput))completionHandler
 {
     if (!input || ![input length]) {
-        completionHandler(nil);
+        if (completionHandler)
+            completionHandler(nil);
         return;
     }
 
-    RetainPtr<WKContentView> view = self;
-    _autocorrectionData.autocorrectionHandler = [completionHandler copy];
-    _page->requestAutocorrectionData(input, [view](const Vector<WebCore::FloatRect>& rects, const String& fontName, double fontSize, uint64_t traits, WebKit::CallbackBase::Error) {
+    _page->requestAutocorrectionData(input, [view = retainPtr(self), completion = makeBlockPtr(completionHandler)](auto& rects, auto& fontName, double fontSize, uint64_t traits, auto) {
         CGRect firstRect = CGRectZero;
         CGRect lastRect = CGRectZero;
         if (rects.size()) {
@@ -3235,9 +3288,8 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         view->_autocorrectionData.textFirstRect = firstRect;
         view->_autocorrectionData.textLastRect = lastRect;
 
-        view->_autocorrectionData.autocorrectionHandler(rects.size() ? [WKAutocorrectionRects autocorrectionRectsWithRects:firstRect lastRect:lastRect] : nil);
-        [view->_autocorrectionData.autocorrectionHandler release];
-        view->_autocorrectionData.autocorrectionHandler = nil;
+        if (completion)
+            completion(rects.size() ? [WKAutocorrectionRects autocorrectionRectsWithRects:firstRect lastRect:lastRect] : nil);
     });
 }
 
@@ -3379,39 +3431,33 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     const bool useSyncRequest = true;
 
     if (useSyncRequest) {
-        completionHandler(_page->applyAutocorrection(correction, input) ? [WKAutocorrectionRects autocorrectionRectsWithRects:_autocorrectionData.textFirstRect lastRect:_autocorrectionData.textLastRect] : nil);
+        if (completionHandler)
+            completionHandler(_page->applyAutocorrection(correction, input) ? [WKAutocorrectionRects autocorrectionRectsWithRects:_autocorrectionData.textFirstRect lastRect:_autocorrectionData.textLastRect] : nil);
         return;
     }
-    _autocorrectionData.autocorrectionHandler = [completionHandler copy];
-    RetainPtr<WKContentView> view = self;
-    _page->applyAutocorrection(correction, input, [view](const String& string, WebKit::CallbackBase::Error error) {
-        view->_autocorrectionData.autocorrectionHandler(!string.isNull() ? [WKAutocorrectionRects autocorrectionRectsWithRects:view->_autocorrectionData.textFirstRect lastRect:view->_autocorrectionData.textLastRect] : nil);
-        [view->_autocorrectionData.autocorrectionHandler release];
-        view->_autocorrectionData.autocorrectionHandler = nil;
+
+    _page->applyAutocorrection(correction, input, [view = retainPtr(self), completion = makeBlockPtr(completionHandler)](auto& string, auto error) {
+        if (completion)
+            completion(!string.isNull() ? [WKAutocorrectionRects autocorrectionRectsWithRects:view->_autocorrectionData.textFirstRect lastRect:view->_autocorrectionData.textLastRect] : nil);
     });
 }
 
 - (void)requestAutocorrectionContextWithCompletionHandler:(void (^)(UIWKAutocorrectionContext *autocorrectionContext))completionHandler
 {
+    if (!completionHandler)
+        return;
+
     // FIXME: Remove the synchronous call when <rdar://problem/16207002> is fixed.
     const bool useSyncRequest = true;
 
     if (useSyncRequest) {
-        String beforeText;
-        String markedText;
-        String selectedText;
-        String afterText;
-        uint64_t location;
-        uint64_t length;
-        _page->getAutocorrectionContext(beforeText, markedText, selectedText, afterText, location, length);
-        completionHandler([WKAutocorrectionContext autocorrectionContextWithData:beforeText markedText:markedText selectedText:selectedText afterText:afterText selectedRangeInMarkedText:NSMakeRange(location, length)]);
-    } else {
-        _autocorrectionData.autocorrectionContextHandler = [completionHandler copy];
-        RetainPtr<WKContentView> view = self;
-        _page->requestAutocorrectionContext([view](const String& beforeText, const String& markedText, const String& selectedText, const String& afterText, uint64_t location, uint64_t length, WebKit::CallbackBase::Error) {
-            view->_autocorrectionData.autocorrectionContextHandler([WKAutocorrectionContext autocorrectionContextWithData:beforeText markedText:markedText selectedText:selectedText afterText:afterText selectedRangeInMarkedText:NSMakeRange(location, length)]);
-        });
+        completionHandler([WKAutocorrectionContext autocorrectionContextWithContext:_page->autocorrectionContextSync()]);
+        return;
     }
+
+    _page->requestAutocorrectionContext([protectedSelf = retainPtr(self), completion = makeBlockPtr(completionHandler)] (auto& context, auto) {
+        completion([WKAutocorrectionContext autocorrectionContextWithContext:context]);
+    });
 }
 
 // UIWebFormAccessoryDelegate
@@ -4096,6 +4142,8 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (void)handleKeyWebEvent:(::WebEvent *)theEvent withCompletionHandler:(void (^)(::WebEvent *theEvent, BOOL wasHandled))completionHandler
 {
+    [self _handleDOMPasteRequestWithResult:NO];
+
     _keyWebEventHandler = makeBlockPtr(completionHandler);
     _page->handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(theEvent));
 }
@@ -4265,6 +4313,16 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 - (void)_deleteForwardAndNotify:(BOOL)notify
 {
     [self executeEditCommandWithCallback:@"deleteForward"];
+}
+
+- (void)_deleteToEndOfParagraph
+{
+    [self executeEditCommandWithCallback:@"deleteToEndOfParagraph"];
+}
+
+- (void)_transpose
+{
+    [self executeEditCommandWithCallback:@"transpose"];
 }
 
 - (UITextInputArrowKeyHistory *)_moveUp:(BOOL)extending withHistory:(UITextInputArrowKeyHistory *)history
@@ -4582,7 +4640,7 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
 - (void)_elementDidFocus:(const WebKit::FocusedElementInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode changingActivityState:(BOOL)changingActivityState userObject:(NSObject <NSSecureCoding> *)userObject
 {
     SetForScope<BOOL> isChangingFocusForScope { _isChangingFocus, hasFocusedElement(_focusedElementInformation) };
-    _inputViewUpdateDeferrer = nullptr;
+    auto inputViewUpdateDeferrer = std::exchange(_inputViewUpdateDeferrer, nullptr);
 
     _didAccessoryTabInitiateFocus = _isChangingFocusUsingAccessoryTab;
 
@@ -4783,6 +4841,47 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
     _focusedElementInformation.inputMode = mode;
     [self reloadInputViews];
 #endif
+}
+
+- (void)showGlobalMenuControllerInRect:(CGRect)rect
+{
+    UIMenuController *controller = UIMenuController.sharedMenuController;
+#if HAVE(MENU_CONTROLLER_SHOW_HIDE_API)
+    [controller showMenuFromView:self rect:rect];
+#else
+    [controller setTargetRect:rect inView:self];
+    [controller setMenuVisible:YES animated:YES];
+#endif
+}
+
+- (void)hideGlobalMenuController
+{
+    UIMenuController *controller = UIMenuController.sharedMenuController;
+#if HAVE(MENU_CONTROLLER_SHOW_HIDE_API)
+    [controller hideMenuFromView:self];
+#else
+    [controller setMenuVisible:NO animated:YES];
+#endif
+}
+
+- (void)_requestDOMPasteAccessWithElementRect:(const WebCore::IntRect&)elementRect completionHandler:(CompletionHandler<void(bool)>&&)completionHandler
+{
+    if (auto existingCompletionHandler = std::exchange(_domPasteRequestHandler, WTFMove(completionHandler))) {
+        ASSERT_NOT_REACHED();
+        existingCompletionHandler(false);
+    }
+
+    WebCore::IntRect menuControllerRect = elementRect;
+
+    const CGFloat maximumElementWidth = 300;
+    const CGFloat maximumElementHeight = 120;
+    if (elementRect.isEmpty() || elementRect.width() > maximumElementWidth || elementRect.height() > maximumElementHeight) {
+        const CGFloat interactionLocationMargin = 10;
+        menuControllerRect = { WebCore::IntPoint(_lastInteractionLocation), { } };
+        menuControllerRect.inflate(interactionLocationMargin);
+    }
+
+    [self showGlobalMenuControllerInRect:menuControllerRect];
 }
 
 - (void)_didReceiveEditorStateUpdateAfterFocus
@@ -5417,7 +5516,7 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
 
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant openElementAtLocation:(CGPoint)location
 {
-    [self _attemptClickAtLocation:location];
+    [self _attemptClickAtLocation:location modifierFlags:0];
 }
 
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant shareElementWithURL:(NSURL *)url rect:(CGRect)boundingRect
@@ -6424,6 +6523,22 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     _page->performDictionaryLookupAtLocation(WebCore::FloatPoint(locationInViewCoordinates));
 }
 
+static WebEventFlags webEventFlagsForUIKeyModifierFlags(UIKeyModifierFlags flags)
+{
+    WebEventFlags eventFlags = 0;
+    if (flags & UIKeyModifierShift)
+        eventFlags |= WebEventFlagMaskLeftShiftKey;
+    if (flags & UIKeyModifierControl)
+        eventFlags |= WebEventFlagMaskLeftControlKey;
+    if (flags & UIKeyModifierAlternate)
+        eventFlags |= WebEventFlagMaskLeftOptionKey;
+    if (flags & UIKeyModifierCommand)
+        eventFlags |= WebEventFlagMaskLeftCommandKey;
+    if (flags & UIKeyModifierAlphaShift)
+        eventFlags |= WebEventFlagMaskLeftCapsLockKey;
+    return eventFlags;
+}
+
 - (void)_hoverGestureRecognizerChanged:(UIGestureRecognizer *)gestureRecognizer
 {
     if (!_page->isValid())
@@ -6445,7 +6560,7 @@ ALLOW_DEPRECATED_DECLARATIONS_END
         break;
     }
 
-    auto event = adoptNS([[::WebEvent alloc] initWithMouseEventType:WebEventMouseMoved timeStamp:timestamp location:point]);
+    auto event = adoptNS([[::WebEvent alloc] initWithMouseEventType:WebEventMouseMoved timeStamp:timestamp location:point modifiers:webEventFlagsForUIKeyModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer))]);
     _page->handleMouseEvent(WebKit::NativeWebMouseEvent(event.get()));
 }
 #endif
@@ -7093,19 +7208,19 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 
 @implementation WKAutocorrectionContext
 
-+ (WKAutocorrectionContext *)autocorrectionContextWithData:(NSString *)beforeText markedText:(NSString *)markedText selectedText:(NSString *)selectedText afterText:(NSString *)afterText selectedRangeInMarkedText:(NSRange)range
++ (WKAutocorrectionContext *)autocorrectionContextWithContext:(const WebKit::WebAutocorrectionContext&)webContext
 {
     WKAutocorrectionContext *context = [[WKAutocorrectionContext alloc] init];
 
-    if ([beforeText length])
-        context.contextBeforeSelection = beforeText;
-    if ([selectedText length])
-        context.selectedText = selectedText;
-    if ([markedText length])
-        context.markedText = markedText;
-    if ([afterText length])
-        context.contextAfterSelection = afterText;
-    context.rangeInMarkedText = range;
+    if (!webContext.contextBefore.isEmpty())
+        context.contextBeforeSelection = webContext.contextBefore;
+    if (!webContext.selectedText.isEmpty())
+        context.selectedText = webContext.selectedText;
+    if (!webContext.markedText.isEmpty())
+        context.markedText = webContext.markedText;
+    if (!webContext.contextAfter.isEmpty())
+        context.contextAfterSelection = webContext.contextAfter;
+    context.rangeInMarkedText = NSMakeRange(webContext.location, webContext.length);
     return [context autorelease];
 }
 

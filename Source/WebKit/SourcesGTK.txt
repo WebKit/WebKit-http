@@ -112,7 +112,10 @@ UIProcess/BackingStore.cpp
 UIProcess/DefaultUndoController.cpp
 UIProcess/DrawingAreaProxyImpl.cpp
 UIProcess/LegacySessionStateCodingNone.cpp
+UIProcess/ViewGestureController.cpp
+UIProcess/ViewSnapshotStore.cpp @no-unify
 UIProcess/WebGrammarDetail.cpp
+UIProcess/WebMemoryPressureHandler.cpp @no-unify
 UIProcess/WebTextChecker.cpp
 UIProcess/WebTextCheckerClient.cpp
 UIProcess/WebViewportAttributes.cpp
@@ -123,6 +126,7 @@ UIProcess/API/C/WKViewportAttributes.cpp
 UIProcess/API/C/gtk/WKTextCheckerGtk.cpp
 UIProcess/API/C/gtk/WKView.cpp
 
+UIProcess/API/glib/APIContentRuleListStoreGLib.cpp @no-unify
 UIProcess/API/glib/APIWebsiteDataStoreGLib.cpp @no-unify
 UIProcess/API/glib/IconDatabase.cpp @no-unify
 UIProcess/API/glib/WebKitApplicationInfo.cpp @no-unify
@@ -240,6 +244,8 @@ UIProcess/gtk/InputMethodFilter.cpp @no-unify
 UIProcess/gtk/KeyBindingTranslator.cpp
 UIProcess/gtk/RemoteWebInspectorProxyGtk.cpp @no-unify
 UIProcess/gtk/TextCheckerGtk.cpp @no-unify
+UIProcess/gtk/ViewGestureControllerGtk.cpp @no-unify
+UIProcess/gtk/ViewSnapshotStoreGtk.cpp @no-unify
 UIProcess/gtk/WaylandCompositor.cpp @no-unify
 UIProcess/gtk/WebColorPickerGtk.cpp @no-unify
 UIProcess/gtk/WebContextMenuProxyGtk.cpp
@@ -397,6 +403,7 @@ WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp
 WebProcess/WebPage/AcceleratedDrawingArea.cpp
 WebProcess/WebPage/AcceleratedSurface.cpp
 WebProcess/WebPage/LayerTreeHost.cpp
+WebProcess/WebPage/ViewGestureGeometryCollector.cpp
 
 WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
 WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp

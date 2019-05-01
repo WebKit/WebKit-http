@@ -51,6 +51,7 @@ def loadBuilderConfig(c, use_localhost_worker=False, master_prefix_path='./'):
     for builder in config['builders']:
         builder['tags'] = getTagsForBuilder(builder)
         factory = globals()[builder['factory']]
+        builder['description'] = builder.pop("shortname")
         factorykwargs = {}
         for key in ["platform", "configuration", "architectures", "triggers", "additionalArguments"]:
             value = builder.pop(key, None)
@@ -100,6 +101,9 @@ def checkValidBuilder(config, builder):
 
     if not builder.get('name'):
         raise Exception('Builder "{}" does not have name defined.'.format(builder))
+
+    if not builder.get('shortname'):
+        raise Exception('Builder "{}" does not have short name defined. This name is needed for EWS status bubbles.'.format(builder.get('name')))
 
     if not buildbot_identifiers.ident_re.match(builder['name']):
         raise Exception('Builder name {} is not a valid buildbot identifier.'.format(builder['name']))

@@ -1,4 +1,4 @@
-// Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+// Copyright (C) 2017-2019 Apple Inc. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@ accessibility/ios/AXObjectCacheIOS.mm
 accessibility/ios/WebAccessibilityObjectWrapperIOS.mm
 
 accessibility/mac/AXObjectCacheMac.mm
+accessibility/mac/AccessibilityObjectBase.mm
 accessibility/mac/AccessibilityObjectMac.mm
 accessibility/mac/WebAccessibilityObjectWrapperMac.mm @no-unify
 accessibility/mac/WebAccessibilityObjectWrapperBase.mm @no-unify
@@ -70,6 +71,7 @@ crypto/mac/SerializedCryptoKeyWrapMac.mm
 
 dom/DataTransferMac.mm
 
+dom/ios/MouseEventIOS.cpp
 dom/ios/PointerEventIOS.cpp
 dom/ios/TouchEvents.cpp
 
@@ -108,8 +110,6 @@ html/shadow/mac/ImageControlsButtonElementMac.cpp
 html/shadow/mac/ImageControlsRootElementMac.cpp
 
 history/mac/HistoryItemMac.mm
-
-loader/ResourceLoadInfo.cpp
 
 loader/archive/cf/LegacyWebArchive.cpp
 loader/archive/cf/LegacyWebArchiveMac.mm
@@ -191,7 +191,7 @@ platform/cf/SharedBufferCF.cpp
 
 platform/cocoa/ContentFilterUnblockHandlerCocoa.mm @no-unify
 platform/cocoa/CoreVideoSoftLink.cpp
-platform/cocoa/DataDetectorsCoreSoftLink.mm
+platform/cocoa/DataDetectorsCoreSoftLink.mm @no-unify
 platform/cocoa/FileMonitorCocoa.mm
 platform/cocoa/KeyEventCocoa.mm
 platform/cocoa/LocalizedStringsCocoa.mm
@@ -331,6 +331,7 @@ platform/graphics/gpu/cocoa/GPURenderPipelineMetal.mm
 platform/graphics/gpu/cocoa/GPUShaderModuleMetal.mm
 platform/graphics/gpu/cocoa/GPUSwapChainMetal.mm
 platform/graphics/gpu/cocoa/GPUTextureMetal.mm
+platform/graphics/gpu/cocoa/GPUUtilsMetal.mm
 platform/graphics/gpu/Texture.cpp
 platform/graphics/gpu/TilingData.cpp
 
@@ -588,6 +589,7 @@ platform/mediastream/libwebrtc/LibWebRTCProviderCocoa.cpp
     Modules/applepay/ApplePayShippingMethodSelectedEvent.cpp
     Modules/applepay/ApplePayValidateMerchantEvent.cpp
     Modules/applepay/PaymentCoordinator.cpp
+    Modules/applepay/PaymentCoordinatorClient.cpp
     Modules/applepay/PaymentRequestValidator.mm
     Modules/applepay/PaymentSession.cpp
 

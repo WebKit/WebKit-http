@@ -161,7 +161,8 @@ void UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstrai
         auto source = sourceOrError.source();
         source->setIsRemote(true);
         settings = source->settings();
-        m_proxies.set(id, std::make_unique<SourceProxy>(id, *this, WTFMove(source)));
+        ASSERT(!m_proxies.contains(id));
+        m_proxies.add(id, std::make_unique<SourceProxy>(id, *this, WTFMove(source)));
     } else
         invalidConstraints = WTFMove(sourceOrError.errorMessage);
 }
@@ -178,6 +179,11 @@ void UserMediaCaptureManagerProxy::stopProducingData(uint64_t id)
     auto iter = m_proxies.find(id);
     if (iter != m_proxies.end())
         iter->value->source().stop();
+}
+
+void UserMediaCaptureManagerProxy::end(uint64_t id)
+{
+    m_proxies.remove(id);
 }
 
 void UserMediaCaptureManagerProxy::capabilities(uint64_t id, WebCore::RealtimeMediaSourceCapabilities& capabilities)
@@ -205,7 +211,12 @@ void UserMediaCaptureManagerProxy::applyConstraints(uint64_t id, const WebCore::
     if (!result)
         m_process.send(Messages::UserMediaCaptureManager::ApplyConstraintsSucceeded(id, source.settings()), 0);
     else
-        m_process.send(Messages::UserMediaCaptureManager::ApplyConstraintsFailed(id, result.value().first, result.value().second), 0);
+        m_process.send(Messages::UserMediaCaptureManager::ApplyConstraintsFailed(id, result->badConstraint, result->message), 0);
+}
+
+void UserMediaCaptureManagerProxy::clear()
+{
+    m_proxies.clear();
 }
 
 }

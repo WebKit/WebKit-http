@@ -1,3 +1,254 @@
+2019-02-12  Tim Horton  <timothy_horton@apple.com>
+
+        Remove WKLegacyPDFView
+        https://bugs.webkit.org/show_bug.cgi?id=194559
+
+        Reviewed by Andy Estes.
+
+        * wtf/FeatureDefines.h:
+
+2019-02-12  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r238955, r240494): Soft-linking optional Lookup.framework triggers release assertion when missing
+        <https://webkit.org/b/194529>
+        <rdar://problem/47924449>
+
+        Reviewed by Eric Carlson.
+
+        * wtf/cocoa/SoftLinking.h:
+        (SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT_AND_IS_OPTIONAL): Rename
+        SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT_AND_ASSERTION() to this
+        and change `assertion` argument to `isOptional`.  Pass
+        `isOptional` to framework##Library() method to control assertion
+        behavior.  Only check RELEASE_ASSERT() if `!isOptional`, else
+        that code should be optimized out by the compiler.  This fixes
+        the crash.
+        (NO_ASSERT): Remove macro since it's no longer used.
+        (SOFT_LINK_IS_OPTIONAL): Add macro to use for soft-linking
+        optional classes.
+        (SOFT_LINK_IS_NOT_OPTIONAL): Add macro to use for soft-linking
+        non-optional classes.
+        (SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT): Update to use new
+        SOFT_LINK_CLASS_FOR_SOURCE_WITH_EXPORT_AND_IS_OPTIONAL() macro.
+        (SOFT_LINK_CLASS_FOR_SOURCE_OPTIONAL_WITH_EXPORT): Ditto.
+        (SOFT_LINK_CLASS_FOR_SOURCE): Ditto.
+        (SOFT_LINK_CLASS_FOR_SOURCE_OPTIONAL): Ditto.
+
+2019-02-12  Andy Estes  <aestes@apple.com>
+
+        [iOSMac] Enable Parental Controls Content Filtering
+        https://bugs.webkit.org/show_bug.cgi?id=194521
+        <rdar://39732376>
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+
+2019-02-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Ask platform for generic font family mappings
+        https://bugs.webkit.org/show_bug.cgi?id=187723
+        <rdar://problem/41892438>
+
+        Reviewed by Brent Fulgham.
+
+        Add an ENABLE in Platform.
+
+        * wtf/Platform.h:
+
+2019-02-11  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r241229.
+
+        Revision broke internal builds for watchOS.
+
+        Reverted changeset:
+
+        "[Cocoa] Ask platform for generic font family mappings"
+        https://bugs.webkit.org/show_bug.cgi?id=187723
+        https://trac.webkit.org/changeset/241229
+
+2019-02-10  Darin Adler  <darin@apple.com>
+
+        Switch uses of StringBuilder with String::format for hex numbers to use HexNumber.h instead
+        https://bugs.webkit.org/show_bug.cgi?id=194485
+
+        Reviewed by Daniel Bates.
+
+        * wtf/HexNumber.h: Removed unused functions placeByteAsHexCompressIfPossible and
+        placeByteAsHex. Can always bring them back if someone needs them. Updated
+        appendUnsignedAsHex to be a template so we can use it on any integer type,
+        got rid of unnecessary use of Vector and unnecessary reversing, and got rid of
+        appendUnsigned64AsHex since callers can now just use appendUnsignedAsHex.
+        Rewrote appendUnsignedAsHexFixedSize to share mode code rather than replicating.
+
+        * wtf/Logger.h: Use appendUnsignedAsHex instead of appendUnsigned64AsHex.
+
+        * wtf/URL.cpp: Removed unnecessary include of HexNumber.h.
+
+        * wtf/cocoa/NSURLExtras.h: Added missing include of Foundation.h that was
+        worked around in NSURLExtras.mm.
+        * wtf/cocoa/NSURLExtras.mm: Removed unnecessary includes of HexNumber.h
+        and Foundation.h.
+
+2019-02-09  Darin Adler  <darin@apple.com>
+
+        Eliminate unnecessary String temporaries by using StringConcatenateNumbers
+        https://bugs.webkit.org/show_bug.cgi?id=194021
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/URL.cpp:
+        (WTF::URL::setPort): Remove String::number and let makeString do the conversion
+        without allocating/destroying a String. Added a cast to "unsigned" to sidestep the
+        ambiguity with 16-bit unsigned types that are sometimes used for numbers (uint16_t)
+        and sometimes used for UTF-16 code units (UChar) and can be the same type.
+
+        * wtf/text/StringConcatenateNumbers.h:
+        Changed FormattedNumber::fixedPrecision to more closely match String::number and
+        StringBuilder::appendNumber by defaulting to truncating trailing zeros and using
+        a named enumeration for the truncation policy rather than a boolean.
+
+
+2019-02-09  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, rolling in r241237 again
+        https://bugs.webkit.org/show_bug.cgi?id=194469
+
+        After the measurement, this patch was unrelated to recent regression.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::isSubString const):
+        (WTF::StringImpl::createSubstringSharingImpl):
+
+2019-02-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r241237.
+        https://bugs.webkit.org/show_bug.cgi?id=194474
+
+        Shows significant memory increase in WSL (Requested by
+        yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[WTF] Use BufferInternal StringImpl if substring StringImpl
+        takes more memory"
+        https://bugs.webkit.org/show_bug.cgi?id=194469
+        https://trac.webkit.org/changeset/241237
+
+2019-02-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Use BufferInternal StringImpl if substring StringImpl takes more memory
+        https://bugs.webkit.org/show_bug.cgi?id=194469
+
+        Reviewed by Geoffrey Garen.
+
+        Because pointer is large and aligned in 64bit in 64bit architecture, BufferSubstring StringImpl
+        implementation takes more memory than BufferInternal StringImpl implementation for small strings.
+        And BufferInternal StringImpl does not have a problem like, small substring StringImpl keeps super
+        large owner StringImpl. This patch calculates the required size of memory and selects the more efficient one.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::isSubString const):
+        (WTF::StringImpl::createSubstringSharingImpl):
+
+2019-02-08  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to use networking daemon instead of XPC service
+        https://bugs.webkit.org/show_bug.cgi?id=194427
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/spi/darwin/XPCSPI.h:
+        Instead of using XPC bootstrap SPI, we just send a separate message.
+        xpc_copy_bootstrap does not seem to work in  daemons.
+
+2019-02-08  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r241197.
+
+        Broke iOS Simulator Debug build and casued 1 API failure on
+        High Sierra
+
+        Reverted changeset:
+
+        "Add SPI to use networking daemon instead of XPC service"
+        https://bugs.webkit.org/show_bug.cgi?id=194427
+        https://trac.webkit.org/changeset/241197
+
+2019-02-08  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to use networking daemon instead of XPC service
+        https://bugs.webkit.org/show_bug.cgi?id=194427
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/spi/darwin/XPCSPI.h:
+        Instead of using XPC bootstrap SPI, we just send a separate message.
+        xpc_copy_bootstrap does not seem to work in  daemons.
+
+2019-02-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        clampTo(): do not convert the input to double when dealing with integers
+        https://bugs.webkit.org/show_bug.cgi?id=194263
+        <rdar://problem/47692312>
+
+        Reviewed by Darin Adler.
+
+        Previously, every use of clampTo() was converting the input to double,
+        doing the comparison in double, then casting back to whatever type was needed.
+
+        In many case, that was very wasteful. WebKit has many cases of clampTo() with
+        the same type as input/output, or with integer types of different size/sign.
+
+        This patch adds a few versions of clampTo() for the common cases seen in WebKit.
+        In each case, I tried to minimize the amount of conversion needed at runtime.
+
+        * wtf/MathExtras.h:
+        (clampTo):
+
+2019-02-07  Chris Dumez  <cdumez@apple.com>
+
+        Mark more heap-allocated classes as fast allocated
+        https://bugs.webkit.org/show_bug.cgi?id=194422
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/Function.h:
+        (WTF::Function<Out):
+        * wtf/RefCounter.h:
+        * wtf/URL.h:
+        * wtf/text/StringView.cpp:
+
+2019-02-07  Per Arne Vollan  <pvollan@apple.com>
+
+        [macOS] Block coreservicesd in sandbox.
+        https://bugs.webkit.org/show_bug.cgi?id=192670
+
+        Reviewed by Alexey Proskuryakov.
+
+        Add HAVE_CSCHECKFIXDISABLE define.
+
+        * wtf/Platform.h:
+
+2019-02-07  Eric Carlson  <eric.carlson@apple.com>
+
+        [MSE] Convert debug-only logging to runtime logging
+        https://bugs.webkit.org/show_bug.cgi?id=194348
+        <rdar://problem/47566449>
+
+        Reviewed by Jer Noble.
+
+        * wtf/LoggerHelper.h:
+        (WTF::LoggerHelper::childLogIdentifier const): Helper to generate a log identifier for an
+        object that is associated with another logging object.
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::toJSONObject const):
+        (WTF::MediaTime::toJSONString const):
+        (WTF::MediaTimeRange::toJSONString const):
+        (WTF::toJSONStringInternal): Deleted.
+        * wtf/MediaTime.h:
+
 2019-02-05  Keith Rollin  <krollin@apple.com>
 
         Enable the automatic checking and regenerations of .xcfilelists during builds

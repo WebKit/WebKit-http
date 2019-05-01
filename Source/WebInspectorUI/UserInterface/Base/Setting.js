@@ -152,6 +152,7 @@ WI.settings = {
     zoomFactor: new WI.Setting("zoom-factor", 1),
 
     // Experimental
+    experimentalEnableCPUUsageEnhancements: new WI.Setting("experimental-cpu-usage", false),
     experimentalEnableLayersTab: new WI.Setting("experimental-enable-layers-tab", false),
     experimentalEnableNewTabBar: new WI.Setting("experimental-enable-new-tab-bar", false),
     experimentalEnableAuditTab: new WI.Setting("experimental-enable-audit-tab", false),
@@ -165,4 +166,5 @@ WI.settings = {
     filterMultiplexingBackendInspectorProtocolMessages: new WI.Setting("filter-multiplexing-backend-inspector-protocol-messages", true),
     layoutDirection: new WI.Setting("layout-direction-override", "system"),
     pauseForInternalScripts: new WI.Setting("pause-for-internal-scripts", false),
+    debugShowInternalObjectsInHeapSnapshot: new WI.Setting("debug-show-internal-objects-in-heap-snapshot", false),
 };

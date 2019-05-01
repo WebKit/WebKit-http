@@ -115,6 +115,10 @@ void UIScriptController::singleTapAtPoint(long x, long y, JSValueRef callback)
 {
 }
 
+void UIScriptController::singleTapAtPointWithModifiers(long x, long y, JSValueRef modifierArray, JSValueRef callback)
+{
+}
+
 void UIScriptController::doubleTapAtPoint(long x, long y, JSValueRef callback)
 {
 }
@@ -140,6 +144,10 @@ void UIScriptController::stylusUpAtPoint(long x, long y, JSValueRef callback)
 }
 
 void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
+{
+}
+
+void UIScriptController::stylusTapAtPointWithModifiers(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef modifierArray, JSValueRef callback)
 {
 }
 
@@ -173,6 +181,11 @@ void UIScriptController::setShareSheetCompletesImmediatelyWithResolution(bool)
 
 void UIScriptController::selectFormAccessoryPickerRow(long rowIndex)
 {
+}
+
+bool UIScriptController::isPresentingModally() const
+{
+    return false;
 }
 
 JSRetainPtr<JSStringRef> UIScriptController::textContentType() const
@@ -309,6 +322,19 @@ void UIScriptController::platformSetDidShowKeyboardCallback()
 
 void UIScriptController::platformSetDidHideKeyboardCallback()
 {
+}
+
+void UIScriptController::platformSetDidShowMenuCallback()
+{
+}
+
+void UIScriptController::platformSetDidHideMenuCallback()
+{
+}
+
+JSObjectRef UIScriptController::rectForMenuAction(JSStringRef) const
+{
+    return nullptr;
 }
 
 void UIScriptController::platformSetDidEndScrollingCallback()

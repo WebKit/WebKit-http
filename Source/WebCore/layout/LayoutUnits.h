@@ -124,6 +124,32 @@ struct VerticalGeometry {
     HeightAndMargin heightAndMargin;
 };
 
+struct UsedHorizontalValues {
+    explicit UsedHorizontalValues()
+        {
+        }
+
+    explicit UsedHorizontalValues(LayoutUnit containingBlockWidth)
+        : containingBlockWidth(containingBlockWidth)
+        {
+        }
+
+    explicit UsedHorizontalValues(Optional<LayoutUnit> containingBlockWidth, Optional<LayoutUnit> width, Optional<UsedHorizontalMargin> margin)
+        : containingBlockWidth(containingBlockWidth)
+        , width(width)
+        , margin(margin)
+        {
+        }
+
+    Optional<LayoutUnit> containingBlockWidth;
+    Optional<LayoutUnit> width;
+    Optional<UsedHorizontalMargin> margin;
+};
+
+struct UsedVerticalValues {
+    Optional<LayoutUnit> height;
+};
+
 }
 }
 #endif

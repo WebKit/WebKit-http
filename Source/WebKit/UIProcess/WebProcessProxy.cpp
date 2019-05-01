@@ -162,6 +162,11 @@ WebProcessProxy::~WebProcessProxy()
 
     WebPasteboardProxy::singleton().removeWebProcessProxy(*this);
 
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    if (state() == State::Running)
+        processPool().stopDisplayLinks(*connection());
+#endif
+
     if (m_webConnection)
         m_webConnection->invalidate();
 
@@ -239,6 +244,10 @@ void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)
 void WebProcessProxy::processWillShutDown(IPC::Connection& connection)
 {
     ASSERT_UNUSED(connection, this->connection() == &connection);
+
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    processPool().stopDisplayLinks(connection);
+#endif
 
     for (auto& page : m_pageMap.values())
         page->webProcessWillShutDown();
@@ -570,6 +579,10 @@ void WebProcessProxy::processDidTerminateOrFailedToLaunch()
     // Protect ourselves, as the call to disconnect() below may otherwise cause us
     // to be deleted before we can finish our work.
     Ref<WebProcessProxy> protect(*this);
+
+#if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
+    m_userMediaCaptureManagerProxy->clear();
+#endif
 
     if (auto* webConnection = this->webConnection())
         webConnection->didClose();
@@ -1125,8 +1138,12 @@ void WebProcessProxy::isResponsiveWithLazyStop()
     if (m_isResponsive == NoOrMaybe::No)
         return;
 
-    responsivenessTimer().startWithLazyStop();
-    send(Messages::WebProcess::MainThreadPing(), 0);
+    if (!responsivenessTimer().hasActiveTimer()) {
+        // We do not send a ping if we are already waiting for the WebProcess.
+        // Spamming pings on a slow web process is not helpful.
+        responsivenessTimer().startWithLazyStop();
+        send(Messages::WebProcess::MainThreadPing(), 0);
+    }
 }
 
 bool WebProcessProxy::isJITEnabled() const

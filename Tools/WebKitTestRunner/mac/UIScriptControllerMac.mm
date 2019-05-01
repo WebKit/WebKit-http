@@ -209,9 +209,14 @@ void UIScriptController::toggleCapsLock(JSValueRef callback)
     doAsyncTask(callback);
 }
 
-NSUndoManager *UIScriptController::platformUndoManager() const
+NSView *UIScriptController::platformContentView() const
 {
-    return TestController::singleton().mainWebView()->platformView().undoManager;
+    return TestController::singleton().mainWebView()->platformView();
+}
+
+JSObjectRef UIScriptController::calendarType() const
+{
+    return nullptr;
 }
 
 } // namespace WTR

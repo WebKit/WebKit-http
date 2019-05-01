@@ -205,6 +205,28 @@ JSValueRef UIScriptController::didHideKeyboardCallback() const
     return m_context->callbackWithID(CallbackTypeDidHideKeyboard);
 }
 
+void UIScriptController::setDidShowMenuCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidShowMenu);
+    platformSetDidShowMenuCallback();
+}
+
+JSValueRef UIScriptController::didShowMenuCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidShowMenu);
+}
+
+void UIScriptController::setDidHideMenuCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidHideMenu);
+    platformSetDidHideMenuCallback();
+}
+
+JSValueRef UIScriptController::didHideMenuCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidHideMenu);
+}
+
 #if !PLATFORM(COCOA)
 
 void UIScriptController::zoomToScale(double, JSValueRef)
@@ -265,6 +287,10 @@ void UIScriptController::singleTapAtPoint(long x, long y, JSValueRef)
 {
 }
 
+void UIScriptController::singleTapAtPointWithModifiers(long x, long y, JSValueRef modifierArray, JSValueRef callback)
+{
+}
+
 void UIScriptController::doubleTapAtPoint(long x, long y, JSValueRef)
 {
 }
@@ -290,6 +316,10 @@ void UIScriptController::stylusUpAtPoint(long x, long y, JSValueRef callback)
 }
 
 void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
+{
+}
+
+void UIScriptController::stylusTapAtPointWithModifiers(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef modifierArray, JSValueRef callback)
 {
 }
 
@@ -334,6 +364,11 @@ JSRetainPtr<JSStringRef> UIScriptController::selectFormPopoverTitle() const
 JSRetainPtr<JSStringRef> UIScriptController::formInputLabel() const
 {
     return nullptr;
+}
+
+bool UIScriptController::isPresentingModally() const
+{
+    return false;
 }
 
 double UIScriptController::contentOffsetX() const
@@ -487,6 +522,19 @@ void UIScriptController::platformSetDidShowKeyboardCallback()
 
 void UIScriptController::platformSetDidHideKeyboardCallback()
 {
+}
+
+void UIScriptController::platformSetDidShowMenuCallback()
+{
+}
+
+void UIScriptController::platformSetDidHideMenuCallback()
+{
+}
+
+JSObjectRef UIScriptController::rectForMenuAction(JSStringRef) const
+{
+    return nullptr;
 }
 
 void UIScriptController::platformClearAllCallbacks()

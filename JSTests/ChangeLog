@@ -1,3 +1,47 @@
+2019-02-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] String.fromCharCode's slow path always generates 16bit string
+        https://bugs.webkit.org/show_bug.cgi?id=194466
+
+        Reviewed by Keith Miller.
+
+        * stress/string-from-char-code-slow-path.js: Added.
+        (shouldBe):
+        (testWithLength):
+
+2019-02-08  Saam barati  <sbarati@apple.com>
+
+        Nodes that rely on being dominated by CheckInBounds should have a child edge to it
+        https://bugs.webkit.org/show_bug.cgi?id=194334
+        <rdar://problem/47844327>
+
+        Reviewed by Mark Lam.
+
+        * stress/check-in-bounds-should-be-a-child-use.js: Added.
+        (func):
+
+2019-02-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] InitializeEntrypointArguments should produce SpecCellCheck if FlushFormat is FlushedCell
+        https://bugs.webkit.org/show_bug.cgi?id=194369
+        <rdar://problem/47813087>
+
+        Reviewed by Saam Barati.
+
+        * stress/initialize-entrypoint-arguments-with-tdz.js: Added.
+        (A):
+
+2019-02-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] PrivateName to PublicName hash table is wasteful
+        https://bugs.webkit.org/show_bug.cgi?id=194277
+
+        Reviewed by Michael Saboff.
+
+        This test depends on the order of JSSegmentedVariableObjects' variables, which is not guaranteed in JSC. Skipped.
+
+        * ChakraCore.yaml:
+
 2019-02-05  Dominik Infuehr  <dinfuehr@igalia.com>
 
         [ARM] Test running out of executable memory

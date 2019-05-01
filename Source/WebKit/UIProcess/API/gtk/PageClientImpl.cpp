@@ -32,6 +32,7 @@
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
 #include "NativeWebWheelEvent.h"
+#include "ViewSnapshotStore.h"
 #include "WebColorPickerGtk.h"
 #include "WebContextMenuProxyGtk.h"
 #include "WebEventFactory.h"
@@ -67,6 +68,16 @@ std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy(WebProc
 
 void PageClientImpl::setViewNeedsDisplay(const WebCore::Region& region)
 {
+    WebPageProxy* pageProxy = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
+    ASSERT(pageProxy);
+
+    // During the gesture, the page may be displayed with an offset.
+    // To avoid visual glitches, redraw the whole page.
+    if (pageProxy->isShowingNavigationGestureSnapshot()) {
+        gtk_widget_queue_draw(m_viewWidget);
+        return;
+    }
+
     gtk_widget_queue_draw_region(m_viewWidget, toCairoRegion(region).get());
 }
 
@@ -192,6 +203,16 @@ IntRect PageClientImpl::rootViewToScreen(const IntRect& rect)
     return IntRect(convertWidgetPointToScreenPoint(m_viewWidget, rect.location()), rect.size());
 }
 
+WebCore::IntPoint PageClientImpl::accessibilityScreenToRootView(const WebCore::IntPoint& point)
+{
+    return screenToRootView(point);
+}
+
+WebCore::IntRect PageClientImpl::rootViewToAccessibilityScreen(const WebCore::IntRect& rect)    
+{
+    return rootViewToScreen(rect);
+}
+
 void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent& event, bool wasEventHandled)
 {
     if (wasEventHandled)
@@ -253,6 +274,11 @@ void PageClientImpl::selectionDidChange()
     webkitWebViewBaseUpdateTextInputState(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
     if (WEBKIT_IS_WEB_VIEW(m_viewWidget))
         webkitWebViewSelectionDidChange(WEBKIT_WEB_VIEW(m_viewWidget));
+}
+
+RefPtr<ViewSnapshot> PageClientImpl::takeViewSnapshot()
+{
+    return webkitWebViewBaseTakeViewSnapshot(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
 void PageClientImpl::didChangeContentSize(const IntSize& size)
@@ -404,6 +430,12 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& event, bool w
 
 void PageClientImpl::wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent& event)
 {
+    ViewGestureController& controller = webkitWebViewBaseViewGestureController(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
+    if (controller.isSwipeGestureEnabled()) {
+        controller.wheelEventWasNotHandledByWebCore(&event.nativeEvent()->scroll);
+        return;
+    }
+
     webkitWebViewBaseForwardNextWheelEvent(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
     gtk_main_do_event(event.nativeEvent());
 }
@@ -434,18 +466,37 @@ void PageClientImpl::willRecordNavigationSnapshot(WebBackForwardListItem&)
 
 void PageClientImpl::didRemoveNavigationGestureSnapshot()
 {
+    gtk_widget_queue_draw(m_viewWidget);
+}
+
+void PageClientImpl::didStartProvisionalLoadForMainFrame()
+{
+    webkitWebViewBaseDidStartProvisionalLoadForMainFrame(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
 void PageClientImpl::didFirstVisuallyNonEmptyLayoutForMainFrame()
 {
+    webkitWebViewBaseDidFirstVisuallyNonEmptyLayoutForMainFrame(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
 void PageClientImpl::didFinishLoadForMainFrame()
 {
+    webkitWebViewBaseDidFinishLoadForMainFrame(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
-void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType)
+void PageClientImpl::didFailLoadForMainFrame()
 {
+    webkitWebViewBaseDidFailLoadForMainFrame(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
+}
+
+void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType type)
+{
+    webkitWebViewBaseDidSameDocumentNavigationForMainFrame(WEBKIT_WEB_VIEW_BASE(m_viewWidget), type);
+}
+
+void PageClientImpl::didRestoreScrollPosition()
+{
+    webkitWebViewBaseDidRestoreScrollPosition(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
 void PageClientImpl::didChangeBackgroundColor()
@@ -472,5 +523,10 @@ bool PageClientImpl::decidePolicyForInstallMissingMediaPluginsPermissionRequest(
     return true;
 }
 #endif
+
+void PageClientImpl::requestDOMPasteAccess(const IntRect&, CompletionHandler<void(bool)>&& completionHandler)
+{
+    completionHandler(false);
+}
 
 } // namespace WebKit

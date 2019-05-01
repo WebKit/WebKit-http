@@ -100,7 +100,7 @@ public:
     bool isProducingData() const { return m_isProducingData; }
     void start();
     void stop();
-    void requestStop(Observer* callingObserver = nullptr);
+    void requestToEnd(Observer& callingObserver);
 
     bool muted() const { return m_muted; }
     void setMuted(bool);
@@ -150,10 +150,13 @@ public:
     virtual const RealtimeMediaSourceCapabilities& capabilities() = 0;
     virtual const RealtimeMediaSourceSettings& settings() = 0;
 
-    using SuccessHandler = WTF::Function<void()>;
-    using FailureHandler = WTF::Function<void(const String& badConstraint, const String& errorString)>;
-    virtual void applyConstraints(const MediaConstraints&, SuccessHandler&&, FailureHandler&&);
-    Optional<std::pair<String, String>> applyConstraints(const MediaConstraints&);
+    struct ApplyConstraintsError {
+        String badConstraint;
+        String message;
+    };
+    using ApplyConstraintsHandler = CompletionHandler<void(Optional<ApplyConstraintsError>&&)>;
+    virtual void applyConstraints(const MediaConstraints&, ApplyConstraintsHandler&&);
+    Optional<ApplyConstraintsError> applyConstraints(const MediaConstraints&);
 
     bool supportsConstraints(const MediaConstraints&, String&);
     bool supportsConstraint(const MediaConstraint&);
@@ -211,6 +214,8 @@ private:
     virtual void stopProducingData() { }
     virtual void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) { }
 
+    virtual void hasEnded() { }
+
     void forEachObserver(const WTF::Function<void(Observer&)>&) const;
 
     bool m_muted { false };
@@ -238,6 +243,7 @@ private:
     bool m_interrupted { false };
     bool m_captureDidFailed { false };
     bool m_isRemote { false };
+    bool m_isEnded { false };
 };
 
 struct CaptureSourceOrError {

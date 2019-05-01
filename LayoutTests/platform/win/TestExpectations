@@ -1157,6 +1157,7 @@ media/track/track-in-band-cues-added-once.html [ Skip ] # Timeout
 ###### Pasteboard
 ###### These tests are very flaky.
 editing/pasteboard/ [ Pass Failure ]
+editing/pasteboard/ios [ Skip ]
 [ Debug ] editing/pasteboard/copy-crash.html [ Skip ] # Debug Assertion
 [ Debug ] editing/pasteboard/copy-crash-with-extraneous-attribute.html [ Skip ] # Debug Assertion
 [ Debug ] editing/pasteboard/testcase-9507.html [ Skip ] # Debug Assertion
@@ -4267,3 +4268,8 @@ webkit.org/b/193540 js/dfg-int-overflow-in-loop.html [ Skip ]
 webkit.org/b/193540 js/slow-stress/marsaglia.html [ Skip ]
 webkit.org/b/193540 js/slow-stress/simple-custom-getter.html [ Skip ]
 webkit.org/b/193540 performance-api/performance-observer-no-document-leak.html [ Skip ]
+
+webkit.org/b/194451 accessibility/set-value-not-work-for-disabled-sliders.html [ Failure ]
+
+storage/indexeddb/result-request-cycle.html [ Skip ]
+storage/indexeddb/value-cursor-cycle.html [ Skip ]

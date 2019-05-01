@@ -180,19 +180,6 @@ void UIScriptController::setDefaultCalendarType(JSStringRef calendarIdentifier)
 #endif
 }
 
-JSObjectRef UIScriptController::calendarType() const
-{
-#if WK_API_ENABLED
-    WKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    UIView *contentView = [webView valueForKeyPath:@"_currentContentView"];
-    NSString *calendarTypeString = [contentView valueForKeyPath:@"formInputControl.dateTimePickerCalendarType"];
-    auto jsContext = m_context->jsContext();
-    return JSValueToObject(jsContext, [JSValue valueWithObject:calendarTypeString inContext:[JSContext contextWithJSGlobalContextRef:jsContext]].JSValueRef, nullptr);
-#else
-    return nullptr;
-#endif
-}
-
 JSRetainPtr<JSStringRef> UIScriptController::lastUndoLabel() const
 {
     return JSStringCreateWithCFString((__bridge CFStringRef)platformUndoManager().undoActionName);
@@ -201,6 +188,11 @@ JSRetainPtr<JSStringRef> UIScriptController::lastUndoLabel() const
 JSRetainPtr<JSStringRef> UIScriptController::firstRedoLabel() const
 {
     return JSStringCreateWithCFString((__bridge CFStringRef)platformUndoManager().redoActionName);
+}
+
+NSUndoManager *UIScriptController::platformUndoManager() const
+{
+    return platformContentView().undoManager;
 }
 
 } // namespace WTR

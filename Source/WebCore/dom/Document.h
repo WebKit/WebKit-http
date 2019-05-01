@@ -332,6 +332,7 @@ using RenderingContext = Variant<
 >;
 
 class DocumentParserYieldToken {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     WEBCORE_EXPORT DocumentParserYieldToken(Document&);
     WEBCORE_EXPORT ~DocumentParserYieldToken();
@@ -2138,6 +2139,11 @@ inline AXObjectCache* Document::existingAXObjectCache() const
 inline ScriptExecutionContext* Node::scriptExecutionContext() const
 {
     return &document().contextDocument();
+}
+
+inline ActiveDOMObject::ActiveDOMObject(Document& document)
+    : ActiveDOMObject(static_cast<ScriptExecutionContext*>(&document.contextDocument()))
+{
 }
 
 } // namespace WebCore

@@ -67,24 +67,24 @@ private:
     void computeEstimatedVerticalPositionForFormattingRoot(const Box&) const;
     void computeEstimatedVerticalPositionForFloatClear(const FloatingContext&, const Box&) const;
 
-    InstrinsicWidthConstraints instrinsicWidthConstraints() const override;
+    void computeIntrinsicWidthConstraints() const override;
     LayoutUnit verticalPositionWithMargin(const Box&, const UsedVerticalMargin&) const;
 
     // This class implements positioning and sizing for boxes participating in a block formatting context.
     class Geometry : public FormattingContext::Geometry {
     public:
-        static HeightAndMargin inFlowHeightAndMargin(const LayoutState&, const Box&, Optional<LayoutUnit> usedHeight = { });
-        static WidthAndMargin inFlowWidthAndMargin(const LayoutState&, const Box&, Optional<LayoutUnit> usedWidth = { });
+        static HeightAndMargin inFlowHeightAndMargin(const LayoutState&, const Box&, UsedVerticalValues);
+        static WidthAndMargin inFlowWidthAndMargin(const LayoutState&, const Box&, UsedHorizontalValues);
 
         static Point staticPosition(const LayoutState&, const Box&);
 
-        static bool instrinsicWidthConstraintsNeedChildrenWidth(const Box&);
-        static InstrinsicWidthConstraints instrinsicWidthConstraints(const LayoutState&, const Box&);
+        static bool intrinsicWidthConstraintsNeedChildrenWidth(const Box&);
+        static IntrinsicWidthConstraints intrinsicWidthConstraints(const LayoutState&, const Box&);
 
     private:
-        static HeightAndMargin inFlowNonReplacedHeightAndMargin(const LayoutState&, const Box&, Optional<LayoutUnit> usedHeight = { });
-        static WidthAndMargin inFlowNonReplacedWidthAndMargin(const LayoutState&, const Box&, Optional<LayoutUnit> usedWidth = { });
-        static WidthAndMargin inFlowReplacedWidthAndMargin(const LayoutState&, const Box&, Optional<LayoutUnit> usedWidth = { });
+        static HeightAndMargin inFlowNonReplacedHeightAndMargin(const LayoutState&, const Box&, UsedVerticalValues);
+        static WidthAndMargin inFlowNonReplacedWidthAndMargin(const LayoutState&, const Box&, UsedHorizontalValues);
+        static WidthAndMargin inFlowReplacedWidthAndMargin(const LayoutState&, const Box&, UsedHorizontalValues);
         static Point staticPositionForOutOfFlowPositioned(const LayoutState&, const Box&);
     };
 

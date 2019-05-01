@@ -80,6 +80,9 @@ struct _WebKitSettingsPrivate {
     bool allowModalDialogs { false };
     bool zoomTextOnly { false };
     double screenDpi { 96 };
+#if PLATFORM(GTK)
+    bool enableBackForwardNavigationGestures { false };
+#endif
 };
 
 /**
@@ -161,7 +164,9 @@ enum {
     PROP_ALLOW_UNIVERSAL_ACCESS_FROM_FILE_URLS,
 #if PLATFORM(GTK)
     PROP_HARDWARE_ACCELERATION_POLICY,
+    PROP_ENABLE_BACK_FORWARD_NAVIGATION_GESTURES,
 #endif
+    PROP_ENABLE_JAVASCRIPT_MARKUP,
 };
 
 static void webKitSettingsDispose(GObject* object)
@@ -381,7 +386,13 @@ static void webKitSettingsSetProperty(GObject* object, guint propId, const GValu
     case PROP_HARDWARE_ACCELERATION_POLICY:
         webkit_settings_set_hardware_acceleration_policy(settings, static_cast<WebKitHardwareAccelerationPolicy>(g_value_get_enum(value)));
         break;
+    case PROP_ENABLE_BACK_FORWARD_NAVIGATION_GESTURES:
+        webkit_settings_set_enable_back_forward_navigation_gestures(settings, g_value_get_boolean(value));
+        break;
 #endif
+    case PROP_ENABLE_JAVASCRIPT_MARKUP:
+        webkit_settings_set_enable_javascript_markup(settings, g_value_get_boolean(value));
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
         break;
@@ -560,7 +571,13 @@ static void webKitSettingsGetProperty(GObject* object, guint propId, GValue* val
     case PROP_HARDWARE_ACCELERATION_POLICY:
         g_value_set_enum(value, webkit_settings_get_hardware_acceleration_policy(settings));
         break;
+    case PROP_ENABLE_BACK_FORWARD_NAVIGATION_GESTURES:
+        g_value_set_boolean(value, webkit_settings_get_enable_back_forward_navigation_gestures(settings));
+        break;
 #endif
+    case PROP_ENABLE_JAVASCRIPT_MARKUP:
+        g_value_set_boolean(value, webkit_settings_get_enable_javascript_markup(settings));
+        break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
         break;
@@ -1443,7 +1460,39 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
             WEBKIT_TYPE_HARDWARE_ACCELERATION_POLICY,
             WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND,
             readWriteConstructParamFlags));
+
+    /**
+     * WebKitSettings:enable-back-forward-navigation-gestures:
+     *
+     * Enable or disable horizontal swipe gesture for back-forward navigation.
+     *
+     * Since: 2.24
+     */
+    g_object_class_install_property(gObjectClass,
+        PROP_ENABLE_BACK_FORWARD_NAVIGATION_GESTURES,
+        g_param_spec_boolean("enable-back-forward-navigation-gestures",
+            _("Enable back-forward navigation gestures"),
+            _("Whether horizontal swipe gesture will trigger back-forward navigation"),
+            FALSE,
+            readWriteConstructParamFlags));
 #endif // PLATFOTM(GTK)
+
+    /**
+     * WebKitSettings:enable-javascript-markup:
+     *
+     * Determines whether or not JavaScript markup is allowed in document. When this setting is disabled,
+     * all JavaScript-related elements and attributes are removed from the document during parsing. Note that
+     * executing JavaScript is still allowed if #WebKitSettings:enable-javascript is %TRUE.
+     *
+     * Since: 2.24
+     */
+    g_object_class_install_property(gObjectClass,
+        PROP_ENABLE_JAVASCRIPT_MARKUP,
+        g_param_spec_boolean("enable-javascript-markup",
+            _("Enable JavaScript Markup"),
+            _("Enable JavaScript in document markup."),
+            TRUE,
+            readWriteConstructParamFlags));
 }
 
 WebPreferences* webkitSettingsGetPreferences(WebKitSettings* settings)
@@ -3513,6 +3562,44 @@ void webkit_settings_set_hardware_acceleration_policy(WebKitSettings* settings, 
 }
 
 /**
+ * webkit_settings_get_enable_back_forward_navigation_gestures:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:enable-back-forward-navigation-gestures property.
+ *
+ * Returns: %TRUE if horizontal swipe gesture will trigger back-forward navigaiton or %FALSE otherwise.
+ *
+ * Since: 2.24
+ */
+gboolean webkit_settings_get_enable_back_forward_navigation_gestures(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+
+    return settings->priv->enableBackForwardNavigationGestures;
+}
+
+/**
+ * webkit_settings_set_enable_back_forward_navigation_gestures:
+ * @settings: a #WebKitSettings
+ * @enabled: value to be set
+ *
+ * Set the #WebKitSettings:enable-back-forward-navigation-gestures property.
+ *
+ * Since: 2.24
+ */
+void webkit_settings_set_enable_back_forward_navigation_gestures(WebKitSettings* settings, gboolean enabled)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    if (priv->enableBackForwardNavigationGestures == enabled)
+        return;
+
+    priv->enableBackForwardNavigationGestures = enabled;
+    g_object_notify(G_OBJECT(settings), "enable-back-forward-navigation-gestures");
+}
+
+/**
  * webkit_settings_font_size_to_points:
  * @pixels: the font size in pixels to convert to points
  *
@@ -3548,3 +3635,42 @@ guint32 webkit_settings_font_size_to_pixels(guint32 points)
     return std::round(points * WebCore::screenDPI() / 72);
 }
 #endif // PLATFORM(GTK)
+
+/**
+ * webkit_settings_get_enable_javascript_markup:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:enable-javascript-markup property.
+ *
+ * Returns: %TRUE if JavaScript markup is enabled or %FALSE otherwise.
+ *
+ * Since: 2.24
+ */
+gboolean webkit_settings_get_enable_javascript_markup(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+
+    return settings->priv->preferences->javaScriptMarkupEnabled();
+}
+
+/**
+ * webkit_settings_set_enable_javascript_markup:
+ * @settings: a #WebKitSettings
+ * @enabled: Value to be set
+ *
+ * Set the #WebKitSettings:enable-javascript-markup property.
+ *
+ * Since: 2.24
+ */
+void webkit_settings_set_enable_javascript_markup(WebKitSettings* settings, gboolean enabled)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    bool currentValue = priv->preferences->javaScriptMarkupEnabled();
+    if (currentValue == enabled)
+        return;
+
+    priv->preferences->setJavaScriptMarkupEnabled(enabled);
+    g_object_notify(G_OBJECT(settings), "enable-javascript-markup");
+}

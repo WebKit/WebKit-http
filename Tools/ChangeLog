@@ -1,3 +1,733 @@
+2019-02-13  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Generate status-bubble
+        https://bugs.webkit.org/show_bug.cgi?id=194572
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py:
+        (StatusBubble._build_bubble):
+        (StatusBubble._should_show_bubble_for):
+        (StatusBubble._build_bubbles_for_patch):
+
+2019-02-13  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add status bubble html template
+        https://bugs.webkit.org/show_bug.cgi?id=194571
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/templates: Added.
+        * BuildSlaveSupport/ews-app/ews/templates/statusbubble.html: Copied from QueueStatusServer/templates/statusbubble.html.
+
+2019-02-12  Chris Dumez  <cdumez@apple.com>
+
+        Regression(PSON) MESSAGE_CHECK() hit under WebPageProxy::didFailProvisionalLoadForFrameShared()
+        https://bugs.webkit.org/show_bug.cgi?id=194568
+        <rdar://problem/47944490>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        (-[PSONNavigationDelegate webView:didStartProvisionalNavigation:]):
+
+2019-02-12  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Remove bug_dummy from parsed test expectations
+        https://bugs.webkit.org/show_bug.cgi?id=194562
+        <rdar://problem/47853999>
+
+        Reviewed by Lucas Forschler.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser):
+        (TestExpectationParser.expectation_for_skipped_test): Remove DUMMY_BUG_MODIFIER from
+        skipped tests.
+        * Scripts/webkitpy/layout_tests/models/test_expectations_unittest.py:
+
+2019-02-12  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Add method to fetch patch
+        https://bugs.webkit.org/show_bug.cgi?id=194518
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/models/patch.py:
+        (Patch.get_patch):
+
+2019-02-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Expand tests coverage (60 new tests -> 860)
+
+        Unreviewed test gardening (run-singly, --child-processes=1).
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-02-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Allow pages to trigger programmatic paste from script on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=194271
+        <rdar://problem/47808810>
+
+        Reviewed by Tim Horton.
+
+        Add support for interacting with the callout bar on iOS during layout tests. See below for more detail.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::platformSetDidShowMenuCallback):
+        (WTR::UIScriptController::platformSetDidHideMenuCallback):
+        (WTR::UIScriptController::rectForMenuAction const):
+
+        Add new mechanisms to make it possible to interact with and query the state of the callout menu on iOS. This
+        includes determining the rect (in content view coordinates) of the menu's controls, and callbacks to register
+        for when the menu is shown or hidden.
+
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptContext.h:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setDidShowMenuCallback):
+        (WTR::UIScriptController::didShowMenuCallback const):
+        (WTR::UIScriptController::setDidHideMenuCallback):
+        (WTR::UIScriptController::didHideMenuCallback const):
+        (WTR::UIScriptController::platformSetDidShowMenuCallback):
+        (WTR::UIScriptController::platformSetDidHideMenuCallback):
+        (WTR::UIScriptController::rectForMenuAction const):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+
+        Add a new test option to determine whether DOM paste is enabled. DOM paste is currently enabled everywhere by
+        default, but these new programmatic paste tests require it to be disabled in order for confirmation UI to show.
+
+        (WTR::TestOptions::hasSameInitializationOptions const):
+        * WebKitTestRunner/UIScriptControllerCocoa.mm:
+        (WTR::UIScriptController::calendarType const):
+        (WTR::UIScriptController::platformUndoManager const):
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView initWithFrame:configuration:]):
+        (-[TestRunnerWKWebView dealloc]):
+        (-[TestRunnerWKWebView _didShowMenu]):
+        (-[TestRunnerWKWebView _didHideMenu]):
+
+        Listen to when the callout bar is presented and dismissed, and invoke testing callbacks as needed.
+
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::handleMenuWillHideNotification):
+        (WTR::handleMenuDidHideNotification):
+        (WTR::TestController::platformInitialize):
+        (WTR::TestController::platformDestroy):
+        (WTR::TestController::platformResetStateToConsistentValues):
+
+        Additionally ensure that any callout menu presented by a previous layout test is dismissed before running the
+        next test by hiding the callout bar if necessary, and then waiting for the "DidHide" notification.
+
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::forEachViewInHierarchy):
+        (WTR::findViewInHierarchyOfType):
+
+        Move `forEachViewInHierarchy` so that we can use it throughout the file, and then add some additional helper
+        functions that dig through a given view's hierarchy in search of a view of a given class.
+
+        (WTR::UIScriptController::selectionStartGrabberViewRect const):
+        (WTR::UIScriptController::selectionEndGrabberViewRect const):
+        (WTR::UIScriptController::selectionCaretViewRect const):
+        (WTR::UIScriptController::selectionRangeViewRects const):
+        (WTR::UIScriptController::platformSetDidShowMenuCallback):
+        (WTR::UIScriptController::platformSetDidHideMenuCallback):
+
+        Tweak these to use `platformContentView` instead of grabbing the content view from WKWebView directly.
+
+        (WTR::UIScriptController::rectForMenuAction const):
+
+        Add a new UIScriptController method to get the rect of the action in the contextual menu (on iOS, this is the
+        callout bar) whose label matches the given string.
+
+        (WTR::UIScriptController::platformContentView const):
+
+        Add a `platformContentView()` helper on UIScriptController so that we can stop grabbing the value for key
+        "_currentContentView" from various places in this file. Additionally, rewrite `platformUndoManager()` in terms
+        of this new helper, and move the code out from iOS/macOS-specific files into UIScriptControllerCocoa.
+
+        (WTR::UIScriptController::platformUndoManager const): Deleted.
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::platformContentView const):
+        (WTR::UIScriptController::platformUndoManager const): Deleted.
+
+2019-02-12  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: No option to only show unexpected failures in results.html for iPad
+        https://bugs.webkit.org/show_bug.cgi?id=194554
+        <rdar://problem/47922442>
+
+        Rubber-stamped by Aakash Jain.
+
+        Just because a TestExpecations file does not exist for a specific platform does not mean that
+        TestExpecations are not being used, given that platforms inherit test expectations.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.uses_test_expectations_file): Check all possible locations of a TestExpectations file.
+        * Scripts/webkitpy/port/base_unittest.py:
+        (PortTest.test_uses_test_expectations_file):
+
+2019-02-12  Alex Christensen  <achristensen@webkit.org>
+
+        Remove setDefersLoading infrastructure from WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=194506
+
+        Reviewed by Brady Eidson.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setDefersLoading): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2019-02-12  Alex Christensen  <achristensen@webkit.org>
+
+        WebPage::close needs to remove all message receivers associated with that WebPage, not WebPage::~WebPage
+        https://bugs.webkit.org/show_bug.cgi?id=194522
+        <rdar://problem/47789393>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/BundleRetainPagePlugIn.mm: Added.
+        (-[BundleRetainPagePlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-02-12  Andy Estes  <aestes@apple.com>
+
+        [iOSMac] Enable Parental Controls Content Filtering
+        https://bugs.webkit.org/show_bug.cgi?id=194521
+        <rdar://39732376>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-02-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Add intrinsic width support for float boxes.
+        https://bugs.webkit.org/show_bug.cgi?id=194528
+
+        Reviewed by Antti Koivisto.
+
+        Expand tests coverage (2 new tests -> 800).
+        (This is the correct test ordering --runs-singly --child-processes=1)
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-02-12  Rob Buis  <rbuis@igalia.com>
+
+        Implement serializing in MIME type parser
+        https://bugs.webkit.org/show_bug.cgi?id=193909
+
+        Reviewed by Darin Adler.
+
+        Add various tests involving upper case, non-ASCII, control/null characters,
+        various HTTP whitespace, single quotes and an unpaired surrogate.
+
+        * TestWebKitAPI/Tests/WebCore/ParsedContentType.cpp:
+        (TestWebKitAPI::escapeNonASCIIPrintableCharacters):
+        (TestWebKitAPI::serializeIfValid):
+        (TestWebKitAPI::TEST):
+
+2019-02-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Ask platform for generic font family mappings
+        https://bugs.webkit.org/show_bug.cgi?id=187723
+        <rdar://problem/41892438>
+
+        Reviewed by Brent Fulgham.
+
+        Allow testing infrastructure to use fonts that are returned from CTFontDescriptorCreateForCSSFamily().
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (allowedFontFamilySet):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::allowedFontFamilySet):
+
+2019-02-11  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK][WPE] Add content extensions support in WKTR and unskip layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=193622
+
+        Reviewed by Michael Catanzaro.
+
+        This adds support for loading content extension rule sets from the JSON files which
+        accompany the corresponding layout test, using the C API. The Cocoa specific parts
+        of WKTR for this could be removed, but that is left for a follow-up patch with
+        cleanups.
+
+        * Scripts/webkitperl/FeatureList.pm: Add an option to toggle CONTENT_EXTENSIONS.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::testPath): Subtract one from the length when constructing the result std::string to
+        avoid having the null-terminator copied into the result.
+        (WTR::TestController::configureViewForTest): Call configureContentExtensionForTest() as
+        part of the preparations to run a test.
+        (WTR::ContentExtensionStoreCallbackContext::ContentExtensionStoreCallbackContext): Added.
+        (WTR::contentExtensionStoreCallback): Added.
+        (WTR::contentExtensionJSONPath): Used to calculate the path to the JSON rule set to be
+        used for content extensions test.
+        (WTR::TestController::configureContentExtensionForTest): Added, handles enabling content
+        extensions and compiling the JSON rule set for tests involving content extensions.
+        (WTR::TestController::resetContentExtensions): Removes the content extension built for
+        testing and disables content extensions.
+        (WTR::TestController::resetPreferencesToConsistentValues): Add a call to
+        resetContentExtensions().
+        (WTR::TestController::userContentController): Added implementation for ports other than Cocoa.
+        * WebKitTestRunner/TestController.h: Add declarations for resetContentExtensions(),
+        configureContentExtensionForTest(), and userContentController().
+
+2019-02-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Mouse/Touch/Pointer events are missing modifier keys
+        https://bugs.webkit.org/show_bug.cgi?id=191446
+        <rdar://problem/45929460>
+
+        Reviewed by Tim Horton.
+
+        Add support infrastructure for testing touch and stylus taps when holding modifier keys. 
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::singleTapAtPointWithModifiers): Added.
+        (WTR::UIScriptController::stylusTapAtPointWithModifiers): Added.
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::singleTapAtPointWithModifiers): Added.
+        (WTR::UIScriptController::stylusTapAtPointWithModifiers): Added.
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::arrayLength):
+        (WTR::parseModifierArray):
+        (WTR::UIScriptController::singleTapAtPoint): Implemented in terms of singleTapAtPointWithModifiers().
+        (WTR::UIScriptController::singleTapAtPointWithModifiers): Added.
+        (WTR::UIScriptController::stylusTapAtPoint): Implemented in terms of stylusTapAtPointWithModifiers().
+        (WTR::UIScriptController::stylusTapAtPointWithModifiers): Added.
+
+2019-02-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r241272 and r241276.
+        https://bugs.webkit.org/show_bug.cgi?id=194514
+
+        Broke the Apple Internal build and the fix requires human
+        intervention :( (Requested by dydz on #webkit).
+
+        Reverted changesets:
+
+        "[iOS] Mouse/Touch/Pointer events are missing modifier keys"
+        https://bugs.webkit.org/show_bug.cgi?id=191446
+        https://trac.webkit.org/changeset/241272
+
+        "Fix internal iOS build after r241272"
+        https://bugs.webkit.org/show_bug.cgi?id=191446
+        https://trac.webkit.org/changeset/241276
+
+2019-02-11  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r241269.
+
+        Caused 5 layout tests crashes on Mac WK1
+
+        Reverted changeset:
+
+        "DumpRenderTree should report unknown options"
+        https://bugs.webkit.org/show_bug.cgi?id=191303
+        https://trac.webkit.org/changeset/241269
+
+2019-02-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        fast/forms/ios/force-gregorian-calendar-for-credit-card-expiry.html does not work on iPad
+        https://bugs.webkit.org/show_bug.cgi?id=194313
+
+        Reviewed by Tim Horton.
+
+        Add a helper to determine whether the web view is presenting modal UI.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::isPresentingModally const):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::isPresentingModally const):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/UIScriptControllerCocoa.mm:
+        (WTR::UIScriptController::calendarType const): Deleted.
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::isPresentingModally const):
+        (WTR::UIScriptController::calendarType const):
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::calendarType const):
+
+2019-02-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        GCHeapInspector: Show the retained sizes in more places
+        https://bugs.webkit.org/show_bug.cgi?id=194464
+
+        Reviewed by Simon Fraser.
+
+        * GCHeapInspector/gc-heap-inspector.html:
+        * GCHeapInspector/script/interface.js:
+        (HeapInspectorUtils.humanReadableSize):
+        (HeapInspectorUtils.spanForNode.let.nodeHTML.node.className.span):
+        (HeapInspectorUtils.spanForNode.span.span):
+        (HeapSnapshotInspector.prototype.buildAllObjectsByType):
+        (HeapSnapshotInspector.prototype.buildRoots):
+
+2019-02-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Mouse/Touch/Pointer events are missing modifier keys
+        https://bugs.webkit.org/show_bug.cgi?id=191446
+        <rdar://problem/45929460>
+
+        Reviewed by Tim Horton.
+
+        Add support infrastructure for testing touch and stylus taps when holding modifier keys. 
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::singleTapAtPointWithModifiers): Added.
+        (WTR::UIScriptController::stylusTapAtPointWithModifiers): Added.
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::singleTapAtPointWithModifiers): Added.
+        (WTR::UIScriptController::stylusTapAtPointWithModifiers): Added.
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::arrayLength):
+        (WTR::parseModifierArray):
+        (WTR::UIScriptController::singleTapAtPoint): Implemented in terms of singleTapAtPointWithModifiers().
+        (WTR::UIScriptController::singleTapAtPointWithModifiers): Added.
+        (WTR::UIScriptController::stylusTapAtPoint): Implemented in terms of stylusTapAtPointWithModifiers().
+        (WTR::UIScriptController::stylusTapAtPointWithModifiers): Added.
+
+2019-02-11  Darshan Kadu  <dkadu@igalia.com>
+
+        DumpRenderTree should report unknown options
+        https://bugs.webkit.org/show_bug.cgi?id=191303
+
+        Reviewed by Frédéric Wang.
+
+        Added RELEASE_ASSERT_NOT_REACHED for DumpRenderTree/TestOptions.cpp
+        to report unknown options.
+        Added and assigned test options which are currently used in tests.
+
+        * DumpRenderTree/TestOptions.cpp:
+        (TestOptions::TestOptions):
+
+2019-02-11  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r241229.
+
+        Revision broke internal builds for watchOS.
+
+        Reverted changeset:
+
+        "[Cocoa] Ask platform for generic font family mappings"
+        https://bugs.webkit.org/show_bug.cgi?id=187723
+        https://trac.webkit.org/changeset/241229
+
+2019-02-11  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [WinCairo][MiniBrowser] Basic authentication always fails.
+        https://bugs.webkit.org/show_bug.cgi?id=194496
+
+        Reviewed by Don Olmstead.
+
+        * MiniBrowser/win/DialogHelper.h:
+        (Dialog::getText):
+
+2019-02-11  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] GstMappedBuffer testsuite build fails
+        https://bugs.webkit.org/show_bug.cgi?id=194495
+
+        Reviewed by Carlos Garcia Campos.
+
+        Fix the build by explicitely adding the gstreamer1.0-audio include
+        directories to the include path.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/PlatformWPE.cmake:
+
+2019-02-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add enable-javascript-markup setting
+        https://bugs.webkit.org/show_bug.cgi?id=193439
+
+        Reviewed by Michael Catanzaro.
+
+        Add test cases to check the new setting.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitSettings.cpp:
+        (testWebKitSettings):
+        (testWebKitSettingsJavaScriptMarkup):
+        (beforeAll):
+
+2019-02-10  Darin Adler  <darin@apple.com>
+
+        Switch uses of StringBuilder with String::format for hex numbers to use HexNumber.h instead
+        https://bugs.webkit.org/show_bug.cgi?id=194485
+
+        Reviewed by Daniel Bates.
+
+        * WebKitTestRunner/TestController.cpp: Removed unnecessary include of HexNumber.h.
+
+2019-02-09  Benjamin Poulain  <benjamin@webkit.org>
+
+        Add more tests for clampTo<>()
+        https://bugs.webkit.org/show_bug.cgi?id=194462
+
+        Reviewed by Geoffrey Garen.
+
+        Darin suggested to test the very last floating point number
+        at the boundaries when truncating to integer.
+        I added test for max/min and max-1/min-1.
+
+        * TestWebKitAPI/Tests/WTF/MathExtras.cpp:
+        (TestWebKitAPI::TEST):
+
+2019-02-09  Darin Adler  <darin@apple.com>
+
+        Eliminate unnecessary String temporaries by using StringConcatenateNumbers
+        https://bugs.webkit.org/show_bug.cgi?id=194021
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WTF/StringConcatenate.cpp:
+        (TestWebKitAPI::TEST): Change tests to use EXPECT_STREQ so failure messages are easier
+        to understand. Updated tests for changes to FormattedNumber::fixedPrecision.
+
+2019-02-09  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Add intrinsic width support for basic inline containers
+        https://bugs.webkit.org/show_bug.cgi?id=194473
+
+        Reviewed by Antti Koivisto.
+
+        Expand tests coverage (11 new tests -> 798)
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt: not sure why run-singly keeps producing different ordering.
+
+2019-02-09  Benjamin Poulain  <benjamin@webkit.org>
+
+        Fix MiniBrowser's entitlements
+        https://bugs.webkit.org/show_bug.cgi?id=192431
+
+        Reviewed by Joseph Pecoraro.
+
+        MiniBrowser's Extensions Manager was broken. The entitlement was missing for opening
+        files, making it impossible to load any extension.
+
+        * MiniBrowser/MiniBrowser.entitlements:
+
+2019-02-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Ask platform for generic font family mappings
+        https://bugs.webkit.org/show_bug.cgi?id=187723
+        <rdar://problem/41892438>
+
+        Reviewed by Brent Fulgham.
+
+        Allow testing infrastructure to use fonts that are returned from CTFontDescriptorCreateForCSSFamily().
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (allowedFontFamilySet):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::allowedFontFamilySet):
+
+2019-02-08  Alexander Mikhaylenko  <exalm7659@gmail.com>
+
+        [GTK] Implement back/forward touchpad gesture
+        https://bugs.webkit.org/show_bug.cgi?id=193919
+
+        Reviewed by Michael Catanzaro.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitSettings.cpp:
+        (testWebKitSettings): Add a test for 'enable-back-forward-navigation-gestures' property.
+
+2019-02-08  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to use networking daemon instead of XPC service
+        https://bugs.webkit.org/show_bug.cgi?id=194427
+
+        Reviewed by Geoffrey Garen
+
+        * MiniBrowser/MiniBrowser.entitlements:
+
+2019-02-08  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Ensure that every builder in config.json has short name
+        https://bugs.webkit.org/show_bug.cgi?id=194461
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        * BuildSlaveSupport/ews-build/loadConfig_unittest.py: Updated unit-tests.
+
+2019-02-08  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add short name to config.json
+        https://bugs.webkit.org/show_bug.cgi?id=194456
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/config.json: Added short name.
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        (loadBuilderConfig): Set the short name as the builder description.
+
+2019-02-08  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: CrashLogs.find_all_logs may return a string or a dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=194418
+
+        Reviewed by Lucas Forschler.
+
+        Do not include errors trying when finding crashlogs at the end of
+        a run-webkit-tests run since we don't process those errors.
+
+        * Scripts/webkitpy/port/darwin.py:
+        (DarwinPort._look_for_all_crash_logs_in_log_dir):
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort._look_for_all_crash_logs_in_log_dir):
+        * Scripts/webkitpy/port/watch_device.py:
+        (WatchDevicePort._look_for_all_crash_logs_in_log_dir):
+
+2019-02-08  Beth Dakin  <bdakin@apple.com>
+
+        Add afterScreenUpdates to WKSnapshotConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=194362
+        -and corresponding-
+        <rdar://problem/40655528> Please add an "after screen updates" property to 
+        WKSnapshotConfiguration (to solve blank snapshots)
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewSnapshot.mm:
+        (TEST):
+
+2019-02-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        clampTo(): do not convert the input to double when dealing with integers
+        https://bugs.webkit.org/show_bug.cgi?id=194263
+        <rdar://problem/47692312>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/MathExtras.cpp:
+        (TestWebKitAPI::testClampFloatingPointToFloatingPoint):
+        (TestWebKitAPI::testClampFloatingPointToInteger):
+        (TestWebKitAPI::testClampSameSignIntegers):
+        (TestWebKitAPI::testClampUnsignedToSigned):
+        (TestWebKitAPI::testClampSignedToUnsigned):
+
+2019-02-07  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Respect --dedicated-simulators flag
+        https://bugs.webkit.org/show_bug.cgi?id=194416
+        <rdar://problem/47894722>
+
+        Reviewed by Lucas Forschler.
+
+        * Scripts/webkitpy/port/device_port.py:
+        (DevicePort.supported_device_types): If --dedicated-simulators is passed, all
+        available devices can be safely ignored.
+
+2019-02-07  Keith Rollin  <krollin@apple.com>
+
+        Remove extra copy of 100x100-red.tga
+        https://bugs.webkit.org/show_bug.cgi?id=194371
+        <rdar://problem/47873465>
+
+        Reviewed by Said Abou-Hallawa.
+
+        In order to help it pass its tests, Bug 194190 added a second copy of
+        the file 100x100-red.tga. However, it turns out that this additional
+        file wasn't actually needed, and that that sole previous copy was
+        sufficient. At the same time, this second copy -- which was copied to
+        the same location in the build output as the first copy -- now caused
+        XCBuild to complain because there were two production rules for the
+        same output file. Address this by removing the newly-added extra copy.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/100x100-red.tga: Removed.
+
+2019-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        Deprecate WKBundlePageSetDefersLoading
+        https://bugs.webkit.org/show_bug.cgi?id=191394
+
+        Reviewed by Dean Jackson.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setDefersLoading):
+
+2019-02-07  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Out-of-flow] Use the containing block's padding width when computing min/max width.
+        https://bugs.webkit.org/show_bug.cgi?id=194391
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-02-06  Keith Rollin  <krollin@apple.com>
+
+        Remove Info.plist from MobileMiniBrowser.framework's Copy Bundle Resources phase
+        https://bugs.webkit.org/show_bug.cgi?id=193975
+        <rdar://problem/47643306>
+
+        Reviewed by Tim Horton.
+
+        The MobileMiniBrowser.framework's Copy Bundle Resources phase copies
+        the Info.plist file into the bundle. This step is not necessary as the
+        implicit "bundle up all the build products into a framework" build
+        phase does this already. Having the Copy Bundle Resources phase do
+        this causes a conflict under XCBuild, which objects to two build
+        phases producing the same file (Info.plist). Address this by removing
+        Info.plist from the Copy Bundle Resources phase.
+
+        * MobileMiniBrowser/MobileMiniBrowser.xcodeproj/project.pbxproj:
+
+2019-02-06  Keith Rollin  <krollin@apple.com>
+
+        Really enable the automatic checking and regenerations of .xcfilelists during builds
+        https://bugs.webkit.org/show_bug.cgi?id=194357
+        <rdar://problem/47861231>
+
+        Reviewed by Chris Dumez.
+
+        Bug 194124 was supposed to enable the automatic checking and
+        regenerating of .xcfilelist files during the build. While related
+        changes were included in that patch, the change to actually enable the
+        operation somehow was omitted. This patch actually enables the
+        operation. The check-xcfilelist.sh scripts now check
+        WK_DISABLE_CHECK_XCFILELISTS, and if it's "1", opts-out the developer
+        from the checking.
+
+        * DumpRenderTree/Scripts/check-xcfilelists.sh:
+        * WebKitTestRunner/Scripts/check-xcfilelists.sh:
+
+2019-02-06  David Kilzer  <ddkilzer@apple.com>
+
+        WTR::InjectedBundlePage::willSendRequestForFrame() leaks a WKDataRef
+        <https://webkit.org/b/194286>
+        <rdar://problem/47815558>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::willSendRequestForFrame): Use
+        WKRetainPtr<> to avoid leaking the WKDataRef.
+
+2019-02-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix a typo
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestCookieManager.cpp:
+
 2019-02-06  Olivier Blin  <olivier.blin@softathome.com>
 
         [GTK][WPE] force libpsl build to use ICU in jhbuild

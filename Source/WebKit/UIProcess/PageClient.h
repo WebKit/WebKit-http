@@ -254,7 +254,6 @@ public:
     virtual void assistiveTechnologyMakeFirstResponder() = 0;
     virtual void setRemoteLayerTreeRootNode(RemoteLayerTreeNode*) = 0;
     virtual CALayer *acceleratedCompositingRootLayer() const = 0;
-    virtual RefPtr<ViewSnapshot> takeViewSnapshot() = 0;
 #if ENABLE(MAC_GESTURE_EVENTS)
     virtual void gestureEventWasNotHandledByWebCore(const NativeWebGestureEvent&) = 0;
 #endif
@@ -262,6 +261,7 @@ public:
 
 #if PLATFORM(COCOA) || PLATFORM(GTK)
     virtual void selectionDidChange() = 0;
+    virtual RefPtr<ViewSnapshot> takeViewSnapshot() = 0;
 #endif
 
 #if USE(APPKIT)
@@ -272,12 +272,12 @@ public:
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) = 0;
     virtual WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) = 0;
     virtual WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) = 0;
+    virtual WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) = 0;
+    virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) = 0;
 #if PLATFORM(MAC)
     virtual WebCore::IntRect rootViewToWindow(const WebCore::IntRect&) = 0;
 #endif
 #if PLATFORM(IOS_FAMILY)
-    virtual WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) = 0;
-    virtual WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) = 0;
     virtual void didNotHandleTapAsClick(const WebCore::IntPoint&) = 0;
     virtual void didCompleteSyntheticClick() = 0;
 #endif
@@ -465,6 +465,8 @@ public:
     virtual void didChangeDragCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) = 0;
 #endif
 
+    virtual void requestDOMPasteAccess(const WebCore::IntRect& elementRect, CompletionHandler<void(bool)>&&) = 0;
+
 #if ENABLE(ATTACHMENT_ELEMENT)
     virtual void didInsertAttachment(API::Attachment&, const String& source) { }
     virtual void didRemoveAttachment(API::Attachment&) { }
@@ -483,6 +485,9 @@ public:
     virtual void cancelPointersForGestureRecognizer(UIGestureRecognizer*) { }
 #endif
 
+#if PLATFORM(WPE)
+    virtual IPC::Attachment hostFileDescriptor() = 0;
+#endif
 };
 
 } // namespace WebKit

@@ -56,8 +56,12 @@ private:
     void resetRestrictions() override;
 
     void configureWireLessTargetMonitoring() override;
+    void providePresentingApplicationPIDIfNecessary() final;
 
     RetainPtr<WebMediaSessionHelper> m_objcObserver;
+#if HAVE(CELESTIAL)
+    bool m_havePresentedApplicationPID { false };
+#endif
 };
 
 } // namespace WebCore

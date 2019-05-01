@@ -98,6 +98,7 @@ static RetainPtr<NSURL> clientRedirectDestinationURL;
 
 @interface PSONNavigationDelegate : NSObject <WKNavigationDelegate> {
     @public void (^decidePolicyForNavigationAction)(WKNavigationAction *, void (^)(WKNavigationActionPolicy));
+    @public void (^didStartProvisionalNavigationHandler)();
     @public void (^didCommitNavigationHandler)();
 }
 @end
@@ -125,6 +126,8 @@ static RetainPtr<NSURL> clientRedirectDestinationURL;
 - (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(null_unspecified WKNavigation *)navigation
 {
     didStartProvisionalLoad = true;
+    if (didStartProvisionalNavigationHandler)
+        didStartProvisionalNavigationHandler();
 }
 
 - (void)webView:(WKWebView *)webView didCommitNavigation:(null_unspecified WKNavigation *)navigation
@@ -1488,6 +1491,40 @@ TEST(ProcessSwap, ServerRedirect2)
     EXPECT_WK_STREQ(@"pson://www.webkit.org/main1.html", [[webView URL] absoluteString]);
 }
 
+TEST(ProcessSwap, TerminateProcessRightAfterSwap)
+{
+    auto processPoolConfiguration = adoptNS([[_WKProcessPoolConfiguration alloc] init]);
+    processPoolConfiguration.get().processSwapsOnNavigation = YES;
+    auto processPool = adoptNS([[WKProcessPool alloc] _initWithConfiguration:processPoolConfiguration.get()]);
+
+    auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [webViewConfiguration setProcessPool:processPool.get()];
+    auto handler = adoptNS([[PSONScheme alloc] init]);
+    [webViewConfiguration setURLSchemeHandler:handler.get() forURLScheme:@"pson"];
+
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webViewConfiguration.get()]);
+    auto delegate = adoptNS([[PSONNavigationDelegate alloc] init]);
+    [webView setNavigationDelegate:delegate.get()];
+
+    [webView configuration].preferences.safeBrowsingEnabled = NO;
+
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main.html"]];
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    delegate->didStartProvisionalNavigationHandler = ^{
+        EXPECT_NE(0, [webView _provisionalWebProcessIdentifier]);
+        kill([webView _provisionalWebProcessIdentifier], 9);
+    };
+
+    request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.com/main.html"]];
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::sleep(0.5);
+}
+
 static const char* linkToWebKitBytes = R"PSONRESOURCE(
 <body>
   <a id="testLink" href="pson://www.webkit.org/main.html">Link</a>
@@ -2404,11 +2441,18 @@ setInterval(() => {
 </body>
 )PSONRESOURCE";
 
-TEST(ProcessSwap, ReuseSuspendedProcessForRegularNavigation)
+enum class RetainPageInBundle { No, Yes };
+
+void testReuseSuspendedProcessForRegularNavigation(RetainPageInBundle retainPageInBundle)
 {
     auto processPoolConfiguration = adoptNS([[_WKProcessPoolConfiguration alloc] init]);
     [processPoolConfiguration setProcessSwapsOnNavigation:YES];
+    if (retainPageInBundle == RetainPageInBundle::Yes)
+        [processPoolConfiguration setInjectedBundleURL:[[NSBundle mainBundle] URLForResource:@"TestWebKitAPI" withExtension:@"wkbundle"]];
+
     auto processPool = adoptNS([[WKProcessPool alloc] _initWithConfiguration:processPoolConfiguration.get()]);
+    if (retainPageInBundle == RetainPageInBundle::Yes)
+        [processPool _setObject:@"BundleRetainPagePlugIn" forBundleParameter:TestWebKitAPI::Util::TestPlugInClassNameParameter];
 
     auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
     [webViewConfiguration setProcessPool:processPool.get()];
@@ -2444,6 +2488,16 @@ TEST(ProcessSwap, ReuseSuspendedProcessForRegularNavigation)
     done = false;
 
     EXPECT_EQ(webkitPID, [webView _webProcessIdentifier]);
+}
+
+TEST(ProcessSwap, ReuseSuspendedProcessForRegularNavigationRetainBundlePage)
+{
+    testReuseSuspendedProcessForRegularNavigation(RetainPageInBundle::Yes);
+}
+
+TEST(ProcessSwap, ReuseSuspendedProcessForRegularNavigation)
+{
+    testReuseSuspendedProcessForRegularNavigation(RetainPageInBundle::No);
 }
 
 static const char* mainFramesOnlyMainFrame = R"PSONRESOURCE(

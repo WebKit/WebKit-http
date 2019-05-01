@@ -588,7 +588,10 @@ static void validate(WKWebViewConfiguration *configuration)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::suppressesIncrementalRenderingKey(), WebKit::WebPreferencesStore::Value(!![_configuration suppressesIncrementalRendering]));
 
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldRespectImageOrientationKey(), WebKit::WebPreferencesStore::Value(!![_configuration _respectsImageOrientation]));
+#if !PLATFORM(MAC)
+    // FIXME: Expose WKPreferences._shouldPrintBackgrounds on iOS, adopt it in all iOS clients, and remove this and WKWebViewConfiguration._printsBackgrounds.
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldPrintBackgroundsKey(), WebKit::WebPreferencesStore::Value(!![_configuration _printsBackgrounds]));
+#endif
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::incrementalRenderingSuppressionTimeoutKey(), WebKit::WebPreferencesStore::Value([_configuration _incrementalRenderingSuppressionTimeout]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::javaScriptMarkupEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsJavaScriptMarkup]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldConvertPositionStyleOnCopyKey(), WebKit::WebPreferencesStore::Value(!![_configuration _convertsPositionStyleOnCopy]));
@@ -1138,6 +1141,9 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
     bitmapSize.scale(deviceScale, deviceScale);
 
     // Software snapshot will not capture elements rendered with hardware acceleration (WebGL, video, etc).
+    // This code doesn't consider snapshotConfiguration.afterScreenUpdates since the software snapshot always
+    // contains recent updates. If we ever have a UI-side snapshot mechanism on macOS, we will need to factor
+    // in snapshotConfiguration.afterScreenUpdates at that time.
     _page->takeSnapshot(WebCore::enclosingIntRect(rectInViewCoordinates), bitmapSize, WebKit::SnapshotOptionsInViewCoordinates, [handler, snapshotWidth, imageHeight](const WebKit::ShareableBitmap::Handle& imageHandle, WebKit::CallbackBase::Error errorCode) {
         if (errorCode != WebKit::ScriptValueCallback::Error::None) {
             auto error = createNSError(callbackErrorCode(errorCode));
@@ -1164,18 +1170,33 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 
     auto handler = makeBlockPtr(completionHandler);
     CGFloat deviceScale = _page->deviceScaleFactor();
+    RetainPtr<WKWebView> strongSelf = self;
+    auto callSnapshotRect = [strongSelf, rectInViewCoordinates, snapshotWidth, deviceScale, handler] {
+        [strongSelf _snapshotRect:rectInViewCoordinates intoImageOfWidth:(snapshotWidth * deviceScale) completionHandler:[strongSelf, handler, deviceScale](CGImageRef snapshotImage) {
+            RetainPtr<NSError> error;
+            RetainPtr<UIImage> uiImage;
+            
+            if (!snapshotImage)
+                error = createNSError(WKErrorUnknown);
+            else
+                uiImage = adoptNS([[UIImage alloc] initWithCGImage:snapshotImage scale:deviceScale orientation:UIImageOrientationUp]);
+            
+            handler(uiImage.get(), error.get());
+        }];
+    };
 
-    [self _snapshotRect:rectInViewCoordinates intoImageOfWidth:(snapshotWidth * deviceScale) completionHandler:^(CGImageRef snapshotImage) {
-        RetainPtr<NSError> error;
-        RetainPtr<UIImage> uiImage;
+    if ((snapshotConfiguration && !snapshotConfiguration.afterScreenUpdates) || !linkedOnOrAfter(WebKit::SDKVersion::FirstWithSnapshotAfterScreenUpdates)) {
+        callSnapshotRect();
+        return;
+    }
 
-        if (!snapshotImage)
-            error = createNSError(WKErrorUnknown);
-        else
-            uiImage = adoptNS([[UIImage alloc] initWithCGImage:snapshotImage scale:deviceScale orientation:UIImageOrientationUp]);
-
-        handler(uiImage.get(), error.get());
-    }];
+    _page->callAfterNextPresentationUpdate([callSnapshotRect = WTFMove(callSnapshotRect), handler](WebKit::CallbackBase::Error error) {
+        if (error != WebKit::CallbackBase::Error::None) {
+            handler(nil, createNSError(WKErrorUnknown).get());
+            return;
+        }
+        callSnapshotRect();
+    });
 }
 #endif
 
@@ -4747,6 +4768,18 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
     return _page->processIdentifier();
 }
 
+- (pid_t)_provisionalWebProcessIdentifier
+{
+    if (![self _isValid])
+        return 0;
+
+    auto* provisionalPage = _page->provisionalPageProxy();
+    if (!provisionalPage)
+        return 0;
+
+    return provisionalPage->process().processIdentifier();
+}
+
 - (void)_killWebContentProcess
 {
     if (![self _isValid])
@@ -5380,6 +5413,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _inputDelegate = inputDelegate;
 
     class FormClient : public API::FormClient {
+        WTF_MAKE_FAST_ALLOCATED;
     public:
         explicit FormClient(WKWebView *webView)
             : m_webView(webView)

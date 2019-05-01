@@ -38,6 +38,8 @@ namespace WebKit {
 using namespace WebCore;
 
 struct NetworkLoad::Throttle {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
     Throttle(NetworkLoad& load, Seconds delay, ResourceResponse&& response, ResponseCompletionHandler&& handler)
         : timer(load, &NetworkLoad::throttleDelayCompleted)
         , response(WTFMove(response))
@@ -67,8 +69,7 @@ void NetworkLoad::initialize(NetworkSession& networkSession, WebCore::BlobRegist
     else
         m_task = NetworkDataTask::create(networkSession, *this, m_parameters);
 
-    if (!m_parameters.defersLoading)
-        m_task->resume();
+    m_task->resume();
 }
 
 NetworkLoad::~NetworkLoad()
@@ -78,16 +79,6 @@ NetworkLoad::~NetworkLoad()
         m_redirectCompletionHandler({ });
     if (m_task)
         m_task->clearClient();
-}
-
-void NetworkLoad::setDefersLoading(bool defers)
-{
-    if (m_task) {
-        if (defers)
-            m_task->suspend();
-        else
-            m_task->resume();
-    }
 }
 
 void NetworkLoad::cancel()

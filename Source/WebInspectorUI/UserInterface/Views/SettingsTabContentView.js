@@ -261,6 +261,9 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         experimentalSettingsView.addSetting(WI.UIString("User Interface:"), WI.settings.experimentalEnableNewTabBar, WI.UIString("Enable New Tab Bar"));
         experimentalSettingsView.addSeparator();
 
+        experimentalSettingsView.addSetting(WI.unlocalizedString("CPU Usage:"), WI.settings.experimentalEnableCPUUsageEnhancements, WI.unlocalizedString("Enhancements"));
+        experimentalSettingsView.addSeparator();
+
         let reloadInspectorButton = document.createElement("button");
         reloadInspectorButton.textContent = WI.UIString("Reload Web Inspector");
         reloadInspectorButton.addEventListener("click", (event) => {
@@ -285,6 +288,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
         listenForChange(WI.settings.experimentalEnableLayersTab);
         listenForChange(WI.settings.experimentalEnableNewTabBar);
+        listenForChange(WI.settings.experimentalEnableCPUUsageEnhancements);
 
         this.addSettingsView(experimentalSettingsView);
     }
@@ -314,6 +318,10 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         this._debugSettingsView.addSeparator();
 
         this._debugSettingsView.addSetting(WI.unlocalizedString("Styles:"), WI.settings.enableStyleEditingDebugMode, WI.unlocalizedString("Enable style editing debug mode"));
+
+        this._debugSettingsView.addSeparator();
+
+        this._debugSettingsView.addSetting(WI.unlocalizedString("Heap Snapshot:"), WI.settings.debugShowInternalObjectsInHeapSnapshot, WI.unlocalizedString("Show Internal Objects"));
 
         this._debugSettingsView.addSeparator();
 

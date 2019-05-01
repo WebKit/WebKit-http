@@ -159,8 +159,12 @@ UnlinkedFunctionExecutable* CodeCache::getUnlinkedGlobalFunctionExecutable(VM& v
 
 void CodeCache::write(VM& vm)
 {
-    for (const auto& it : m_sourceCode)
+    for (auto& it : m_sourceCode) {
+        if (it.value.written)
+            continue;
+        it.value.written = true;
         writeCodeBlock(vm, it.key, it.value);
+    }
 }
 
 void generateUnlinkedCodeBlockForFunctions(VM& vm, UnlinkedCodeBlock* unlinkedCodeBlock, const SourceCode& parentSource, DebuggerMode debuggerMode, ParserError& error)
@@ -170,7 +174,9 @@ void generateUnlinkedCodeBlockForFunctions(VM& vm, UnlinkedCodeBlock* unlinkedCo
             return;
 
         FunctionExecutable* executable = unlinkedExecutable->link(vm, parentSource);
-        const SourceCode& source = executable->source();
+        // FIXME: We shouldn't need to create a FunctionExecutable just to get its source code
+        // https://bugs.webkit.org/show_bug.cgi?id=194576
+        SourceCode source = executable->source();
         UnlinkedFunctionCodeBlock* unlinkedFunctionCodeBlock = unlinkedExecutable->unlinkedCodeBlockFor(vm, source, constructorKind, debuggerMode, error, unlinkedExecutable->parseMode());
         if (unlinkedFunctionCodeBlock)
             generateUnlinkedCodeBlockForFunctions(vm, unlinkedFunctionCodeBlock, source, debuggerMode, error);

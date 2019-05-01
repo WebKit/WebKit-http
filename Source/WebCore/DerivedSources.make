@@ -372,9 +372,19 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webdatabase/SQLTransactionErrorCallback.idl \
     $(WebCore)/Modules/webdriver/NavigatorWebDriver.idl \
     $(WebCore)/Modules/webgpu/DOMWindowWebGPU.idl \
+    $(WebCore)/Modules/webgpu/GPUColor.idl \
+    $(WebCore)/Modules/webgpu/GPUBufferDescriptor.idl \
+    $(WebCore)/Modules/webgpu/GPUBufferUsage.idl \
     $(WebCore)/Modules/webgpu/GPUCompareFunction.idl \
     $(WebCore)/Modules/webgpu/GPUDepthStencilStateDescriptor.idl \
+    $(WebCore)/Modules/webgpu/GPUExtent3D.idl \
+    $(WebCore)/Modules/webgpu/GPULoadOp.idl \
     $(WebCore)/Modules/webgpu/GPURequestAdapterOptions.idl \
+    $(WebCore)/Modules/webgpu/GPUStoreOp.idl \
+    $(WebCore)/Modules/webgpu/GPUTextureDescriptor.idl \
+    $(WebCore)/Modules/webgpu/GPUTextureDimension.idl \
+    $(WebCore)/Modules/webgpu/GPUTextureFormat.idl \
+    $(WebCore)/Modules/webgpu/GPUTextureUsage.idl \
     $(WebCore)/Modules/webgpu/WebGPU.idl \
     $(WebCore)/Modules/webgpu/WebGPUAdapter.idl \
     $(WebCore)/Modules/webgpu/WebGPUBindGroup.idl \
@@ -385,9 +395,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WebGPUBindGroupLayoutDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUBuffer.idl \
 	$(WebCore)/Modules/webgpu/WebGPUBufferBinding.idl \
-    $(WebCore)/Modules/webgpu/WebGPUBufferDescriptor.idl \
-    $(WebCore)/Modules/webgpu/WebGPUBufferUsage.idl \
-    $(WebCore)/Modules/webgpu/WebGPUColor.idl \
     $(WebCore)/Modules/webgpu/WebGPUCommandBuffer.idl \
     $(WebCore)/Modules/webgpu/WebGPUDevice.idl \
     $(WebCore)/Modules/webgpu/WebGPUIndexFormat.idl \
@@ -399,7 +406,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WebGPUPipelineLayoutDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUPipelineStageDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUProgrammablePassEncoder.idl \
-    $(WebCore)/Modules/webgpu/WebGPURenderPassColorAttachmentDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPURenderPassDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPURenderPassEncoder.idl \
     $(WebCore)/Modules/webgpu/WebGPURenderPipeline.idl \
@@ -410,7 +416,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WebGPUShaderStageBit.idl \
     $(WebCore)/Modules/webgpu/WebGPUSwapChain.idl \
     $(WebCore)/Modules/webgpu/WebGPUTexture.idl \
-    $(WebCore)/Modules/webgpu/WebGPUTextureFormatEnum.idl \
     $(WebCore)/Modules/webgpu/WebGPUTextureView.idl \
 	$(WebCore)/Modules/webgpu/WebGPUVertexAttributeDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUVertexFormat.idl \
@@ -1050,6 +1055,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/testing/MockContentFilterSettings.idl \
     $(WebCore)/testing/MockPageOverlay.idl \
     $(WebCore)/testing/MockPaymentAddress.idl \
+    $(WebCore)/testing/MockPaymentContactFields.idl \
     $(WebCore)/testing/MockPaymentCoordinator.idl \
     $(WebCore)/testing/MockPaymentError.idl \
     $(WebCore)/testing/ServiceWorkerInternals.idl \

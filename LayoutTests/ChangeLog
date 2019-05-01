@@ -1,3 +1,747 @@
+2019-02-13  Sihui Liu  <sihui_liu@apple.com>
+
+        Add two regression tests for reference cycle in IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=194527
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/dom/reference-cycle-leaks.html:
+        * platform/win/TestExpectations:
+        The added tests are failing on win bots for unknown reasons, propably related to webkit.org/b/193540. Skip them 
+        on win.
+
+        * storage/indexeddb/resources/result-request-cycle.js: Added.
+        (prepareDatabase):
+        * storage/indexeddb/resources/value-cursor-cycle.js: Added.
+        (prepareDatabase):
+        (onOpen.cursorRequest.onsuccess):
+        * storage/indexeddb/result-request-cycle-expected.txt: Added.
+        * storage/indexeddb/result-request-cycle.html: Added.
+        * storage/indexeddb/value-cursor-cycle-expected.txt: Added.
+        * storage/indexeddb/value-cursor-cycle.html: Added.
+
+2019-02-13  Antoine Quint  <graouts@apple.com>
+
+        Support simulated mouse events on iOS based on a PlatformTouchEvent
+        https://bugs.webkit.org/show_bug.cgi?id=194501
+        <rdar://problem/46910790>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test to check that we correctly dispatch mouse events as touches occur.
+
+        * fast/events/touch/ios/mouse-events-dispatch-with-touch-expected.txt: Added.
+        * fast/events/touch/ios/mouse-events-dispatch-with-touch.html: Added.
+        * pointerevents/utils.js:
+        (prototype.handleEvent):
+        (prototype._handlePointerEvent):
+        (prototype._handleMouseEvent):
+
+2019-02-13  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK][WPE] Don't use DumpJSConsoleLogInStdErr expectation in platform TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=194587
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: Removed DumpJSConsoleLogInStdErr markers which are marked in top TestExpectations.
+        * platform/wpe/TestExpectations: Ditto.
+
+2019-02-12  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Remove WebGPUBufferDescriptor/Usage and use GPU versions
+        https://bugs.webkit.org/show_bug.cgi?id=194552
+
+        Reviewed by Dean Jackson.
+
+        WebGPUBufferDescriptor/Usage have been renamed to GPUBufferDescriptor/Usage in the Web GPU API.
+        Update affected tests to match.
+
+        * webgpu/bind-groups.html:
+        * webgpu/buffer-resource-triangles.html:
+        * webgpu/buffers.html:
+        * webgpu/depth-enabled-triangle-strip.html:
+        * webgpu/vertex-buffer-triangle-strip.html:
+
+2019-02-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Allow pages to trigger programmatic paste from script on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=194271
+        <rdar://problem/47808810>
+
+        Reviewed by Tim Horton.
+
+        Add new tests to exercise programmatic pasting.
+
+        * TestExpectations:
+        * editing/pasteboard/ios/dom-paste-confirmation-expected.txt: Added.
+        * editing/pasteboard/ios/dom-paste-confirmation.html: Added.
+
+        Verify that the user can tap "Paste" to allow programmatic pasting.
+
+        * editing/pasteboard/ios/dom-paste-consecutive-confirmations-expected.txt: Added.
+        * editing/pasteboard/ios/dom-paste-consecutive-confirmations.html: Added.
+
+        Verify that DOM paste access isn't carried over when using `setTimeout` in a user gesture event handler.
+
+        * editing/pasteboard/ios/dom-paste-rejection-expected.txt: Added.
+        * editing/pasteboard/ios/dom-paste-rejection.html: Added.
+
+        Verify that resigning first responder dismisses the callout bar and does not allow programmatic pasting.
+
+        * editing/pasteboard/ios/dom-paste-requires-user-gesture-expected.txt: Added.
+        * editing/pasteboard/ios/dom-paste-requires-user-gesture.html: Added.
+
+        Verify that user gesture is required to present the callout menu for a programmatic paste request.
+
+        * editing/pasteboard/ios/resources/dom-paste-helper.js: Added.
+        (return.new.Promise.):
+        (async._waitForOrTriggerPasteMenu):
+        (async.triggerPasteMenuAfterTapAt):
+        (async.waitForPasteMenu):
+
+        Add helpers to summon, wait for, and interact with the callout bar when the page attempts to trigger a paste.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+
+        Skip editing/pasteboard/ios by default, and enable it only in the modern WebKit port of iOS.
+
+2019-02-12  Dean Jackson  <dino@apple.com>
+
+        BitmapRenderer should handle existing ImageBuffers
+        https://bugs.webkit.org/show_bug.cgi?id=194555
+        <rdar://problem/47857150>
+
+        Reviewed by Tim Horton.
+
+        Test that creates a canvas, triggers an ImageBuffer to be created, then
+        creates the bitmaprenderer context.
+
+        * fast/canvas/bitmaprenderer-created-after-toBlob-expected.txt: Added.
+        * fast/canvas/bitmaprenderer-created-after-toBlob.html: Added.
+
+2019-02-12  Alex Christensen  <achristensen@webkit.org>
+
+        Remove setDefersLoading infrastructure from WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=194506
+
+        Reviewed by Brady Eidson.
+
+        * platform/wk2/TestExpectations:
+
+2019-02-12  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] DepthStencilAttachment implementation
+        https://bugs.webkit.org/show_bug.cgi?id=194458
+        <rdar://problem/47932446>
+
+        Reviewed by Dean Jackson.
+
+        Add test and update utility functions for depth texture attachments. Update others to specify their 
+        loadOp and storeOp for all render pass attachments, as these are no longer provided by default by the implementation.
+
+        * webgpu/buffer-resource-triangles.html:
+        * webgpu/depth-enabled-triangle-strip-expected.html: Added.
+        * webgpu/depth-enabled-triangle-strip.html: Added.
+        * webgpu/js/basic-webgpu-functions.js:
+        (render):
+        * webgpu/js/webgpu-functions.js:
+        (createBasicDepthStateDescriptor):
+        (createBasicDepthTexture):
+        (beginBasicRenderPass):
+        (createBasicPipeline): Deleted.
+        * webgpu/render-command-encoding.html:
+        * webgpu/render-passes.html:
+
+2019-02-12  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Fix flaky accessibility/loading-iframe-sends-notification.html
+        https://bugs.webkit.org/show_bug.cgi?id=194546
+
+        Reviewed by Zalan Bujtas.
+
+        This test was relying on timing between load events being sent and accessibility events being sent.
+        We don't need to do that, we can more directly test this interplay.
+
+        * accessibility/loading-iframe-sends-notification-expected.txt:
+        * accessibility/loading-iframe-sends-notification.html:
+
+2019-02-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed WPE gardening. Unskip content extensions tests after r241283
+
+        * platform/wpe/TestExpectations: Unskip content extensions tests, and list
+        as failing those known to not pass due to missing expectaions or timeouts.
+
+2019-02-08  Chris Fleizach  <cfleizach@apple.com>
+
+        AXObjectCache::childrenChanged shouldn't update layout or style during another style recalc
+        https://bugs.webkit.org/show_bug.cgi?id=182280
+        <rdar://problem/37018386>
+
+        Reviewed by Alan Bujtas.
+
+        * accessibility/aria-hidden-update.html:
+        * accessibility/aria-hidden-updates-alldescendants.html:
+        * accessibility/image-load-on-delay.html:
+        * accessibility/mac/aria-hidden-changes-for-non-ignored-elements.html:
+        * accessibility/removed-anonymous-block-child-causes-crash.html:
+
+2019-02-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Ask platform for generic font family mappings
+        https://bugs.webkit.org/show_bug.cgi?id=187723
+        <rdar://problem/41892438>
+
+        Reviewed by Brent Fulgham.
+
+        Update the tests to work with this new model.
+
+        * fast/text/international/font-fallback-to-common-script-expected.html: Removed.
+        * fast/text/international/font-fallback-to-common-script.html: Removed.
+        * fast/text/international/lang-sensitive-fonts-expected.html:
+        * fast/text/international/lang-sensitive-fonts-xml-expected.html:
+        * fast/text/international/lang-sensitive-fonts-xml.xhtml:
+        * fast/text/international/lang-sensitive-fonts.html:
+        * fast/text/international/locale-sensitive-fonts-expected.html:
+        * fast/text/international/locale-sensitive-fonts.html:
+        * fast/text/ja-sans-serif-expected-mismatch.html: Added.
+        * fast/text/ja-sans-serif.html: Added.
+        * platform/ios/fast/block/float/016-expected.txt:
+
+2019-02-11  Shawn Roberts  <sroberts@apple.com>
+
+        Updating for all of Mac WK2 for flaky test
+        https://bugs.webkit.org/show_bug.cgi?id=185994
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-02-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Adopt SPI to support Emacs bindings: transpose and delete to end of paragraph
+        https://bugs.webkit.org/show_bug.cgi?id=194505
+        <rdar://problem/47743533>
+
+        Reviewed by Tim Horton.
+
+        Add tests to ensure that Control + t and Control + k perform a transpose and delete to the
+        end of the line/paragraph. Skip the tests for now until we have the UIKit fix <rdar://problem/44928156>.
+
+        * fast/events/ios/key-command-delete-to-end-of-paragraph-expected.txt: Added.
+        * fast/events/ios/key-command-delete-to-end-of-paragraph.html: Added.
+        * fast/events/ios/key-command-transpose-expected.txt: Added.
+        * fast/events/ios/key-command-transpose.html: Added.
+        * platform/ios/TestExpectations: Skip tests for now.
+
+2019-02-11  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK][WPE] Add content extensions support in WKTR and unskip layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=193622
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/TestExpectations: Un-skip tests for content extensions and add expectations.
+
+2019-02-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Mouse/Touch/Pointer events are missing modifier keys
+        https://bugs.webkit.org/show_bug.cgi?id=191446
+        <rdar://problem/45929460>
+
+        Reviewed by Tim Horton.
+
+        Refactor existing iOS key events tests to share code. Add new tests to ensure touch and mouse events
+        have accurate modifier key details.
+
+        * fast/events/ios/key-events-meta-alt-combinations.html:
+        * fast/events/ios/resources/key-tester.js:
+        (computeSubsets.compareByModifierOrder): Deleted.
+        * fast/events/resources/compute-subsets.js: Added.
+        (computeSubsets.compareByOriginalArrayOrder):
+        (computeSubsets):
+        * fast/events/touch/ios/mouse-events-with-modifiers-expected.txt: Added.
+        * fast/events/touch/ios/mouse-events-with-modifiers.html: Added.
+        * fast/events/touch/ios/pointer-events-with-modifiers-expected.txt: Added.
+        * fast/events/touch/ios/pointer-events-with-modifiers.html: Added.
+        * fast/events/touch/ios/touch-events-with-modifiers-expected.txt: Added.
+        * fast/events/touch/ios/touch-events-with-modifiers.html: Added.
+        * http/tests/adClickAttribution/anchor-tag-attributes-validation-expected.txt: Update expected result
+        due to changes to ui-helper.js.
+        * http/tests/security/anchor-download-block-crossorigin-expected.txt: Ditto.
+        * platform/ios/TestExpectations:
+        * resources/ui-helper.js:
+        (window.UIHelper.tapAt.return.new.Promise):
+        (window.UIHelper.tapAt):
+        (window.UIHelper.stylusTapAt.return.new.Promise):
+        (window.UIHelper.stylusTapAt):
+
+2019-02-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r241272 and r241276.
+        https://bugs.webkit.org/show_bug.cgi?id=194514
+
+        Broke the Apple Internal build and the fix requires human
+        intervention :( (Requested by dydz on #webkit).
+
+        Reverted changesets:
+
+        "[iOS] Mouse/Touch/Pointer events are missing modifier keys"
+        https://bugs.webkit.org/show_bug.cgi?id=191446
+        https://trac.webkit.org/changeset/241272
+
+        "Fix internal iOS build after r241272"
+        https://bugs.webkit.org/show_bug.cgi?id=191446
+        https://trac.webkit.org/changeset/241276
+
+2019-02-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        fast/forms/ios/force-gregorian-calendar-for-credit-card-expiry.html does not work on iPad
+        https://bugs.webkit.org/show_bug.cgi?id=194313
+
+        Reviewed by Tim Horton.
+
+        Adjusts an existing layout test to work on both iPhone and iPad simulators.
+
+        * fast/forms/ios/force-gregorian-calendar-for-credit-card-expiry-expected.txt:
+        * fast/forms/ios/force-gregorian-calendar-for-credit-card-expiry.html:
+
+        Make this test wait after blurring the currently focused element, such that tapping to focus the next form
+        control doesn't fail. Notably on iPad, not waiting for the popover to dismiss meant that subsequent taps would
+        be dispatched too soon, and hit-test to the popover view being dismissed rather than WKWebView.
+
+        * platform/ipad/TestExpectations:
+
+        Unskip the test on iPad.
+
+        * resources/ui-helper.js:
+
+        Add helpers to query whether or not the keyboard is shown, and whether or not a view controller is being modally
+        presented over the current root view controller (this is the case when interacting with date pickers on iPad).
+
+        (window.UIHelper.isShowingKeyboard):
+        (window.UIHelper.isPresentingModally):
+        (window.UIHelper.deactivateFormControl):
+
+        Add a new helper method to blur the given form control element and wait for web view chrome to finish dismissing
+        (on iOS, this is either the date picker input view in the keyboard on iPhone, or the date picker popover view
+        controller on iPad).
+
+        (window.UIHelper.isShowingDataListSuggestions):
+
+        Drive-by fix: remove an extraneous ternary conditional statement.
+
+2019-02-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Mouse/Touch/Pointer events are missing modifier keys
+        https://bugs.webkit.org/show_bug.cgi?id=191446
+        <rdar://problem/45929460>
+
+        Reviewed by Tim Horton.
+
+        Refactor existing iOS key events tests to share code. Add new tests to ensure touch and mouse events
+        have accurate modifier key details.
+
+        * fast/events/ios/key-events-meta-alt-combinations.html:
+        * fast/events/ios/resources/key-tester.js:
+        (computeSubsets.compareByModifierOrder): Deleted.
+        * fast/events/resources/compute-subsets.js: Added.
+        (computeSubsets.compareByOriginalArrayOrder):
+        (computeSubsets):
+        * fast/events/touch/ios/mouse-events-with-modifiers-expected.txt: Added.
+        * fast/events/touch/ios/mouse-events-with-modifiers.html: Added.
+        * fast/events/touch/ios/pointer-events-with-modifiers-expected.txt: Added.
+        * fast/events/touch/ios/pointer-events-with-modifiers.html: Added.
+        * fast/events/touch/ios/touch-events-with-modifiers-expected.txt: Added.
+        * fast/events/touch/ios/touch-events-with-modifiers.html: Added.
+        * http/tests/adClickAttribution/anchor-tag-attributes-validation-expected.txt: Update expected result
+        due to changes to ui-helper.js.
+        * http/tests/security/anchor-download-block-crossorigin-expected.txt: Ditto.
+        * platform/ios/TestExpectations:
+        * resources/ui-helper.js:
+        (window.UIHelper.tapAt.return.new.Promise):
+        (window.UIHelper.tapAt):
+        (window.UIHelper.stylusTapAt.return.new.Promise):
+        (window.UIHelper.stylusTapAt):
+
+2019-02-11  Youenn Fablet  <youenn@apple.com>
+
+        Filter out Overconstrainederror.constraint when getUserMedia is not granted
+        https://bugs.webkit.org/show_bug.cgi?id=194240
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/overconstrainederror-constraint-expected.txt: Added.
+        * fast/mediastream/overconstrainederror-constraint.html: Added.
+
+2019-02-11  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r241229.
+
+        Revision broke internal builds for watchOS.
+
+        Reverted changeset:
+
+        "[Cocoa] Ask platform for generic font family mappings"
+        https://bugs.webkit.org/show_bug.cgi?id=187723
+        https://trac.webkit.org/changeset/241229
+
+2019-02-11  Youenn Fablet  <youenn@apple.com>
+
+        Make Request constructor throw if FetchRequestInit.signal is not undefined, null or an AbortSignal object
+        https://bugs.webkit.org/show_bug.cgi?id=194404
+        <rdar://problem/47891915>
+
+        Reviewed by Geoffrey Garen.
+
+        * http/wpt/fetch/request-abort-expected.txt:
+
+2019-02-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening. Adding additional baselines after font variations
+        enablement. Additionally rebaselining a couple other WPT and WebGL tests.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/fast/css/getComputedStyle: Added.
+        * platform/wpe/fast/css/getComputedStyle/computed-style-expected.txt: Added.
+        * platform/wpe/fast/css/getComputedStyle/computed-style-font-family-expected.txt: Added.
+        * platform/wpe/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt: Added.
+        * platform/wpe/fast/dom/52776-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method.any-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method.any.worker-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/wpe/svg/css/getComputedStyle-basic-expected.txt: Added.
+        * platform/wpe/webgl/2.0.0/conformance/canvas/buffer-offscreen-test-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance/canvas/buffer-preserve-test-expected.txt:
+        * platform/wpe/webgl/2.0.0/conformance/context/context-attribute-preserve-drawing-buffer-expected.txt:
+
+2019-02-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r241167.
+        https://bugs.webkit.org/show_bug.cgi?id=194482
+
+        Broke the GTK mediastream tests (Requested by philn on
+        #webkit).
+
+        Reverted changeset:
+
+        "Filter out Overconstrainederror.constraint when getUserMedia
+        is not granted"
+        https://bugs.webkit.org/show_bug.cgi?id=194240
+        https://trac.webkit.org/changeset/241167
+
+2019-02-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: fix typos in tests
+
+        Unreviewed test gardening.
+
+        * inspector/css/force-page-appearance.html:
+
+2019-02-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Ask platform for generic font family mappings
+        https://bugs.webkit.org/show_bug.cgi?id=187723
+        <rdar://problem/41892438>
+
+        Reviewed by Brent Fulgham.
+
+        Update the tests to work with this new model.
+
+        * fast/text/international/font-fallback-to-common-script-expected.html: Removed.
+        * fast/text/international/font-fallback-to-common-script.html: Removed. This test is no longer testing
+        anything relevant.
+        * fast/text/international/lang-sensitive-fonts-expected.html:
+        * fast/text/international/lang-sensitive-fonts-xml-expected.html:
+        * fast/text/international/lang-sensitive-fonts-xml.xhtml:
+        * fast/text/international/lang-sensitive-fonts.html:
+        * fast/text/international/locale-sensitive-fonts-expected.html:
+        * fast/text/international/locale-sensitive-fonts.html:
+        * fast/text/ja-sans-serif-expected-mismatch.html: Added.
+        * fast/text/ja-sans-serif.html: Added.
+
+2019-02-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Import / Export Heap Snapshots
+        https://bugs.webkit.org/show_bug.cgi?id=194448
+        <rdar://problem/47928093>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/heap/imported-snapshot-expected.txt: Added.
+        * inspector/heap/imported-snapshot.html: Added.
+        * platform/mac/TestExpectations:
+
+2019-02-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: close unbalanced quotes and parenthesis when editing values
+        https://bugs.webkit.org/show_bug.cgi?id=182523
+        <rdar://problem/37260209>
+
+        Reviewed by Devin Rousso.
+
+        Test common cases of unmatched quotes, parenthesis, comments, and trailing backslashes.
+
+        * inspector/unit-tests/css-completions-expected.txt: Added.
+        * inspector/unit-tests/css-completions.html: Added.
+
+2019-02-08  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test accessibility/set-value-not-work-for-disabled-sliders.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=194451
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-02-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Layout Test media/audio-concurrent-supported.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=188017
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations: The test is not flaky anymore. Remove expectation.
+
+2019-02-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [WebVTT] Inline WebVTT styles should start with '::cue'
+        https://bugs.webkit.org/show_bug.cgi?id=194227
+        <rdar://problem/47791087>
+
+        Reviewed by Eric Carlson.
+
+        * media/track/captions-webvtt/css-styling.vtt:
+
+2019-02-08  Youenn Fablet  <youenn@apple.com>
+
+        Running RTCRtpSender.getCapabilities("video") before initial offer breaks VP8
+        https://bugs.webkit.org/show_bug.cgi?id=194380
+        <rdar://problem/47916514>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-mute-vp8-expected.txt:
+        * webrtc/video-mute-vp8.html:
+
+2019-02-08  Andy Estes  <aestes@apple.com>
+
+        [WebIDL] Support serializing sequences and FrozenArrays of non-interfaces
+        https://bugs.webkit.org/show_bug.cgi?id=190997
+        <rdar://problem/35983035>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/paymentrequest/payment-address-attributes-and-toJSON-method.https.html:
+
+2019-02-08  Eric Liang  <ericliang@apple.com>
+
+        Check if receive AXPressDidFail notification when performing AXPress action on disabled MenuList.
+        https://bugs.webkit.org/show_bug.cgi?id=193878
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/press-not-work-for-disabled-menu-list.html: Added.
+
+2019-02-07  Devin Rousso  <drousso@apple.com>
+
+        PseudoElement created for any ::before/::after selector regardless of whether a content property exists
+        https://bugs.webkit.org/show_bug.cgi?id=194423
+        <rdar://problem/46787260>
+
+        Reviewed by Antti Koivisto.
+
+        * inspector/css/pseudo-creation.html: Added.
+        * inspector/css/pseudo-creation-expected.txt: Added.
+
+2019-02-07  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] GPUDevice::createTexture implementation prototype
+        https://bugs.webkit.org/show_bug.cgi?id=194409
+        <rdar://problem/47894312>
+
+        Reviewed by Myles C. Maxfield.
+
+        Update textures-textureviews.html to WPT format and to test creation of textures via the GPUDevice.
+
+        * webgpu/textures-textureviews-expected.txt:
+        * webgpu/textures-textureviews.html:
+
+2019-02-07  Shawn Roberts  <sroberts@apple.com>
+
+        fast/hidpi/hidpi-long-page-with-inset-element.html is a flaky image failure
+        https://bugs.webkit.org/show_bug.cgi?id=172384
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-02-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Clicking links in Safari using Apple Pencil is much more difficult after r238475
+        https://bugs.webkit.org/show_bug.cgi?id=194415
+        <rdar://problem/47550281>
+
+        Reviewed by Tim Horton.
+
+        Add a layout test to verify that a stylus tap dispatches clicks.
+
+        * fast/events/touch/ios/pencil-tap-dispatches-click-expected.txt: Added.
+        * fast/events/touch/ios/pencil-tap-dispatches-click.html: Added.
+
+2019-02-07  Youenn Fablet  <youenn@apple.com>
+
+        Filter out Overconstrainederror.constraint when getUserMedia is not granted
+        https://bugs.webkit.org/show_bug.cgi?id=194240
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/overconstrainederror-constraint-expected.txt: Added.
+        * fast/mediastream/overconstrainederror-constraint.html: Added.
+
+2019-02-07  Timothy Hatcher  <timothy@apple.com>
+
+        Overflow element scrollbar is light for dark mode content.
+        https://bugs.webkit.org/show_bug.cgi?id=194407
+        rdar://problem/45991585
+
+        Reviewed by Beth Dakin.
+
+        Updated tests to look at overflow elements and if dark apearance
+        is used by the scrollbar directly.
+
+        * css-dark-mode/supported-color-schemes-scrollbar-expected.txt:
+        * css-dark-mode/supported-color-schemes-scrollbar.html:
+
+2019-02-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Fix modify-css-property-race.html flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=194408
+
+        Reviewed by Devin Rousso.
+
+        Event listener wasn't removed property, sometimes causing it to fire one more time.
+
+        * inspector/css/modify-css-property-race.html:
+
+2019-02-07  Youenn Fablet  <youenn@apple.com>
+
+        Unable to sign in leetcode.
+        https://bugs.webkit.org/show_bug.cgi?id=194366
+        rdar://problem/47259025.
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/fetch/request-abort-expected.txt: Added.
+        * http/wpt/fetch/request-abort.html: Added.
+
+2019-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        Deprecate WKBundlePageSetDefersLoading
+        https://bugs.webkit.org/show_bug.cgi?id=191394
+
+        Reviewed by Dean Jackson.
+
+        * platform/wk2/TestExpectations:
+
+2019-02-07  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Out-of-flow] Use the containing block's padding width when computing min/max width.
+        https://bugs.webkit.org/show_bug.cgi?id=194391
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/absolute-positioned-min-max-percentage-with-parent-padding-expected.html: Added.
+        * fast/block/block-only/absolute-positioned-min-max-percentage-with-parent-padding.html: Added.
+
+2019-02-07  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r241117.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/compositing/iframes/invisible-nested-iframe-show-expected.txt:
+        * platform/gtk/compositing/iframes/resizer-expected.txt:
+        * platform/gtk/compositing/rtl/rtl-iframe-absolute-expected.txt:
+        * platform/gtk/compositing/rtl/rtl-iframe-relative-expected.txt:
+
+2019-02-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: don't send the entire function string with each event listener
+        https://bugs.webkit.org/show_bug.cgi?id=194293
+        <rdar://problem/47822809>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/dom/getEventListenersForNode.html:
+        * inspector/dom/getEventListenersForNode-expected.txt:
+
+2019-02-06  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] It should be possible to require a phonetic name for shipping contacts
+        https://bugs.webkit.org/show_bug.cgi?id=194311
+        <rdar://46733045>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/ssl/applepay/ApplePayRequestShippingContact.https-expected.txt:
+        * http/tests/ssl/applepay/ApplePayRequestShippingContact.https.html:
+        * http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https-expected.txt:
+        * http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html:
+        * http/tests/ssl/applepay/PaymentRequest.https-expected.txt:
+        * http/tests/ssl/applepay/PaymentRequest.https.html:
+
+2019-02-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] PrivateName to PublicName hash table is wasteful
+        https://bugs.webkit.org/show_bug.cgi?id=194277
+
+        Reviewed by Michael Saboff.
+
+        * streams/readable-byte-stream-controller-expected.txt:
+
+2019-02-06  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Implement supporting dictionaries for GPUTexture
+        https://bugs.webkit.org/show_bug.cgi?id=194354
+
+        Reviewed by Dean Jackson.
+
+        Update test files to use hyphen-case for GPUTextureFormat.
+
+        * webgpu/js/basic-webgpu-functions.js:
+        (async.setUpContexts):
+        * webgpu/js/webgpu-functions.js:
+        (createBasicContext):
+
+2019-02-06  David Kilzer  <ddkilzer@apple.com>
+
+        Revert part of r241015 that skipped all WebGL tests
+
+        * TestExpectations: Revert unintended change to skip all WebGL
+        tests.
+
+2019-02-06  Jonathan Bedard  <jbedard@apple.com>
+
+        [iPad] Initial test gardening (Part 2)
+        https://bugs.webkit.org/show_bug.cgi?id=193767
+        <rdar://problem/47515175>
+
+        Unreviewed test gardening.
+
+        * fast/forms/ios/validation-bubble-dismiss-on-tap.html: Change tap location so test is compatible with iPads.
+        * platform/ipad/TestExpectations: Associate iPad specific failures with bugs.
+
+2019-02-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, rebaseline some tests for iOS after r240713.
+
+        * fast/events/touch/ios/block-without-overflow-scroll-and-passive-observer-on-block-scrolling-state-expected.txt:
+        * fast/events/touch/ios/block-without-overflow-scroll-and-passive-observer-on-document-scrolling-state-expected.txt:
+        * fast/events/touch/ios/block-without-overflow-scroll-scrolling-state-expected.txt:
+        * fast/events/touch/ios/tap-with-active-touch-end-listener-expected.txt:
+
 2019-02-06  Antti Koivisto  <antti@apple.com>
 
         RELEASE_ASSERT(!m_document.isResolvingTreeStyle()) in com.apple.WebKit.WebContent at WebCore: WebCore::StyleResolver::~StyleResolver

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #include "UnusedPointer.h"
 #include <wtf/UniqueArray.h>
 #include <wtf/Vector.h>
+#include <wtf/WeakRandom.h>
 
 namespace JSC {
 
@@ -106,15 +107,18 @@ private:
 
     StructureOrOffset* table() const { return m_table.get(); }
     
-    static const size_t s_initialSize = 256;
+    static constexpr size_t s_initialSize = 512;
 
     Vector<UniqueArray<StructureOrOffset>> m_oldTables;
 
-    uint32_t m_firstFreeOffset;
+    uint32_t m_firstFreeOffset { 0 };
+    uint32_t m_lastFreeOffset { 0 };
     UniqueArray<StructureOrOffset> m_table;
 
     size_t m_size;
     size_t m_capacity;
+
+    WeakRandom m_weakRandom;
 
 #if USE(JSVALUE64)
     static const StructureID s_unusedID = unusedPointer;

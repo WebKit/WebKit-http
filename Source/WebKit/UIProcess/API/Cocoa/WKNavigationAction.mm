@@ -31,9 +31,14 @@
 #import "NavigationActionData.h"
 #import "WKFrameInfoInternal.h"
 #import "WKNavigationInternal.h"
+#import "WebEventFactory.h"
 #import "_WKUserInitiatedActionInternal.h"
 #import <WebCore/FloatPoint.h>
 #import <wtf/RetainPtr.h>
+
+#if PLATFORM(IOS_FAMILY)
+#import "WebIOSEventFactory.h"
+#endif
 
 @implementation WKNavigationAction
 
@@ -71,46 +76,6 @@ static WKSyntheticClickType toWKSyntheticClickType(WebKit::WebMouseEvent::Synthe
     }
     ASSERT_NOT_REACHED();
     return WKSyntheticClickTypeNoTap;
-}
-#endif
-
-#if PLATFORM(MAC)
-
-// FIXME: This really belongs in WebEventFactory.
-static NSEventModifierFlags toNSEventModifierFlags(OptionSet<WebKit::WebEvent::Modifier> modifiers)
-{
-    NSEventModifierFlags modifierFlags = 0;
-    if (modifiers.contains(WebKit::WebEvent::Modifier::CapsLockKey))
-        modifierFlags |= NSEventModifierFlagCapsLock;
-    if (modifiers.contains(WebKit::WebEvent::Modifier::ShiftKey))
-        modifierFlags |= NSEventModifierFlagShift;
-    if (modifiers.contains(WebKit::WebEvent::Modifier::ControlKey))
-        modifierFlags |= NSEventModifierFlagControl;
-    if (modifiers.contains(WebKit::WebEvent::Modifier::AltKey))
-        modifierFlags |= NSEventModifierFlagOption;
-    if (modifiers.contains(WebKit::WebEvent::Modifier::MetaKey))
-        modifierFlags |= NSEventModifierFlagCommand;
-    return modifierFlags;
-}
-
-static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
-{
-    switch (mouseButton) {
-    case WebKit::WebMouseEvent::NoButton:
-        return 0;
-
-    case WebKit::WebMouseEvent::LeftButton:
-        return 1 << 0;
-
-    case WebKit::WebMouseEvent::RightButton:
-        return 1 << 1;
-
-    case WebKit::WebMouseEvent::MiddleButton:
-        return 1 << 2;
-
-    default:
-        return 0;
-    }
 }
 #endif
 
@@ -166,15 +131,24 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
 #endif
 
 #if PLATFORM(MAC)
+
 - (NSEventModifierFlags)modifierFlags
 {
-    return toNSEventModifierFlags(_navigationAction->modifiers());
+    return WebKit::WebEventFactory::toNSEventModifierFlags(_navigationAction->modifiers());
 }
 
 - (NSInteger)buttonNumber
 {
-    return toNSButtonNumber(_navigationAction->mouseButton());
+    return WebKit::WebEventFactory::toNSButtonNumber(_navigationAction->mouseButton());
 }
+
+#else
+
+- (UIKeyModifierFlags)modifierFlags
+{
+    return WebIOSEventFactory::toUIKeyModifierFlags(_navigationAction->modifiers());
+}
+
 #endif
 
 #pragma mark WKObject protocol implementation
