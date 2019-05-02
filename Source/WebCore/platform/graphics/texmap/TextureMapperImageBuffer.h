@@ -36,7 +36,7 @@ public:
     void drawBorder(const Color&, float borderWidth, const FloatRect&, const TransformationMatrix&) override;
     void drawNumber(int number, const Color&, const FloatPoint&, const TransformationMatrix&) override;
     void drawTexture(const BitmapTexture&, const FloatRect& targetRect, const TransformationMatrix&, float opacity, unsigned exposedEdges) override;
-    void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) override;
+    void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&, bool) override;
     void beginClip(const TransformationMatrix&, const FloatRect&) override;
     void bindSurface(BitmapTexture* surface) override { m_currentSurface = surface;}
     void endClip() override { graphicsContext()->restore(); }

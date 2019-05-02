@@ -519,5 +519,15 @@ void ChromeClientHaiku::scheduleCompositingLayerFlush()
     m_webPage->draw(r);
 }
 
+WebCore::IntPoint ChromeClientHaiku::accessibilityScreenToRootView(WebCore::IntPoint const& point) const
+{
+	return point;
+}
+
+WebCore::IntRect ChromeClientHaiku::rootViewToAccessibilityScreen(WebCore::IntRect const& rect) const
+{
+	return rect;
+}
+
 } // namespace WebCore
 

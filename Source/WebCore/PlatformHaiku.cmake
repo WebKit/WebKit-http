@@ -14,6 +14,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
   "${WEBCORE_DIR}/platform/mediacapabilities"
   "${WEBCORE_DIR}/platform/network/haiku"
   "${WTF_DIR}"
+  "${FORWARDING_HEADERS_DIR}/JavaScriptCore"
 )
 
 list(APPEND WebCore_SOURCES

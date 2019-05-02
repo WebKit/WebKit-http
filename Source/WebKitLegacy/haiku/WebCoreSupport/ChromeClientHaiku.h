@@ -166,6 +166,8 @@ namespace WebCore {
 #if USE(TILED_BACKING_STORE)
         void delegatedScrollRequested(const WebCore::IntPoint& pos) override;
 #endif
+		WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) const override;
+		WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) const override;
     private:
         BWebPage* m_webPage;
         BWebView* m_webView;

@@ -326,7 +326,7 @@ static int windowsKeyCodeForKeyEvent(char singleByte, int keyCode)
 
 static String KeyValueForKeyEvent(BString bytes, int keyCode)
 {
-    switch (singleByte) {
+    switch (bytes.ByteAt(0)) {
         
         case B_FUNCTION_KEY:
             switch (keyCode) {
@@ -669,7 +669,7 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(BMessage* message)
     if (modifiers & B_SHIFT_KEY)
         m_modifiers.add(PlatformEvent::Modifier::ShiftKey);
     if (modifiers & B_COMMAND_KEY)
-        m_modifiers.add(PlatformEvent::Modifier::CtrlKey);
+        m_modifiers.add(PlatformEvent::Modifier::ControlKey);
     if (modifiers & B_CONTROL_KEY)
         m_modifiers.add(PlatformEvent::Modifier::AltKey);
     if (modifiers & B_OPTION_KEY)

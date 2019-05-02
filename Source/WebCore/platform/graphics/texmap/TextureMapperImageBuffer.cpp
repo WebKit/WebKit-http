@@ -95,7 +95,7 @@ void TextureMapperImageBuffer::drawTexture(const BitmapTexture& texture, const F
     context->restore();
 }
 
-void TextureMapperImageBuffer::drawSolidColor(const FloatRect& rect, const TransformationMatrix& matrix, const Color& color)
+void TextureMapperImageBuffer::drawSolidColor(const FloatRect& rect, const TransformationMatrix& matrix, const Color& color, bool)
 {
     GraphicsContext* context = currentContext();
     if (!context)

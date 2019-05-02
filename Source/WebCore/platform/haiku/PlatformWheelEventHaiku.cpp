@@ -55,7 +55,7 @@ PlatformWheelEvent::PlatformWheelEvent(BMessage* message)
     if (modifiers & B_SHIFT_KEY)
         m_modifiers.add(PlatformEvent::Modifier::ShiftKey);
     if (modifiers & B_COMMAND_KEY)
-        m_modifiers.add(PlatformEvent::Modifier::CtrlKey);
+        m_modifiers.add(PlatformEvent::Modifier::ControlKey);
     if (modifiers & B_CONTROL_KEY)
         m_modifiers.add(PlatformEvent::Modifier::AltKey);
     if (modifiers & B_OPTION_KEY)

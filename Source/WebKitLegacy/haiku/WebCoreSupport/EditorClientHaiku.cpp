@@ -374,7 +374,7 @@ static const char* interpretEditorCommandKeyEvent(const KeyboardEvent* evt)
         modifiers |= ShiftKey;
     if (evt->altKey())
         modifiers |= AltKey;
-    if (evt->ctrlKey())
+    if (evt->controlKey())
         modifiers |= CtrlKey;
 
     if (evt->type() == eventNames().keydownEvent) {
@@ -535,54 +535,54 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
     switch (platformEvent->windowsVirtualKeyCode()) {
     case VK_BACK:
         frame.editor().deleteWithDirection(DirectionBackward,
-                                             platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
+                                             platformEvent->controlKey() ? WordGranularity : CharacterGranularity,
                                              false, true);
         break;
     case VK_DELETE:
         frame.editor().deleteWithDirection(DirectionForward,
-                                             platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
+                                             platformEvent->controlKey() ? WordGranularity : CharacterGranularity,
                                              false, true);
         break;
     case VK_LEFT:
         frame.selection().modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                    DirectionLeft,
-                                   platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
+                                   platformEvent->controlKey() ? WordGranularity : CharacterGranularity,
                                    UserTriggered);
         break;
     case VK_RIGHT:
         frame.selection().modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                    DirectionRight,
-                                   platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
+                                   platformEvent->controlKey() ? WordGranularity : CharacterGranularity,
                                    UserTriggered);
         break;
     case VK_UP:
         frame.selection().modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                    DirectionBackward,
-                                   platformEvent->ctrlKey() ? ParagraphGranularity : LineGranularity,
+                                   platformEvent->controlKey() ? ParagraphGranularity : LineGranularity,
                                    UserTriggered);
         break;
     case VK_DOWN:
         frame.selection().modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                    DirectionForward,
-                                   platformEvent->ctrlKey() ? ParagraphGranularity : LineGranularity,
+                                   platformEvent->controlKey() ? ParagraphGranularity : LineGranularity,
                                    UserTriggered);
         break;
     case VK_HOME:
-        if (platformEvent->shiftKey() && platformEvent->ctrlKey())
+        if (platformEvent->shiftKey() && platformEvent->controlKey())
             frame.editor().command("MoveToBeginningOfDocumentAndModifySelection").execute();
         else if (platformEvent->shiftKey())
             frame.editor().command("MoveToBeginningOfLineAndModifySelection").execute();
-        else if (platformEvent->ctrlKey())
+        else if (platformEvent->controlKey())
             frame.editor().command("MoveToBeginningOfDocument").execute();
         else
             frame.editor().command("MoveToBeginningOfLine").execute();
         break;
     case VK_END:
-        if (platformEvent->shiftKey() && platformEvent->ctrlKey())
+        if (platformEvent->shiftKey() && platformEvent->controlKey())
             frame.editor().command("MoveToEndOfDocumentAndModifySelection").execute();
         else if (platformEvent->shiftKey())
             frame.editor().command("MoveToEndOfLineAndModifySelection").execute();
-        else if (platformEvent->ctrlKey())
+        else if (platformEvent->controlKey())
             frame.editor().command("MoveToEndOfDocument").execute();
         else
             frame.editor().command("MoveToEndOfLine").execute();
@@ -608,7 +608,7 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
     case VK_TAB:
         return false;
     default:
-        if (!platformEvent->ctrlKey() && !platformEvent->altKey() && !platformEvent->text().isEmpty()) {
+        if (!platformEvent->controlKey() && !platformEvent->altKey() && !platformEvent->text().isEmpty()) {
             if (platformEvent->text().length() == 1) {
                 UChar ch = platformEvent->text()[0];
                 // Don't insert null or control characters as they can result in unexpected behaviour
@@ -616,7 +616,7 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
                     break;
             }
             frame.editor().insertText(platformEvent->text(), event);
-        } else if (platformEvent->ctrlKey()) {
+        } else if (platformEvent->controlKey()) {
             switch (platformEvent->windowsVirtualKeyCode()) {
             case VK_B:
                 frame.editor().command("ToggleBold").execute();

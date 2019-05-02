@@ -227,7 +227,9 @@ public:
     virtual String titleAttributeValue() const = 0;
 #endif
 
+#if HAVE(ACCESSIBILITY)
     virtual AccessibilityObjectWrapper* wrapper() const = 0;
+#endif
     virtual AccessibilityObjectInterface* accessibilityHitTest(const IntPoint&) const = 0;
     virtual void updateChildrenIfNecessary() = 0;
 };
