@@ -180,8 +180,8 @@ static bool isLookalikeCharacter(const Optional<UChar32>& previousCodePoint, UCh
     case 0x233F: /* APL FUNCTIONAL SYMBOL SLASH BAR */
     case 0x23AE: /* INTEGRAL EXTENSION */
     case 0x244A: /* OCR DOUBLE BACKSLASH */
-    case 0x2571: /* DisplayType::Box DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT */
-    case 0x2572: /* DisplayType::Box DRAWINGS LIGHT DIAGONAL UPPER LEFT TO LOWER RIGHT */
+    case 0x2571: /* BOX DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT */
+    case 0x2572: /* BOX DRAWINGS LIGHT DIAGONAL UPPER LEFT TO LOWER RIGHT */
     case 0x29F6: /* SOLIDUS WITH OVERBAR */
     case 0x29F8: /* BIG SOLIDUS */
     case 0x2AFB: /* TRIPLE SOLIDUS BINARY RELATION */
@@ -808,9 +808,11 @@ String userVisibleURL(const CString& url)
 
     bool mayNeedHostNameDecoding = false;
 
-    // The buffer should be large enough to %-escape every character.
-    int bufferLength = (length * 3) + 1;
-    Vector<char, urlBytesBufferLength> after(bufferLength);
+    Checked<int, RecordOverflow> bufferLength = length;
+    bufferLength = bufferLength * 3 + 1; // The buffer should be large enough to %-escape every character.
+    if (bufferLength.hasOverflowed())
+        return { };
+    Vector<char, urlBytesBufferLength> after(bufferLength.unsafeGet());
 
     char* q = after.data();
     {
@@ -850,7 +852,7 @@ String userVisibleURL(const CString& url)
         // then we will copy back bytes to the start of the buffer 
         // as we convert.
         int afterlength = q - after.data();
-        char* p = after.data() + bufferLength - afterlength - 1;
+        char* p = after.data() + bufferLength.unsafeGet() - afterlength - 1;
         memmove(p, after.data(), afterlength + 1); // copies trailing '\0'
         char* q = after.data();
         while (*p) {

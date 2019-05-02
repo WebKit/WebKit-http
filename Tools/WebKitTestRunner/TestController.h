@@ -26,6 +26,7 @@
 #pragma once
 
 #include "GeolocationProviderMock.h"
+#include "TestOptions.h"
 #include "WebNotificationProvider.h"
 #include "WorkQueueManager.h"
 #include <WebKit/WKRetainPtr.h>
@@ -294,9 +295,12 @@ public:
 
     bool isDoingMediaCapture() const;
 
+    String dumpAdClickAttribution();
+    void clearAdClickAttribution();
+
 private:
-    WKRetainPtr<WKPageConfigurationRef> generatePageConfiguration(WKContextConfigurationRef);
-    WKRetainPtr<WKContextConfigurationRef> generateContextConfiguration(const TestOptions&) const;
+    WKRetainPtr<WKPageConfigurationRef> generatePageConfiguration(const TestOptions&);
+    WKRetainPtr<WKContextConfigurationRef> generateContextConfiguration(const TestOptions::ContextOptions&) const;
     void initialize(int argc, const char* argv[]);
     void createWebViewWithOptions(const TestOptions&);
     void run();
@@ -463,6 +467,7 @@ private:
 
     std::unique_ptr<PlatformWebView> m_mainWebView;
     WKRetainPtr<WKContextRef> m_context;
+    Optional<TestOptions::ContextOptions> m_contextOptions;
     WKRetainPtr<WKPageGroupRef> m_pageGroup;
     WKRetainPtr<WKUserContentControllerRef> m_userContentController;
 

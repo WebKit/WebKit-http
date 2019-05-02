@@ -29,6 +29,7 @@
 #if PLATFORM(IOS_FAMILY)
 
 #import "APIUIClient.h"
+#import "Connection.h"
 #import "DataReference.h"
 #import "EditingRange.h"
 #import "GlobalFindInPageState.h"
@@ -253,13 +254,10 @@ static inline float adjustedUnexposedMaxEdge(float documentEdge, float exposedRe
 }
 
 // FIXME: rename this when visual viewports are the default.
-WebCore::FloatRect WebPageProxy::computeCustomFixedPositionRect(const FloatRect& unobscuredContentRect, const FloatRect& unobscuredContentRectRespectingInputViewBounds, const FloatRect& currentCustomFixedPositionRect, double displayedContentScale, FrameView::LayoutViewportConstraint constraint, bool visualViewportEnabled) const
+WebCore::FloatRect WebPageProxy::computeCustomFixedPositionRect(const FloatRect& unobscuredContentRect, const FloatRect& unobscuredContentRectRespectingInputViewBounds, const FloatRect& currentCustomFixedPositionRect, double displayedContentScale, FrameView::LayoutViewportConstraint constraint) const
 {
     FloatRect constrainedUnobscuredRect = unobscuredContentRect;
     FloatRect documentRect = pageClient().documentRect();
-
-    if (!visualViewportEnabled && pageClient().isFocusingElement())
-        return documentRect;
 
     if (constraint == FrameView::LayoutViewportConstraint::ConstrainedToDocumentRect)
         constrainedUnobscuredRect.intersect(documentRect);
@@ -276,9 +274,6 @@ WebCore::FloatRect WebPageProxy::computeCustomFixedPositionRect(const FloatRect&
         constrainedUnobscuredRect.setHeight(adjustedUnexposedMaxEdge(documentRect.maxY(), constrainedUnobscuredRect.maxY(), factor) - constrainedUnobscuredRect.y());
     }
 
-    if (!visualViewportEnabled)
-        return FrameView::rectForViewportConstrainedObjects(enclosingLayoutRect(constrainedUnobscuredRect), LayoutSize(documentRect.size()), displayedContentScale, false, StickToViewportBounds);
-        
     FloatSize constrainedSize = isBelowMinimumScale ? constrainedUnobscuredRect.size() : unobscuredContentRect.size();
     FloatRect unobscuredContentRectForViewport = isBelowMinimumScale ? constrainedUnobscuredRect : unobscuredContentRectRespectingInputViewBounds;
 
@@ -1118,6 +1113,16 @@ void WebPageProxy::hardwareKeyboardAvailabilityChanged()
     m_process->send(Messages::WebPage::HardwareKeyboardAvailabilityChanged(), m_pageID);
 }
 
+void WebPageProxy::requestEvasionRectsAboveSelection(CompletionHandler<void(const Vector<WebCore::FloatRect>&)>&& callback)
+{
+    if (!isValid()) {
+        callback({ });
+        return;
+    }
+
+    m_process->connection()->sendWithAsyncReply(Messages::WebPage::RequestEvasionRectsAboveSelection(), WTFMove(callback), m_pageID);
+}
+
 #if ENABLE(DATA_INTERACTION)
 
 void WebPageProxy::didHandleDragStartRequest(bool started)
@@ -1165,8 +1170,13 @@ void WebPageProxy::didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookD
 
 void WebPageProxy::didRequestPasswordForQuickLookDocumentInMainFrame(const String& fileName)
 {
-    pageClient().requestPasswordForQuickLookDocument(fileName, [protectedThis = makeRef(*this)](const String& password) {
-        protectedThis->process().send(Messages::WebPage::DidReceivePasswordForQuickLookDocument(password), protectedThis->m_pageID);
+    didRequestPasswordForQuickLookDocumentInMainFrameShared(m_process.copyRef(), fileName);
+}
+
+void WebPageProxy::didRequestPasswordForQuickLookDocumentInMainFrameShared(Ref<WebProcessProxy>&& process, const String& fileName)
+{
+    pageClient().requestPasswordForQuickLookDocument(fileName, [process = WTFMove(process), pageID = m_pageID](const String& password) {
+        process->send(Messages::WebPage::DidReceivePasswordForQuickLookDocument(password), pageID);
     });
 }
 

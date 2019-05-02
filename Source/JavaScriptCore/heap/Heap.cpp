@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
  *
  *  This library is free software; you can redistribute it and/or
@@ -300,14 +300,6 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_threadCondition(AutomaticThreadCondition::create())
 {
     m_worldState.store(0);
-
-    for (unsigned i = 0, numberOfParallelThreads = heapHelperPool().numberOfThreads(); i < numberOfParallelThreads; ++i) {
-        std::unique_ptr<SlotVisitor> visitor = std::make_unique<SlotVisitor>(*this, toCString("P", i + 1));
-        if (Options::optimizeParallelSlotVisitorsForStoppedMutator())
-            visitor->optimizeForStoppedMutator();
-        m_availableParallelSlotVisitors.append(visitor.get());
-        m_parallelSlotVisitors.append(WTFMove(visitor));
-    }
     
     if (Options::useConcurrentGC()) {
         if (Options::useStochasticMutatorScheduler())
@@ -599,8 +591,10 @@ void Heap::didFinishIterating()
 
 void Heap::completeAllJITPlans()
 {
+    if (!VM::canUseJIT())
+        return;
 #if ENABLE(JIT)
-    JITWorklist::instance()->completeAllForVM(*m_vm);
+    JITWorklist::ensureGlobalWorklist().completeAllForVM(*m_vm);
 #endif // ENABLE(JIT)
     DFG::completeAllPlansForVM(*m_vm);
 }
@@ -609,7 +603,8 @@ template<typename Func>
 void Heap::iterateExecutingAndCompilingCodeBlocks(const Func& func)
 {
     m_codeBlocks->iterateCurrentlyExecuting(func);
-    DFG::iterateCodeBlocksForGC(*m_vm, func);
+    if (VM::canUseJIT())
+        DFG::iterateCodeBlocksForGC(*m_vm, func);
 }
 
 template<typename Func>
@@ -667,7 +662,9 @@ void Heap::gatherJSStackRoots(ConservativeRoots& roots)
 void Heap::gatherScratchBufferRoots(ConservativeRoots& roots)
 {
 #if ENABLE(DFG_JIT)
-    m_vm->gatherConservativeRoots(roots);
+    if (!VM::canUseJIT())
+        return;
+    m_vm->gatherScratchBufferRoots(roots);
 #else
     UNUSED_PARAM(roots);
 #endif
@@ -684,6 +681,8 @@ void Heap::beginMarking()
 void Heap::removeDeadCompilerWorklistEntries()
 {
 #if ENABLE(DFG_JIT)
+    if (!VM::canUseJIT())
+        return;
     for (unsigned i = DFG::numberOfWorklists(); i--;)
         DFG::existingWorklistForIndex(i).removeDeadPlans(*m_vm);
 #endif
@@ -1022,6 +1021,9 @@ void Heap::collect(Synchronousness synchronousness, GCRequest request)
 
 void Heap::collectNow(Synchronousness synchronousness, GCRequest request)
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(expectDoesGC());
+
     switch (synchronousness) {
     case Async: {
         collectAsync(request);
@@ -1054,6 +1056,9 @@ void Heap::collectNow(Synchronousness synchronousness, GCRequest request)
 
 void Heap::collectAsync(GCRequest request)
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(expectDoesGC());
+
     if (!m_isSafeToCollect)
         return;
 
@@ -1075,9 +1080,12 @@ void Heap::collectAsync(GCRequest request)
 
 void Heap::collectSync(GCRequest request)
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(expectDoesGC());
+
     if (!m_isSafeToCollect)
         return;
-    
+
     waitForCollection(requestCollection(request));
 }
 
@@ -1245,8 +1253,19 @@ NEVER_INLINE bool Heap::runBeginPhase(GCConductor conn)
             SlotVisitor* slotVisitor;
             {
                 LockHolder locker(m_parallelSlotVisitorLock);
-                RELEASE_ASSERT_WITH_MESSAGE(!m_availableParallelSlotVisitors.isEmpty(), "Parallel SlotVisitors are allocated apriori");
-                slotVisitor = m_availableParallelSlotVisitors.takeLast();
+                if (m_availableParallelSlotVisitors.isEmpty()) {
+                    std::unique_ptr<SlotVisitor> newVisitor = std::make_unique<SlotVisitor>(
+                        *this, toCString("P", m_parallelSlotVisitors.size() + 1));
+                    
+                    if (Options::optimizeParallelSlotVisitorsForStoppedMutator())
+                        newVisitor->optimizeForStoppedMutator();
+                    
+                    newVisitor->didStartMarking();
+                    
+                    slotVisitor = newVisitor.get();
+                    m_parallelSlotVisitors.append(WTFMove(newVisitor));
+                } else
+                    slotVisitor = m_availableParallelSlotVisitors.takeLast();
             }
 
             WTF::registerGCThread(GCThreadType::Helper);
@@ -1586,9 +1605,9 @@ void Heap::stopThePeriphery(GCConductor conn)
         });
 
 #if ENABLE(JIT)
-    {
+    if (VM::canUseJIT()) {
         DeferGCForAWhile awhile(*this);
-        if (JITWorklist::instance()->completeAllForVM(*m_vm)
+        if (JITWorklist::ensureGlobalWorklist().completeAllForVM(*m_vm)
             && conn == GCConductor::Collector)
             setGCDidJIT();
     }
@@ -1730,6 +1749,9 @@ NEVER_INLINE void Heap::resumeTheMutator()
 
 void Heap::stopIfNecessarySlow()
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(expectDoesGC());
+
     while (stopIfNecessarySlow(m_worldState.load())) { }
     
     RELEASE_ASSERT(m_worldState.load() & hasAccessBit);
@@ -1742,6 +1764,9 @@ void Heap::stopIfNecessarySlow()
 
 bool Heap::stopIfNecessarySlow(unsigned oldState)
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(expectDoesGC());
+
     RELEASE_ASSERT(oldState & hasAccessBit);
     RELEASE_ASSERT(!(oldState & stoppedBit));
     
@@ -2093,6 +2118,8 @@ void Heap::suspendCompilerThreads()
     // We ensure the worklists so that it's not possible for the mutator to start a new worklist
     // after we have suspended the ones that he had started before. That's not very expensive since
     // the worklists use AutomaticThreads anyway.
+    if (!VM::canUseJIT())
+        return;
     for (unsigned i = DFG::numberOfWorklists(); i--;)
         DFG::ensureWorklistForIndex(i).suspendAllThreads();
 #endif
@@ -2310,6 +2337,8 @@ void Heap::didFinishCollection()
 void Heap::resumeCompilerThreads()
 {
 #if ENABLE(DFG_JIT)
+    if (!VM::canUseJIT())
+        return;
     for (unsigned i = DFG::numberOfWorklists(); i--;)
         DFG::existingWorklistForIndex(i).resumeAllThreads();
 #endif
@@ -2527,9 +2556,12 @@ void Heap::reportExternalMemoryVisited(size_t size)
 void Heap::collectIfNecessaryOrDefer(GCDeferralContext* deferralContext)
 {
     ASSERT(deferralContext || isDeferred() || !DisallowGC::isInEffectOnCurrentThread());
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(expectDoesGC());
 
     if (!m_isSafeToCollect)
         return;
+
     switch (mutatorState()) {
     case MutatorState::Running:
     case MutatorState::Allocating:
@@ -2640,7 +2672,7 @@ void Heap::addCoreConstraints()
                 SetRootMarkReasonScope rootScope(slotVisitor, SlotVisitor::RootMarkReason::ConservativeScan);
                 slotVisitor.append(conservativeRoots);
             }
-            {
+            if (VM::canUseJIT()) {
                 // JITStubRoutines must be visited after scanning ConservativeRoots since JITStubRoutines depend on the hook executed during gathering ConservativeRoots.
                 SetRootMarkReasonScope rootScope(slotVisitor, SlotVisitor::RootMarkReason::JITStubRoutines);
                 m_jitStubRoutines->traceMarkedStubRoutines(slotVisitor);
@@ -2744,26 +2776,28 @@ void Heap::addCoreConstraints()
         ConstraintParallelism::Parallel);
     
 #if ENABLE(DFG_JIT)
-    m_constraintSet->add(
-        "Dw", "DFG Worklists",
-        [this] (SlotVisitor& slotVisitor) {
-            SetRootMarkReasonScope rootScope(slotVisitor, SlotVisitor::RootMarkReason::DFGWorkLists);
+    if (VM::canUseJIT()) {
+        m_constraintSet->add(
+            "Dw", "DFG Worklists",
+            [this] (SlotVisitor& slotVisitor) {
+                SetRootMarkReasonScope rootScope(slotVisitor, SlotVisitor::RootMarkReason::DFGWorkLists);
 
-            for (unsigned i = DFG::numberOfWorklists(); i--;)
-                DFG::existingWorklistForIndex(i).visitWeakReferences(slotVisitor);
-            
-            // FIXME: This is almost certainly unnecessary.
-            // https://bugs.webkit.org/show_bug.cgi?id=166829
-            DFG::iterateCodeBlocksForGC(
-                *m_vm,
-                [&] (CodeBlock* codeBlock) {
-                    slotVisitor.appendUnbarriered(codeBlock);
-                });
-            
-            if (Options::logGC() == GCLogging::Verbose)
-                dataLog("DFG Worklists:\n", slotVisitor);
-        },
-        ConstraintVolatility::GreyedByMarking);
+                for (unsigned i = DFG::numberOfWorklists(); i--;)
+                    DFG::existingWorklistForIndex(i).visitWeakReferences(slotVisitor);
+                
+                // FIXME: This is almost certainly unnecessary.
+                // https://bugs.webkit.org/show_bug.cgi?id=166829
+                DFG::iterateCodeBlocksForGC(
+                    *m_vm,
+                    [&] (CodeBlock* codeBlock) {
+                        slotVisitor.appendUnbarriered(codeBlock);
+                    });
+                
+                if (Options::logGC() == GCLogging::Verbose)
+                    dataLog("DFG Worklists:\n", slotVisitor);
+            },
+            ConstraintVolatility::GreyedByMarking);
+    }
 #endif
     
     m_constraintSet->add(
@@ -2872,6 +2906,9 @@ void Heap::setMutatorShouldBeFenced(bool value)
 void Heap::performIncrement(size_t bytes)
 {
     if (!m_objectSpace.isMarking())
+        return;
+
+    if (isDeferred())
         return;
 
     m_incrementBalance += bytes * Options::gcIncrementScale();

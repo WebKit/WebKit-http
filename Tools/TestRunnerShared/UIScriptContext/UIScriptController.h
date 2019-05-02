@@ -72,6 +72,7 @@ public:
     void zoomToScale(double scale, JSValueRef callback);
     void setViewScale(double);
     void setMinimumEffectiveWidth(double);
+    void setAllowsViewportShrinkToFit(bool);
 
     void resignFirstResponder();
 
@@ -164,7 +165,9 @@ public:
     void setDidShowMenuCallback(JSValueRef);
     JSValueRef didShowMenuCallback() const;
 
+    bool isShowingMenu() const;
     JSObjectRef rectForMenuAction(JSStringRef action) const;
+    JSObjectRef menuRect() const;
 
     void setDidEndScrollingCallback(JSValueRef);
     JSValueRef didEndScrollingCallback() const;

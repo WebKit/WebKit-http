@@ -1,3 +1,603 @@
+2019-02-25  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Fix WTFLogVerbose variadic parameters forwarding
+        https://bugs.webkit.org/show_bug.cgi?id=194920
+
+        Reviewed by Alex Christensen.
+
+        WTFLogVerbose was passing the va_list to WTFLog but this function
+        also used variadic parameters and this is not allowed in C (that
+        part of the code is extern "C").
+
+        * wtf/Assertions.cpp:
+        (WTF::WTFLogVaList): Created to take a va_list argument instead of
+        variadic parameters.
+        (WTF::WTFLog): Kept with variadic parameters, which are
+        transformed to va_list and passed to WTFLogVaList.
+        (WTF::WTFLogVerbose): Use WTFLogVaList instead of WTFLog.
+
+2019-02-25  Sam Weinig  <sam@webkit.org>
+
+        Update double-conversion to the latest version
+        https://bugs.webkit.org/show_bug.cgi?id=194994
+
+        Import the latest version of the double-conversion library based on
+        https://github.com/google/double-conversion/commit/990c44707c70832dc1ce1578048c2198bafd3307
+
+        In additon to importing the code, the following changes were applied (or re-applied) to maintain 
+        parity with what we had previously:
+             - Add #include "config.h" to each cpp file.
+             - Put everything inside the WTF namespace.
+             - Changed all in library includes to be of the form #include <wtf/dtoa/FILE.h>.
+             - Renamed double_conversion::Vector<> to double_conversion::BufferReference<>.
+             - Replaced duplicated functions with ASCIICType.h variants
+             - Made CachedPower table a constexpr.
+             - Exported (via WTF_EXPORT_PRIVATE) several functions in double-conversion.h.
+             - Made substantial changes to StringToDoubleConverter to avoid unnecessary overhead of 
+               parameterization, as we only ever want one configuration. Instead of constructing a
+               configured class and calling StringToDouble on it, StringToDouble is now a static
+               function. This allows a bunch of now dead code (hex support, octal support, etc.) to
+               be eliminated. As StringToDoubleConverter now supports single precision floats, some
+               additional templating of StringToIeee was added to avoid extra unnecessary branching.
+             - Added RemoveCharacters function to double_conversion::StringBuilder.
+
+        Reviewed by Darin Adler.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/dtoa/AUTHORS: Added.
+        * wtf/dtoa/README: Removed.
+        * wtf/dtoa/README.md: Added.
+        * wtf/dtoa/bignum-dtoa.cc:
+        * wtf/dtoa/bignum-dtoa.h:
+        * wtf/dtoa/bignum.cc:
+        * wtf/dtoa/bignum.h:
+        (WTF::double_conversion::Bignum::Times10):
+        (WTF::double_conversion::Bignum::Equal):
+        (WTF::double_conversion::Bignum::LessEqual):
+        (WTF::double_conversion::Bignum::Less):
+        (WTF::double_conversion::Bignum::PlusEqual):
+        (WTF::double_conversion::Bignum::PlusLessEqual):
+        (WTF::double_conversion::Bignum::PlusLess):
+        (WTF::double_conversion::Bignum::EnsureCapacity):
+        (WTF::double_conversion::Bignum::BigitLength const):
+        * wtf/dtoa/cached-powers.cc:
+        * wtf/dtoa/cached-powers.h:
+        * wtf/dtoa/diy-fp.cc:
+        * wtf/dtoa/diy-fp.h:
+        (WTF::double_conversion::DiyFp::DiyFp):
+        (WTF::double_conversion::DiyFp::Subtract):
+        (WTF::double_conversion::DiyFp::Minus):
+        (WTF::double_conversion::DiyFp::Times):
+        (WTF::double_conversion::DiyFp::Normalize):
+        (WTF::double_conversion::DiyFp::f const):
+        (WTF::double_conversion::DiyFp::e const):
+        (WTF::double_conversion::DiyFp::set_f):
+        (WTF::double_conversion::DiyFp::set_e):
+        * wtf/dtoa/double-conversion.cc:
+        * wtf/dtoa/double-conversion.h:
+        (WTF::double_conversion::DoubleToStringConverter::DoubleToStringConverter):
+        (WTF::double_conversion::DoubleToStringConverter::ToShortest const):
+        (WTF::double_conversion::DoubleToStringConverter::ToShortestSingle const):
+        (WTF::double_conversion::StringToDoubleConverter::StringToDoubleConverter):
+        * wtf/dtoa/double.h: Removed.
+        * wtf/dtoa/fast-dtoa.cc:
+        * wtf/dtoa/fast-dtoa.h:
+        * wtf/dtoa/fixed-dtoa.cc:
+        * wtf/dtoa/fixed-dtoa.h:
+        * wtf/dtoa/ieee.h: Added.
+        (WTF::double_conversion::double_to_uint64):
+        (WTF::double_conversion::uint64_to_double):
+        (WTF::double_conversion::float_to_uint32):
+        (WTF::double_conversion::uint32_to_float):
+        (WTF::double_conversion::Double::Double):
+        (WTF::double_conversion::Double::AsDiyFp const):
+        (WTF::double_conversion::Double::AsNormalizedDiyFp const):
+        (WTF::double_conversion::Double::AsUint64 const):
+        (WTF::double_conversion::Double::NextDouble const):
+        (WTF::double_conversion::Double::PreviousDouble const):
+        (WTF::double_conversion::Double::Exponent const):
+        (WTF::double_conversion::Double::Significand const):
+        (WTF::double_conversion::Double::IsDenormal const):
+        (WTF::double_conversion::Double::IsSpecial const):
+        (WTF::double_conversion::Double::IsNan const):
+        (WTF::double_conversion::Double::IsInfinite const):
+        (WTF::double_conversion::Double::Sign const):
+        (WTF::double_conversion::Double::UpperBoundary const):
+        (WTF::double_conversion::Double::NormalizedBoundaries const):
+        (WTF::double_conversion::Double::LowerBoundaryIsCloser const):
+        (WTF::double_conversion::Double::value const):
+        (WTF::double_conversion::Double::SignificandSizeForOrderOfMagnitude):
+        (WTF::double_conversion::Double::Infinity):
+        (WTF::double_conversion::Double::NaN):
+        (WTF::double_conversion::Double::DiyFpToUint64):
+        (WTF::double_conversion::Single::Single):
+        (WTF::double_conversion::Single::AsDiyFp const):
+        (WTF::double_conversion::Single::AsUint32 const):
+        (WTF::double_conversion::Single::Exponent const):
+        (WTF::double_conversion::Single::Significand const):
+        (WTF::double_conversion::Single::IsDenormal const):
+        (WTF::double_conversion::Single::IsSpecial const):
+        (WTF::double_conversion::Single::IsNan const):
+        (WTF::double_conversion::Single::IsInfinite const):
+        (WTF::double_conversion::Single::Sign const):
+        (WTF::double_conversion::Single::NormalizedBoundaries const):
+        (WTF::double_conversion::Single::UpperBoundary const):
+        (WTF::double_conversion::Single::LowerBoundaryIsCloser const):
+        (WTF::double_conversion::Single::value const):
+        (WTF::double_conversion::Single::Infinity):
+        (WTF::double_conversion::Single::NaN):
+        * wtf/dtoa/strtod.cc:
+        * wtf/dtoa/strtod.h:
+        * wtf/dtoa/utils.h:
+        (abort_noreturn):
+        (WTF::double_conversion::Max):
+        (WTF::double_conversion::Min):
+        (WTF::double_conversion::StrLength):
+        (WTF::double_conversion::BufferReference::BufferReference):
+        (WTF::double_conversion::BufferReference::SubVector):
+        (WTF::double_conversion::BufferReference::length const):
+        (WTF::double_conversion::BufferReference::is_empty const):
+        (WTF::double_conversion::BufferReference::start const):
+        (WTF::double_conversion::BufferReference::operator[] const):
+        (WTF::double_conversion::BufferReference::first):
+        (WTF::double_conversion::BufferReference::last):
+        (WTF::double_conversion::StringBuilder::StringBuilder):
+        (WTF::double_conversion::StringBuilder::~StringBuilder):
+        (WTF::double_conversion::StringBuilder::size const):
+        (WTF::double_conversion::StringBuilder::position const):
+        (WTF::double_conversion::StringBuilder::Reset):
+        (WTF::double_conversion::StringBuilder::AddCharacter):
+        (WTF::double_conversion::StringBuilder::AddString):
+        (WTF::double_conversion::StringBuilder::AddSubstring):
+        (WTF::double_conversion::StringBuilder::AddPadding):
+        (WTF::double_conversion::StringBuilder::RemoveCharacters):
+        (WTF::double_conversion::StringBuilder::Finalize):
+        (WTF::double_conversion::StringBuilder::is_finalized const):
+        (WTF::double_conversion::BitCast):
+        (WTF::double_conversion::BufferReference::SubBufferReference): Deleted.
+        (WTF::double_conversion::StringBuilder::SetPosition): Deleted.
+
+2019-02-20  Darin Adler  <darin@apple.com>
+
+        Finish removing String::format
+        https://bugs.webkit.org/show_bug.cgi?id=194893
+
+        Reviewed by Daniel Bates.
+
+        * wtf/Assertions.cpp:
+        (WTF::createWithFormatAndArguments): Moved this here from WTFString.cpp.
+        (WTFLog): Use WTF::createWithFormatAndArguments instead of String::format.
+
+        * wtf/HexNumber.h: Deleted unneeded toString function.
+
+        * wtf/text/StringConcatenate.h: Got rid of unneeded forward declaration of
+        StringTypeAdapter, since that's now in Forward.h. Tweaked formatting of templates
+        a bit. Use function templates for writeTo functions rather than having two of each.
+        Removed unused toString functions. Optimized case where we use have a UChar* and
+        a length of zero to not force the result to be 16-bit. Also gets rid of a small
+        NO_RETURN_DUE_TO_CRASH mess that we don't need. Refactored constructors to use some
+        static member helper functions to compute string lengths. Added the pad function
+        and the PaddingSpecification struct template, so we can add padding to anything
+        we can turn into a string. Got rid of the special case overload for single
+        arguments, since it only worked for things that the String constructor can handle.
+        Instead we will now use StringTypeAdapter, which works for more types. Possibly
+        less optimal for some special cases, which we could specialize for later if we like.
+        * wtf/text/StringConcatenateNumbers.h: Ditto.
+        * wtf/text/StringOperators.h: Ditto.
+        * wtf/text/StringView.h: Ditto.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::createWithFormatAndArguments): Deleted.
+        (WTF::String::format): Deleted.
+        * wtf/text/WTFString.h: Deleted declaration of String::format.
+
+2019-02-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix find/replace error from r232178
+
+        Looks like this was the only such error in that commit.
+
+        * wtf/URLHelpers.cpp:
+        (WTF::URLHelpers::isLookalikeCharacter):
+
+2019-02-23  Mark Lam  <mark.lam@apple.com>
+
+        Add an exception check and some assertions in StringPrototype.cpp.
+        https://bugs.webkit.org/show_bug.cgi?id=194962
+        <rdar://problem/48013416>
+
+        Reviewed by Yusuke Suzuki and Saam Barati.
+
+        Add an AssertNoOverflow overflow handler which allows us to do CheckedArithmetic
+        for assertion purpose only on debug builds but sacrifices no performance on
+        release builds.
+
+        * wtf/CheckedArithmetic.h:
+        (WTF::AssertNoOverflow::overflowed):
+        (WTF::AssertNoOverflow::clearOverflow):
+        (WTF::AssertNoOverflow::crash):
+        (WTF::AssertNoOverflow::hasOverflowed const):
+        (WTF::observesOverflow):
+        (WTF::observesOverflow<AssertNoOverflow>):
+        (WTF::safeAdd):
+        (WTF::safeSub):
+        (WTF::safeMultiply):
+        (WTF::Checked::operator+=):
+        (WTF::Checked::operator-=):
+        (WTF::Checked::operator*=):
+        (WTF::operator+):
+        (WTF::operator-):
+        (WTF::operator*):
+
+2019-02-23  Keith Miller  <keith_miller@apple.com>
+
+        Add new mac target numbers
+        https://bugs.webkit.org/show_bug.cgi?id=194955
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2019-02-21  Antoine Quint  <graouts@apple.com>
+
+        Move UIWebTouchEventsGestureRecognizer.activeTouchesByIdentifier to SPI
+        https://bugs.webkit.org/show_bug.cgi?id=194531
+        <rdar://problem/47714562>
+
+        Reviewed by Tim Horton.
+
+        Follow-up commit to ensure this SPI is only called on newer versions of iOS.
+
+        * wtf/Platform.h:
+
+2019-02-21  Dean Jackson  <dino@apple.com>
+
+        Rotation animations sometimes use the wrong origin (affects apple.com)
+        https://bugs.webkit.org/show_bug.cgi?id=194878
+        <rdar://problem/43908047>
+
+        Follow-up commit to ensure this change only affects newer versions
+        of iOS.
+
+        * wtf/Platform.h: Add a version check.
+
+2019-02-20  Alex Christensen  <achristensen@webkit.org>
+
+        URL percent-encode operations should use checked arithmetic for buffer allocation length
+        https://bugs.webkit.org/show_bug.cgi?id=194877
+        <rdar://problem/48212062>
+
+        Reviewed by Tim Horton.
+
+        * wtf/URLHelpers.cpp:
+        (WTF::URLHelpers::userVisibleURL):
+        * wtf/cocoa/NSURLExtras.mm:
+        (WTF::dataWithUserTypedString):
+
+2019-02-20  Dean Jackson  <dino@apple.com>
+
+        Rotation animations sometimes use the wrong origin (affects apple.com)
+        https://bugs.webkit.org/show_bug.cgi?id=194878
+        <rdar://problem/43908047>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Platform.h: Add HAVE(CA_WHERE_ADDITIVE_TRANSFORMS_ARE_REVERSED).
+
+2019-02-20  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add SDKVariant.xcconfig to various Xcode projects
+        https://bugs.webkit.org/show_bug.cgi?id=194869
+
+        Rubber-stamped by Jer Noble.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2019-02-20  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE][GTK] Enable support for CONTENT_EXTENSIONS
+        https://bugs.webkit.org/show_bug.cgi?id=167941
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add specialization of the refGPtr() and derefGPtr() templates for GMappedFile.
+
+        * wtf/glib/GRefPtr.cpp:
+        (WTF::refGPtr): Added.
+        (WTF::derefGPtr): Added.
+        * wtf/glib/GRefPtr.h: Declare template specializations.
+
+2019-02-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r241770.
+        https://bugs.webkit.org/show_bug.cgi?id=194833
+
+        Caused crashes (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "Code quality cleanup in NeverDestroyed"
+        https://bugs.webkit.org/show_bug.cgi?id=194824
+        https://trac.webkit.org/changeset/241770
+
+2019-02-19  Keith Miller  <keith_miller@apple.com>
+
+        Code quality cleanup in NeverDestroyed
+        https://bugs.webkit.org/show_bug.cgi?id=194824
+
+        Reviewed by Yusuke Suzuki.
+
+        First, move data members to the end of the class per WebKit
+        style. Also, add forbid heap allocation since we expect the
+        NeverDestroyed classes to be static.
+
+        * wtf/NeverDestroyed.h:
+
+2019-02-16  Darin Adler  <darin@apple.com>
+
+        Continue reducing use of String::format, now focusing on hex: "%p", "%x", etc.
+        https://bugs.webkit.org/show_bug.cgi?id=194752
+
+        Reviewed by Daniel Bates.
+
+        * WTF.xcodeproj/project.pbxproj: Added HexNumber.cpp and Logger.cpp.
+        * wtf/CMakeLists.txt: Ditto.
+
+        * wtf/HexNumber.cpp: Added.
+        (WTF::Internal::appendHex): Non-inline, non-template hex formatting logic.
+
+        * wtf/HexNumber.h:
+        (WTF::Internal::appendHex): Refactored main logic of appendUnsignedAsHex and
+        appendUnsignedAsHexFixedSize so they can be reused in a function named hex for
+        use with StringTypeAdapter.
+        (WTF::appendUnsignedAsHex): Ditto.
+        (WTF::appendUnsignedAsHexFixedSize): Ditto.
+        (WTF::hex): Added.
+        (WTF::StringTypeAdapter<HexNumberBuffer>): Added.
+
+        * wtf/Logger.cpp: Added.
+        (WTF::Logger::LogSiteIdentifier::toString const): Made this a non-template
+        function and moved it here so that we don't need to include HexNumber.h
+        in Logger.h. Since HexNumber.h has substantial code in it, it's good if we
+        don't include it in any other headers.
+
+        * wtf/Logger.h:
+        (WTF::LogArgument<Logger::LogSiteIdentifier>::toString): Changed to call
+        a non-template function, LogSiteIdentifier::toString.
+
+        * wtf/text/StringConcatenateNumbers.h: Replaced overloaded writeTo functions
+        with function templates and used StringImpl::copyCharacters instead of
+        hand-written loops.
+
+2019-02-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Better categorize CPU usage per-thread / worker
+        https://bugs.webkit.org/show_bug.cgi?id=194564
+
+        Reviewed by Devin Rousso.
+
+        * wtf/Threading.h:
+        * wtf/Threading.cpp:
+        (WTF::Thread::allThreadsMutex):
+        (WTF::Thread::create):
+        (WTF::Thread::didExit):
+        Add a set of all WTF::Thread created threads.
+
+2019-02-18  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Bytecode cache should a have a boot-specific validation
+        https://bugs.webkit.org/show_bug.cgi?id=194769
+        <rdar://problem/48149509>
+
+        Reviewed by Keith Miller.
+
+        Add helper to get kern.bootsessionuuid from sysctl
+
+        * wtf/UUID.cpp:
+        (WTF::bootSessionUUIDString):
+        * wtf/UUID.h:
+
+2019-02-17  David Kilzer  <ddkilzer@apple.com>
+
+        Unreviewed, rolling out r241620.
+
+        "Causes use-after-free crashes running layout tests with ASan and GuardMalloc."
+        (Requested by ddkilzer on #webkit.)
+
+        Reverted changeset:
+
+        "[WTF] Add environment variable helpers"
+        https://bugs.webkit.org/show_bug.cgi?id=192405
+        https://trac.webkit.org/changeset/241620
+
+2019-02-15  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WTF] Add environment variable helpers
+        https://bugs.webkit.org/show_bug.cgi?id=192405
+
+        Reviewed by Michael Catanzaro.
+
+        Create a new Environment API as a platform-independent, thread-safe(r)
+        way to get and set environment variables.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Environment.h: Added.
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformPlayStation.cmake:
+        * wtf/PlatformWPE.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/posix/EnvironmentPOSIX.cpp: Added.
+        * wtf/win/EnvironmentWin.cpp: Added.
+        Introduce WTF::Environment.
+
+        * wtf/Threading.cpp:
+        (WTF::threadingIsInitialized):
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        Introduce WTF::threadingIsInitialized() so that we can ASSERT that it's
+        false before setting an environment variable through the new API.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+        * wtf/NumberOfCores.cpp:
+        (WTF::numberOfProcessorCores):
+        * wtf/posix/FileSystemPOSIX.cpp:
+        (WTF::FileSystemImpl::openTemporaryFile):
+        Utilize WTF::Environment where possible.
+
+2019-02-15  Brian Burg  <bburg@apple.com>
+
+        [Mac] WebInspectorUI.framework does not need to be soft-linked anymore
+        https://bugs.webkit.org/show_bug.cgi?id=194411
+        <rdar://problem/47787614>
+
+        Reviewed by Joseph Pecoraro.
+
+        * wtf/cocoa/SoftLinking.h:
+        Remove macro that now has no uses.
+
+2019-02-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r241559 and r241566.
+        https://bugs.webkit.org/show_bug.cgi?id=194710
+
+        Causes layout test crashes under GuardMalloc (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[WTF] Add environment variable helpers"
+        https://bugs.webkit.org/show_bug.cgi?id=192405
+        https://trac.webkit.org/changeset/241559
+
+        "Unreviewed build fix for WinCairo Debug after r241559."
+        https://trac.webkit.org/changeset/241566
+
+2019-02-15  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r241564.
+
+        Caused 50+ Timeouts on Mac WK2, mostly in the http/ directory
+
+        Reverted changeset:
+
+        "[Mac] WebInspectorUI.framework does not need to be soft-
+        linked anymore"
+        https://bugs.webkit.org/show_bug.cgi?id=194411
+        https://trac.webkit.org/changeset/241564
+
+2019-02-15  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Fix deadlock on Linux/x64 between SamplingProfiler and VMTraps
+        https://bugs.webkit.org/show_bug.cgi?id=194014
+
+        Reviewed by Michael Catanzaro.
+
+        Do not block SIGUSR1 when installing signal handlers, since this signal
+        is used to suspend/resume machine threads on Linux.
+
+        ftl-ai-filter-phantoms-should-clear-clear-value.js deadlocked with
+        enabled watchdog and sampling.
+
+        Deadlock happened in the following situation:
+
+        Thread 1 (Sampling): SamplingProfiler.cpp:takeSample takes all needed locks
+        and then tries to suspend the main thread.
+
+        Thread 2 (Watchdog/VMTraps): Before the Sampling-Thread suspends the main thread
+        a signal is caught and the signal handler is invoked (VMTraps.cpp:SignalSender).
+        SignalSender tries to lock codeBlockSet, but this is already locked by the
+        SamplingProfiler.
+
+        The SamplingProfiler can only give up the lock when it suspends
+        the thread. However since the VMTraps signal handler is active, all other signals blocked,
+        therefore the SamplingProfiler also waits until its signal handler is invoked.
+
+        This patch fixes this by not blocking SIGUSR1 in installSignalHandler, since
+        it is used to suspend/resume threads on Linux.
+
+        * wtf/Threading.h:
+        * wtf/posix/ThreadingPOSIX.cpp:
+        * wtf/threads/Signals.cpp:
+        (WTF::installSignalHandler):
+
+2019-02-15  Saam barati  <sbarati@apple.com>
+
+        [WebAssembly] Write a new register allocator for Air O0 and make BBQ use it
+        https://bugs.webkit.org/show_bug.cgi?id=194036
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/IndexMap.h:
+        (WTF::IndexMap::at):
+        (WTF::IndexMap::at const):
+        (WTF::IndexMap::operator[]):
+        (WTF::IndexMap::operator[] const):
+
+2019-02-14  Brian Burg  <bburg@apple.com>
+
+        [Mac] WebInspectorUI.framework does not need to be soft-linked anymore
+        https://bugs.webkit.org/show_bug.cgi?id=194411
+        <rdar://problem/47787614>
+
+        Reviewed by Joseph Pecoraro.
+
+        * wtf/cocoa/SoftLinking.h:
+        Remove macro that now has no uses.
+
+2019-02-14  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WTF] Add environment variable helpers
+        https://bugs.webkit.org/show_bug.cgi?id=192405
+
+        Reviewed by Michael Catanzaro.
+
+        Create a new Environment API as a platform-independent, thread-safe(r)
+        way to get and set environment variables.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Environment.h: Added.
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformPlayStation.cmake:
+        * wtf/PlatformWPE.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/posix/EnvironmentPOSIX.cpp: Added.
+        * wtf/win/EnvironmentWin.cpp: Added.
+        Introduce WTF::Environment.
+
+        * wtf/Threading.cpp:
+        (WTF::threadingIsInitialized):
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        Introduce WTF::threadingIsInitialized() so that we can ASSERT that it's
+        false before setting an environment variable through the new API.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+        * wtf/NumberOfCores.cpp:
+        (WTF::numberOfProcessorCores):
+        * wtf/posix/FileSystemPOSIX.cpp:
+        (WTF::FileSystemImpl::openTemporaryFile):
+        Utilize WTF::Environment where possible.
+
+2019-02-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        We should only make rope strings when concatenating strings long enough.
+        https://bugs.webkit.org/show_bug.cgi?id=194465
+
+        Reviewed by Mark Lam.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::headerSize):
+
 2019-02-12  Tim Horton  <timothy_horton@apple.com>
 
         Remove WKLegacyPDFView

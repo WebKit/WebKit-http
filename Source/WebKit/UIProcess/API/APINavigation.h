@@ -30,9 +30,11 @@
 #include "FrameInfoData.h"
 #include "NavigationActionData.h"
 #include "WebBackForwardListItem.h"
+#include <WebCore/AdClickAttribution.h>
 #include <WebCore/ProcessIdentifier.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/SecurityOriginData.h>
+#include <wtf/Optional.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -122,6 +124,9 @@ public:
     bool openedByDOMWithOpener() const { return m_lastNavigationAction.openedByDOMWithOpener; }
     const WebCore::SecurityOriginData& requesterOrigin() const { return m_lastNavigationAction.requesterOrigin; }
 
+    void setUserContentExtensionsEnabled(bool enabled) { m_userContentExtensionsEnabled = enabled; }
+    bool userContentExtensionsEnabled() const { return m_userContentExtensionsEnabled; }
+
     WebCore::LockHistory lockHistory() const { return m_lastNavigationAction.lockHistory; }
     WebCore::LockBackForwardList lockBackForwardList() const { return m_lastNavigationAction.lockBackForwardList; }
 
@@ -142,6 +147,8 @@ public:
 
     const std::unique_ptr<SubstituteData>& substituteData() const { return m_substituteData; }
 
+    const Optional<WebCore::AdClickAttribution>& adClickAttribution() const { return m_lastNavigationAction.adClickAttribution; }
+
 private:
     explicit Navigation(WebKit::WebNavigationState&);
     Navigation(WebKit::WebNavigationState&, WebCore::ResourceRequest&&, WebKit::WebBackForwardListItem* fromItem);
@@ -161,6 +168,7 @@ private:
     WebKit::NavigationActionData m_lastNavigationAction;
     WebKit::FrameInfoData m_originatingFrameInfo;
     WebCore::SecurityOriginData m_destinationFrameSecurityOrigin;
+    bool m_userContentExtensionsEnabled { true };
 };
 
 } // namespace API

@@ -56,6 +56,10 @@
 #include <WebKitAdditions/WebsiteDataStoreAdditions.h>
 #endif
 
+namespace API {
+class HTTPCookieStore;
+}
+
 namespace WebCore {
 class SecurityOrigin;
 }
@@ -121,8 +125,6 @@ public:
     void removeData(OptionSet<WebsiteDataType>, const Vector<WebsiteDataRecord>&, Function<void()>&& completionHandler);
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    void fetchDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, const Vector<String>& topPrivatelyControlledDomains, Function<void(Vector<WebsiteDataRecord>&&, HashSet<String>&&)>&& completionHandler);
-
     void clearPrevalentResource(const URL&, CompletionHandler<void()>&&);
     void clearUserInteraction(const URL&, CompletionHandler<void()>&&);
     void dumpResourceLoadStatistics(CompletionHandler<void(const String&)>&&);
@@ -161,8 +163,8 @@ public:
     void setShouldClassifyResourcesBeforeDataRecordsRemoval(bool, CompletionHandler<void()>&&);
     void setStatisticsTestingCallback(WTF::Function<void(const String&)>&& callback) { m_statisticsTestingCallback = WTFMove(callback); }
     void setVeryPrevalentResource(const URL&, CompletionHandler<void()>&&);
-    void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&&);
-    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&&);
+    void hasStorageAccess(const String& subFrameHost, const String& topFrameHost, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&&);
+    void requestStorageAccess(const String& subFrameHost, const String& topFrameHost, uint64_t frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&&);
     void grantStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, bool userWasPrompted, CompletionHandler<void(bool)>&&);
     void setSubframeUnderTopFrameOrigin(const URL& subframe, const URL& topFrame);
 #endif
@@ -228,6 +230,8 @@ public:
 
     WebsiteDataStoreClient& client() { return m_client.get(); }
     void setClient(UniqueRef<WebsiteDataStoreClient>&& client) { m_client = WTFMove(client); }
+
+    API::HTTPCookieStore& cookieStore();
 
 #if HAVE(LOAD_OPTIMIZER)
 WEBSITEDATASTORE_LOADOPTIMIZER_ADDITIONS_1
@@ -309,6 +313,8 @@ private:
 #endif
 
     UniqueRef<WebsiteDataStoreClient> m_client;
+
+    RefPtr<API::HTTPCookieStore> m_cookieStore;
 };
 
 }

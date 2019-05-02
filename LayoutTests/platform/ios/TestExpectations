@@ -899,6 +899,7 @@ fast/events/tab-focus-link-in-canvas.html [ Skip ]
 fast/events/tab-imagemap.html [ Skip ]
 fast/events/tab-test-not-visible-imagemap.html [ Skip ]
 fast/events/tabindex-focus-chain.html [ Skip ]
+fast/forms/access-key-shadow-and-ordering.html [ Skip ]
 fast/forms/access-key-case-insensitive.html [ Skip ]
 fast/forms/access-key-for-all-elements.html [ Skip ]
 fast/forms/access-key-mutated.html [ Skip ]
@@ -1340,7 +1341,6 @@ webkit.org/b/178963 fast/css/sticky/sticky-writing-mode-vertical-rl.html [ Image
 # editing/deleting tests to triage
 editing/deleting/delete-all-text-in-text-field-assertion.html [ Failure ]
 editing/deleting/delete-cell-contents.html [ Failure ]
-editing/deleting/smart-delete-002.html [ Failure ]
 editing/deleting/smart-delete-across-editable-boundaries.html [ Failure ]
 editing/deleting/smart-editing-disabled-mac.html [ Failure ]
 
@@ -3033,9 +3033,9 @@ webkit.org/b/182592 webgl/webgl-texture-image-buffer-reuse.html [ Skip ]
 
 webkit.org/b/181612 [ Debug ] webanimations/animation-opacity-animation-crash.html [ Pass Failure ]
 
-webkit.org/b/182850 [ Release ] editing/pasteboard/data-transfer-set-data-sanitizes-html-when-copying-in-null-origin.html [ Skip ]
+webkit.org/b/182850 editing/pasteboard/data-transfer-set-data-sanitizes-html-when-copying-in-null-origin.html [ Skip ]
 
-webkit.org/b/183219 [ Release ] editing/pasteboard/data-transfer-get-data-on-pasting-html-uses-blob-url.html [ Skip ]
+webkit.org/b/183219 editing/pasteboard/data-transfer-get-data-on-pasting-html-uses-blob-url.html [ Skip ]
 
 webkit.org/b/173928 storage/websql/database-lock-after-reload.html [ Pass Failure ]
 
@@ -3219,3 +3219,15 @@ fast/events/touch/ios/pointer-events-with-modifiers.html [ Skip ]
 # FIXME: Unskip the following test once we have the fix for <rdar://problem/44928156>.
 fast/events/ios/key-command-delete-to-end-of-paragraph.html [ Skip ]
 fast/events/ios/key-command-transpose.html [ Skip ]
+
+# FIXME: Unskip the following tests once we ENABLE(FULL_KEYBOARD_ACCESS) is enabled by default on iOS
+fast/forms/ios/focus-button.html [ Skip ]
+fast/forms/ios/focus-checkbox.html [ Skip ]
+fast/forms/ios/focus-checked-checkbox.html [ Skip ]
+fast/forms/ios/focus-checked-radio.html [ Skip ]
+fast/forms/ios/focus-radio.html [ Skip ]
+fast/forms/ios/focus-reset-button.html [ Skip ]
+fast/forms/ios/focus-search-field.html [ Skip ]
+fast/forms/ios/focus-submit-button.html [ Skip ]
+fast/forms/ios/focus-text-field.html [ Skip ]
+fast/forms/ios/focus-textarea.html [ Skip ]

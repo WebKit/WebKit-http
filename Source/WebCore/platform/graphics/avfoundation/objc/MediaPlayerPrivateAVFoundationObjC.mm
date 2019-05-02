@@ -1380,14 +1380,15 @@ void MediaPlayerPrivateAVFoundationObjC::seekToTime(const MediaTime& time, const
 void MediaPlayerPrivateAVFoundationObjC::setVolume(float volume)
 {
 #if PLATFORM(IOS_FAMILY)
-    if ([[PAL::getUIDeviceClass() currentDevice] userInterfaceIdiom] != UIUserInterfaceIdiomPad)
-        return;
-#endif
+    UNUSED_PARAM(volume);
+    return;
+#else
 
     if (!m_avPlayer)
         return;
 
     [m_avPlayer.get() setVolume:volume];
+#endif
 }
 
 void MediaPlayerPrivateAVFoundationObjC::setMuted(bool muted)
@@ -3367,8 +3368,11 @@ void MediaPlayerPrivateAVFoundationObjC::setShouldObserveTimeControlStatus(bool 
     if (shouldObserve) {
         [m_avPlayer addObserver:m_objcObserver.get() forKeyPath:@"timeControlStatus" options:NSKeyValueObservingOptionNew context:(void *)MediaPlayerAVFoundationObservationContextPlayer];
         timeControlStatusDidChange(m_avPlayer.get().timeControlStatus);
-    } else
+    } else {
+BEGIN_BLOCK_OBJC_EXCEPTIONS
         [m_avPlayer removeObserver:m_objcObserver.get() forKeyPath:@"timeControlStatus"];
+END_BLOCK_OBJC_EXCEPTIONS
+    }
 }
 
 NSArray* assetMetadataKeyNames()

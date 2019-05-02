@@ -34,34 +34,27 @@
     flex-shrink: 0;
     width: 150px;
     padding-top: 10px;
+    -webkit-padding-start: 15px;
     font-family: -webkit-system-font, sans-serif;
     font-size: 12px;
     color: var(--text-color-secondary);
-    -webkit-padding-start: 15px;
-
-    --memory-category-view-details-border-end: 1px solid var(--border-color);
-}
-
-body[dir=ltr] .memory-category-view > .details {
-    border-right: var(--memory-category-view-details-border-end);
-}
-
-body[dir=rtl] .memory-category-view > .details {
-    border-left: var(--memory-category-view-details-border-end);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-border-end: 1px solid var(--border-color);
 }
 
 .memory-category-view > .details > .name {
     color: var(--text-color);
+    white-space: nowrap;
 }
-
 
 body[dir=rtl] .memory-category-view > .graph {
     transform: scaleX(-1);
 }
 
 .memory-category-view > .graph,
-.memory-category-view > .graph > .line-chart,
-.memory-category-view > .graph > .line-chart > svg {
+.memory-category-view > .graph > .area-chart,
+.memory-category-view > .graph > .area-chart > svg {
     width: 100%;
     height: 100%;
 }

@@ -129,12 +129,15 @@ WI.settings = {
     canvasRecordingAutoCaptureFrameCount: new WI.Setting("canvas-recording-auto-capture-frame-count", 1),
     clearLogOnNavigate: new WI.Setting("clear-log-on-navigate", true),
     clearNetworkOnNavigate: new WI.Setting("clear-network-on-navigate", true),
+    emulateInUserGesture: new WI.Setting("emulate-in-user-gesture", false),
     enableControlFlowProfiler: new WI.Setting("enable-control-flow-profiler", false),
     enableLineWrapping: new WI.Setting("enable-line-wrapping", false),
     groupByDOMNode: new WI.Setting("group-by-dom-node", false),
     indentUnit: new WI.Setting("indent-unit", 4),
     indentWithTabs: new WI.Setting("indent-with-tabs", false),
     resourceCachingDisabled: new WI.Setting("disable-resource-caching", false),
+    searchCaseSensitive: new WI.Setting("search-case-sensitive", false),
+    searchRegularExpression: new WI.Setting("search-regular-expression", false),
     selectedNetworkDetailContentViewIdentifier: new WI.Setting("network-detail-content-view-identifier", "preview"),
     sourceMapsEnabled: new WI.Setting("source-maps-enabled", true),
     showAllRequestsBreakpoint: new WI.Setting("show-all-requests-breakpoint", true),
@@ -149,13 +152,14 @@ WI.settings = {
     showShadowDOM: new WI.Setting("show-shadow-dom", false),
     showWhitespaceCharacters: new WI.Setting("show-whitespace-characters", false),
     tabSize: new WI.Setting("tab-size", 4),
+    timelinesAutoStop: new WI.Setting("timelines-auto-stop", true),
     zoomFactor: new WI.Setting("zoom-factor", 1),
 
     // Experimental
     experimentalEnableCPUUsageEnhancements: new WI.Setting("experimental-cpu-usage", false),
     experimentalEnableLayersTab: new WI.Setting("experimental-enable-layers-tab", false),
     experimentalEnableNewTabBar: new WI.Setting("experimental-enable-new-tab-bar", false),
-    experimentalEnableAuditTab: new WI.Setting("experimental-enable-audit-tab", false),
+    experimentalEnableSourcesTab: new WI.Setting("experimental-enable-sources-tab", false),
 
     // DebugUI
     autoLogProtocolMessages: new WI.Setting("auto-collect-protocol-messages", false),

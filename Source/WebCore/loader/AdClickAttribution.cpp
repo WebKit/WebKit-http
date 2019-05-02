@@ -60,7 +60,7 @@ URL AdClickAttribution::url() const
 
     StringBuilder builder;
     builder.appendLiteral("https://");
-    builder.append(m_source.registrableDomain);
+    builder.append(m_source.registrableDomain.string());
     builder.appendLiteral("/.well-known/ad-click-attribution/");
     builder.appendNumber(m_conversion.value().data);
     builder.append('/');
@@ -80,7 +80,7 @@ URL AdClickAttribution::referrer() const
 
     StringBuilder builder;
     builder.appendLiteral("https://");
-    builder.append(m_destination.registrableDomain);
+    builder.append(m_destination.registrableDomain.string());
     builder.append('/');
 
     URL url { URL(), builder.toString() };
@@ -88,6 +88,25 @@ URL AdClickAttribution::referrer() const
         return url;
     
     return URL();
+}
+
+String AdClickAttribution::toString() const
+{
+    StringBuilder builder;
+    builder.appendLiteral("Source: ");
+    builder.append(m_source.registrableDomain.string());
+    builder.appendLiteral("\nDestination: ");
+    builder.append(m_destination.registrableDomain.string());
+    builder.appendLiteral("\nCampaign ID: ");
+    builder.appendNumber(m_campaign.id);
+    if (m_conversion) {
+        builder.appendLiteral("\nConversion data: ");
+        builder.appendNumber(m_conversion.value().data);
+    } else
+        builder.appendLiteral("\nNo conversion data.");
+    builder.append('\n');
+
+    return builder.toString();
 }
 
 }

@@ -125,6 +125,9 @@ private:
 class CompactVariableEnvironment {
     WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(CompactVariableEnvironment);
+
+    friend class CachedCompactVariableEnvironment;
+
 public:
     CompactVariableEnvironment(const VariableEnvironment&);
     VariableEnvironment toVariableEnvironment() const;
@@ -133,6 +136,8 @@ public:
     unsigned hash() const { return m_hash; }
 
 private:
+    CompactVariableEnvironment() = default;
+
     Vector<RefPtr<UniquedStringImpl>> m_variables;
     Vector<VariableEnvironmentEntry> m_variableMetadata;
     unsigned m_hash;
@@ -204,8 +209,11 @@ namespace JSC {
 class CompactVariableMap : public RefCounted<CompactVariableMap> {
 public:
     class Handle {
-        WTF_MAKE_NONCOPYABLE(Handle); // If we wanted to make this copyable, we'd need to do a hashtable lookup and bump the reference count of the map entry.
+        friend class CachedCompactVariableMapHandle;
+
     public:
+        Handle() = default;
+
         Handle(CompactVariableEnvironment& environment, CompactVariableMap& map)
             : m_environment(&environment)
             , m_map(&map)
@@ -218,7 +226,13 @@ public:
             ASSERT(!other.m_map);
             other.m_environment = nullptr;
         }
+
+        Handle(const Handle&);
+        Handle& operator=(const Handle&);
+
         ~Handle();
+
+        explicit operator bool() const { return !!m_map; }
 
         const CompactVariableEnvironment& environment() const
         {
@@ -226,7 +240,7 @@ public:
         }
 
     private:
-        CompactVariableEnvironment* m_environment;
+        CompactVariableEnvironment* m_environment { nullptr };
         RefPtr<CompactVariableMap> m_map;
     };
 
@@ -234,6 +248,10 @@ public:
 
 private:
     friend class Handle;
+    friend class CachedCompactVariableMapHandle;
+
+    Handle get(CompactVariableEnvironment*, bool& isNewEntry);
+
     HashMap<CompactVariableMapKey, unsigned> m_map;
 };
 

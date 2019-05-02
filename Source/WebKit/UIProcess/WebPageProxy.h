@@ -521,9 +521,6 @@ public:
 
     bool canShowMIMEType(const String& mimeType);
 
-    bool drawsBackground() const { return m_drawsBackground; }
-    void setDrawsBackground(bool);
-
     String currentURL() const;
 
     float topContentInset() const { return m_topContentInset; }
@@ -615,7 +612,7 @@ public:
     void updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
     void resendLastVisibleContentRects();
 
-    WebCore::FloatRect computeCustomFixedPositionRect(const WebCore::FloatRect& unobscuredContentRect, const WebCore::FloatRect& unobscuredContentRectRespectingInputViewBounds, const WebCore::FloatRect& currentCustomFixedPositionRect, double displayedContentScale, WebCore::FrameView::LayoutViewportConstraint = WebCore::FrameView::LayoutViewportConstraint::Unconstrained, bool visualViewportEnabled = false) const;
+    WebCore::FloatRect computeCustomFixedPositionRect(const WebCore::FloatRect& unobscuredContentRect, const WebCore::FloatRect& unobscuredContentRectRespectingInputViewBounds, const WebCore::FloatRect& currentCustomFixedPositionRect, double displayedContentScale, WebCore::FrameView::LayoutViewportConstraint = WebCore::FrameView::LayoutViewportConstraint::Unconstrained) const;
 
     void scrollingNodeScrollViewWillStartPanGesture();
     void scrollingNodeScrollViewDidScroll();
@@ -687,6 +684,7 @@ public:
     void cancelAutoscroll();
     void hardwareKeyboardAvailabilityChanged();
     bool isScrollingOrZooming() const { return m_isScrollingOrZooming; }
+    void requestEvasionRectsAboveSelection(CompletionHandler<void(const Vector<WebCore::FloatRect>&)>&&);
 #if ENABLE(DATA_INTERACTION)
     void didHandleDragStartRequest(bool started);
     void didHandleAdditionalDragItemsRequest(bool added);
@@ -765,10 +763,11 @@ public:
 
 #if PLATFORM(GTK)
     PlatformWidget viewWidget();
-    const WebCore::Color& backgroundColor() const { return m_backgroundColor; }
-    void setBackgroundColor(const WebCore::Color& color) { m_backgroundColor = color; }
     bool makeGLContextCurrent();
 #endif
+
+    const Optional<WebCore::Color>& backgroundColor() const { return m_backgroundColor; }
+    void setBackgroundColor(const Optional<WebCore::Color>&);
 
 #if PLATFORM(WIN)
     PlatformWidget viewWidget();
@@ -1078,7 +1077,7 @@ public:
     void didChooseFilesForOpenPanel(const Vector<String>&);
     void didCancelForOpenPanel();
 
-    WebPageCreationParameters creationParameters(WebProcessProxy&);
+    WebPageCreationParameters creationParameters(WebProcessProxy&, DrawingAreaProxy&);
 
     void handleDownloadRequest(DownloadProxy*);
 
@@ -1288,14 +1287,14 @@ public:
 
     NSObject *immediateActionAnimationControllerForHitTestResult(RefPtr<API::HitTestResult>, uint64_t, RefPtr<API::Object>);
 
-    void installActivityStateChangeCompletionHandler(WTF::Function<void ()>&&);
-
     void handleAcceptedCandidate(WebCore::TextCheckingResult);
     void didHandleAcceptedCandidate();
 
     void setHeaderBannerHeightForTesting(int);
     void setFooterBannerHeightForTesting(int);
 #endif
+
+    void installActivityStateChangeCompletionHandler(Function<void()>&&);
 
 #if USE(UNIFIED_TEXT_CHECKING)
     void checkTextOfParagraph(const String& text, OptionSet<WebCore::TextCheckingType> checkingTypes, int32_t insertionPoint, Vector<WebCore::TextCheckingResult>& results);
@@ -1442,6 +1441,7 @@ public:
     void didStartProvisionalLoadForFrameShared(Ref<WebProcessProxy>&&, uint64_t frameID, uint64_t navigationID, URL&&, URL&& unreachableURL, const UserData&);
     void didFailProvisionalLoadForFrameShared(Ref<WebProcessProxy>&&, uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, const UserData&);
     void didReceiveServerRedirectForProvisionalLoadForFrameShared(Ref<WebProcessProxy>&&, uint64_t frameID, uint64_t navigationID, WebCore::ResourceRequest&&, const UserData&);
+    void didPerformServerRedirectShared(Ref<WebProcessProxy>&&, const String& sourceURLString, const String& destinationURLString, uint64_t frameID);
     void didPerformClientRedirectShared(Ref<WebProcessProxy>&&, const String& sourceURLString, const String& destinationURLString, uint64_t frameID);
     void didNavigateWithNavigationDataShared(Ref<WebProcessProxy>&&, const WebNavigationDataStore&, uint64_t frameID);
     void didChangeProvisionalURLForFrameShared(Ref<WebProcessProxy>&&, uint64_t frameID, uint64_t navigationID, URL&&);
@@ -1454,6 +1454,15 @@ public:
     void loadDataWithNavigationShared(Ref<WebProcessProxy>&&, API::Navigation&, const IPC::DataReference&, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData, WebCore::ShouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&& = WTF::nullopt);
     void loadRequestWithNavigationShared(Ref<WebProcessProxy>&&, API::Navigation&, WebCore::ResourceRequest&&, WebCore::ShouldOpenExternalURLsPolicy, API::Object* userData, WebCore::ShouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&& = WTF::nullopt);
     void backForwardGoToItemShared(Ref<WebProcessProxy>&&, const WebCore::BackForwardItemIdentifier&, SandboxExtension::Handle&);
+    void decidePolicyForNavigationActionSyncShared(Ref<WebProcessProxy>&&, uint64_t frameID, bool isMainFrame, WebCore::SecurityOriginData&&, WebCore::PolicyCheckIdentifier, uint64_t navigationID, NavigationActionData&&,
+        FrameInfoData&&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody,
+        WebCore::ResourceResponse&& redirectResponse, const UserData&, Messages::WebPageProxy::DecidePolicyForNavigationActionSync::DelayedReply&&);
+#if USE(QUICK_LOOK)
+    void didRequestPasswordForQuickLookDocumentInMainFrameShared(Ref<WebProcessProxy>&&, const String& fileName);
+#endif
+
+    void dumpAdClickAttribution(CompletionHandler<void(const String&)>&&);
+    void clearAdClickAttribution(CompletionHandler<void()>&&);
 
     // IPC::MessageReceiver
     // Implemented in generated WebPageProxyMessageReceiver.cpp
@@ -2109,8 +2118,6 @@ private:
 
     LayerHostingMode m_layerHostingMode { LayerHostingMode::InProcess };
 
-    bool m_drawsBackground { true };
-
     WebCore::Color m_underlayColor;
     WebCore::Color m_pageExtendedBackgroundColor;
 
@@ -2209,8 +2216,9 @@ private:
 
 #if PLATFORM(GTK)
     String m_accessibilityPlugID;
-    WebCore::Color m_backgroundColor { WebCore::Color::white };
 #endif
+
+    Optional<WebCore::Color> m_backgroundColor;
 
     unsigned m_pendingLearnOrIgnoreWordMessageCount { 0 };
 

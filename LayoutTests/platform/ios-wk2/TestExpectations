@@ -1010,6 +1010,7 @@ fast/loader/location-hash-user-gesture.html [ Skip ]
 imported/blink/editing/selection/selectstart-event-crash.html [ Skip ]
 fast/dom/Window/post-message-user-action.html [ Skip ]
 fast/images/image-usemap-parsing.html [ Skip ]
+fast/shadow-dom/fullscreen-in-shadow-full-screen-ancestor.html [ Skip ]
 fast/shadow-dom/fullscreen-in-shadow-fullscreenElement.html [ Skip ]
 fast/shadow-dom/fullscreen-in-shadow-webkitCurrentFullScreenElement.html [ Skip ]
 fast/shadow-dom/fullscreen-in-slot-fullscreenElement.html [ Skip ]
@@ -1074,7 +1075,7 @@ webkit.org/b/156620 legacy-animation-engine/fast/animation/request-animation-fra
 webkit.org/b/153049 perf/array-binary-search.html [ Pass Failure Timeout ]
 
 fast/scrolling/ios/scroll-events-back-forward-after-pageshow.html [ Pass Failure ]
-webkit.org/b/193997 fast/scrolling/ios/hit-testing-iframe.html [ ImageOnlyFailure ]
+webkit.org/b/193997 fast/scrolling/ios/hit-testing-iframe-006.html [ ImageOnlyFailure ]
 
 webkit.org/b/157589 fast/text-autosizing/ios/text-autosizing-after-back.html [ Pass Timeout ]
 
@@ -1305,3 +1306,7 @@ fast/forms/password-scrolled-after-caps-lock-toggled.html [ Skip ]
 fast/repaint/placeholder-after-caps-lock-hidden.html [ Skip ]
 
 webkit.org/b/190888 [ Release ] fast/animation/request-animation-frame.html [ Pass Failure ]
+
+webkit.org/b/194826 [ Debug ] http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html [ Pass Timeout ]
+
+webkit.org/b/194253 [ Debug ] scrollingcoordinator/scrolling-tree/fixed-inside-frame.html [ Pass Failure ]

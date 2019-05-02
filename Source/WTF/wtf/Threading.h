@@ -36,6 +36,7 @@
 #include <wtf/Expected.h>
 #include <wtf/FastTLS.h>
 #include <wtf/Function.h>
+#include <wtf/HashSet.h>
 #include <wtf/PlatformRegisters.h>
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
@@ -64,6 +65,13 @@ class PrintStream;
 // This function can be called from any threads.
 WTF_EXPORT_PRIVATE void initializeThreading();
 
+#if USE(PTHREADS)
+
+// We use SIGUSR1 to suspend and resume machine threads in JavaScriptCore.
+constexpr const int SigThreadSuspendResume = SIGUSR1;
+
+#endif
+
 // FIXME: The following functions remain because they are used from WebKit Windows support library,
 // WebKitQuartzCoreAdditions.dll. When updating the support library, we should use new API instead
 // and the following workaound should be removed. And new code should not use the following APIs.
@@ -89,6 +97,10 @@ public:
 
     // Returns Thread object.
     static Thread& current();
+
+    // Set of all WTF::Thread created threads.
+    WTF_EXPORT_PRIVATE static HashSet<Thread*>& allThreads(const LockHolder&);
+    WTF_EXPORT_PRIVATE static Lock& allThreadsMutex();
 
 #if OS(WINDOWS)
     // Returns ThreadIdentifier directly. It is useful if the user only cares about identity

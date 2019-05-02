@@ -64,6 +64,7 @@ public:
     WebProcessProxy& process() { return m_process.get(); }
     ProcessSwapRequestedByClient processSwapRequestedByClient() const { return m_processSwapRequestedByClient; }
     uint64_t navigationID() const { return m_navigationID; }
+    const URL& provisionalURL() const { return m_provisionalLoadURL; }
 
     DrawingAreaProxy* drawingArea() const { return m_drawingArea.get(); }
     std::unique_ptr<DrawingAreaProxy> takeDrawingArea();
@@ -91,6 +92,8 @@ private:
     void decidePolicyForResponse(uint64_t frameID, const WebCore::SecurityOriginData&, WebCore::PolicyCheckIdentifier, uint64_t navigationID, const WebCore::ResourceResponse&,
         const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&);
     void didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, URL&&);
+    void didPerformServerRedirect(const String& sourceURLString, const String& destinationURLString, uint64_t frameID);
+    void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::ResourceRequest&&, const UserData&);
     void didNavigateWithNavigationData(const WebNavigationDataStore&, uint64_t frameID);
     void didPerformClientRedirect(const String& sourceURLString, const String& destinationURLString, uint64_t frameID);
     void didCreateMainFrame(uint64_t frameID);
@@ -99,6 +102,12 @@ private:
     void didFailProvisionalLoadForFrame(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, const UserData&);
     void startURLSchemeTask(URLSchemeTaskParameters&&);
     void backForwardGoToItem(const WebCore::BackForwardItemIdentifier&, SandboxExtension::Handle&);
+    void decidePolicyForNavigationActionSync(uint64_t frameID, bool isMainFrame, WebCore::SecurityOriginData&&, WebCore::PolicyCheckIdentifier, uint64_t navigationID, NavigationActionData&&,
+        FrameInfoData&&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody,
+        WebCore::ResourceResponse&& redirectResponse, const UserData&, Messages::WebPageProxy::DecidePolicyForNavigationActionSync::DelayedReply&&);
+#if USE(QUICK_LOOK)
+    void didRequestPasswordForQuickLookDocumentInMainFrame(const String& fileName);
+#endif
 #if PLATFORM(COCOA)
     void registerWebProcessAccessibilityToken(const IPC::DataReference&);
 #endif

@@ -105,7 +105,6 @@ JavaScriptCore_BUILTINS_SOURCES = \
     $(JavaScriptCore)/builtins/MapPrototype.js \
     $(JavaScriptCore)/builtins/ModuleLoader.js \
     $(JavaScriptCore)/builtins/NumberConstructor.js \
-    $(JavaScriptCore)/builtins/NumberPrototype.js \
     $(JavaScriptCore)/builtins/ObjectConstructor.js \
     $(JavaScriptCore)/builtins/PromiseConstructor.js \
     $(JavaScriptCore)/builtins/PromiseOperations.js \
@@ -243,7 +242,6 @@ INSPECTOR_DOMAINS := \
     $(JavaScriptCore)/inspector/protocol/Inspector.json \
     $(JavaScriptCore)/inspector/protocol/LayerTree.json \
     $(JavaScriptCore)/inspector/protocol/Network.json \
-    $(JavaScriptCore)/inspector/protocol/OverlayTypes.json \
     $(JavaScriptCore)/inspector/protocol/Page.json \
     $(JavaScriptCore)/inspector/protocol/Recording.json \
     $(JavaScriptCore)/inspector/protocol/Runtime.json \
@@ -356,3 +354,10 @@ WasmB3IRGeneratorInlines.h: $(JavaScriptCore)/wasm/generateWasmB3IRGeneratorInli
 all : \
     $(OBJECT_LUT_HEADERS) \
 #
+
+.PHONY : BytecodeCacheVersion.h
+
+BytecodeCacheVersion.h:
+	echo "#define JSC_BYTECODE_CACHE_VERSION $(shell date '+%s')" > BytecodeCacheVersion.h
+
+all : BytecodeCacheVersion.h

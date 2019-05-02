@@ -92,6 +92,7 @@
 #include <wtf/Forward.h>
 #include <wtf/SimpleStats.h>
 #include <wtf/StringPrintStream.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/text/UniquedStringImpl.h>
 
 #if ENABLE(ASSEMBLER)
@@ -1997,6 +1998,9 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
     // 2) Make sure that if we call the owner executable, then we shouldn't call this CodeBlock.
 
 #if ENABLE(DFG_JIT)
+    if (JITCode::isOptimizingJIT(jitType()))
+        jitCode()->dfgCommon()->clearWatchpoints();
+    
     if (reason != Profiler::JettisonDueToOldAge) {
         Profiler::Compilation* compilation = jitCode()->dfgCommon()->compilation.get();
         if (UNLIKELY(compilation))
@@ -2885,9 +2889,9 @@ String CodeBlock::nameForRegister(VirtualRegister virtualRegister)
     if (virtualRegister == thisRegister())
         return "this"_s;
     if (virtualRegister.isArgument())
-        return String::format("arguments[%3d]", virtualRegister.toArgument());
+        return makeString("arguments[", pad(' ', 3, virtualRegister.toArgument()), ']');
 
-    return "";
+    return emptyString();
 }
 
 ValueProfile* CodeBlock::tryGetValueProfileForBytecodeOffset(int bytecodeOffset)

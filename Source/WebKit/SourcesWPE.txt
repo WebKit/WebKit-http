@@ -102,6 +102,7 @@ UIProcess/AcceleratedDrawingAreaProxy.cpp
 UIProcess/DefaultUndoController.cpp
 UIProcess/LegacySessionStateCodingNone.cpp
 UIProcess/WebGrammarDetail.cpp
+UIProcess/WebMemoryPressureHandler.cpp @no-unify
 UIProcess/WebViewportAttributes.cpp
 
 UIProcess/API/C/WKGrammarDetail.cpp
@@ -157,6 +158,7 @@ UIProcess/API/glib/WebKitUIClient.cpp @no-unify
 UIProcess/API/glib/WebKitURISchemeRequest.cpp @no-unify
 UIProcess/API/glib/WebKitURIUtilities.cpp @no-unify
 UIProcess/API/glib/WebKitUserContent.cpp @no-unify
+UIProcess/API/glib/WebKitUserContentFilterStore.cpp @no-unify
 UIProcess/API/glib/WebKitUserContentManager.cpp @no-unify
 UIProcess/API/glib/WebKitUserMediaPermissionRequest.cpp @no-unify
 UIProcess/API/glib/WebKitVersion.cpp @no-unify
@@ -170,6 +172,7 @@ UIProcess/API/glib/WebKitWindowProperties.cpp @no-unify
 
 UIProcess/API/wpe/PageClientImpl.cpp @no-unify
 UIProcess/API/wpe/ScrollGestureController.cpp @no-unify
+UIProcess/API/wpe/WebKitColor.cpp @no-unify
 UIProcess/API/wpe/WebKitScriptDialogWPE.cpp @no-unify
 UIProcess/API/wpe/WebKitWebViewBackend.cpp @no-unify
 UIProcess/API/wpe/WebKitWebViewWPE.cpp @no-unify
@@ -179,6 +182,7 @@ UIProcess/Automation/cairo/WebAutomationSessionCairo.cpp
 
 UIProcess/Automation/wpe/WebAutomationSessionWPE.cpp
 
+UIProcess/glib/WebProcessPoolGLib.cpp
 UIProcess/glib/WebProcessProxyGLib.cpp
 
 UIProcess/Launcher/glib/ProcessLauncherGLib.cpp
@@ -208,7 +212,6 @@ UIProcess/wpe/WebInspectorProxyWPE.cpp
 UIProcess/wpe/WebPageProxyWPE.cpp
 UIProcess/wpe/WebPasteboardProxyWPE.cpp
 UIProcess/wpe/WebPreferencesWPE.cpp
-UIProcess/wpe/WebProcessPoolWPE.cpp
 
 WebProcess/InjectedBundle/API/glib/DOM/DOMObjectCache.cpp @no-unify
 WebProcess/InjectedBundle/API/glib/DOM/WebKitDOMDocument.cpp @no-unify

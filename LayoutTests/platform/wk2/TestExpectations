@@ -746,8 +746,12 @@ http/wpt/cross-origin-resource-policy/ [ Pass ]
 
 http/tests/navigation/useragent-reload.php [ Pass ]
 storage/indexeddb/modern/opendatabase-after-storage-crash.html [ Pass ]
+storage/indexeddb/IDBObject-leak.html [ Pass ]
 
 fast/forms/call-text-did-change-in-text-field-when-typing.html [ Pass ]
+
+http/tests/adClickAttribution [ Pass ]
+http/tests/adClickAttribution/store-ad-click-attribution.html [ Skip ]
 
 ### END OF (5) Progressions, expected successes that are expected failures in WebKit1.
 ########################################

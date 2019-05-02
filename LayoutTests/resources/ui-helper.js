@@ -124,13 +124,36 @@ window.UIHelper = class UIHelper {
         return UIHelper.activateAt(x, y);
     }
 
+    static async doubleActivateAt(x, y)
+    {
+        if (this.isIOS())
+            await UIHelper.doubleTapAt(x, y);
+        else
+            await UIHelper.doubleClickAt(x, y);
+    }
+
+    static async doubleActivateAtSelectionStart()
+    {
+        const rects = window.getSelection().getRangeAt(0).getClientRects();
+        const x = rects[0].left;
+        const y = rects[0].top;
+        if (this.isIOS()) {
+            await UIHelper.activateAndWaitForInputSessionAt(x, y);
+            await UIHelper.doubleTapAt(x, y);
+            // This is only here to deal with async/sync copy/paste calls, so
+            // once <rdar://problem/16207002> is resolved, should be able to remove for faster tests.
+            await new Promise(resolve => testRunner.runUIScript("uiController.uiScriptComplete()", resolve));
+        } else
+            await UIHelper.doubleClickAt(x, y);
+    }
+
     static async selectWordByDoubleTapOrClick(element, relativeX = 5, relativeY = 5)
     {
         const boundingRect = element.getBoundingClientRect();
         const x = boundingRect.x + relativeX;
         const y = boundingRect.y + relativeY;
         if (this.isIOS()) {
-            await UIHelper.tapAt(x, y);
+            await UIHelper.activateAndWaitForInputSessionAt(x, y);
             await UIHelper.doubleTapAt(x, y);
             // This is only here to deal with async/sync copy/paste calls, so
             // once <rdar://problem/16207002> is resolved, should be able to remove for faster tests.
@@ -613,6 +636,14 @@ window.UIHelper = class UIHelper {
         return new Promise(resolve => testRunner.runUIScript(`uiController.setMinimumEffectiveWidth(${effectiveWidth})`, resolve));
     }
 
+    static setAllowsViewportShrinkToFit(allows)
+    {
+        if (!this.isWebKit2())
+            return Promise.resolve();
+
+        return new Promise(resolve => testRunner.runUIScript(`uiController.setAllowsViewportShrinkToFit(${allows})`, resolve));
+    }
+
     static setKeyboardInputModeIdentifier(identifier)
     {
         if (!this.isWebKit2())
@@ -641,5 +672,25 @@ window.UIHelper = class UIHelper {
 
         const script = "JSON.stringify([uiController.lastUndoLabel, uiController.firstRedoLabel])";
         return new Promise(resolve => testRunner.runUIScript(script, result => resolve(JSON.parse(result))));
+    }
+
+    static waitForMenuToShow()
+    {
+        return new Promise(resolve => {
+            testRunner.runUIScript(`
+                (function() {
+                    if (!uiController.isShowingMenu)
+                        uiController.didShowMenuCallback = () => uiController.uiScriptComplete();
+                    else
+                        uiController.uiScriptComplete();
+                })()`, resolve);
+        });
+    }
+
+    static menuRect()
+    {
+        return new Promise(resolve => {
+            testRunner.runUIScript("JSON.stringify(uiController.menuRect)", result => resolve(JSON.parse(result)));
+        });
     }
 }

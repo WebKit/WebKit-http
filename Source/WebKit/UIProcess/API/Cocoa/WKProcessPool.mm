@@ -39,6 +39,7 @@
 #import "WKWebViewInternal.h"
 #import "WebCertificateInfo.h"
 #import "WebCookieManagerProxy.h"
+#import "WebProcessCache.h"
 #import "WebProcessMessages.h"
 #import "WebProcessPool.h"
 #import "_WKAutomationDelegate.h"
@@ -475,6 +476,11 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     return [self _webProcessCount] - ([self _hasPrewarmedWebProcess] ? 1 : 0);
 }
 
+- (size_t)_webProcessCountIgnoringPrewarmedAndCached
+{
+    return [self _webProcessCount] - ([self _hasPrewarmedWebProcess] ? 1 : 0) - _processPool->webProcessCache().size();
+}
+
 - (size_t)_webPageContentProcessCount
 {
     auto allWebProcesses = _processPool->processes();
@@ -506,6 +512,11 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 - (NSUInteger)_maximumSuspendedPageCount
 {
     return _processPool->maxSuspendedPageCount();
+}
+
+- (NSUInteger)_processCacheCapacity
+{
+    return _processPool->webProcessCache().capacity();
 }
 
 - (size_t)_serviceWorkerProcessCount

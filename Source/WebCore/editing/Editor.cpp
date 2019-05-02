@@ -153,7 +153,8 @@ static String inputEventDataForEditingStyleAndAction(const StyleProperties* styl
     switch (action) {
     case EditAction::SetColor:
         return style->getPropertyValue(CSSPropertyColor);
-    case EditAction::SetWritingDirection:
+    case EditAction::SetInlineWritingDirection:
+    case EditAction::SetBlockWritingDirection:
         return style->getPropertyValue(CSSPropertyDirection);
     default:
         return { };
@@ -512,6 +513,13 @@ bool Editor::canDeleteRange(Range* range) const
     return true;
 }
 
+bool Editor::shouldSmartDelete()
+{
+    if (behavior().shouldAlwaysSmartDelete())
+        return true;
+    return m_frame.selection().granularity() == WordGranularity;
+}
+
 bool Editor::smartInsertDeleteEnabled()
 {   
     return client() && client()->smartInsertDeleteEnabled();
@@ -519,7 +527,7 @@ bool Editor::smartInsertDeleteEnabled()
     
 bool Editor::canSmartCopyOrDelete()
 {
-    return client() && client()->smartInsertDeleteEnabled() && m_frame.selection().granularity() == WordGranularity;
+    return client() && client()->smartInsertDeleteEnabled() && shouldSmartDelete();
 }
 
 bool Editor::isSelectTrailingWhitespaceEnabled() const
@@ -1796,7 +1804,7 @@ void Editor::setBaseWritingDirection(WritingDirection direction)
 
         auto& focusedFormElement = downcast<HTMLTextFormControlElement>(*focusedElement);
         auto directionValue = direction == WritingDirection::LeftToRight ? "ltr" : "rtl";
-        auto writingDirectionInputTypeName = inputTypeNameForEditingAction(EditAction::SetWritingDirection);
+        auto writingDirectionInputTypeName = inputTypeNameForEditingAction(EditAction::SetBlockWritingDirection);
         if (!dispatchBeforeInputEvent(focusedFormElement, writingDirectionInputTypeName, directionValue))
             return;
 
@@ -1808,7 +1816,7 @@ void Editor::setBaseWritingDirection(WritingDirection direction)
 
     auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyDirection, direction == WritingDirection::LeftToRight ? "ltr" : direction == WritingDirection::RightToLeft ? "rtl" : "inherit", false);
-    applyParagraphStyleToSelection(style.ptr(), EditAction::SetWritingDirection);
+    applyParagraphStyleToSelection(style.ptr(), EditAction::SetBlockWritingDirection);
 }
 
 WritingDirection Editor::baseWritingDirectionForSelectionStart() const
@@ -4249,14 +4257,6 @@ const Font* Editor::fontForSelection(bool& hasMultipleFonts) const
     }
 
     return font;
-}
-
-String Editor::clientReplacementURLForResource(Ref<SharedBuffer>&& resourceData, const String& mimeType)
-{
-    if (auto* editorClient = client())
-        return editorClient->replacementURLForResource(WTFMove(resourceData), mimeType);
-
-    return { };
 }
 
 RefPtr<HTMLImageElement> Editor::insertEditableImage()

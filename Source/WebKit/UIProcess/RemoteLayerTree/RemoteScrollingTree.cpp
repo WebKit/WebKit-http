@@ -37,7 +37,6 @@
 #if PLATFORM(IOS_FAMILY)
 #include "ScrollingTreeFrameScrollingNodeRemoteIOS.h"
 #include "ScrollingTreeOverflowScrollingNodeIOS.h"
-#include <WebCore/ScrollingTreeFrameScrollingNodeIOS.h>
 #else
 #include "ScrollingTreeFrameScrollingNodeRemoteMac.h"
 #endif
@@ -79,11 +78,6 @@ void RemoteScrollingTree::handleWheelEventPhase(PlatformWheelEventPhase phase)
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-WebCore::FloatRect RemoteScrollingTree::fixedPositionRect()
-{
-    return m_scrollingCoordinatorProxy.customFixedPositionRect();
-}
-
 void RemoteScrollingTree::scrollingTreeNodeWillStartPanGesture()
 {
     m_scrollingCoordinatorProxy.scrollingTreeNodeWillStartPanGesture();

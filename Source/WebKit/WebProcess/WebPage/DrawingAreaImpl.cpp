@@ -242,7 +242,7 @@ void DrawingAreaImpl::sendDidUpdateBackingStoreState()
             m_shouldSendDidUpdateBackingStoreState = false;
 
             LayerTreeContext layerTreeContext;
-            m_webPage.send(Messages::DrawingAreaProxy::DidUpdateBackingStoreState(m_backingStoreStateID, updateInfo, layerTreeContext));
+            send(Messages::DrawingAreaProxy::DidUpdateBackingStoreState(m_backingStoreStateID, updateInfo, layerTreeContext));
             m_compositingAccordingToProxyMessages = false;
             return;
         }
@@ -308,12 +308,12 @@ void DrawingAreaImpl::exitAcceleratedCompositingMode()
     // Send along a complete update of the page so we can paint the contents right after we exit the
     // accelerated compositing mode, eliminiating flicker.
     if (m_compositingAccordingToProxyMessages) {
-        m_webPage.send(Messages::DrawingAreaProxy::ExitAcceleratedCompositingMode(m_backingStoreStateID, updateInfo));
+        send(Messages::DrawingAreaProxy::ExitAcceleratedCompositingMode(m_backingStoreStateID, updateInfo));
         m_compositingAccordingToProxyMessages = false;
     } else {
         // If we left accelerated compositing mode before we sent an EnterAcceleratedCompositingMode message to the
         // UI process, we still need to let it know about the new contents, so send an Update message.
-        m_webPage.send(Messages::DrawingAreaProxy::Update(m_backingStoreStateID, updateInfo));
+        send(Messages::DrawingAreaProxy::Update(m_backingStoreStateID, updateInfo));
     }
 }
 
@@ -367,7 +367,7 @@ void DrawingAreaImpl::display()
         return;
     }
 
-    m_webPage.send(Messages::DrawingAreaProxy::Update(m_backingStoreStateID, updateInfo));
+    send(Messages::DrawingAreaProxy::Update(m_backingStoreStateID, updateInfo));
     m_isWaitingForDidUpdate = true;
 }
 
@@ -410,8 +410,7 @@ void DrawingAreaImpl::display(UpdateInfo& updateInfo)
     updateInfo.viewSize = m_webPage.size();
     updateInfo.deviceScaleFactor = m_webPage.corePage()->deviceScaleFactor();
 
-    // Always render the whole page when we don't render the background.
-    IntRect bounds = m_webPage.drawsBackground() ? m_dirtyRegion.bounds() : m_webPage.bounds();
+    IntRect bounds = m_dirtyRegion.bounds();
     ASSERT(m_webPage.bounds().contains(bounds));
 
     IntSize bitmapSize = bounds.size();
@@ -424,16 +423,11 @@ void DrawingAreaImpl::display(UpdateInfo& updateInfo)
     if (!bitmap->createHandle(updateInfo.bitmapHandle))
         return;
 
-    Vector<IntRect> rects;
-    if (m_webPage.drawsBackground()) {
-        rects = m_dirtyRegion.rects();
-
-        if (shouldPaintBoundsRect(bounds, rects)) {
-            rects.clear();
-            rects.append(bounds);
-        }
-    } else
+    Vector<IntRect> rects = m_dirtyRegion.rects();
+    if (shouldPaintBoundsRect(bounds, rects)) {
+        rects.clear();
         rects.append(bounds);
+    }
 
     updateInfo.scrollRect = m_scrollRect;
     updateInfo.scrollOffset = m_scrollOffset;

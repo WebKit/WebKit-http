@@ -104,6 +104,7 @@ namespace JSC {
         const void* m_data;
     };
 
+    using BytecodeCacheGenerator = Function<CachedBytecode()>;
 
     class SourceProvider : public RefCounted<SourceProvider> {
     public:
@@ -116,6 +117,7 @@ namespace JSC {
         virtual unsigned hash() const = 0;
         virtual StringView source() const = 0;
         virtual const CachedBytecode* cachedBytecode() const { return nullptr; }
+        virtual void cacheBytecode(const BytecodeCacheGenerator&) const { }
 
         StringView getRange(int start, int end) const
         {
@@ -124,8 +126,8 @@ namespace JSC {
 
         const SourceOrigin& sourceOrigin() const { return m_sourceOrigin; }
         const URL& url() const { return m_url; }
-        const String& sourceURL() const { return m_sourceURLDirective; }
-        const String& sourceMappingURL() const { return m_sourceMappingURLDirective; }
+        const String& sourceURLDirective() const { return m_sourceURLDirective; }
+        const String& sourceMappingURLDirective() const { return m_sourceMappingURLDirective; }
 
         TextPosition startPosition() const { return m_startPosition; }
         SourceProviderSourceType sourceType() const { return m_sourceType; }
@@ -137,8 +139,8 @@ namespace JSC {
             return m_id;
         }
 
-        void setSourceURLDirective(const String& sourceURL) { m_sourceURLDirective = sourceURL; }
-        void setSourceMappingURLDirective(const String& sourceMappingURL) { m_sourceMappingURLDirective = sourceMappingURL; }
+        void setSourceURLDirective(const String& sourceURLDirective) { m_sourceURLDirective = sourceURLDirective; }
+        void setSourceMappingURLDirective(const String& sourceMappingURLDirective) { m_sourceMappingURLDirective = sourceMappingURLDirective; }
 
     private:
         JS_EXPORT_PRIVATE void getID();

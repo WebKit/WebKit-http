@@ -42,6 +42,7 @@
 #include "MouseEvent.h"
 #include "PingLoader.h"
 #include "PlatformMouseEvent.h"
+#include "RegistrableDomain.h"
 #include "RenderImage.h"
 #include "ResourceRequest.h"
 #include "RuntimeEnabledFeatures.h"
@@ -436,7 +437,13 @@ Optional<AdClickAttribution> HTMLAnchorElement::parseAdClickAttribution() const
 
     URL adDestinationURL { URL(), adDestinationAttr };
     if (!adDestinationURL.isValid() || !adDestinationURL.protocolIsInHTTPFamily()) {
-        document().addConsoleMessage(MessageSource::Other, MessageLevel::Warning, "adddestination could not be converted to a valid HTTP-family URL."_s);
+        document().addConsoleMessage(MessageSource::Other, MessageLevel::Warning, "addestination could not be converted to a valid HTTP-family URL."_s);
+        return WTF::nullopt;
+    }
+
+    auto documentDomain = document().domain();
+    if (RegistrableDomain(documentDomain).matches(adDestinationURL)) {
+        document().addConsoleMessage(MessageSource::Other, MessageLevel::Warning, "addestination can not be the same site as the current website."_s);
         return WTF::nullopt;
     }
 

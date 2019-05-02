@@ -140,16 +140,6 @@
     _preferences->setStorageAccessPromptsEnabled(enabled);
 }
 
-- (void)setSafeBrowsingEnabled:(BOOL)enabled
-{
-    _preferences->setSafeBrowsingEnabled(enabled);
-}
-
-- (BOOL)isSafeBrowsingEnabled
-{
-    return _preferences->safeBrowsingEnabled();
-}
-
 #pragma mark OS X-specific methods
 
 #if PLATFORM(MAC)
@@ -365,16 +355,6 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 - (void)_setDisplayListDrawingEnabled:(BOOL)displayListDrawingEnabled
 {
     _preferences->setDisplayListDrawingEnabled(displayListDrawingEnabled);
-}
-
-- (BOOL)_visualViewportEnabled
-{
-    return _preferences->visualViewportEnabled();
-}
-
-- (void)_setVisualViewportEnabled:(BOOL)_visualViewportEnabled
-{
-    _preferences->setVisualViewportEnabled(_visualViewportEnabled);
 }
 
 - (BOOL)_largeImageAsyncDecodingEnabled
@@ -1334,6 +1314,16 @@ static WebCore::EditableLinkBehavior toEditableLinkBehavior(_WKEditableLinkBehav
 #else
     return NO;
 #endif
+}
+
+- (BOOL)_isSafeBrowsingEnabled
+{
+    return _preferences->safeBrowsingEnabled();
+}
+
+- (void)_setSafeBrowsingEnabled:(BOOL)enabled
+{
+    _preferences->setSafeBrowsingEnabled(enabled);
 }
 
 - (void)_setVideoQualityIncludesDisplayCompositingEnabled:(BOOL)videoQualityIncludesDisplayCompositingEnabled

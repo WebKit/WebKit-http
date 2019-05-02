@@ -189,10 +189,8 @@ def forward_declarations_and_headers(receiver):
         'String',
     ])
 
-    for message in receiver.messages:
-        if message.reply_parameters != None:
-            headers.add('<wtf/ThreadSafeRefCounted.h>')
-            types_by_namespace['IPC'].update([('class', 'Connection')])
+    headers.add('"Connection.h"')
+    headers.add('<wtf/ThreadSafeRefCounted.h>')
 
     no_forward_declaration_types = frozenset([
         'MachSendRight',
@@ -307,6 +305,8 @@ def sync_message_statement(receiver, message):
     dispatch_function = 'handleMessage'
     if message.has_attribute(DELAYED_ATTRIBUTE):
         dispatch_function += 'Delayed'
+        if message.has_attribute(WANTS_CONNECTION_ATTRIBUTE):
+            dispatch_function += 'WantsConnection'
     if message.has_attribute(ASYNC_ATTRIBUTE):
         dispatch_function += 'Async'
     if message.has_attribute(LEGACY_SYNC_ATTRIBUTE):

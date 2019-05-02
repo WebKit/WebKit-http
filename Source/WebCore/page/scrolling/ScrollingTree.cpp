@@ -122,13 +122,15 @@ ScrollingEventResult ScrollingTree::handleWheelEvent(const PlatformWheelEvent& w
     return ScrollingEventResult::DidNotHandleEvent;
 }
 
-void ScrollingTree::viewportChangedViaDelegatedScrolling(ScrollingNodeID nodeID, const FloatRect& fixedPositionRect, double scale)
+void ScrollingTree::mainFrameViewportChangedViaDelegatedScrolling(const FloatRect& layoutViewport, double scale)
 {
-    auto* node = nodeForID(nodeID);
-    if (!is<ScrollingTreeScrollingNode>(node))
-        return;
-
-    downcast<ScrollingTreeScrollingNode>(*node).updateLayersAfterViewportChange(fixedPositionRect, scale);
+    LOG_WITH_STREAM(Scrolling, stream << "ScrollingTree::viewportChangedViaDelegatedScrolling - layoutViewport " << layoutViewport);
+    
+    if (m_rootNode) {
+        auto& frameScrollingNode = downcast<ScrollingTreeFrameScrollingNode>(*m_rootNode);
+        frameScrollingNode.setLayoutViewport(layoutViewport);
+        frameScrollingNode.updateLayersAfterViewportChange(layoutViewport, scale);
+    }
 }
 
 void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID nodeID, const WebCore::FloatPoint& scrollPosition, bool inUserInteraction)
@@ -155,7 +157,6 @@ void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollin
         && (rootStateNodeChanged
             || rootNode->hasChangedProperty(ScrollingStateFrameScrollingNode::EventTrackingRegion)
             || rootNode->hasChangedProperty(ScrollingStateScrollingNode::ScrolledContentsLayer)
-            || rootNode->hasChangedProperty(ScrollingStateFrameScrollingNode::VisualViewportEnabled)
             || rootNode->hasChangedProperty(ScrollingStateFrameScrollingNode::AsyncFrameOrOverflowScrollingEnabled))) {
         LockHolder lock(m_mutex);
 
@@ -164,9 +165,6 @@ void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollin
 
         if (rootStateNodeChanged || rootNode->hasChangedProperty(ScrollingStateFrameScrollingNode::EventTrackingRegion))
             m_eventTrackingRegions = scrollingStateTree->rootStateNode()->eventTrackingRegions();
-
-        if (rootStateNodeChanged || rootNode->hasChangedProperty(ScrollingStateFrameScrollingNode::VisualViewportEnabled))
-            m_visualViewportEnabled = scrollingStateTree->rootStateNode()->visualViewportEnabled();
 
         if (rootStateNodeChanged || rootNode->hasChangedProperty(ScrollingStateFrameScrollingNode::AsyncFrameOrOverflowScrollingEnabled))
             m_asyncFrameOrOverflowScrollingEnabled = scrollingStateTree->rootStateNode()->asyncFrameOrOverflowScrollingEnabled();

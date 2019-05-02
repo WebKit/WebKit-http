@@ -882,6 +882,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     navigationActionData.targetBackForwardItemIdentifier = navigationAction.targetBackForwardItemIdentifier();
     navigationActionData.lockHistory = navigationAction.lockHistory();
     navigationActionData.lockBackForwardList = navigationAction.lockBackForwardList();
+    navigationActionData.adClickAttribution = navigationAction.adClickAttribution();
 
     WebCore::Frame* coreFrame = m_frame->coreFrame();
     if (!coreFrame)
@@ -972,9 +973,11 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(FormState& formState, Completi
     auto& form = formState.form();
 
     auto* sourceCoreFrame = formState.sourceDocument().frame();
-    RELEASE_ASSERT(sourceCoreFrame);
+    if (!sourceCoreFrame)
+        return completionHandler();
     auto* sourceFrame = WebFrame::fromCoreFrame(*sourceCoreFrame);
-    ASSERT(sourceFrame);
+    if (!sourceFrame)
+        return completionHandler();
 
     auto& values = formState.textFieldValues();
 
@@ -1406,7 +1409,6 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     WebPage* webPage = m_frame->page();
 
     bool isMainFrame = m_frame->isMainFrame();
-    bool isTransparent = !webPage->drawsBackground();
     bool shouldUseFixedLayout = isMainFrame && webPage->useFixedLayout();
     bool shouldDisableScrolling = isMainFrame && !webPage->mainFrameIsScrollable();
     bool shouldHideScrollbars = shouldDisableScrolling;
@@ -1431,7 +1433,7 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     bool horizontalLock = shouldHideScrollbars || webPage->alwaysShowsHorizontalScroller();
     bool verticalLock = shouldHideScrollbars || webPage->alwaysShowsVerticalScroller();
 
-    m_frame->coreFrame()->createView(webPage->size(), isTransparent,
+    m_frame->coreFrame()->createView(webPage->size(), webPage->backgroundColor(),
         webPage->fixedLayoutSize(), fixedVisibleContentRect, shouldUseFixedLayout,
         horizontalScrollbarMode, horizontalLock, verticalScrollbarMode, verticalLock);
 
@@ -1779,12 +1781,6 @@ NSDictionary *WebFrameLoaderClient::dataDetectionContext()
 }
 
 #endif // PLATFORM(COCOA)
-
-bool WebFrameLoaderClient::shouldAlwaysUsePluginDocument(const String& /*mimeType*/) const
-{
-    notImplemented();
-    return false;
-}
 
 void WebFrameLoaderClient::didChangeScrollOffset()
 {

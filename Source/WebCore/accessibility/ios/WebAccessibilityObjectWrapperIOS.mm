@@ -526,7 +526,6 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case AccessibilityRole::Document:
     case AccessibilityRole::DocumentArticle:
     case AccessibilityRole::DocumentNote:
-    case AccessibilityRole::Footer:
     case AccessibilityRole::LandmarkBanner:
     case AccessibilityRole::LandmarkComplementary:
     case AccessibilityRole::LandmarkContentInfo:
@@ -865,6 +864,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case AccessibilityRole::Image:
     case AccessibilityRole::ImageMapLink:
     case AccessibilityRole::ProgressIndicator:
+    case AccessibilityRole::Meter:
     case AccessibilityRole::MenuItem:
     case AccessibilityRole::MenuItemCheckbox:
     case AccessibilityRole::MenuItemRadio:

@@ -159,7 +159,6 @@ void ArgumentCoder<ScrollingStateFrameScrollingNode>::encode(Encoder& encoder, c
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::FooterHeight, footerHeight)
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::TopContentInset, topContentInset)
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::FixedElementsLayoutRelativeToFrame, fixedElementsLayoutRelativeToFrame)
-    SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::VisualViewportEnabled, visualViewportEnabled)
     // AsyncFrameOrOverflowScrollingEnabled is not relevant for UI-side compositing.
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::LayoutViewport, layoutViewport)
     SCROLLING_NODE_ENCODE(ScrollingStateFrameScrollingNode::MinLayoutViewportOrigin, minLayoutViewportOrigin)
@@ -179,6 +178,9 @@ void ArgumentCoder<ScrollingStateFrameScrollingNode>::encode(Encoder& encoder, c
 
     if (node.hasChangedProperty(ScrollingStateFrameScrollingNode::HorizontalScrollbarLayer))
         encoder << static_cast<GraphicsLayer::PlatformLayerID>(node.horizontalScrollbarLayer());
+
+    if (node.hasChangedProperty(ScrollingStateFrameScrollingNode::RootContentsLayer))
+        encoder << static_cast<GraphicsLayer::PlatformLayerID>(node.rootContentsLayer());
 }
 
 void ArgumentCoder<ScrollingStateFrameHostingNode>::encode(Encoder& encoder, const ScrollingStateFrameHostingNode& node)
@@ -271,7 +273,6 @@ bool ArgumentCoder<ScrollingStateFrameScrollingNode>::decode(Decoder& decoder, S
     SCROLLING_NODE_DECODE(ScrollingStateFrameScrollingNode::FooterHeight, int, setFooterHeight);
     SCROLLING_NODE_DECODE(ScrollingStateFrameScrollingNode::TopContentInset, float, setTopContentInset);
     SCROLLING_NODE_DECODE(ScrollingStateFrameScrollingNode::FixedElementsLayoutRelativeToFrame, bool, setFixedElementsLayoutRelativeToFrame);
-    SCROLLING_NODE_DECODE(ScrollingStateFrameScrollingNode::VisualViewportEnabled, bool, setVisualViewportEnabled)
     SCROLLING_NODE_DECODE(ScrollingStateFrameScrollingNode::LayoutViewport, FloatRect, setLayoutViewport)
     SCROLLING_NODE_DECODE(ScrollingStateFrameScrollingNode::MinLayoutViewportOrigin, FloatPoint, setMinLayoutViewportOrigin)
     SCROLLING_NODE_DECODE(ScrollingStateFrameScrollingNode::MaxLayoutViewportOrigin, FloatPoint, setMaxLayoutViewportOrigin)
@@ -309,6 +310,13 @@ bool ArgumentCoder<ScrollingStateFrameScrollingNode>::decode(Decoder& decoder, S
         if (!decoder.decode(layerID))
             return false;
         node.setHorizontalScrollbarLayer(layerID);
+    }
+
+    if (node.hasChangedProperty(ScrollingStateFrameScrollingNode::RootContentsLayer)) {
+        GraphicsLayer::PlatformLayerID layerID;
+        if (!decoder.decode(layerID))
+            return false;
+        node.setRootContentsLayer(layerID);
     }
 
     return true;

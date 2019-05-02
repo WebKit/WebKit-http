@@ -1,10 +1,10 @@
 include(GNUInstallDirs)
 include(VersioningUtils)
 
-SET_PROJECT_VERSION(2 23 0)
+SET_PROJECT_VERSION(2 25 0)
 set(WPE_API_VERSION 0.1)
 
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 4 0 2)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 6 0 3)
 
 # These are shared variables, but we special case their definition so that we can use the
 # CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
@@ -70,6 +70,7 @@ WEBKIT_OPTION_DEFINE(ENABLE_WPE_QT_API "Whether to enable support for the Qt5/QM
 # Private options specific to the WPE port.
 WEBKIT_OPTION_DEFINE(USE_OPENVR "Whether to use OpenVR as WebVR backend." PRIVATE ${ENABLE_EXPERIMENTAL_FEATURES})
 WEBKIT_OPTION_DEFINE(USE_GSTREAMER_HOLEPUNCH "Whether to enable GStreamer holepunch" PRIVATE OFF)
+WEBKIT_OPTION_DEFINE(USE_EXTERNAL_HOLEPUNCH "Whether to enable external holepunch" PRIVATE OFF)
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_MEMORY_SAMPLER PRIVATE ON)
@@ -94,6 +95,7 @@ if (("${PC_CAIRO_VERSION}" VERSION_GREATER "1.16.0" OR "${PC_CAIRO_VERSION}" STR
 endif ()
 
 WEBKIT_OPTION_DEPEND(USE_GSTREAMER_HOLEPUNCH ENABLE_VIDEO)
+WEBKIT_OPTION_DEPEND(USE_EXTERNAL_HOLEPUNCH ENABLE_VIDEO)
 
 include(GStreamerDependencies)
 
@@ -138,7 +140,7 @@ if (ENABLE_WPE_QT_API)
     find_package(Qt5 REQUIRED COMPONENTS Core Quick Gui)
     find_package(Qt5Test REQUIRED)
     find_package(PkgConfig)
-    pkg_check_modules(WPE_BACKEND_FDO REQUIRED wpebackend-fdo-0.1)
+    pkg_check_modules(WPE_BACKEND_FDO REQUIRED wpebackend-fdo-1.0)
 endif ()
 
 add_definitions(-DBUILDING_WPE__=1)

@@ -241,6 +241,10 @@ void UIScriptController::setMinimumEffectiveWidth(double)
 {
 }
 
+void UIScriptController::setAllowsViewportShrinkToFit(bool)
+{
+}
+
 void UIScriptController::resignFirstResponder()
 {
 }
@@ -532,9 +536,19 @@ void UIScriptController::platformSetDidHideMenuCallback()
 {
 }
 
+JSObjectRef UIScriptController::menuRect() const
+{
+    return nullptr;
+}
+
 JSObjectRef UIScriptController::rectForMenuAction(JSStringRef) const
 {
     return nullptr;
+}
+
+bool UIScriptController::isShowingMenu() const
+{
+    return false;
 }
 
 void UIScriptController::platformClearAllCallbacks()

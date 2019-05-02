@@ -29,6 +29,7 @@
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
 #include "GStreamerCommon.h"
+#include "GStreamerRegistryScanner.h"
 #include "HTTPHeaderNames.h"
 #include "MIMETypeRegistry.h"
 #include "MediaPlayer.h"
@@ -51,6 +52,7 @@
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/glib/RunLoopSourcePriority.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 #if ENABLE(MEDIA_STREAM) && GST_CHECK_VERSION(1, 10, 0)
 #include "GStreamerMediaStreamSource.h"
@@ -329,8 +331,9 @@ void MediaPlayerPrivateGStreamer::load(MediaStreamPrivate& stream)
 {
 #if GST_CHECK_VERSION(1, 10, 0)
     m_streamPrivate = &stream;
-    auto pipelineName = String::format("mediastream_%s_%p",
-        (stream.hasCaptureVideoSource() || stream.hasCaptureAudioSource()) ? "Local" : "Remote", this);
+    auto pipelineName = makeString("mediastream_",
+        (stream.hasCaptureVideoSource() || stream.hasCaptureAudioSource()) ? "Local" : "Remote",
+        "_0x", hex(reinterpret_cast<uintptr_t>(this), Lowercase));
 
     loadFull(String("mediastream://") + stream.id(), "playbin3", pipelineName);
     syncOnClock(false);
@@ -1249,8 +1252,8 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         // Construct a filename for the graphviz dot file output.
         GstState newState;
         gst_message_parse_state_changed(message, &currentState, &newState, nullptr);
-        CString dotFileName = String::format("%s.%s_%s", GST_OBJECT_NAME(m_pipeline.get()),
-            gst_element_state_get_name(currentState), gst_element_state_get_name(newState)).utf8();
+        CString dotFileName = makeString(GST_OBJECT_NAME(m_pipeline.get()), '.',
+            gst_element_state_get_name(currentState), '_', gst_element_state_get_name(newState)).utf8();
         GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, dotFileName.data());
 
         break;
@@ -1751,7 +1754,7 @@ void MediaPlayerPrivateGStreamer::sourceSetupCallback(MediaPlayerPrivateGStreame
 
 void MediaPlayerPrivateGStreamer::uriDecodeBinElementAddedCallback(GstBin* bin, GstElement* element, MediaPlayerPrivateGStreamer* player)
 {
-    if (g_strcmp0(G_OBJECT_CLASS_NAME(G_OBJECT_GET_CLASS(G_OBJECT(element))), "GstDownloadBuffer"))
+    if (g_strcmp0(G_OBJECT_TYPE_NAME(element), "GstDownloadBuffer"))
         return;
 
     player->m_downloadBuffer = element;
@@ -2228,137 +2231,10 @@ void MediaPlayerPrivateGStreamer::loadingFailed(MediaPlayer::NetworkState error)
     m_readyTimerHandler.stop();
 }
 
-static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeSet()
-{
-    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> mimeTypes = []()
-    {
-        initializeGStreamerAndRegisterWebKitElements();
-        HashSet<String, ASCIICaseInsensitiveHash> set;
-
-        GList* audioDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_AUDIO, GST_RANK_MARGINAL);
-        GList* videoDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO, GST_RANK_MARGINAL);
-        GList* demuxerFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DEMUXER, GST_RANK_MARGINAL);
-
-        enum ElementType {
-            AudioDecoder = 0,
-            VideoDecoder,
-            Demuxer
-        };
-        struct GstCapsWebKitMapping {
-            ElementType elementType;
-            const char* capsString;
-            Vector<AtomicString> webkitMimeTypes;
-        };
-
-        Vector<GstCapsWebKitMapping> mapping = {
-            {AudioDecoder, "audio/midi", {"audio/midi", "audio/riff-midi"}},
-            {AudioDecoder, "audio/x-sbc", { }},
-            {AudioDecoder, "audio/x-sid", { }},
-            {AudioDecoder, "audio/x-flac", {"audio/x-flac", "audio/flac"}},
-            {AudioDecoder, "audio/x-wav", {"audio/x-wav", "audio/wav", "audio/vnd.wave"}},
-            {AudioDecoder, "audio/x-wavpack", {"audio/x-wavpack"}},
-            {AudioDecoder, "audio/x-speex", {"audio/speex", "audio/x-speex"}},
-            {AudioDecoder, "audio/x-ac3", { }},
-            {AudioDecoder, "audio/x-eac3", {"audio/x-ac3"}},
-            {AudioDecoder, "audio/x-dts", { }},
-            {VideoDecoder, "video/x-h264, profile=(string)high", {"video/mp4", "video/x-m4v"}},
-            {VideoDecoder, "video/x-msvideocodec", {"video/x-msvideo"}},
-            {VideoDecoder, "video/x-h263", { }},
-            {VideoDecoder, "video/mpegts", { }},
-            {VideoDecoder, "video/mpeg, mpegversion=(int){1,2}, systemstream=(boolean)false", {"video/mpeg"}},
-            {VideoDecoder, "video/x-dirac", { }},
-            {VideoDecoder, "video/x-flash-video", {"video/flv", "video/x-flv"}},
-            {Demuxer, "video/quicktime", { }},
-            {Demuxer, "video/quicktime, variant=(string)3gpp", {"video/3gpp"}},
-            {Demuxer, "application/x-3gp", { }},
-            {Demuxer, "video/x-ms-asf", { }},
-            {Demuxer, "audio/x-aiff", { }},
-            {Demuxer, "application/x-pn-realaudio", { }},
-            {Demuxer, "application/vnd.rn-realmedia", { }},
-            {Demuxer, "audio/x-wav", {"audio/x-wav", "audio/wav", "audio/vnd.wave"}},
-            {Demuxer, "application/x-hls", {"application/vnd.apple.mpegurl", "application/x-mpegurl"}}
-        };
-
-        for (auto& current : mapping) {
-            GList* factories = demuxerFactories;
-            if (current.elementType == AudioDecoder)
-                factories = audioDecoderFactories;
-            else if (current.elementType == VideoDecoder)
-                factories = videoDecoderFactories;
-
-            if (gstRegistryHasElementForMediaType(factories, current.capsString)) {
-                if (!current.webkitMimeTypes.isEmpty()) {
-                    for (const auto& mimeType : current.webkitMimeTypes)
-                        set.add(mimeType);
-                } else
-                    set.add(AtomicString(current.capsString));
-            }
-        }
-
-        bool opusSupported = false;
-        if (gstRegistryHasElementForMediaType(audioDecoderFactories, "audio/x-opus")) {
-            opusSupported = true;
-            set.add(AtomicString("audio/opus"));
-        }
-
-        bool vorbisSupported = false;
-        if (gstRegistryHasElementForMediaType(demuxerFactories, "application/ogg")) {
-            set.add(AtomicString("application/ogg"));
-
-            vorbisSupported = gstRegistryHasElementForMediaType(audioDecoderFactories, "audio/x-vorbis");
-            if (vorbisSupported) {
-                set.add(AtomicString("audio/ogg"));
-                set.add(AtomicString("audio/x-vorbis+ogg"));
-            }
-
-            if (gstRegistryHasElementForMediaType(videoDecoderFactories, "video/x-theora"))
-                set.add(AtomicString("video/ogg"));
-        }
-
-        bool audioMpegSupported = false;
-        if (gstRegistryHasElementForMediaType(audioDecoderFactories, "audio/mpeg, mpegversion=(int)1, layer=(int)[1, 3]")) {
-            audioMpegSupported = true;
-            set.add(AtomicString("audio/mp1"));
-            set.add(AtomicString("audio/mp3"));
-            set.add(AtomicString("audio/x-mp3"));
-        }
-
-        if (gstRegistryHasElementForMediaType(audioDecoderFactories, "audio/mpeg, mpegversion=(int){2, 4}")) {
-            audioMpegSupported = true;
-            set.add(AtomicString("audio/aac"));
-            set.add(AtomicString("audio/mp2"));
-            set.add(AtomicString("audio/mp4"));
-            set.add(AtomicString("audio/x-m4a"));
-        }
-
-        if (audioMpegSupported) {
-            set.add(AtomicString("audio/mpeg"));
-            set.add(AtomicString("audio/x-mpeg"));
-        }
-
-        if (gstRegistryHasElementForMediaType(demuxerFactories, "video/x-matroska")) {
-            set.add(AtomicString("video/x-matroska"));
-
-            if (gstRegistryHasElementForMediaType(videoDecoderFactories, "video/x-vp8")
-                || gstRegistryHasElementForMediaType(videoDecoderFactories, "video/x-vp9")
-                || gstRegistryHasElementForMediaType(videoDecoderFactories, "video/x-vp10"))
-                set.add(AtomicString("video/webm"));
-
-            if (vorbisSupported || opusSupported)
-                set.add(AtomicString("audio/webm"));
-        }
-
-        gst_plugin_feature_list_free(audioDecoderFactories);
-        gst_plugin_feature_list_free(videoDecoderFactories);
-        gst_plugin_feature_list_free(demuxerFactories);
-        return set;
-    }();
-    return mimeTypes;
-}
-
 void MediaPlayerPrivateGStreamer::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types)
 {
-    types = mimeTypeSet();
+    auto& gstRegistryScanner = GStreamerRegistryScanner::singleton();
+    types = gstRegistryScanner.mimeTypeSet();
 }
 
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaEngineSupportParameters& parameters)
@@ -2378,30 +2254,18 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaE
     if (parameters.type.isEmpty())
         return result;
 
-    // Spec says we should not return "probably" if the codecs string is empty.
-    if (mimeTypeSet().contains(parameters.type.containerType()))
-        result = parameters.type.codecs().isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
-
+    GST_DEBUG("Checking mime-type \"%s\"", parameters.type.raw().utf8().data());
     auto containerType = parameters.type.containerType();
-    if (containerType == "video/mp4"_s || containerType == "video/webm"_s) {
-        if (mimeTypeSet().contains(containerType)) {
-            GList* videoDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO, GST_RANK_MARGINAL);
-            bool av1DecoderFound = gstRegistryHasElementForMediaType(videoDecoderFactories, "video/x-av1"_s);
-            gst_plugin_feature_list_free(videoDecoderFactories);
-            for (auto& codec : parameters.type.codecs()) {
-                if (codec.startsWith("av01"_s)) {
-                    result = av1DecoderFound ? MediaPlayer::IsSupported : MediaPlayer::IsNotSupported;
-                    break;
-                }
-                if (codec.startsWith("av1"_s)) {
-                    result = MediaPlayer::IsNotSupported;
-                    break;
-                }
-            }
-        }
+    auto& gstRegistryScanner = GStreamerRegistryScanner::singleton();
+    if (gstRegistryScanner.isContainerTypeSupported(containerType)) {
+        // Spec says we should not return "probably" if the codecs string is empty.
+        Vector<String> codecs = parameters.type.codecs();
+        result = codecs.isEmpty() ? MediaPlayer::MayBeSupported : (gstRegistryScanner.areAllCodecsSupported(codecs) ? MediaPlayer::IsSupported : MediaPlayer::IsNotSupported);
     }
 
-    return extendedSupportsType(parameters, result);
+    auto finalResult = extendedSupportsType(parameters, result);
+    GST_DEBUG("Supported: %s", convertEnumerationToString(finalResult).utf8().data());
+    return finalResult;
 }
 
 void MediaPlayerPrivateGStreamer::setDownloadBuffering()
@@ -2569,7 +2433,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin(const gchar* playbinName, con
     // gst_element_factory_make() returns a floating reference so
     // we should not adopt.
     setPipeline(gst_element_factory_make(playbinName,
-        pipelineName.isEmpty() ? String::format("play_%p", this).utf8().data() : pipelineName.utf8().data()));
+        (pipelineName.isEmpty() ? makeString("play_0x", hex(reinterpret_cast<uintptr_t>(this), Lowercase)) : pipelineName).utf8().data()));
     setStreamVolumeElement(GST_STREAM_VOLUME(m_pipeline.get()));
 
     GST_INFO_OBJECT(pipeline(), "Using legacy playbin element: %s", boolForPrinting(m_isLegacyPlaybin));

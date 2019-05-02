@@ -31,7 +31,14 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
 
         this.element.classList.add("navigation");
 
-        this.contentView.element.addEventListener("scroll", this.soon._updateContentOverflowShadowVisibility);
+        this._updateContentOverflowShadowVisibilityDebouncer = new Debouncer(() => {
+            this._updateContentOverflowShadowVisibility();
+        });
+        this._boundUpdateContentOverflowShadowVisibilitySoon = (event) => {
+            this._updateContentOverflowShadowVisibilityDebouncer.delayForTime(0);
+        };
+
+        this.contentView.element.addEventListener("scroll", this._boundUpdateContentOverflowShadowVisibilitySoon);
 
         this._contentTreeOutlineGroup = new WI.TreeOutlineGroup;
         this._contentTreeOutline = this.createContentTreeOutline();
@@ -49,8 +56,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
             this._topOverflowShadowElement.classList.add(WI.NavigationSidebarPanel.OverflowShadowElementStyleClassName, "top");
         }
 
-        this._boundUpdateContentOverflowShadowVisibility = this.soon._updateContentOverflowShadowVisibility;
-        window.addEventListener("resize", this._boundUpdateContentOverflowShadowVisibility);
+        window.addEventListener("resize", this._boundUpdateContentOverflowShadowVisibilitySoon);
 
         this._filtersSetting = new WI.Setting(identifier + "-navigation-sidebar-filters", {});
         this._filterBar.filters = this._filtersSetting.value;
@@ -77,7 +83,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
 
     closed()
     {
-        window.removeEventListener("resize", this._boundUpdateContentOverflowShadowVisibility);
+        window.removeEventListener("resize", this._boundUpdateContentOverflowShadowVisibilitySoon);
         WI.Frame.removeEventListener(null, null, this);
     }
 
@@ -123,7 +129,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
         this._finalAttemptToRestoreViewStateTimeout = undefined;
     }
 
-    createContentTreeOutline(suppressFiltering)
+    createContentTreeOutline({ignoreCookieRestoration, suppressFiltering} = {})
     {
         let contentTreeOutline = new WI.TreeOutline;
         contentTreeOutline.allowsRepeatSelection = true;
@@ -139,6 +145,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
             contentTreeOutline.addEventListener(WI.TreeOutline.Event.ElementDisclosureDidChanged, this._treeElementDisclosureDidChange, this);
         }
 
+        contentTreeOutline[WI.NavigationSidebarPanel.IgnoreCookieRestoration] = ignoreCookieRestoration;
         contentTreeOutline[WI.NavigationSidebarPanel.SuppressFilteringSymbol] = suppressFiltering;
 
         return contentTreeOutline;
@@ -273,7 +280,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
         let emptyContentPlaceholderParentElement = treeOutline.element.parentNode;
         emptyContentPlaceholderParentElement.appendChild(emptyContentPlaceholderElement);
 
-        this._updateContentOverflowShadowVisibility();
+        this._updateContentOverflowShadowVisibilityDebouncer.force();
 
         return emptyContentPlaceholderElement;
     }
@@ -289,7 +296,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
         emptyContentPlaceholderElement.remove();
         this._emptyContentPlaceholderElements.delete(treeOutline);
 
-        this._updateContentOverflowShadowVisibility();
+        this._updateContentOverflowShadowVisibilityDebouncer.force();
     }
 
     updateEmptyContentPlaceholder(message, treeOutline)
@@ -345,7 +352,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
         }
 
         this._checkForEmptyFilterResults();
-        this._updateContentOverflowShadowVisibility();
+        this._updateContentOverflowShadowVisibilityDebouncer.force();
     }
 
     resetFilter()
@@ -468,7 +475,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
     {
         super.shown();
 
-        this._updateContentOverflowShadowVisibility();
+        this._updateContentOverflowShadowVisibilityDebouncer.force();
     }
 
     // Protected
@@ -502,8 +509,6 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
     {
         if (!this.visible)
             return;
-
-        this._updateContentOverflowShadowVisibility.cancelDebounce();
 
         let scrollHeight = this.contentView.element.scrollHeight;
         let offsetHeight = this.contentView.element.offsetHeight;
@@ -607,15 +612,15 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
         this._checkForEmptyFilterResults();
 
         if (this.visible)
-            this.soon._updateContentOverflowShadowVisibility();
+            this._updateContentOverflowShadowVisibilityDebouncer.delayForTime(0);
 
-        if (this.selected)
+        if (this.selected && !treeElement.treeOutline[WI.NavigationSidebarPanel.IgnoreCookieRestoration])
             this._checkElementsForPendingViewStateCookie([treeElement]);
     }
 
     _treeElementDisclosureDidChange(event)
     {
-        this.soon._updateContentOverflowShadowVisibility();
+        this._updateContentOverflowShadowVisibilityDebouncer.delayForTime(0);
     }
 
     _checkForStaleResourcesIfNeeded()
@@ -661,6 +666,9 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
 
         var visibleTreeElements = [];
         this.contentTreeOutlines.forEach(function(outline) {
+            if (outline[WI.NavigationSidebarPanel.IgnoreCookieRestoration])
+                return;
+
             var currentTreeElement = outline.hasChildren ? outline.children[0] : null;
             while (currentTreeElement) {
                 visibleTreeElements.push(currentTreeElement);
@@ -668,7 +676,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
             }
         });
 
-        return this._checkElementsForPendingViewStateCookie(visibleTreeElements, matchTypeOnly);
+        this._checkElementsForPendingViewStateCookie(visibleTreeElements, matchTypeOnly);
     }
 
     _checkElementsForPendingViewStateCookie(treeElements, matchTypeOnly)
@@ -747,6 +755,7 @@ WI.NavigationSidebarPanel = class NavigationSidebarPanel extends WI.SidebarPanel
     }
 };
 
+WI.NavigationSidebarPanel.IgnoreCookieRestoration = Symbol("ignore-cookie-restoration");
 WI.NavigationSidebarPanel.SuppressFilteringSymbol = Symbol("suppress-filtering");
 WI.NavigationSidebarPanel.WasExpandedDuringFilteringSymbol = Symbol("was-expanded-during-filtering");
 

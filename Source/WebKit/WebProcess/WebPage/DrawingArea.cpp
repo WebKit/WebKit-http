@@ -69,16 +69,17 @@ std::unique_ptr<DrawingArea> DrawingArea::create(WebPage& webPage, const WebPage
     return nullptr;
 }
 
-DrawingArea::DrawingArea(DrawingAreaType type, WebPage& webPage)
+DrawingArea::DrawingArea(DrawingAreaType type, DrawingAreaIdentifier identifier, WebPage& webPage)
     : m_type(type)
+    , m_identifier(identifier)
     , m_webPage(webPage)
 {
-    WebProcess::singleton().addMessageReceiver(Messages::DrawingArea::messageReceiverName(), m_webPage.pageID(), *this);
+    WebProcess::singleton().addMessageReceiver(Messages::DrawingArea::messageReceiverName(), m_identifier.toUInt64(), *this);
 }
 
 DrawingArea::~DrawingArea()
 {
-    WebProcess::singleton().removeMessageReceiver(Messages::DrawingArea::messageReceiverName(), m_webPage.pageID());
+    removeMessageReceiverIfNeeded();
 }
 
 void DrawingArea::dispatchAfterEnsuringUpdatedScrollPosition(WTF::Function<void ()>&& function)
@@ -93,5 +94,13 @@ RefPtr<WebCore::DisplayRefreshMonitor> DrawingArea::createDisplayRefreshMonitor(
     return nullptr;
 }
 #endif
+
+void DrawingArea::removeMessageReceiverIfNeeded()
+{
+    if (m_hasRemovedMessageReceiver)
+        return;
+    m_hasRemovedMessageReceiver = true;
+    WebProcess::singleton().removeMessageReceiver(Messages::DrawingArea::messageReceiverName(), m_identifier.toUInt64());
+}
 
 } // namespace WebKit

@@ -54,8 +54,6 @@ public:
     virtual bool isRemoteScrollingTree() const { return false; }
     virtual bool isScrollingTreeIOS() const { return false; }
 
-    bool visualViewportEnabled() const { return m_visualViewportEnabled; }
-
     // This implies that we'll do hit-testing in the scrolling tree.
     bool asyncFrameOrOverflowScrollingEnabled() const { return m_asyncFrameOrOverflowScrollingEnabled; }
     void setAsyncFrameOrOverflowScrollingEnabled(bool);
@@ -84,7 +82,7 @@ public:
 
     // Delegated scrolling/zooming has caused the viewport to change, so update viewport-constrained layers
     // (but don't cause scroll events to be fired).
-    WEBCORE_EXPORT virtual void viewportChangedViaDelegatedScrolling(ScrollingNodeID, const WebCore::FloatRect& fixedPositionRect, double scale);
+    WEBCORE_EXPORT virtual void mainFrameViewportChangedViaDelegatedScrolling(const WebCore::FloatRect& layoutViewport, double scale);
 
     // Delegated scrolling has scrolled a node. Update layer positions on descendant tree nodes,
     // and call scrollingTreeNodeDidScroll().
@@ -96,7 +94,6 @@ public:
     FloatPoint mainFrameScrollPosition();
     
 #if PLATFORM(IOS_FAMILY)
-    virtual FloatRect fixedPositionRect() = 0;
     virtual void scrollingTreeNodeWillStartPanGesture() { }
     virtual void scrollingTreeNodeWillStartScroll() { }
     virtual void scrollingTreeNodeDidEndScroll() { }
@@ -128,7 +125,7 @@ public:
     bool isHandlingProgrammaticScroll();
     
     void setScrollPinningBehavior(ScrollPinningBehavior);
-    ScrollPinningBehavior scrollPinningBehavior();
+    WEBCORE_EXPORT ScrollPinningBehavior scrollPinningBehavior();
 
     WEBCORE_EXPORT bool willWheelEventStartSwipeGesture(const PlatformWheelEvent&);
 
@@ -156,7 +153,6 @@ public:
     
 protected:
     void setMainFrameScrollPosition(FloatPoint);
-    void setVisualViewportEnabled(bool b) { m_visualViewportEnabled = b; }
 
     WEBCORE_EXPORT virtual ScrollingEventResult handleWheelEvent(const PlatformWheelEvent&);
 
@@ -193,7 +189,6 @@ private:
     bool m_mainFrameIsScrollSnapping { false };
     bool m_scrollingPerformanceLoggingEnabled { false };
     bool m_isHandlingProgrammaticScroll { false };
-    bool m_visualViewportEnabled { false };
     bool m_asyncFrameOrOverflowScrollingEnabled { false };
 };
     

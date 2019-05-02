@@ -32,6 +32,7 @@
 #import "TestNavigationDelegate.h"
 #import "TestWKWebView.h"
 #import <WebKit/WKNavigationDelegate.h>
+#import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKUIDelegatePrivate.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <wtf/RetainPtr.h>
@@ -40,7 +41,7 @@
 
 static bool committedNavigation;
 static bool warningShown;
-static bool goBackClicked;
+static bool didCloseCalled;
 
 @interface SafeBrowsingNavigationDelegate : NSObject <WKNavigationDelegate, WKUIDelegatePrivate>
 @end
@@ -57,9 +58,9 @@ static bool goBackClicked;
     warningShown = true;
 }
 
-- (void)_webViewDidClickGoBackFromSafeBrowsingWarning:(WKWebView *)webView
+- (void)webViewDidClose:(WKWebView *)webView
 {
-    goBackClicked = true;
+    didCloseCalled = true;
 }
 
 @end
@@ -169,15 +170,17 @@ TEST(SafeBrowsing, Preference)
     };
 
     auto webView = adoptNS([WKWebView new]);
+    EXPECT_FALSE([webView configuration].preferences._safeBrowsingEnabled);
+    [webView configuration].preferences._safeBrowsingEnabled = YES;
     [webView setNavigationDelegate:delegate.get()];
-    EXPECT_TRUE([webView configuration].preferences.safeBrowsingEnabled);
+    [webView configuration].preferences._safeBrowsingEnabled = YES;
     [webView loadRequest:[NSURLRequest requestWithURL:resourceURL(@"simple")]];
     while (![webView _safeBrowsingWarning])
         TestWebKitAPI::Util::spinRunLoop();
-    [webView configuration].preferences.safeBrowsingEnabled = NO;
+    [webView configuration].preferences._safeBrowsingEnabled = NO;
     [webView loadRequest:[NSURLRequest requestWithURL:resourceURL(@"simple2")]];
     TestWebKitAPI::Util::run(&done);
-    EXPECT_FALSE([webView configuration].preferences.safeBrowsingEnabled);
+    EXPECT_FALSE([webView configuration].preferences._safeBrowsingEnabled);
     EXPECT_FALSE([webView _safeBrowsingWarning]);
 }
 
@@ -187,6 +190,7 @@ static RetainPtr<WKWebView> safeBrowsingView()
 
     static auto delegate = adoptNS([SafeBrowsingNavigationDelegate new]);
     auto webView = adoptNS([WKWebView new]);
+    [webView configuration].preferences._safeBrowsingEnabled = YES;
     [webView setNavigationDelegate:delegate.get()];
     [webView setUIDelegate:delegate.get()];
     [webView loadRequest:[NSURLRequest requestWithURL:resourceURL(@"simple")]];
@@ -227,9 +231,9 @@ template<typename ViewType> void goBack(ViewType *view)
 TEST(SafeBrowsing, GoBack)
 {
     auto webView = safeBrowsingView();
-    EXPECT_FALSE(goBackClicked);
+    EXPECT_FALSE(didCloseCalled);
     goBack([webView _safeBrowsingWarning]);
-    EXPECT_TRUE(goBackClicked);
+    EXPECT_TRUE(didCloseCalled);
 }
 
 template<typename ViewType> void visitUnsafeSite(ViewType *view)
@@ -312,6 +316,7 @@ TEST(SafeBrowsing, URLObservation)
 
     auto webViewWithWarning = [&] () -> RetainPtr<WKWebView> {
         auto webView = adoptNS([WKWebView new]);
+        [webView configuration].preferences._safeBrowsingEnabled = YES;
         [webView addObserver:observer.get() forKeyPath:@"URL" options:NSKeyValueObservingOptionNew context:nil];
 
         [webView loadHTMLString:@"meaningful content to be drawn" baseURL:simpleURL.get()];
@@ -404,6 +409,7 @@ TEST(SafeBrowsing, WKWebViewGoBack)
     
     auto delegate = adoptNS([WKWebViewGoBackNavigationDelegate new]);
     auto webView = adoptNS([WKWebView new]);
+    [webView configuration].preferences._safeBrowsingEnabled = YES;
     [webView setNavigationDelegate:delegate.get()];
     [webView loadRequest:[NSURLRequest requestWithURL:resourceURL(@"simple")]];
     TestWebKitAPI::Util::run(&navigationFinished);

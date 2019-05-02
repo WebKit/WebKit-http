@@ -35,10 +35,13 @@
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include <wtf/DebugUtilities.h>
+#include <wtf/HexNumber.h>
 #include <wtf/URL.h>
 
 namespace WebKit {
 using namespace WebCore;
+
+static const Seconds suspensionTimeout { 10_s };
 
 #if !LOG_DISABLED
 static const HashSet<IPC::StringReference>& messageNamesToIgnoreWhileSuspended()
@@ -80,6 +83,7 @@ SuspendedPageProxy::SuspendedPageProxy(WebPageProxy& page, Ref<WebProcessProxy>&
     , m_process(WTFMove(process))
     , m_mainFrameID(mainFrameID)
     , m_registrableDomain(toRegistrableDomain(URL(URL(), item.url())))
+    , m_suspensionTimeoutTimer(RunLoop::main(), this, &SuspendedPageProxy::suspensionTimedOut)
 #if PLATFORM(IOS_FAMILY)
     , m_suspensionToken(m_process->throttler().backgroundActivityToken())
 #endif
@@ -87,6 +91,7 @@ SuspendedPageProxy::SuspendedPageProxy(WebPageProxy& page, Ref<WebProcessProxy>&
     item.setSuspendedPage(this);
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_page.pageID(), *this);
 
+    m_suspensionTimeoutTimer.startOneShot(suspensionTimeout);
     m_process->send(Messages::WebPage::SetIsSuspended(true), m_page.pageID());
 }
 
@@ -163,6 +168,8 @@ void SuspendedPageProxy::didProcessRequestToSuspend(SuspensionState newSuspensio
 
     m_suspensionState = newSuspensionState;
 
+    m_suspensionTimeoutTimer.stop();
+
 #if PLATFORM(IOS_FAMILY)
     m_suspensionToken = nullptr;
 #endif
@@ -180,6 +187,12 @@ void SuspendedPageProxy::didProcessRequestToSuspend(SuspensionState newSuspensio
 
     if (m_readyToUnsuspendHandler)
         m_readyToUnsuspendHandler(this);
+}
+
+void SuspendedPageProxy::suspensionTimedOut()
+{
+    RELEASE_LOG_ERROR(ProcessSwapping, "%p - SuspendedPageProxy::suspensionTimedOut() destroying the suspended page because it failed to suspend in time", this);
+    m_process->processPool().removeSuspendedPage(*this); // Will destroy |this|.
 }
 
 void SuspendedPageProxy::didReceiveMessage(IPC::Connection&, IPC::Decoder& decoder)
@@ -207,10 +220,12 @@ void SuspendedPageProxy::didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, 
 }
 
 #if !LOG_DISABLED
+
 const char* SuspendedPageProxy::loggingString() const
 {
-    return debugString("(", String::format("%p", this), " page ID ", String::number(m_page.pageID()), ", m_suspensionState ", String::number(static_cast<unsigned>(m_suspensionState)), ")");
+    return debugString("(0x", hex(reinterpret_cast<uintptr_t>(this)), " page ID ", m_page.pageID(), ", m_suspensionState ", static_cast<unsigned>(m_suspensionState), ')');
 }
+
 #endif
 
 } // namespace WebKit

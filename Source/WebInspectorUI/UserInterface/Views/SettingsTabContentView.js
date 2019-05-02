@@ -211,6 +211,12 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
         generalSettingsView.addSeparator();
 
+        let searchGroup = generalSettingsView.addGroup(WI.UIString("Search:", "Search: @ Settings", "Settings tab label for search related settings"));
+        searchGroup.addSetting(WI.settings.searchCaseSensitive, WI.UIString("Case Sensitive", "Case Sensitive @ Settings", "Settings tab checkbox label for whether searches should be case sensitive."));
+        searchGroup.addSetting(WI.settings.searchRegularExpression, WI.UIString("Regular Expression", "Regular Expression @ Settings", "Settings tab checkbox label for whether searches should be treated as regular expressions."));
+
+        generalSettingsView.addSeparator();
+
         const zoomLevels = [0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2, 2.2, 2.4];
         const zoomValues = zoomLevels.map((level) => [level, Number.percentageString(level, 0)]);
 
@@ -227,6 +233,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             ];
             const editorLabels = {
                 media: WI.UIString("Media Logging:"),
+                mediasource: WI.UIString("MSE Logging:"),
                 webrtc: WI.UIString("WebRTC Logging:"),
             };
 
@@ -246,12 +253,12 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
     _createExperimentalSettingsView()
     {
-        if (!(window.CanvasAgent || window.NetworkAgent || window.LayerTreeAgent))
-            return;
-
         let experimentalSettingsView = new WI.SettingsView("experimental", WI.UIString("Experimental"));
 
         let initialValues = new Map;
+
+        experimentalSettingsView.addSetting(WI.UIString("Sources:"), WI.settings.experimentalEnableSourcesTab, WI.UIString("Enable Sources Tab"));
+        experimentalSettingsView.addSeparator();
 
         if (window.LayerTreeAgent) {
             experimentalSettingsView.addSetting(WI.UIString("Layers:"), WI.settings.experimentalEnableLayersTab, WI.UIString("Enable Layers Tab"));
@@ -269,6 +276,8 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         reloadInspectorButton.addEventListener("click", (event) => {
             // Force a copy so that WI.Setting sees it as a new value.
             let newTabs = WI._openTabsSetting.value.slice();
+            if (!initialValues.get(WI.settings.experimentalEnableSourcesTab) && WI.settings.experimentalEnableSourcesTab.value)
+                newTabs.push(WI.SourcesTabContentView.Type);
             if (!initialValues.get(WI.settings.experimentalEnableLayersTab) && window.LayerTreeAgent && WI.settings.experimentalEnableLayersTab.value)
                 newTabs.push(WI.LayersTabContentView.Type);
             WI._openTabsSetting.value = newTabs;
@@ -286,6 +295,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             });
         }
 
+        listenForChange(WI.settings.experimentalEnableSourcesTab);
         listenForChange(WI.settings.experimentalEnableLayersTab);
         listenForChange(WI.settings.experimentalEnableNewTabBar);
         listenForChange(WI.settings.experimentalEnableCPUUsageEnhancements);

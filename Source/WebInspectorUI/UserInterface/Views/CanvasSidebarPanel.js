@@ -55,8 +55,7 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
 
         this.addSubview(this._navigationBar);
 
-        const suppressFiltering = true;
-        this._canvasTreeOutline = this.createContentTreeOutline(suppressFiltering);
+        this._canvasTreeOutline = this.createContentTreeOutline({suppressFiltering: true});
         this._canvasTreeOutline.element.classList.add("canvas");
 
         this._recordingNavigationBar = new WI.NavigationBar;
@@ -374,6 +373,8 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
     {
         this._recordingTreeOutline.removeChildren();
 
+        this._selectedRecordingActionIndex = NaN;
+
         if (this._recordingProcessingOptionsContainer) {
             this._recordingProcessingOptionsContainer.remove();
             this._recordingProcessingOptionsContainer = null;
@@ -578,8 +579,8 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         console.assert(isInitialStateAction || this._recordingTreeOutline.children.lastValue instanceof WI.FolderTreeElement, "There should be a WI.FolderTreeElement for the frame for this action.");
         this._createRecordingActionTreeElement(action, index, isInitialStateAction ? this._recordingTreeOutline : this._recordingTreeOutline.children.lastValue);
 
-        if (isInitialStateAction && !this._recording[WI.CanvasSidebarPanel.SelectedActionSymbol])
-            this.action = action;
+        if (this._recording.ready && !this._recording[WI.CanvasSidebarPanel.SelectedActionSymbol])
+            this.action = this._recording.actions[0];
 
         if (action === this._recording.actions.lastValue && this._recordingProcessingOptionsContainer) {
             this._recordingProcessingOptionsContainer.remove();

@@ -5,8 +5,8 @@
 ]>
 <book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
   <bookinfo>
-    <title>WebKit2GTK+ Reference Manual</title>
-    <releaseinfo>for WebKit2GTK+ &version;</releaseinfo>
+    <title>WebKitGTK Reference Manual</title>
+    <releaseinfo>for WebKitGTK &version;</releaseinfo>
   </bookinfo>
 
   <chapter>
@@ -51,6 +51,7 @@
     <xi:include href="xml/WebKitOptionMenuItem.xml"/>
     <xi:include href="xml/WebKitFormSubmissionRequest.xml"/>
     <xi:include href="xml/WebKitSecurityManager.xml"/>
+    <xi:include href="xml/WebKitUserContentFilterStore.xml"/>
     <xi:include href="xml/WebKitUserContentManager.xml"/>
     <xi:include href="xml/WebKitUserContent.xml"/>
     <xi:include href="xml/WebKitNotification.xml"/>

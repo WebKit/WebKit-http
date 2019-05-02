@@ -2274,7 +2274,9 @@ llintOpWithMetadata(op_put_to_scope, OpPutToScope, macro (size, get, dispatch, m
         get(m_value, t0)
         loadConstantOrVariable(size, t0, t1, t2)
         loadp OpPutToScope::Metadata::m_watchpointSet[t5], t3
+        btpz t3, .noVariableWatchpointSet
         notifyWrite(t3, .pDynamic)
+    .noVariableWatchpointSet:
         loadp OpPutToScope::Metadata::m_operand[t5], t0
         storei t1, TagOffset[t0]
         storei t2, PayloadOffset[t0]
@@ -2300,6 +2302,16 @@ llintOpWithMetadata(op_put_to_scope, OpPutToScope, macro (size, get, dispatch, m
         storei t3, JSLexicalEnvironment_variables + PayloadOffset[t0, t1, 8]
     end
 
+    macro checkTDZInGlobalPutToScopeIfNecessary()
+        loadi OpPutToScope::Metadata::m_getPutInfo + GetPutInfo::m_operand[t5], t0
+        andi InitializationModeMask, t0
+        rshifti InitializationModeShift, t0
+        bineq t0, NotInitialization, .noNeedForTDZCheck
+        loadp OpPutToScope::Metadata::m_operand[t5], t0
+        loadi TagOffset[t0], t0
+        bieq t0, EmptyValueTag, .pDynamic
+    .noNeedForTDZCheck:
+    end
 
     metadata(t5, t0)
     loadi OpPutToScope::Metadata::m_getPutInfo + GetPutInfo::m_operand[t5], t0
@@ -2327,6 +2339,7 @@ llintOpWithMetadata(op_put_to_scope, OpPutToScope, macro (size, get, dispatch, m
 
 .pGlobalLexicalVar:
     bineq t0, GlobalLexicalVar, .pClosureVar
+    checkTDZInGlobalPutToScopeIfNecessary()
     putGlobalVariable()
     writeBarrierOnGlobalLexicalEnvironment(size, get, m_value)
     dispatch()
@@ -2355,6 +2368,7 @@ llintOpWithMetadata(op_put_to_scope, OpPutToScope, macro (size, get, dispatch, m
 .pGlobalLexicalVarWithVarInjectionChecks:
     bineq t0, GlobalLexicalVarWithVarInjectionChecks, .pClosureVarWithVarInjectionChecks
     varInjectionCheck(.pDynamic)
+    checkTDZInGlobalPutToScopeIfNecessary()
     putGlobalVariable()
     writeBarrierOnGlobalLexicalEnvironment(size, get, m_value)
     dispatch()

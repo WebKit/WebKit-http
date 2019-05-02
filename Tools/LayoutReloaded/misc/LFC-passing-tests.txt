@@ -43,6 +43,7 @@ fast/block/block-only/absolute-width-shrink-to-fit.html
 fast/block/block-only/absolute-width-stretch.html
 fast/block/block-only/absolute-with-static-block-position-nested.html
 fast/block/block-only/almost-intruding-left-float-simple.html
+fast/block/block-only/block-replaced-with-vertical-margins.html
 fast/block/block-only/body-height-with-auto-html-height-quirk2.html
 fast/block/block-only/body-height-with-auto-html-height-quirk.html
 fast/block/block-only/body-height-with-non-auto-html-height-quirk2.html
@@ -80,6 +81,7 @@ fast/block/block-only/floating-multiple-lefts-in-body.html
 fast/block/block-only/floating-multiple-lefts-multiple-lines.html
 fast/block/block-only/floating-multiple-lefts.html
 fast/block/block-only/floating-with-new-block-formatting-context.html
+fast/block/block-only/floats-and-block-formatting-roots.html
 fast/block/block-only/inflow-min-max-height.html
 fast/block/block-only/inflow-min-max-width.html
 fast/block/block-only/margin-collapse-bottom-bottom.html
@@ -96,11 +98,13 @@ fast/block/block-only/margin-left-right-sizing.html
 fast/block/block-only/margin-propagation-simple-content-height.html
 fast/block/block-only/margin-sibling-collapse-propagated.html
 fast/block/block-only/margin-simple.html
+fast/block/block-only/min-max-and-preferred-width-simple.html
 fast/block/block-only/min-max-height-percentage.html
 fast/block/block-only/negative-margin-simple.html
 fast/block/block-only/non-auto-top-bottom-height-with-auto-margins.html
 fast/block/block-only/non-auto-top-bottom-height-with-margins.html
 fast/block/block-only/non-auto-top-bottom-left-right-widht-height-out-of-flow.html
+fast/block/block-only/out-of-flow-is-never-float-box.html
 fast/block/block-only/out-of-flow-with-containing-block-border-padding.html
 fast/block/block-only/padding-nested.html
 fast/block/block-only/padding-simple.html
@@ -111,6 +115,7 @@ fast/block/block-only/relative-position-when-containing-block-is-not-in-the-form
 fast/block/block-only/relative-right.html
 fast/block/block-only/relative-siblings.html
 fast/block/block-only/relative-simple.html
+fast/block/block-only/replaced-intrinsic-width-simple-expected.html
 fast/block/float/001.html
 fast/block/float/003.html
 fast/block/float/007.html
@@ -702,6 +707,12 @@ css2.1/20110323/absolute-non-replaced-width-013.htm
 css2.1/20110323/absolute-non-replaced-width-014.htm
 css2.1/20110323/absolute-non-replaced-width-015.htm
 css2.1/20110323/absolute-non-replaced-width-016.htm
+css2.1/20110323/absolute-non-replaced-width-017.htm
+css2.1/20110323/absolute-non-replaced-width-018.htm
+css2.1/20110323/absolute-non-replaced-width-019.htm
+css2.1/20110323/absolute-non-replaced-width-020.htm
+css2.1/20110323/absolute-non-replaced-width-021.htm
+css2.1/20110323/absolute-non-replaced-width-022.htm
 css2.1/20110323/absolute-replaced-height-001.htm
 css2.1/20110323/absolute-replaced-height-002.htm
 css2.1/20110323/absolute-replaced-height-003.htm
@@ -789,6 +800,7 @@ css2.1/20110323/block-non-replaced-width-006.htm
 css2.1/20110323/block-non-replaced-width-007.htm
 css2.1/20110323/block-non-replaced-width-008.htm
 css2.1/20110323/block-replaced-height-001.htm
+css2.1/20110323/block-replaced-height-002.htm
 css2.1/20110323/block-replaced-height-003.htm
 css2.1/20110323/block-replaced-height-004.htm
 css2.1/20110323/block-replaced-height-005.htm
@@ -813,9 +825,15 @@ css2.1/20110323/float-non-replaced-width-003.htm
 css2.1/20110323/float-non-replaced-width-004.htm
 css2.1/20110323/float-non-replaced-width-005.htm
 css2.1/20110323/float-non-replaced-width-006.htm
+css2.1/20110323/float-non-replaced-width-007.htm
+css2.1/20110323/float-non-replaced-width-008.htm
+css2.1/20110323/float-non-replaced-width-009.htm
 css2.1/20110323/float-non-replaced-width-010.htm
+css2.1/20110323/float-non-replaced-width-011.htm
 css2.1/20110323/float-non-replaced-width-012.htm
 css2.1/20110323/float-replaced-height-001.htm
+css2.1/20110323/float-replaced-height-002.htm
+css2.1/20110323/float-replaced-height-003.htm
 css2.1/20110323/float-replaced-height-004.htm
 css2.1/20110323/float-replaced-height-005.htm
 css2.1/20110323/float-replaced-height-007.htm
@@ -828,8 +846,11 @@ css2.1/20110323/float-replaced-width-006.htm
 css2.1/20110323/float-replaced-width-011.htm
 css2.1/20110323/floats-001.html
 css2.1/20110323/floats-102.html
+css2.1/20110323/floats-wrap-top-below-bfc-002l.htm
+css2.1/20110323/floats-wrap-top-below-bfc-002r.htm
 css2.1/20110323/inline-block-non-replaced-width-001.htm
 css2.1/20110323/inline-block-non-replaced-width-002.htm
+css2.1/20110323/inline-block-non-replaced-width-003.htm
 css2.1/20110323/inline-block-replaced-height-001.htm
 css2.1/20110323/inline-block-replaced-height-002.htm
 css2.1/20110323/inline-block-replaced-height-003.htm

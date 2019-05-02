@@ -1,3 +1,177 @@
+2019-02-23  Keith Miller  <keith_miller@apple.com>
+
+        Add new mac target numbers
+        https://bugs.webkit.org/show_bug.cgi?id=194955
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2019-02-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Hardcode Visual Viewports on everywhere except iOS WK1
+        https://bugs.webkit.org/show_bug.cgi?id=194928
+
+        Reviewed by Zalan Bujtas.
+
+        Remove the WK1 and WK2 preferences and MiniBrowser menu item for "visual viewports",
+        change the default value of the Setting to 'true', and hardcode WebView on iOS to
+        set it to false. The setting has shipped for several years and there's no need to turn
+        it off now.
+
+        Similarly, disable the "Visual Viewport API" on iOS WK1, since it makes no sense if
+        Visual Viewports are not enabled.
+        
+        Remove the "visualViewportEnabled" flag and unused code paths from scrolling tree code
+        that only runs in WK2
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences visualViewportEnabled]): Deleted.
+        (-[WebPreferences setVisualViewportEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-02-21  Darin Adler  <darin@apple.com>
+
+        Some refinements for Node and Document
+        https://bugs.webkit.org/show_bug.cgi?id=194764
+
+        Reviewed by Ryosuke Niwa.
+
+        * DOM/DOMDocument.mm:
+        (-[DOMDocument getOverrideStyle:pseudoElement:]): Return nil without calling
+        through to WebCore or even looking at the arguments.
+        (-[DOMDocument getOverrideStyle::]): Ditto.
+
+2019-02-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Support pasting item-provider-backed data on the pasteboard as attachment elements
+        https://bugs.webkit.org/show_bug.cgi?id=194670
+        <rdar://problem/39066529>
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::replacementURLForResource): Deleted.
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::getTypesByFidelityForItemAtIndex): Deleted.
+
+2019-02-18  Eric Carlson  <eric.carlson@apple.com>
+
+        Add MSE logging configuration
+        https://bugs.webkit.org/show_bug.cgi?id=194719
+        <rdar://problem/48122151>
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (stringForMessageSource): Recognize the MSE message source.
+
+2019-02-17  David Kilzer  <ddkilzer@apple.com>
+
+        Unreviewed, rolling out r241620.
+
+        "Causes use-after-free crashes running layout tests with ASan and GuardMalloc."
+        (Requested by ddkilzer on #webkit.)
+
+        Reverted changeset:
+
+        "[WTF] Add environment variable helpers"
+        https://bugs.webkit.org/show_bug.cgi?id=192405
+        https://trac.webkit.org/changeset/241620
+
+2019-02-15  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WTF] Add environment variable helpers
+        https://bugs.webkit.org/show_bug.cgi?id=192405
+
+        Reviewed by Michael Catanzaro.
+
+        * WebView/WebView.mm:
+        (-[WebView _initWithFrame:frameName:groupName:]):
+        Utilize WTF::Environment where possible.
+
+2019-02-15  Brian Burg  <bburg@apple.com>
+
+        [Mac] WebInspectorUI.framework does not need to be soft-linked anymore
+        https://bugs.webkit.org/show_bug.cgi?id=194411
+        <rdar://problem/47787614>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        Conditionalize weak linking to WebInspectorUI.framework for Mac only.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::localizedStringsURL):
+        (-[WebInspectorWindowController inspectorPagePath]):
+        (-[WebInspectorWindowController inspectorTestPagePath]):
+        Rewrite uses of the bundle to exit early if bundle couldn't be loaded.
+
+2019-02-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r241559 and r241566.
+        https://bugs.webkit.org/show_bug.cgi?id=194710
+
+        Causes layout test crashes under GuardMalloc (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[WTF] Add environment variable helpers"
+        https://bugs.webkit.org/show_bug.cgi?id=192405
+        https://trac.webkit.org/changeset/241559
+
+        "Unreviewed build fix for WinCairo Debug after r241559."
+        https://trac.webkit.org/changeset/241566
+
+2019-02-15  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r241564.
+
+        Caused 50+ Timeouts on Mac WK2, mostly in the http/ directory
+
+        Reverted changeset:
+
+        "[Mac] WebInspectorUI.framework does not need to be soft-
+        linked anymore"
+        https://bugs.webkit.org/show_bug.cgi?id=194411
+        https://trac.webkit.org/changeset/241564
+
+2019-02-14  Brian Burg  <bburg@apple.com>
+
+        [Mac] WebInspectorUI.framework does not need to be soft-linked anymore
+        https://bugs.webkit.org/show_bug.cgi?id=194411
+        <rdar://problem/47787614>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        Conditionalize weak linking to WebInspectorUI.framework for Mac only.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::localizedStringsURL):
+        (-[WebInspectorWindowController inspectorPagePath]):
+        (-[WebInspectorWindowController inspectorTestPagePath]):
+        Rewrite uses of the bundle to exit early if bundle couldn't be loaded.
+
+2019-02-14  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WTF] Add environment variable helpers
+        https://bugs.webkit.org/show_bug.cgi?id=192405
+
+        Reviewed by Michael Catanzaro.
+
+        * WebView/WebView.mm:
+        (-[WebView _initWithFrame:frameName:groupName:]):
+        Utilize WTF::Environment where possible.
+
 2019-02-12  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         Allow pages to trigger programmatic paste from script on iOS

@@ -96,6 +96,7 @@ set(WPE_API_INSTALLED_HEADERS
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitBackForwardList.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitBackForwardListItem.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitCredential.h
+    ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitColor.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitContextMenu.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitContextMenuActions.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitContextMenuItem.h
@@ -133,6 +134,7 @@ set(WPE_API_INSTALLED_HEADERS
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitURISchemeRequest.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitURIUtilities.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitUserContent.h
+    ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitUserContentFilterStore.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitUserContentManager.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitUserMediaPermissionRequest.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitWebContext.h

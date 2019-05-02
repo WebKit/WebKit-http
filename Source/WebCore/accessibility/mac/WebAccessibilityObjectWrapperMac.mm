@@ -153,6 +153,10 @@ using namespace HTMLNames;
 #define NSAccessibilityBlockQuoteLevelAttribute @"AXBlockQuoteLevel"
 #endif
 
+#ifndef NSAccessibilityChildrenInNavigationOrderAttribute
+#define NSAccessibilityChildrenInNavigationOrderAttribute @"AXChildrenInNavigationOrder"
+#endif
+
 #ifndef NSAccessibilityAccessKeyAttribute
 #define NSAccessibilityAccessKeyAttribute @"AXAccessKey"
 #endif
@@ -1887,6 +1891,7 @@ static AccessibilityRoleMap createAccessibilityRoleMap()
         { AccessibilityRole::Toolbar, NSAccessibilityToolbarRole },
         { AccessibilityRole::BusyIndicator, NSAccessibilityBusyIndicatorRole },
         { AccessibilityRole::ProgressIndicator, NSAccessibilityProgressIndicatorRole },
+        { AccessibilityRole::Meter, NSAccessibilityLevelIndicatorRole },
         { AccessibilityRole::Window, NSAccessibilityWindowRole },
         { AccessibilityRole::Drawer, NSAccessibilityDrawerRole },
         { AccessibilityRole::SystemWide, NSAccessibilitySystemWideRole },
@@ -2053,7 +2058,9 @@ ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         return NSAccessibilityContentSeparatorSubrole;
     if (role == AccessibilityRole::ToggleButton)
         return NSAccessibilityToggleSubrole;
-    
+    if (role == AccessibilityRole::Footer)
+        return @"AXFooter";
+
     if (is<AccessibilitySpinButtonPart>(*m_object)) {
         if (downcast<AccessibilitySpinButtonPart>(*m_object).isIncrementor())
             return NSAccessibilityIncrementArrowSubrole;
@@ -2085,8 +2092,6 @@ ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         return @"AXLandmarkBanner";
     case AccessibilityRole::LandmarkComplementary:
         return @"AXLandmarkComplementary";
-    // Footer roles should appear as content info types.
-    case AccessibilityRole::Footer:
     case AccessibilityRole::LandmarkContentInfo:
         return @"AXLandmarkContentInfo";
     case AccessibilityRole::LandmarkMain:
@@ -2482,7 +2487,7 @@ IGNORE_WARNINGS_END
         return parent->wrapper();
     }
     
-    if ([attributeName isEqualToString: NSAccessibilityChildrenAttribute]) {
+    if ([attributeName isEqualToString: NSAccessibilityChildrenAttribute] || [attributeName isEqualToString: NSAccessibilityChildrenInNavigationOrderAttribute]) {
         if (!self.childrenVectorSize) {
             NSArray* children = [self renderWidgetChildren];
             if (children != nil)

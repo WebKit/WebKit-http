@@ -42,7 +42,7 @@
 
 namespace JSC {
 
-static_assert(sizeof(UnlinkedFunctionExecutable) <= 160, "UnlinkedFunctionExecutable should fit in a 160-byte cell. If you increase the size of this class, consider making a size class that perfectly fits it.");
+static_assert(sizeof(UnlinkedFunctionExecutable) <= 128, "UnlinkedFunctionExecutable should fit in a 128-byte cell to keep allocated blocks count to only one after initializing JSGlobalObject.");
 
 const ClassInfo UnlinkedFunctionExecutable::s_info = { "UnlinkedFunctionExecutable", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(UnlinkedFunctionExecutable) };
 
@@ -78,7 +78,7 @@ static UnlinkedFunctionCodeBlock* generateUnlinkedFunctionCodeBlock(
     return result;
 }
 
-UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* structure, const SourceCode& parentSource, FunctionMetadataNode* node, UnlinkedFunctionKind kind, ConstructAbility constructAbility, JSParserScriptMode scriptMode, VariableEnvironment& parentScopeTDZVariables, DerivedContextType derivedContextType, bool isBuiltinDefaultClassConstructor)
+UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* structure, const SourceCode& parentSource, FunctionMetadataNode* node, UnlinkedFunctionKind kind, ConstructAbility constructAbility, JSParserScriptMode scriptMode, CompactVariableMap::Handle parentScopeTDZVariables, DerivedContextType derivedContextType, bool isBuiltinDefaultClassConstructor)
     : Base(*vm, structure)
     , m_firstLineOffset(node->firstLine() - parentSource.firstLine().oneBasedInt())
     , m_lineCount(node->lastLine() - node->firstLine())
@@ -106,8 +106,7 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
     , m_name(node->ident())
     , m_ecmaName(node->ecmaName())
     , m_inferredName(node->inferredName())
-    , m_classSource(node->classSource())
-    , m_parentScopeTDZVariables(vm->m_compactVariableMap->get(parentScopeTDZVariables))
+    , m_parentScopeTDZVariables(WTFMove(parentScopeTDZVariables))
 {
     // Make sure these bitfields are adequately wide.
     ASSERT(m_constructAbility == static_cast<unsigned>(constructAbility));
@@ -117,6 +116,8 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
     ASSERT(m_superBinding == static_cast<unsigned>(node->superBinding()));
     ASSERT(m_derivedContextType == static_cast<unsigned>(derivedContextType));
     ASSERT(!(m_isBuiltinDefaultClassConstructor && constructorKind() == ConstructorKind::None));
+    if (!node->classSource().isNull())
+        setClassSource(node->classSource());
 }
 
 void UnlinkedFunctionExecutable::destroy(JSCell* cell)
@@ -133,26 +134,28 @@ void UnlinkedFunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visito
     visitor.append(thisObject->m_unlinkedCodeBlockForConstruct);
 }
 
-FunctionExecutable* UnlinkedFunctionExecutable::link(VM& vm, const SourceCode& passedParentSource, Optional<int> overrideLineNumber, Intrinsic intrinsic)
+SourceCode UnlinkedFunctionExecutable::linkedSourceCode(const SourceCode& passedParentSource) const
 {
     const SourceCode& parentSource = !m_isBuiltinDefaultClassConstructor ? passedParentSource : BuiltinExecutables::defaultConstructorSourceCode(constructorKind());
-    unsigned firstLine = parentSource.firstLine().oneBasedInt() + m_firstLineOffset;
-    unsigned startOffset = parentSource.startOffset() + m_startOffset;
-    unsigned lineCount = m_lineCount;
-
     unsigned startColumn = linkedStartColumn(parentSource.startColumn().oneBasedInt());
-    unsigned endColumn = linkedEndColumn(startColumn);
+    unsigned startOffset = parentSource.startOffset() + m_startOffset;
+    unsigned firstLine = parentSource.firstLine().oneBasedInt() + m_firstLineOffset;
+    return SourceCode(parentSource.provider(), startOffset, startOffset + m_sourceLength, firstLine, startColumn);
+}
 
-    SourceCode source(parentSource.provider(), startOffset, startOffset + m_sourceLength, firstLine, startColumn);
+FunctionExecutable* UnlinkedFunctionExecutable::link(VM& vm, const SourceCode& passedParentSource, Optional<int> overrideLineNumber, Intrinsic intrinsic)
+{
+    SourceCode source = linkedSourceCode(passedParentSource);
+    unsigned firstLine = source.firstLine().oneBasedInt();
+    unsigned lineCount = m_lineCount;
+    unsigned endColumn = linkedEndColumn(source.startColumn().oneBasedInt());
     FunctionOverrides::OverrideInfo overrideInfo;
     bool hasFunctionOverride = false;
-
     if (UNLIKELY(Options::functionOverrides())) {
         hasFunctionOverride = FunctionOverrides::initializeOverrideFor(source, overrideInfo);
         if (UNLIKELY(hasFunctionOverride)) {
             firstLine = overrideInfo.firstLine;
             lineCount = overrideInfo.lineCount;
-            startColumn = overrideInfo.startColumn;
             endColumn = overrideInfo.endColumn;
             source = overrideInfo.sourceCode;
         }
@@ -239,6 +242,13 @@ UnlinkedFunctionCodeBlock* UnlinkedFunctionExecutable::unlinkedCodeBlockFor(
     }
     vm.unlinkedFunctionExecutableSpace.set.add(this);
     return result;
+}
+
+UnlinkedFunctionExecutable::RareData& UnlinkedFunctionExecutable::ensureRareDataSlow()
+{
+    ASSERT(!m_rareData);
+    m_rareData = std::make_unique<RareData>();
+    return *m_rareData;
 }
 
 void UnlinkedFunctionExecutable::setInvalidTypeProfilingOffsets()

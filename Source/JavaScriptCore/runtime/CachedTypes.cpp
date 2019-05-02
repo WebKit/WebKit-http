@@ -26,6 +26,7 @@
 #include "config.h"
 #include "CachedTypes.h"
 
+#include "BytecodeCacheVersion.h"
 #include "BytecodeLivenessAnalysis.h"
 #include "JSCast.h"
 #include "JSImmutableButterfly.h"
@@ -40,6 +41,7 @@
 #include <wtf/FastMalloc.h>
 #include <wtf/Forward.h>
 #include <wtf/Optional.h>
+#include <wtf/UUID.h>
 #include <wtf/text/AtomicStringImpl.h>
 
 namespace JSC {
@@ -101,10 +103,10 @@ public:
         return malloc(size);
     }
 
-    template<typename T>
-    T* malloc()
+    template<typename T, typename... Args>
+    T* malloc(Args&&... args)
     {
-        return reinterpret_cast<T*>(malloc(sizeof(T)).buffer());
+        return new (malloc(sizeof(T)).buffer()) T(std::forward<Args>(args)...);
     }
 
     ptrdiff_t offsetOf(const void* address)
@@ -125,7 +127,7 @@ public:
         m_ptrToOffsetMap.add(ptr, offset);
     }
 
-    WTF::Optional<ptrdiff_t> offsetForPtr(const void* ptr)
+    Optional<ptrdiff_t> cachedOffsetForPtr(const void* ptr)
     {
         auto it = m_ptrToOffsetMap.find(ptr);
         if (it == m_ptrToOffsetMap.end())
@@ -159,8 +161,8 @@ private:
         bool malloc(size_t size, ptrdiff_t& result)
         {
             size_t alignment = std::min(alignof(std::max_align_t), static_cast<size_t>(WTF::roundUpToPowerOfTwo(size)));
-            ptrdiff_t offset = WTF::roundUpToMultipleOf(alignment, m_offset);
-            size = WTF::roundUpToMultipleOf(alignment, size);
+            ptrdiff_t offset = roundUpToMultipleOf(alignment, m_offset);
+            size = roundUpToMultipleOf(alignment, size);
             if (static_cast<size_t>(offset + size) > m_capacity)
                 return false;
 
@@ -190,13 +192,13 @@ private:
 
     void allocateNewPage(size_t size = 0)
     {
-        static size_t minPageSize = WTF::pageSize();
+        static size_t minPageSize = pageSize();
         if (m_currentPage)
             m_baseOffset += m_currentPage->size();
         if (size < minPageSize)
             size = minPageSize;
         else
-            size = WTF::roundUpToMultipleOf(minPageSize, size);
+            size = roundUpToMultipleOf(minPageSize, size);
         m_pages.append(Page { size });
         m_currentPage = &m_pages.last();
     }
@@ -225,8 +227,8 @@ public:
 
     ~Decoder()
     {
-        for (auto& pair : m_finalizers)
-            pair.value();
+        for (auto& finalizer : m_finalizers)
+            finalizer();
     }
 
     VM& vm() { return m_vm; }
@@ -243,7 +245,7 @@ public:
         m_offsetToPtrMap.add(offset, ptr);
     }
 
-    WTF::Optional<void*> ptrForOffset(ptrdiff_t offset)
+    Optional<void*> cachedPtrForOffset(ptrdiff_t offset)
     {
         auto it = m_offsetToPtrMap.find(offset);
         if (it == m_offsetToPtrMap.end())
@@ -252,9 +254,22 @@ public:
     }
 
     template<typename Functor>
-    void addFinalizer(ptrdiff_t offset, const Functor& fn)
+    void addFinalizer(const Functor& finalizer)
     {
-        m_finalizers.add(offset, fn);
+        m_finalizers.append(finalizer);
+    }
+
+    CompactVariableMap::Handle handleForEnvironment(CompactVariableEnvironment* environment) const
+    {
+        auto it = m_environmentToHandleMap.find(environment);
+        ASSERT(it != m_environmentToHandleMap.end());
+        return it->value;
+    }
+
+    void setHandleForEnvironment(CompactVariableEnvironment* environment, const CompactVariableMap::Handle& handle)
+    {
+        auto addResult = m_environmentToHandleMap.add(environment, handle);
+        ASSERT_UNUSED(addResult, addResult.isNewEntry);
     }
 
 private:
@@ -264,7 +279,8 @@ private:
     size_t m_size;
 #endif
     HashMap<ptrdiff_t, void*> m_offsetToPtrMap;
-    HashMap<ptrdiff_t, std::function<void()>> m_finalizers;
+    Vector<std::function<void()>> m_finalizers;
+    HashMap<CompactVariableEnvironment*, CompactVariableMap::Handle> m_environmentToHandleMap;
 };
 
 template<typename T>
@@ -306,10 +322,21 @@ static std::enable_if_t<!std::is_same<T, SourceType<T>>::value, SourceType<T>>&&
 template<typename Source>
 class CachedObject {
     WTF_MAKE_NONCOPYABLE(CachedObject<Source>);
-    WTF_FORBID_HEAP_ALLOCATION;
 
 public:
     using SourceType_ = Source;
+
+    CachedObject() = default;
+
+    inline void* operator new(size_t, void* where) { return where; }
+
+    // Copied from WTF_FORBID_HEAP_ALLOCATION, since we only want to allow placement new
+    void* operator new[](size_t, void*) = delete;
+    void* operator new(size_t) = delete;
+    void operator delete(void*) = delete;
+    void* operator new[](size_t size) = delete;
+    void operator delete[](void*) = delete;
+    void* operator new(size_t, NotNullTag, void* location) = delete;
 };
 
 template<typename Source>
@@ -332,9 +359,6 @@ protected:
 
     uint8_t* allocate(Encoder& encoder, size_t size)
     {
-        if (!size)
-            return nullptr;
-
         ptrdiff_t offsetOffset = encoder.offsetOf(&m_offset);
         auto result = encoder.malloc(size);
         m_offset = result.offset() - offsetOffset;
@@ -345,7 +369,7 @@ protected:
     T* allocate(Encoder& encoder, unsigned size = 1)
     {
         uint8_t* result = allocate(encoder, sizeof(T) * size);
-        return reinterpret_cast<T*>(result);
+        return new (result) T();
     }
 
 private:
@@ -367,7 +391,7 @@ public:
         if (m_isEmpty)
             return;
 
-        if (WTF::Optional<ptrdiff_t> offset = encoder.offsetForPtr(src)) {
+        if (Optional<ptrdiff_t> offset = encoder.cachedOffsetForPtr(src)) {
             this->m_offset = *offset - encoder.offsetOf(&this->m_offset);
             return;
         }
@@ -378,18 +402,30 @@ public:
     }
 
     template<typename... Args>
-    Source* decode(Decoder& decoder, Args... args) const
+    Source* decode(Decoder& decoder, bool& isNewAllocation, Args&&... args) const
     {
-        if (m_isEmpty)
+        if (m_isEmpty) {
+            isNewAllocation = false;
             return nullptr;
+        }
 
         ptrdiff_t bufferOffset = decoder.offsetOf(this->buffer());
-        if (WTF::Optional<void*> ptr = decoder.ptrForOffset(bufferOffset))
+        if (Optional<void*> ptr = decoder.cachedPtrForOffset(bufferOffset)) {
+            isNewAllocation = false;
             return reinterpret_cast<Source*>(*ptr);
+        }
 
-        Source* ptr = get()->decode(decoder, args...);
+        isNewAllocation = true;
+        Source* ptr = get()->decode(decoder, std::forward<Args>(args)...);
         decoder.cacheOffset(bufferOffset, ptr);
         return ptr;
+    }
+
+    template<typename... Args>
+    Source* decode(Decoder& decoder, Args&&... args) const
+    {
+        bool unusedIsNewAllocation;
+        return decode(decoder, unusedIsNewAllocation, std::forward<Args>(args)...);
     }
 
     const T* operator->() const { return get(); }
@@ -421,10 +457,15 @@ public:
 
     RefPtr<Source> decode(Decoder& decoder) const
     {
-        Source* decodedPtr = m_ptr.decode(decoder);
+        bool isNewAllocation;
+        Source* decodedPtr = m_ptr.decode(decoder, isNewAllocation);
         if (!decodedPtr)
             return nullptr;
-        decoder.addFinalizer(decoder.offsetOf(m_ptr.buffer()), [=] { derefIfNotNull(decodedPtr); });
+        if (isNewAllocation) {
+            decoder.addFinalizer([=] {
+                derefIfNotNull(decodedPtr);
+            });
+        }
         refIfNotNull(decodedPtr);
         return adoptRef(decodedPtr);
     }
@@ -463,6 +504,8 @@ public:
     void encode(Encoder& encoder, const Vector<SourceType<T>, InlineCapacity, OverflowHandler>& vector)
     {
         m_size = vector.size();
+        if (!m_size)
+            return;
         T* buffer = this->template allocate<T>(encoder, m_size);
         for (unsigned i = 0; i < m_size; ++i)
             ::JSC::encode(encoder, buffer[i], vector[i]);
@@ -471,6 +514,8 @@ public:
     template<typename... Args>
     void decode(Decoder& decoder, Vector<SourceType<T>, InlineCapacity, OverflowHandler>& vector, Args... args) const
     {
+        if (!m_size)
+            return;
         vector.resizeToFit(m_size);
         const T* buffer = this->template buffer<T>();
         for (unsigned i = 0; i < m_size; ++i)
@@ -570,15 +615,18 @@ public:
             if (!m_isSymbol)
                 return AtomicStringImpl::add(buffer, m_length).leakRef();
 
-            if (!m_length)
-                return &SymbolImpl::createNullSymbol().leakRef();
-
             Identifier ident = Identifier::fromString(&decoder.vm(), buffer, m_length);
             String str = decoder.vm().propertyNames->lookUpPrivateName(ident);
             StringImpl* impl = str.releaseImpl().get();
             ASSERT(impl->isSymbol());
             return static_cast<UniquedStringImpl*>(impl);
         };
+
+        if (!m_length) {
+            if (m_isSymbol)
+                return &SymbolImpl::createNullSymbol().leakRef();
+            return AtomicStringImpl::add("").leakRef();
+        }
 
         if (m_is8Bit)
             return create(this->buffer<LChar>());
@@ -655,9 +703,9 @@ private:
 };
 
 template<typename T>
-class CachedOptional : public VariableLengthObject<WTF::Optional<SourceType<T>>> {
+class CachedOptional : public VariableLengthObject<Optional<SourceType<T>>> {
 public:
-    void encode(Encoder& encoder, const WTF::Optional<SourceType<T>>& source)
+    void encode(Encoder& encoder, const Optional<SourceType<T>>& source)
     {
         m_isEmpty = !source;
 
@@ -667,7 +715,7 @@ public:
         this->template allocate<T>(encoder)->encode(encoder, *source);
     }
 
-    WTF::Optional<SourceType<T>> decode(Decoder& decoder) const
+    Optional<SourceType<T>> decode(Decoder& decoder) const
     {
         if (m_isEmpty)
             return WTF::nullopt;
@@ -675,7 +723,7 @@ public:
         return { this->template buffer<T>()->decode(decoder) };
     }
 
-    void decode(Decoder& decoder, WTF::Optional<SourceType<T>>& dst) const
+    void decode(Decoder& decoder, Optional<SourceType<T>>& dst) const
     {
         dst = decode(decoder);
     }
@@ -739,19 +787,25 @@ class CachedBitVector : public VariableLengthObject<BitVector> {
 public:
     void encode(Encoder& encoder, const BitVector& bitVector)
     {
-        m_size = bitVector.size();
-        uint8_t* buffer = this->allocate(encoder, m_size);
-        memcpy(buffer, bitVector.bits(), m_size);
+        m_numBits = bitVector.size();
+        if (!m_numBits)
+            return;
+        size_t sizeInBytes = BitVector::byteCount(m_numBits);
+        uint8_t* buffer = this->allocate(encoder, sizeInBytes);
+        memcpy(buffer, bitVector.bits(), sizeInBytes);
     }
 
     void decode(Decoder&, BitVector& bitVector) const
     {
-        bitVector.ensureSize(m_size);
-        memcpy(bitVector.bits(), this->buffer(), m_size);
+        if (!m_numBits)
+            return;
+        bitVector.ensureSize(m_numBits);
+        size_t sizeInBytes = BitVector::byteCount(m_numBits);
+        memcpy(bitVector.bits(), this->buffer(), sizeInBytes);
     }
 
 private:
-    unsigned m_size;
+    size_t m_numBits;
 };
 
 template<typename T, typename HashArg = typename DefaultHash<T>::Hash>
@@ -855,11 +909,73 @@ private:
     CachedHashMap<CachedRefPtr<CachedUniquedStringImpl>, VariableEnvironmentEntry, IdentifierRepHash, HashTraits<RefPtr<UniquedStringImpl>>, VariableEnvironmentEntryHashTraits> m_map;
 };
 
+class CachedCompactVariableEnvironment : public CachedObject<CompactVariableEnvironment> {
+public:
+    void encode(Encoder& encoder, const CompactVariableEnvironment& env)
+    {
+        m_variables.encode(encoder, env.m_variables);
+        m_variableMetadata.encode(encoder, env.m_variableMetadata);
+        m_hash = env.m_hash;
+        m_isEverythingCaptured = env.m_isEverythingCaptured;
+    }
+
+    void decode(Decoder& decoder, CompactVariableEnvironment& env) const
+    {
+        m_variables.decode(decoder, env.m_variables);
+        m_variableMetadata.decode(decoder, env.m_variableMetadata);
+        env.m_hash = m_hash;
+        env.m_isEverythingCaptured = m_isEverythingCaptured;
+    }
+
+    CompactVariableEnvironment* decode(Decoder& decoder) const
+    {
+        CompactVariableEnvironment* env = new CompactVariableEnvironment;
+        decode(decoder, *env);
+        return env;
+    }
+
+private:
+    CachedVector<CachedRefPtr<CachedUniquedStringImpl>> m_variables;
+    CachedVector<VariableEnvironmentEntry> m_variableMetadata;
+    unsigned m_hash;
+    bool m_isEverythingCaptured;
+};
+
+class CachedCompactVariableMapHandle : public CachedObject<CompactVariableMap::Handle> {
+public:
+    void encode(Encoder& encoder, const CompactVariableMap::Handle& handle)
+    {
+        m_environment.encode(encoder, handle.m_environment);
+    }
+
+    CompactVariableMap::Handle decode(Decoder& decoder) const
+    {
+        bool isNewAllocation;
+        CompactVariableEnvironment* environment = m_environment.decode(decoder, isNewAllocation);
+        if (!isNewAllocation)
+            return decoder.handleForEnvironment(environment);
+        bool isNewEntry;
+        CompactVariableMap::Handle handle = decoder.vm().m_compactVariableMap->get(environment, isNewEntry);
+        if (!isNewEntry) {
+            decoder.addFinalizer([=] {
+                delete environment;
+            });
+        }
+        decoder.setHandleForEnvironment(environment, handle);
+        return handle;
+    }
+
+private:
+    CachedPtr<CachedCompactVariableEnvironment> m_environment;
+};
+
 template<typename T, typename Source = SourceType<T>>
 class CachedArray : public VariableLengthObject<Source*> {
 public:
     void encode(Encoder& encoder, const Source* array, unsigned size)
     {
+        if (!size)
+            return;
         T* dst = this->template allocate<T>(encoder, size);
         for (unsigned i = 0; i < size; ++i)
             ::JSC::encode(encoder, dst[i], array[i]);
@@ -868,6 +984,8 @@ public:
     template<typename... Args>
     void decode(Decoder& decoder, Source* array, unsigned size, Args... args) const
     {
+        if (!size)
+            return;
         const T* buffer = this->template buffer<T>();
         for (unsigned i = 0; i < size; ++i)
             ::JSC::decode(decoder, buffer[i], array[i], args...);
@@ -948,6 +1066,11 @@ private:
 class CachedJSValue;
 class CachedImmutableButterfly : public CachedObject<JSImmutableButterfly> {
 public:
+    CachedImmutableButterfly()
+        : m_cachedDoubles()
+    {
+    }
+
     void encode(Encoder& encoder, JSImmutableButterfly& immutableButterfly)
     {
         m_length = immutableButterfly.length();
@@ -1037,7 +1160,8 @@ public:
     {
         JSBigInt* bigInt = JSBigInt::createWithLengthUnchecked(decoder.vm(), m_length);
         bigInt->setSign(m_sign);
-        memcpy(bigInt->dataStorage(), this->buffer(), sizeof(JSBigInt::Digit) * m_length);
+        if (m_length)
+            memcpy(bigInt->dataStorage(), this->buffer(), sizeof(JSBigInt::Digit) * m_length);
         return bigInt;
     }
 
@@ -1235,8 +1359,8 @@ public:
     {
         m_sourceOrigin.encode(encoder, sourceProvider.sourceOrigin());
         m_url.encode(encoder, sourceProvider.url());
-        m_sourceURLDirective.encode(encoder, sourceProvider.sourceURL());
-        m_sourceMappingURLDirective.encode(encoder, sourceProvider.sourceMappingURL());
+        m_sourceURLDirective.encode(encoder, sourceProvider.sourceURLDirective());
+        m_sourceMappingURLDirective.encode(encoder, sourceProvider.sourceMappingURLDirective());
         m_startPosition.encode(encoder, sourceProvider.startPosition());
     }
 
@@ -1398,6 +1522,24 @@ private:
     int m_startColumn;
 };
 
+class CachedFunctionExecutableRareData : public CachedObject<UnlinkedFunctionExecutable::RareData> {
+public:
+    void encode(Encoder& encoder, const UnlinkedFunctionExecutable::RareData& rareData)
+    {
+        m_classSource.encode(encoder, rareData.m_classSource);
+    }
+
+    UnlinkedFunctionExecutable::RareData* decode(Decoder& decoder) const
+    {
+        UnlinkedFunctionExecutable::RareData* rareData = new UnlinkedFunctionExecutable::RareData { };
+        m_classSource.decode(decoder, rareData->m_classSource);
+        return rareData;
+    }
+
+private:
+    CachedSourceCode m_classSource;
+};
+
 class CachedFunctionExecutable : public CachedObject<UnlinkedFunctionExecutable> {
 public:
     void encode(Encoder&, const UnlinkedFunctionExecutable&);
@@ -1433,6 +1575,8 @@ public:
     Identifier ecmaName(Decoder& decoder) const { return m_ecmaName.decode(decoder); }
     Identifier inferredName(Decoder& decoder) const { return m_inferredName.decode(decoder); }
 
+    UnlinkedFunctionExecutable::RareData* rareData(Decoder& decoder) const { return m_rareData.decodeAsPtr(decoder); }
+
 private:
     unsigned m_firstLineOffset;
     unsigned m_lineCount;
@@ -1458,13 +1602,13 @@ private:
     unsigned m_superBinding : 1;
     unsigned m_derivedContextType: 2;
 
-    CachedSourceCode m_classSource;
+    CachedOptional<CachedFunctionExecutableRareData> m_rareData;
 
     CachedIdentifier m_name;
     CachedIdentifier m_ecmaName;
     CachedIdentifier m_inferredName;
 
-    CachedVariableEnvironment m_parentScopeTDZVariables;
+    CachedCompactVariableMapHandle m_parentScopeTDZVariables;
 
     CachedWriteBarrier<CachedFunctionCodeBlock, UnlinkedFunctionCodeBlock> m_unlinkedCodeBlockForCall;
     CachedWriteBarrier<CachedFunctionCodeBlock, UnlinkedFunctionCodeBlock> m_unlinkedCodeBlockForConstruct;
@@ -1793,13 +1937,13 @@ ALWAYS_INLINE void CachedFunctionExecutable::encode(Encoder& encoder, const Unli
     m_superBinding = executable.m_superBinding;
     m_derivedContextType = executable.m_derivedContextType;
 
-    m_classSource.encode(encoder, executable.m_classSource);
+    m_rareData.encode(encoder, executable.m_rareData);
 
     m_name.encode(encoder, executable.name());
     m_ecmaName.encode(encoder, executable.ecmaName());
     m_inferredName.encode(encoder, executable.inferredName());
 
-    m_parentScopeTDZVariables.encode(encoder, executable.parentScopeTDZVariables());
+    m_parentScopeTDZVariables.encode(encoder, executable.m_parentScopeTDZVariables);
 
     m_unlinkedCodeBlockForCall.encode(encoder, executable.m_unlinkedCodeBlockForCall);
     m_unlinkedCodeBlockForConstruct.encode(encoder, executable.m_unlinkedCodeBlockForConstruct);
@@ -1807,20 +1951,17 @@ ALWAYS_INLINE void CachedFunctionExecutable::encode(Encoder& encoder, const Unli
 
 ALWAYS_INLINE UnlinkedFunctionExecutable* CachedFunctionExecutable::decode(Decoder& decoder) const
 {
-    VariableEnvironment env;
-    m_parentScopeTDZVariables.decode(decoder, env);
-
-    UnlinkedFunctionExecutable* executable = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(decoder.vm().heap)) UnlinkedFunctionExecutable(decoder, env, *this);
+    CompactVariableMap::Handle env = m_parentScopeTDZVariables.decode(decoder);
+    UnlinkedFunctionExecutable* executable = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(decoder.vm().heap)) UnlinkedFunctionExecutable(decoder, WTFMove(env), *this);
     executable->finishCreation(decoder.vm());
 
-    m_classSource.decode(decoder, executable->m_classSource);
     m_unlinkedCodeBlockForCall.decode(decoder, executable->m_unlinkedCodeBlockForCall, executable);
     m_unlinkedCodeBlockForConstruct.decode(decoder, executable->m_unlinkedCodeBlockForConstruct, executable);
 
     return executable;
 }
 
-ALWAYS_INLINE UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(Decoder& decoder, VariableEnvironment& parentScopeTDZVariables, const CachedFunctionExecutable& cachedExecutable)
+ALWAYS_INLINE UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(Decoder& decoder, CompactVariableMap::Handle parentScopeTDZVariables, const CachedFunctionExecutable& cachedExecutable)
     : Base(decoder.vm(), decoder.vm().unlinkedFunctionExecutableStructure.get())
     , m_firstLineOffset(cachedExecutable.firstLineOffset())
     , m_lineCount(cachedExecutable.lineCount())
@@ -1850,7 +1991,9 @@ ALWAYS_INLINE UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(Decoder& de
     , m_ecmaName(cachedExecutable.ecmaName(decoder))
     , m_inferredName(cachedExecutable.inferredName(decoder))
 
-    , m_parentScopeTDZVariables(decoder.vm().m_compactVariableMap->get(parentScopeTDZVariables))
+    , m_parentScopeTDZVariables(WTFMove(parentScopeTDZVariables))
+
+    , m_rareData(cachedExecutable.rareData(decoder))
 {
 }
 
@@ -1934,18 +2077,33 @@ private:
 
 class GenericCacheEntry {
 public:
-    std::pair<SourceCodeKey, UnlinkedCodeBlock*> decode(Decoder&) const;
+    bool decode(Decoder&, std::pair<SourceCodeKey, UnlinkedCodeBlock*>&) const;
 
 protected:
+    GenericCacheEntry(Encoder& encoder, CachedCodeBlockTag tag)
+        : m_tag(tag)
+    {
+        m_bootSessionUUID.encode(encoder, bootSessionUUIDString());
+    }
+
+    CachedCodeBlockTag tag() const { return m_tag; }
+
+private:
+    uint32_t m_cacheVersion { JSC_BYTECODE_CACHE_VERSION };
+    CachedString m_bootSessionUUID;
     CachedCodeBlockTag m_tag;
 };
 
 template<typename UnlinkedCodeBlockType>
 class CacheEntry : public GenericCacheEntry {
 public:
+    CacheEntry(Encoder& encoder)
+        : GenericCacheEntry(encoder, CachedCodeBlockTypeImpl<UnlinkedCodeBlockType>::tag)
+    {
+    }
+
     void encode(Encoder& encoder, std::pair<SourceCodeKey, const UnlinkedCodeBlockType*> pair)
     {
-        m_tag = CachedCodeBlockTypeImpl<UnlinkedCodeBlockType>::tag;
         m_key.encode(encoder, pair.first);
         m_codeBlock.encode(encoder, pair.second);
     }
@@ -1953,25 +2111,31 @@ public:
 private:
     friend GenericCacheEntry;
 
-    std::pair<SourceCodeKey, UnlinkedCodeBlockType*> decode(Decoder& decoder) const
+    bool decode(Decoder& decoder, std::pair<SourceCodeKey, UnlinkedCodeBlockType*>& result) const
     {
-        ASSERT(m_tag == CachedCodeBlockTypeImpl<UnlinkedCodeBlockType>::tag);
+        ASSERT(tag() == CachedCodeBlockTypeImpl<UnlinkedCodeBlockType>::tag);
         SourceCodeKey decodedKey;
         m_key.decode(decoder, decodedKey);
-        return { WTFMove(decodedKey), m_codeBlock.decode(decoder) };
+        result = { WTFMove(decodedKey), m_codeBlock.decode(decoder) };
+        return true;
     }
 
     CachedSourceCodeKey m_key;
     CachedPtr<CachedCodeBlockType<UnlinkedCodeBlockType>> m_codeBlock;
 };
 
-std::pair<SourceCodeKey, UnlinkedCodeBlock*> GenericCacheEntry::decode(Decoder& decoder) const
+bool GenericCacheEntry::decode(Decoder& decoder, std::pair<SourceCodeKey, UnlinkedCodeBlock*>& result) const
 {
+    if (m_cacheVersion != JSC_BYTECODE_CACHE_VERSION)
+        return false;
+    if (m_bootSessionUUID.decode(decoder) != bootSessionUUIDString())
+        return false;
+
     switch (m_tag) {
     case CachedProgramCodeBlockTag:
-        return reinterpret_cast<const CacheEntry<UnlinkedProgramCodeBlock>*>(this)->decode(decoder);
+        return reinterpret_cast<const CacheEntry<UnlinkedProgramCodeBlock>*>(this)->decode(decoder, reinterpret_cast<std::pair<SourceCodeKey, UnlinkedProgramCodeBlock*>&>(result));
     case CachedModuleCodeBlockTag:
-        return reinterpret_cast<const CacheEntry<UnlinkedModuleProgramCodeBlock>*>(this)->decode(decoder);
+        return reinterpret_cast<const CacheEntry<UnlinkedModuleProgramCodeBlock>*>(this)->decode(decoder, reinterpret_cast<std::pair<SourceCodeKey, UnlinkedModuleProgramCodeBlock*>&>(result));
     case CachedEvalCodeBlockTag:
         // We do not cache eval code blocks
         RELEASE_ASSERT_NOT_REACHED();
@@ -1979,14 +2143,14 @@ std::pair<SourceCodeKey, UnlinkedCodeBlock*> GenericCacheEntry::decode(Decoder& 
     RELEASE_ASSERT_NOT_REACHED();
 #if COMPILER(MSVC)
     // Without this, MSVC will complain that this path does not return a value.
-    return reinterpret_cast<const CacheEntry<UnlinkedEvalCodeBlock>*>(this)->decode(decoder);
+    return false;
 #endif
 }
 
 template<typename UnlinkedCodeBlockType>
 void encodeCodeBlock(Encoder& encoder, const SourceCodeKey& key, const UnlinkedCodeBlock* codeBlock)
 {
-    auto* entry = encoder.template malloc<CacheEntry<UnlinkedCodeBlockType>>();
+    auto* entry = encoder.template malloc<CacheEntry<UnlinkedCodeBlockType>>(encoder);
     entry->encode(encoder,  { key, jsCast<const UnlinkedCodeBlockType*>(codeBlock) });
 }
 
@@ -2012,7 +2176,8 @@ UnlinkedCodeBlock* decodeCodeBlockImpl(VM& vm, const SourceCodeKey& key, const v
     std::pair<SourceCodeKey, UnlinkedCodeBlock*> entry;
     {
         DeferGC deferGC(vm.heap);
-        entry = cachedEntry->decode(decoder);
+        if (!cachedEntry->decode(decoder, entry))
+            return nullptr;
     }
 
     if (entry.first != key)

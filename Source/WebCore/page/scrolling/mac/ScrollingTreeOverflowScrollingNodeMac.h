@@ -46,15 +46,14 @@ private:
     void commitStateAfterChildren(const ScrollingStateNode&) override;
     
     FloatPoint scrollPosition() const override;
-    void setScrollPosition(const FloatPoint&) override;
-    void setScrollPositionWithoutContentEdgeConstraints(const FloatPoint&) override;
+    void setScrollPosition(const FloatPoint&, ScrollPositionClamp = ScrollPositionClamp::ToContentEdges) override;
 
     void setScrollLayerPosition(const FloatPoint&, const FloatRect& layoutViewport) override;
 
     void updateLayersAfterViewportChange(const FloatRect&, double) override { }
     void updateLayersAfterDelegatedScroll(const FloatPoint& scrollPosition) override;
 
-    void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta) override;
+    void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& layoutViewport, const FloatSize& cumulativeDelta) override;
 
     ScrollingEventResult handleWheelEvent(const PlatformWheelEvent&) override;
 

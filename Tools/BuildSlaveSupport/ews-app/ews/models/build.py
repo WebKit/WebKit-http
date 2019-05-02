@@ -36,6 +36,8 @@ class Build(models.Model):
     patch = models.ForeignKey(Patch, on_delete=models.CASCADE)
     build_id = models.IntegerField(primary_key=True)
     builder_id = models.IntegerField()
+    builder_name = models.TextField()
+    builder_display_name = models.TextField()
     number = models.IntegerField()
     result = models.IntegerField(null=True, blank=True)
     state_string = models.TextField()

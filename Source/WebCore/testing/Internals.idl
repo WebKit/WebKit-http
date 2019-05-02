@@ -243,7 +243,6 @@ enum CompositingPolicy {
     DOMRect boundingBox(Element element);
 
     [MayThrowException] DOMRectList inspectorHighlightRects();
-    [MayThrowException] DOMString inspectorHighlightObject();
 
     [MayThrowException] unsigned long markerCountForNode(Node node, DOMString markerType);
     [MayThrowException] Range? markerRangeForNode(Node node, DOMString markerType, unsigned long index);
@@ -372,6 +371,7 @@ enum CompositingPolicy {
     const unsigned short LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16;
     const unsigned short LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32;
     const unsigned short LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED = 64;
+    const unsigned short LAYER_TREE_INCLUDES_ROOT_LAYER_PROPERTIES = 128;
     [MayThrowException] DOMString layerTreeAsText(Document document, optional unsigned short flags = 0);
 
     [MayThrowException] unsigned long long layerIDForElement(Element element);
@@ -404,6 +404,8 @@ enum CompositingPolicy {
     readonly attribute boolean isUnderMemoryPressure;
     void beginSimulatedMemoryPressure();
     void endSimulatedMemoryPressure();
+
+    unsigned long numberOfIDBTransactions();
 
     unsigned long numberOfLiveNodes();
     unsigned long numberOfLiveDocuments();
@@ -732,5 +734,5 @@ enum CompositingPolicy {
 
     sequence<CookieData> getCookies();
 
-    void setAlwaysAllowLocalWebarchive();
+    void setAlwaysAllowLocalWebarchive(boolean alwaysAllowLocalWebarchive);
 };

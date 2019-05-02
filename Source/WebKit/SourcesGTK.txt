@@ -175,6 +175,7 @@ UIProcess/API/glib/WebKitUIClient.cpp @no-unify
 UIProcess/API/glib/WebKitURISchemeRequest.cpp @no-unify
 UIProcess/API/glib/WebKitURIUtilities.cpp @no-unify
 UIProcess/API/glib/WebKitUserContent.cpp @no-unify
+UIProcess/API/glib/WebKitUserContentFilterStore.cpp @no-unify
 UIProcess/API/glib/WebKitUserContentManager.cpp @no-unify
 UIProcess/API/glib/WebKitUserMediaPermissionRequest.cpp @no-unify
 UIProcess/API/glib/WebKitVersion.cpp @no-unify
@@ -229,6 +230,7 @@ UIProcess/WebsiteData/unix/WebsiteDataStoreUnix.cpp
 UIProcess/cairo/BackingStoreCairo.cpp @no-unify
 
 UIProcess/glib/RemoteInspectorClient.cpp
+UIProcess/glib/WebProcessPoolGLib.cpp
 UIProcess/glib/WebProcessProxyGLib.cpp
 
 UIProcess/gstreamer/InstallMissingMediaPluginsPermissionRequest.cpp
@@ -255,7 +257,6 @@ UIProcess/gtk/WebPageProxyGtk.cpp @no-unify
 UIProcess/gtk/WebPasteboardProxyGtk.cpp
 UIProcess/gtk/WebPopupMenuProxyGtk.cpp
 UIProcess/gtk/WebPreferencesGtk.cpp
-UIProcess/gtk/WebProcessPoolGtk.cpp @no-unify
 
 UIProcess/soup/WebCookieManagerProxySoup.cpp
 UIProcess/soup/WebProcessPoolSoup.cpp

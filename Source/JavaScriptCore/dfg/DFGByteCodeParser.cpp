@@ -2929,9 +2929,9 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, VirtualRegister result, I
             Node* bucket = addToGraph(GetMapBucket, OpInfo(0), Edge(mapOrSet, useKind), Edge(normalizedKey), Edge(hash));
             JSCell* sentinel = nullptr;
             if (intrinsic == JSMapHasIntrinsic)
-                sentinel = m_vm->sentinelMapBucket.get();
+                sentinel = m_vm->sentinelMapBucket();
             else
-                sentinel = m_vm->sentinelSetBucket.get();
+                sentinel = m_vm->sentinelSetBucket();
 
             FrozenValue* frozenPointer = m_graph.freeze(sentinel);
             Node* invertedResult = addToGraph(CompareEqPtr, OpInfo(frozenPointer), bucket);
@@ -6834,6 +6834,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
             addVarArgChild(property);
             addVarArgChild(nullptr);
             Node* hasIterableProperty = addToGraph(Node::VarArg, HasIndexedProperty, OpInfo(arrayMode.asWord()), OpInfo(static_cast<uint32_t>(PropertySlot::InternalMethodType::GetOwnProperty)));
+            m_exitOK = false; // HasIndexedProperty must be treated as if it clobbers exit state, since FixupPhase may make it generic.
             set(bytecode.m_dst, hasIterableProperty);
             NEXT_OPCODE(op_has_indexed_property);
         }
@@ -7212,6 +7213,7 @@ void ByteCodeParser::handlePutByVal(Bytecode bytecode, unsigned instructionSize)
         addVarArgChild(0); // Leave room for property storage.
         addVarArgChild(0); // Leave room for length.
         addToGraph(Node::VarArg, isDirect ? PutByValDirect : PutByVal, OpInfo(arrayMode.asWord()), OpInfo(0));
+        m_exitOK = false; // PutByVal and PutByValDirect must be treated as if they clobber exit state, since FixupPhase may make them generic.
     }
 }
 

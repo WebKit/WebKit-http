@@ -1489,8 +1489,7 @@ webkit.org/b/140832 [ Debug ] accessibility/textarea-selected-text-range.html [ 
 # TODO Need to implement global addNotificationListener in Windows DRT
 accessibility/content-editable-as-textarea.html [ Skip ]
 accessibility/content-editable-set-inner-text-generates-axvalue-notification.html [ Skip ]
-[ Release ] accessibility/loading-iframe-sends-notification.html [ Failure ]
-[ Debug ] accessibility/loading-iframe-sends-notification.html [ Skip ] # Debug assertion
+webkit.org/b/194712 accessibility/loading-iframe-sends-notification.html [ Skip ] # Debug assertion
 accessibility/win/single-select-children-changed.html [ Skip ]
 webkit.org/b/142016 accessibility/aria-switch-sends-notification.html [ Skip ]
 
@@ -2506,7 +2505,7 @@ fast/frames/frame-navigation.html [ Skip ]
 
 fast/text/atsui-pointtooffset-calls-cg.html [ Pass Failure ]
 fast/text/international/hindi-whitespace.html [ Failure ]
-fast/text/international/khmer-selection.html [ Failure Crash ]
+fast/text/international/khmer-selection.html [ Failure ]
 webkit.org/b/140231 fast/text/international/plane2.html [ Failure ]
 webkit.org/b/35973 fast/multicol/hit-test-above-or-below.html [ Failure ]
 webkit.org/b/49769 fast/dom/HTMLProgressElement/progress-element-with-child-crash.html [ Failure ]
@@ -4222,10 +4221,6 @@ webkit.org/b/191366 fast/block/basic/child-block-level-box-with-height-percent.h
 webkit.org/b/191366 fast/block/basic/height-percentage-simple.html [ Failure ]
 webkit.org/b/191366 fast/block/basic/quirk-mode-percent-height.html [ Failure ]
 
-webkit.org/b/191368 fast/text/stroking-decorations.html [ Crash ]
-webkit.org/b/191368 imported/blink/fast/text/international/complex-text-trailing-space.html [ Crash ]
-webkit.org/b/191368 imported/blink/fast/text/sub-pixel/complex-text-preferred-width.html [ Crash ]
-
 webkit.org/b/191584 animations/animation-direction-normal.html [ Failure ]
 webkit.org/b/191584 animations/animation-direction-reverse.html [ Failure ]
 webkit.org/b/191584 animations/dynamic-stylesheet-loading.html [ Failure ]
@@ -4273,3 +4268,5 @@ webkit.org/b/194451 accessibility/set-value-not-work-for-disabled-sliders.html [
 
 storage/indexeddb/result-request-cycle.html [ Skip ]
 storage/indexeddb/value-cursor-cycle.html [ Skip ]
+
+webkit.org/b/194711 fast/replaced/encrypted-pdf-as-object-and-embed.html [ Failure ]

@@ -274,9 +274,9 @@ set(WTF_PUBLIC_HEADERS
     dtoa/cached-powers.h
     dtoa/diy-fp.h
     dtoa/double-conversion.h
-    dtoa/double.h
     dtoa/fast-dtoa.h
     dtoa/fixed-dtoa.h
+    dtoa/ieee.h
     dtoa/strtod.h
     dtoa/utils.h
 
@@ -363,11 +363,13 @@ set(WTF_SOURCES
     GlobalVersion.cpp
     GregorianDateTime.cpp
     HashTable.cpp
+    HexNumber.cpp
     JSONValues.cpp
     JSValueMalloc.cpp
     Language.cpp
     Lock.cpp
     LockedPrintStream.cpp
+    Logger.cpp
     MD5.cpp
     MainThread.cpp
     MediaTime.cpp

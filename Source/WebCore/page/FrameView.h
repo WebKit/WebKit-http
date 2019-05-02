@@ -192,7 +192,7 @@ public:
 
     WEBCORE_EXPORT Color baseBackgroundColor() const;
     WEBCORE_EXPORT void setBaseBackgroundColor(const Color&);
-    WEBCORE_EXPORT void updateBackgroundRecursively(bool);
+    WEBCORE_EXPORT void updateBackgroundRecursively(const Optional<Color>& backgroundColor);
 
     enum ExtendedBackgroundModeFlags {
         ExtendedBackgroundModeNone          = 0,
@@ -305,7 +305,7 @@ public:
     LayoutPoint scrollPositionForFixedPosition() const;
     
     // Static function can be called from another thread.
-    static LayoutPoint scrollPositionForFixedPosition(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements, int headerHeight, int footerHeight);
+    WEBCORE_EXPORT static LayoutPoint scrollPositionForFixedPosition(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements, int headerHeight, int footerHeight);
 
     WEBCORE_EXPORT static LayoutSize expandedLayoutViewportSize(const LayoutSize& baseLayoutViewportSize, const LayoutSize& documentSize, double heightExpansionFactor);
 

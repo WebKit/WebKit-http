@@ -28,6 +28,7 @@
 #include "config.h"
 #include "RemoteNetworkingContext.h"
 
+#include "NetworkProcess.h"
 #include "NetworkSession.h"
 #include "WebsiteDataStoreParameters.h"
 #include <WebCore/NetworkStorageSession.h>

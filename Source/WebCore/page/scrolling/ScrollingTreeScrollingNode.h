@@ -38,7 +38,7 @@ namespace WebCore {
 class ScrollingTree;
 class ScrollingStateScrollingNode;
 
-class ScrollingTreeScrollingNode : public ScrollingTreeNode {
+class WEBCORE_EXPORT ScrollingTreeScrollingNode : public ScrollingTreeNode {
     friend class ScrollingTreeScrollingNodeDelegate;
 #if PLATFORM(MAC)
     friend class ScrollingTreeScrollingNodeDelegateMac;
@@ -47,19 +47,17 @@ class ScrollingTreeScrollingNode : public ScrollingTreeNode {
 public:
     virtual ~ScrollingTreeScrollingNode();
 
-    WEBCORE_EXPORT void commitStateBeforeChildren(const ScrollingStateNode&) override;
-    WEBCORE_EXPORT void commitStateAfterChildren(const ScrollingStateNode&) override;
+    void commitStateBeforeChildren(const ScrollingStateNode&) override;
+    void commitStateAfterChildren(const ScrollingStateNode&) override;
 
-    WEBCORE_EXPORT void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta) override;
+    void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& layoutViewport, const FloatSize& cumulativeDelta) override;
 
-    virtual ScrollingEventResult handleWheelEvent(const PlatformWheelEvent&) = 0;
-    WEBCORE_EXPORT virtual void setScrollPosition(const FloatPoint&);
-    WEBCORE_EXPORT virtual void setScrollPositionWithoutContentEdgeConstraints(const FloatPoint&);
+    virtual ScrollingEventResult handleWheelEvent(const PlatformWheelEvent&);
+    virtual void setScrollPosition(const FloatPoint&, ScrollPositionClamp = ScrollPositionClamp::ToContentEdges);
 
-    void scrollBy(const FloatSize&);
-    void scrollByWithoutContentEdgeConstraints(const FloatSize&);
+    void scrollBy(const FloatSize&, ScrollPositionClamp = ScrollPositionClamp::ToContentEdges);
 
-    virtual void updateLayersAfterViewportChange(const FloatRect& fixedPositionRect, double scale) = 0;
+    virtual void updateLayersAfterViewportChange(const FloatRect& layoutViewport, double scale) = 0;
     virtual void updateLayersAfterDelegatedScroll(const FloatPoint&) { }
 
     virtual FloatPoint scrollPosition() const = 0;
@@ -80,13 +78,15 @@ public:
     bool useDarkAppearanceForScrollbars() const { return m_scrollableAreaParameters.useDarkAppearanceForScrollbars; }
 
     bool scrollLimitReached(const PlatformWheelEvent&) const;
-    WEBCORE_EXPORT ScrollingTreeScrollingNode* scrollingNodeForPoint(LayoutPoint) const override;
+    ScrollingTreeScrollingNode* scrollingNodeForPoint(LayoutPoint) const override;
 
 protected:
     ScrollingTreeScrollingNode(ScrollingTree&, ScrollingNodeType, ScrollingNodeID);
 
-    WEBCORE_EXPORT virtual FloatPoint minimumScrollPosition() const;
-    WEBCORE_EXPORT virtual FloatPoint maximumScrollPosition() const;
+    virtual FloatPoint minimumScrollPosition() const;
+    virtual FloatPoint maximumScrollPosition() const;
+
+    FloatPoint clampScrollPosition(const FloatPoint&) const;
 
     virtual void setScrollLayerPosition(const FloatPoint&, const FloatRect& layoutViewport) = 0;
 
@@ -116,10 +116,10 @@ protected:
     CALayer *scrolledContentsLayer() const { return m_scrolledContentsLayer.get(); }
 #endif
 
-    WEBCORE_EXPORT LayoutPoint parentToLocalPoint(LayoutPoint) const override;
-    WEBCORE_EXPORT LayoutPoint localToContentsPoint(LayoutPoint) const override;
+    LayoutPoint parentToLocalPoint(LayoutPoint) const override;
+    LayoutPoint localToContentsPoint(LayoutPoint) const override;
 
-    WEBCORE_EXPORT void dumpProperties(WTF::TextStream&, ScrollingStateTreeAsTextBehavior) const override;
+    void dumpProperties(WTF::TextStream&, ScrollingStateTreeAsTextBehavior) const override;
 
 private:
     FloatSize m_scrollableAreaSize;

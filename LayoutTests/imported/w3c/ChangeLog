@@ -1,3 +1,205 @@
+2019-02-26  Frederic Wang  <fwang@igalia.com>
+
+        Synchronize MathML WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=195048
+
+        This imports changes to the documentation and spec references for MathML.
+        It also imports a new test for href currently disabled due to bug 187039.
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        * web-platform-tests/mathml/README.md:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-1.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-bar-001.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-color-001.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-color-002.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-linethickness-001.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-linethickness-002.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-linethickness-003.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-mrow-001.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-numalign-denomalign-001.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-1.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-2.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-visibility-001.html:
+        * web-platform-tests/mathml/presentation-markup/operators/mo-axis-height-1.html:
+        * web-platform-tests/mathml/presentation-markup/radicals/root-parameters-1.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-1.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-2.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-3.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-4.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-5.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-1.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-2.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-1.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-1.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-2.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-3.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-4.html:
+        * web-platform-tests/mathml/presentation-markup/spaces/space-1.html:
+        * web-platform-tests/mathml/presentation-markup/spaces/space-2.html:
+        * web-platform-tests/mathml/presentation-markup/tables/table-axis-height.html:
+        * web-platform-tests/mathml/relations/css-styling/color-1.html:
+        * web-platform-tests/mathml/relations/css-styling/display-1.html:
+        * web-platform-tests/mathml/relations/css-styling/displaystyle-1.html:
+        * web-platform-tests/mathml/relations/css-styling/lengths-1.html:
+        * web-platform-tests/mathml/relations/css-styling/lengths-2.html:
+        * web-platform-tests/mathml/relations/css-styling/lengths-3.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-fraktur.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-italic.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-sans-serif.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-script.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-double-struck.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-fraktur.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-initial.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-italic.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-looped.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-monospace.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-sans-serif-bold-italic.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-sans-serif-italic.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-sans-serif.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-script.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-stretched.html:
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-tailed.html:
+        * web-platform-tests/mathml/relations/css-styling/visibility-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/class-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/class-2.html:
+        * web-platform-tests/mathml/relations/html5-tree/color-attributes-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/display-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/dynamic-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/href-click-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/href-click-2.html:
+        * web-platform-tests/mathml/relations/html5-tree/href-click-3.html: Added.
+        * web-platform-tests/mathml/relations/html5-tree/integration-point-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/integration-point-2.html:
+        * web-platform-tests/mathml/relations/html5-tree/integration-point-3.html:
+        * web-platform-tests/mathml/relations/html5-tree/required-extensions-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/required-extensions-2.html:
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-2.html:
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-3.html:
+        * web-platform-tests/mathml/relations/html5-tree/w3c-import.log:
+        * web-platform-tests/mathml/relations/text-and-math/use-typo-metrics-1.html:
+        * web-platform-tests/mathml/tools/mathvariant-transforms.py:
+        * web-platform-tests/mathml/tools/utils/w3c-import.log:
+
+2019-02-26  Frederic Wang  <fwang@igalia.com>
+
+        Export MathML fraction tests to WPT
+        https://bugs.webkit.org/show_bug.cgi?id=194436
+
+        This is just an import of the current MathML WPT tests. It includes fraction tests from
+        WebKit that were exported in [1]. Some test results have whitespace change, due to [2].
+
+        [1] https://github.com/web-platform-tests/wpt/pull/15301
+        [2] https://github.com/web-platform-tests/wpt/commit/e2dd57c3f273468b3c6a087978c531dcd00933de
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        * resources/resource-files.json:
+        * web-platform-tests/mathml/META.yml: Added.
+        * web-platform-tests/mathml/OWNERS: Removed.
+        * web-platform-tests/mathml/README.md:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-1-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-1.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-bar-001-expected.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-bar-001.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-color-001-expected.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-color-001-notref.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-color-001.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-color-002-expected.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-color-002.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-linethickness-001-expected.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-linethickness-001.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-linethickness-002-expected.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-linethickness-002.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-linethickness-003-expected.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-linethickness-003-notref.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-linethickness-003.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-mrow-001-expected.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-mrow-001.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-numalign-denomalign-001-expected.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-numalign-denomalign-001.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-1-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-1.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-2-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-2.html:
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-visibility-001-expected.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-visibility-001.html: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/w3c-import.log:
+        * web-platform-tests/mathml/presentation-markup/operators/mo-axis-height-1-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/operators/mo-axis-height-1.html:
+        * web-platform-tests/mathml/presentation-markup/operators/w3c-import.log:
+        * web-platform-tests/mathml/presentation-markup/radicals/root-parameters-1-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/radicals/root-parameters-1.html:
+        * web-platform-tests/mathml/presentation-markup/radicals/w3c-import.log:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-1.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-2.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-3.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-4.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-5.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-1-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-1.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-2.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-1.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-1-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-1.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-2-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-2.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-3-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-3.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-4-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-4.html:
+        * web-platform-tests/mathml/presentation-markup/scripts/w3c-import.log:
+        * web-platform-tests/mathml/presentation-markup/spaces/space-1-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/spaces/space-1.html:
+        * web-platform-tests/mathml/presentation-markup/spaces/space-2.html:
+        * web-platform-tests/mathml/presentation-markup/spaces/w3c-import.log:
+        * web-platform-tests/mathml/presentation-markup/tables/table-axis-height-expected.txt:
+        * web-platform-tests/mathml/presentation-markup/tables/table-axis-height.html:
+        * web-platform-tests/mathml/presentation-markup/tables/w3c-import.log:
+        * web-platform-tests/mathml/relations/css-styling/display-1.html:
+        * web-platform-tests/mathml/relations/css-styling/displaystyle-1-expected.txt:
+        * web-platform-tests/mathml/relations/css-styling/displaystyle-1.html:
+        * web-platform-tests/mathml/relations/css-styling/lengths-3-expected.txt:
+        * web-platform-tests/mathml/relations/css-styling/lengths-3.html:
+        * web-platform-tests/mathml/relations/css-styling/w3c-import.log:
+        * web-platform-tests/mathml/relations/html5-tree/class-2.html:
+        * web-platform-tests/mathml/relations/html5-tree/display-1-expected.txt:
+        * web-platform-tests/mathml/relations/html5-tree/display-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/href-click-1.html:
+        * web-platform-tests/mathml/relations/html5-tree/href-click-2.html:
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-2.html:
+        * web-platform-tests/mathml/relations/html5-tree/w3c-import.log:
+        * web-platform-tests/mathml/relations/text-and-math/w3c-import.log:
+        * web-platform-tests/mathml/tools/utils/w3c-import.log:
+        * web-platform-tests/mathml/tools/w3c-import.log:
+        * web-platform-tests/mathml/w3c-import.log:
+
+2019-02-21  Rob Buis  <rbuis@igalia.com>
+
+        Update MIME type parser
+        https://bugs.webkit.org/show_bug.cgi?id=180526
+
+        Reviewed by Darin Adler.
+
+        Update improved test expectations.
+
+        * web-platform-tests/xhr/overridemimetype-blob-expected.txt:
+
+2019-02-18  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-grid] Handle indefinite percentages in fit-content()
+        https://bugs.webkit.org/show_bug.cgi?id=194509
+
+        Reviewed by Javier Fernandez.
+
+        Import WPT test.
+
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-fit-content-percentage-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-fit-content-percentage.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/w3c-import.log:
+
 2019-02-12  Rob Buis  <rbuis@igalia.com>
 
         Align with Fetch on data: URLs

@@ -506,12 +506,13 @@ WI.DOMNodeStyles = class DOMNodeStyles extends WI.Object
         return new WI.TextRange(payload.startLine, payload.startColumn, payload.endLine, payload.endColumn);
     }
 
-    _parseStylePropertyPayload(payload, index, styleDeclaration, styleText)
+    _parseStylePropertyPayload(payload, index, styleDeclaration)
     {
         var text = payload.text || "";
         var name = payload.name;
         var value = payload.value || "";
         var priority = payload.priority || "";
+        let range = payload.range || null;
 
         var enabled = true;
         var overridden = false;
@@ -534,6 +535,19 @@ WI.DOMNodeStyles = class DOMNodeStyles extends WI.Object
             // FIXME: Is this still needed? This includes UserAgent styles and HTML attribute styles.
             anonymous = true;
             break;
+        }
+
+        if (range) {
+            // Last property of inline style has mismatching range.
+            // The actual text has one line, but the range spans two lines.
+            let rangeLineCount = 1 + range.endLine - range.startLine;
+            if (rangeLineCount > 1) {
+                let textLineCount = text.lineCount;
+                if (textLineCount === rangeLineCount - 1) {
+                    range.endLine = range.startLine + (textLineCount - 1);
+                    range.endColumn = range.startColumn + text.lastLine.length;
+                }
+            }
         }
 
         var styleSheetTextRange = this._parseSourceRangePayload(payload.range);
@@ -639,8 +653,6 @@ WI.DOMNodeStyles = class DOMNodeStyles extends WI.Object
             shorthands[shorthand.name] = shorthand.value;
         }
 
-        var text = payload.cssText;
-
         var inheritedPropertyCount = 0;
 
         var properties = [];
@@ -650,10 +662,11 @@ WI.DOMNodeStyles = class DOMNodeStyles extends WI.Object
             if (inherited && WI.CSSProperty.isInheritedPropertyName(propertyPayload.name))
                 ++inheritedPropertyCount;
 
-            var property = this._parseStylePropertyPayload(propertyPayload, i, styleDeclaration, text);
+            let property = this._parseStylePropertyPayload(propertyPayload, i, styleDeclaration);
             properties.push(property);
         }
 
+        let text = payload.cssText;
         var styleSheetTextRange = this._parseSourceRangePayload(payload.range);
 
         if (styleDeclaration) {

@@ -76,7 +76,7 @@ XSSAuditorEnabled:
 
 SafeBrowsingEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: false
   webcoreBinding: none
 
 PrivateBrowsingEnabled:
@@ -530,7 +530,7 @@ PeerConnectionEnabled:
 
 WebRTCUnifiedPlanEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  defaultValue: true
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEB_RTC)
   humanReadableName: "WebRTC Unified Plan"
@@ -671,10 +671,6 @@ ApplePayCapabilityDisclosureAllowed:
   type: bool
   defaultValue: true
   condition: ENABLE(APPLE_PAY)
-
-VisualViewportEnabled:
-  type: bool
-  defaultValue: true
 
 LayoutViewportHeightExpansionFactor:
   type: double
@@ -1435,7 +1431,7 @@ FullScreenEnabled:
 
 AriaReflectionEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "ARIA Reflection"
   humanReadableDescription: "ARIA Reflection support"
   category: internal

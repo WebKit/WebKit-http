@@ -57,7 +57,7 @@ static inline UniqueRef<Page> createPageForServiceWorker(PageConfiguration&& con
 
     auto& mainFrame = page->mainFrame();
     mainFrame.loader().initForSynthesizedDocument({ });
-    auto document = Document::createNonRenderedPlaceholder(&mainFrame, data.scriptURL);
+    auto document = Document::createNonRenderedPlaceholder(mainFrame, data.scriptURL);
     document->createDOMWindow();
 
     document->mutableSettings().setStorageBlockingPolicy(storageBlockingPolicy);
@@ -200,8 +200,24 @@ void ServiceWorkerThreadProxy::startFetch(SWServerConnectionIdentifier connectio
 
 void ServiceWorkerThreadProxy::cancelFetch(SWServerConnectionIdentifier connectionIdentifier, FetchIdentifier fetchIdentifier)
 {
-    if (auto client = m_ongoingFetchTasks.take(std::make_pair(connectionIdentifier, fetchIdentifier)))
-        client.value()->cancel();
+    auto client = m_ongoingFetchTasks.take(std::make_pair(connectionIdentifier, fetchIdentifier));
+    if (!client)
+        return;
+
+    postTaskForModeToWorkerGlobalScope([client = WTFMove(client.value())] (ScriptExecutionContext&) {
+        client->cancel();
+    }, WorkerRunLoop::defaultMode());
+}
+
+void ServiceWorkerThreadProxy::continueDidReceiveFetchResponse(SWServerConnectionIdentifier connectionIdentifier, FetchIdentifier fetchIdentifier)
+{
+    auto client = m_ongoingFetchTasks.get(std::make_pair(connectionIdentifier, fetchIdentifier));
+    if (!client)
+        return;
+
+    postTaskForModeToWorkerGlobalScope([client = makeRef(*client)] (ScriptExecutionContext&) {
+        client->continueDidReceiveResponse();
+    }, WorkerRunLoop::defaultMode());
 }
 
 void ServiceWorkerThreadProxy::removeFetch(SWServerConnectionIdentifier connectionIdentifier, FetchIdentifier fetchIdentifier)

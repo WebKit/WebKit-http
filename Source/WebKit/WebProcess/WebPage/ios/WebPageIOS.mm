@@ -57,6 +57,7 @@
 #import <WebCore/Autofill.h>
 #import <WebCore/AutofillElements.h>
 #import <WebCore/Chrome.h>
+#import <WebCore/ContentChangeObserver.h>
 #import <WebCore/DataDetection.h>
 #import <WebCore/DiagnosticLoggingClient.h>
 #import <WebCore/DiagnosticLoggingKeys.h>
@@ -113,7 +114,6 @@
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIterator.h>
 #import <WebCore/VisibleUnits.h>
-#import <WebCore/WKContentObservation.h>
 #import <WebCore/WebEvent.h>
 #import <wtf/MathExtras.h>
 #import <wtf/MemoryPressureHandler.h>
@@ -142,10 +142,18 @@ void WebPage::platformInitializeAccessibility()
 {
     m_mockAccessibilityElement = adoptNS([[WKAccessibilityWebPageObject alloc] init]);
     [m_mockAccessibilityElement setWebPage:this];
-    
-    NSData *remoteToken = newAccessibilityRemoteToken([NSUUID UUID]);
-    IPC::DataReference dataToken = IPC::DataReference(reinterpret_cast<const uint8_t*>([remoteToken bytes]), [remoteToken length]);
-    send(Messages::WebPageProxy::RegisterWebProcessAccessibilityToken(dataToken));
+
+    accessibilityTransferRemoteToken(accessibilityRemoteTokenData());
+}
+
+void WebPage::platformReinitialize()
+{
+    accessibilityTransferRemoteToken(accessibilityRemoteTokenData());
+}
+
+RetainPtr<NSData> WebPage::accessibilityRemoteTokenData() const
+{
+    return newAccessibilityRemoteToken([NSUUID UUID]);
 }
 
 static void computeEditableRootHasContentAndPlainText(const VisibleSelection& selection, EditorState::PostLayoutData& data)
@@ -530,11 +538,12 @@ void WebPage::updateSelectionAppearance()
 void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebEvent::Modifier> modifiers)
 {
     IntPoint roundedAdjustedPoint = roundedIntPoint(location);
-    Frame& mainframe = m_page->mainFrame();
+    auto& mainframe = m_page->mainFrame();
+    auto& contentChangeObserver = m_page->contentChangeObserver();
 
     LOG_WITH_STREAM(ContentObservation, stream << "handleSyntheticClick: node(" << nodeRespondingToClick << ") " << location);
-    WKStartObservingContentChanges();
-    WKStartObservingDOMTimerScheduling();
+    contentChangeObserver.startObservingContentChanges();
+    contentChangeObserver.startObservingDOMTimerScheduling();
 
     // FIXME: Pass caps lock state.
     bool shiftKey = modifiers.contains(WebEvent::Modifier::ShiftKey);
@@ -544,8 +553,8 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
     mainframe.eventHandler().mouseMoved(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), WebCore::ForceAtClick, WebCore::NoTap));
     mainframe.document()->updateStyleIfNeeded();
 
-    WKStopObservingDOMTimerScheduling();
-    WKStopObservingContentChanges();
+    contentChangeObserver.stopObservingDOMTimerScheduling();
+    contentChangeObserver.stopObservingContentChanges();
 
     m_pendingSyntheticClickNode = nullptr;
     m_pendingSyntheticClickLocation = FloatPoint();
@@ -554,7 +563,7 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
     if (m_isClosed)
         return;
 
-    switch (WKObservedContentChange()) {
+    switch (contentChangeObserver.observedContentChange()) {
     case WKContentVisibilityChange:
         // The move event caused new contents to appear. Don't send the click event.
         LOG(ContentObservation, "handleSyntheticClick: Observed meaningful visible change -> hover.");
@@ -580,7 +589,7 @@ void WebPage::completePendingSyntheticClickForContentChangeObserver()
     if (!m_pendingSyntheticClickNode)
         return;
     // Only dispatch the click if the document didn't get changed by any timers started by the move event.
-    if (WKObservedContentChange() == WKContentNoChange) {
+    if (m_page->contentChangeObserver().observedContentChange() == WKContentNoChange) {
         LOG(ContentObservation, "No chage was observed -> click.");
         completeSyntheticClick(m_pendingSyntheticClickNode.get(), m_pendingSyntheticClickLocation, m_pendingSyntheticClickModifiers, WebCore::OneFingerTap);
     } else
@@ -1496,6 +1505,107 @@ void WebPage::cancelAutoscroll()
     m_page->mainFrame().eventHandler().cancelSelectionAutoscroll();
 }
 
+void WebPage::requestEvasionRectsAboveSelection(CompletionHandler<void(const Vector<FloatRect>&)>&& reply)
+{
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    auto frameView = makeRefPtr(frame.view());
+    if (!frameView) {
+        reply({ });
+        return;
+    }
+
+    auto& selection = frame.selection().selection();
+    if (selection.isNone()) {
+        reply({ });
+        return;
+    }
+
+    auto selectedRange = selection.toNormalizedRange();
+    if (!selectedRange) {
+        reply({ });
+        return;
+    }
+
+    if (!m_focusedElement || !m_focusedElement->renderer() || m_focusedElement->renderer()->isTransparentOrFullyClippedRespectingParentFrames()) {
+        reply({ });
+        return;
+    }
+
+    float scaleFactor = pageScaleFactor();
+    const double factorOfContentArea = 0.5;
+    auto unobscuredContentArea = m_page->mainFrame().view()->unobscuredContentRect().area();
+    if (unobscuredContentArea.hasOverflowed()) {
+        reply({ });
+        return;
+    }
+
+    double contextMenuAreaLimit = factorOfContentArea * scaleFactor * unobscuredContentArea.unsafeGet();
+
+    FloatRect selectionBoundsInRootViewCoordinates;
+    if (selection.isRange())
+        selectionBoundsInRootViewCoordinates = frameView->contentsToRootView(selectedRange->absoluteBoundingBox());
+    else
+        selectionBoundsInRootViewCoordinates = frameView->contentsToRootView(frame.selection().absoluteCaretBounds());
+
+    auto centerOfTargetBounds = selectionBoundsInRootViewCoordinates.center();
+    FloatPoint centerTopInRootViewCoordinates { centerOfTargetBounds.x(), selectionBoundsInRootViewCoordinates.y() };
+
+    auto clickableNonEditableNode = [&] (const FloatPoint& locationInRootViewCoordinates) -> Node* {
+        FloatPoint adjustedPoint;
+        auto* hitNode = m_page->mainFrame().nodeRespondingToClickEvents(locationInRootViewCoordinates, adjustedPoint);
+        if (!hitNode || is<HTMLBodyElement>(hitNode) || is<Document>(hitNode) || hitNode->hasEditableStyle())
+            return nullptr;
+
+        return hitNode;
+    };
+
+    // This heuristic attempts to find a list of rects to avoid when showing the callout menu on iOS.
+    // First, hit-test several points above the bounds of the selection rect in search of clickable nodes that are not editable.
+    // Secondly, hit-test several points around the edges of the selection rect and exclude any nodes found in the first round of
+    // hit-testing if these nodes are also reachable by moving outwards from the left, right, or bottom edges of the selection.
+    // Additionally, exclude any hit-tested nodes that are either very large relative to the size of the root view, or completely
+    // encompass the selection bounds. The resulting rects are the bounds of these hit-tested nodes in root view coordinates.
+    HashSet<Ref<Node>> hitTestedNodes;
+    Vector<FloatRect> rectsToAvoidInRootViewCoordinates;
+    const Vector<FloatPoint, 5> offsetsForHitTesting {{ -30, -50 }, { 30, -50 }, { -60, -35 }, { 60, -35 }, { 0, -20 }};
+    for (auto offset : offsetsForHitTesting) {
+        offset.scale(1 / scaleFactor);
+        if (auto* hitNode = clickableNonEditableNode(centerTopInRootViewCoordinates + offset))
+            hitTestedNodes.add(*hitNode);
+    }
+
+    const float marginForHitTestingSurroundingNodes = 80 / scaleFactor;
+    Vector<FloatPoint, 3> exclusionHitTestLocations {
+        { selectionBoundsInRootViewCoordinates.x() - marginForHitTestingSurroundingNodes, centerOfTargetBounds.y() },
+        { centerOfTargetBounds.x(), selectionBoundsInRootViewCoordinates.maxY() + marginForHitTestingSurroundingNodes },
+        { selectionBoundsInRootViewCoordinates.maxX() + marginForHitTestingSurroundingNodes, centerOfTargetBounds.y() }
+    };
+
+    for (auto& location : exclusionHitTestLocations) {
+        if (auto* nodeToExclude = clickableNonEditableNode(location))
+            hitTestedNodes.remove(*nodeToExclude);
+    }
+
+    for (auto& node : hitTestedNodes) {
+        auto frameView = makeRefPtr(node->document().view());
+        auto* renderer = node->renderer();
+        if (!renderer || !frameView)
+            continue;
+
+        auto bounds = frameView->contentsToRootView(renderer->absoluteBoundingBoxRect());
+        auto area = bounds.area();
+        if (area.hasOverflowed() || area.unsafeGet() > contextMenuAreaLimit)
+            continue;
+
+        if (bounds.contains(enclosingIntRect(selectionBoundsInRootViewCoordinates)))
+            continue;
+
+        rectsToAvoidInRootViewCoordinates.append(WTFMove(bounds));
+    }
+
+    reply(WTFMove(rectsToAvoidInRootViewCoordinates));
+}
+
 void WebPage::getRectsForGranularityWithSelectionOffset(uint32_t granularity, int32_t offset, CallbackID callbackID)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
@@ -2393,14 +2503,6 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
         renderer->localToContainerPoint(FloatPoint(), nullptr, UseTransforms, &inFixed);
         information.insideFixedPosition = inFixed;
         information.isRTL = renderer->style().direction() == TextDirection::RTL;
-
-        auto* frameView = elementFrame.view();
-        if (inFixed && elementFrame.isMainFrame() && !frameView->frame().settings().visualViewportEnabled()) {
-            IntRect currentFixedPositionRect = frameView->customFixedPositionLayoutRect();
-            frameView->setCustomFixedPositionLayoutRect(frameView->renderView()->documentRect());
-            information.elementRect = frameView->contentsToRootView(renderer->absoluteBoundingBoxRect());
-            frameView->setCustomFixedPositionLayoutRect(currentFixedPositionRect);
-        }
     } else
         information.elementRect = IntRect();
 
@@ -2574,12 +2676,19 @@ void WebPage::setViewportConfigurationViewLayoutSize(const FloatSize& size, doub
 {
     LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " setViewportConfigurationViewLayoutSize " << size << " scaleFactor " << scaleFactor << " minimumEffectiveDeviceWidth " << minimumEffectiveDeviceWidth);
 
-    ZoomToInitialScale shouldZoomToInitialScale = ZoomToInitialScale::No;
-    if (m_viewportConfiguration.layoutSizeScaleFactor() != scaleFactor && areEssentiallyEqualAsFloat(m_viewportConfiguration.initialScale(), pageScaleFactor()))
-        shouldZoomToInitialScale = ZoomToInitialScale::Yes;
+    auto previousLayoutSizeScaleFactor = m_viewportConfiguration.layoutSizeScaleFactor();
+    if (!m_viewportConfiguration.setViewLayoutSize(size, scaleFactor, minimumEffectiveDeviceWidth))
+        return;
 
-    if (m_viewportConfiguration.setViewLayoutSize(size, scaleFactor, minimumEffectiveDeviceWidth))
-        viewportConfigurationChanged(shouldZoomToInitialScale);
+    auto zoomToInitialScale = ZoomToInitialScale::No;
+    auto newInitialScale = m_viewportConfiguration.initialScale();
+    auto currentPageScaleFactor = pageScaleFactor();
+    if (scaleFactor > previousLayoutSizeScaleFactor && newInitialScale > currentPageScaleFactor)
+        zoomToInitialScale = ZoomToInitialScale::Yes;
+    else if (scaleFactor < previousLayoutSizeScaleFactor && newInitialScale < currentPageScaleFactor)
+        zoomToInitialScale = ZoomToInitialScale::Yes;
+
+    viewportConfigurationChanged(zoomToInitialScale);
 }
 
 void WebPage::setMaximumUnobscuredSize(const FloatSize& maximumUnobscuredSize)
@@ -2773,15 +2882,10 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const W
     frameView.updateLayoutAndStyleIfNeededRecursive();
 
     auto& settings = frameView.frame().settings();
-    if (settings.visualViewportEnabled()) {
-        LayoutRect documentRect = IntRect(frameView.scrollOrigin(), frameView.contentsSize());
-        auto layoutViewportSize = FrameView::expandedLayoutViewportSize(frameView.baseLayoutViewportSize(), LayoutSize(documentRect.size()), settings.layoutViewportHeightExpansionFactor());
-        LayoutRect layoutViewportRect = FrameView::computeUpdatedLayoutViewportRect(frameView.layoutViewportRect(), documentRect, LayoutSize(newUnobscuredContentRect.size()), LayoutRect(newUnobscuredContentRect), layoutViewportSize, frameView.minStableLayoutViewportOrigin(), frameView.maxStableLayoutViewportOrigin(), FrameView::LayoutViewportConstraint::ConstrainedToDocumentRect);
-        frameView.setLayoutViewportOverrideRect(layoutViewportRect);
-    } else {
-        IntRect fixedPositionLayoutRect = enclosingIntRect(frameView.viewportConstrainedObjectsRect());
-        frameView.setCustomFixedPositionLayoutRect(fixedPositionLayoutRect);
-    }
+    LayoutRect documentRect = IntRect(frameView.scrollOrigin(), frameView.contentsSize());
+    auto layoutViewportSize = FrameView::expandedLayoutViewportSize(frameView.baseLayoutViewportSize(), LayoutSize(documentRect.size()), settings.layoutViewportHeightExpansionFactor());
+    LayoutRect layoutViewportRect = FrameView::computeUpdatedLayoutViewportRect(frameView.layoutViewportRect(), documentRect, LayoutSize(newUnobscuredContentRect.size()), LayoutRect(newUnobscuredContentRect), layoutViewportSize, frameView.minStableLayoutViewportOrigin(), frameView.maxStableLayoutViewportOrigin(), FrameView::LayoutViewportConstraint::ConstrainedToDocumentRect);
+    frameView.setLayoutViewportOverrideRect(layoutViewportRect);
 
     frameView.setCustomSizeForResizeEvent(expandedIntSize(targetUnobscuredRectInScrollViewCoordinates.size()));
     setDeviceOrientation(deviceOrientation);
@@ -2802,7 +2906,7 @@ void WebPage::resetViewportDefaultConfiguration(WebFrame* frame, bool hasMobileD
 
     auto parametersForStandardFrame = [&] {
         if (m_page->settings().shouldIgnoreMetaViewport())
-            return ViewportConfiguration::nativeWebpageParameters();
+            return m_viewportConfiguration.nativeWebpageParameters();
 
         return ViewportConfiguration::webpageParameters();
     };
@@ -3045,23 +3149,20 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     frameView.setScrollVelocity(horizontalVelocity, verticalVelocity, scaleChangeRate, visibleContentRectUpdateInfo.timestamp());
 
     if (m_isInStableState) {
-        if (frameView.frame().settings().visualViewportEnabled()) {
-            if (visibleContentRectUpdateInfo.unobscuredContentRect() != visibleContentRectUpdateInfo.unobscuredContentRectRespectingInputViewBounds())
-                frameView.setVisualViewportOverrideRect(LayoutRect(visibleContentRectUpdateInfo.unobscuredContentRectRespectingInputViewBounds()));
-            else
-                frameView.setVisualViewportOverrideRect(WTF::nullopt);
+        if (visibleContentRectUpdateInfo.unobscuredContentRect() != visibleContentRectUpdateInfo.unobscuredContentRectRespectingInputViewBounds())
+            frameView.setVisualViewportOverrideRect(LayoutRect(visibleContentRectUpdateInfo.unobscuredContentRectRespectingInputViewBounds()));
+        else
+            frameView.setVisualViewportOverrideRect(WTF::nullopt);
 
-            LOG_WITH_STREAM(VisibleRects, stream << "WebPage::updateVisibleContentRects - setLayoutViewportOverrideRect " << visibleContentRectUpdateInfo.customFixedPositionRect());
-            frameView.setLayoutViewportOverrideRect(LayoutRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
-            if (selectionIsInsideFixedPositionContainer(frame)) {
-                // Ensure that the next layer tree commit contains up-to-date caret/selection rects.
-                frameView.frame().selection().setCaretRectNeedsUpdate();
-                sendPartialEditorStateAndSchedulePostLayoutUpdate();
-            }
+        LOG_WITH_STREAM(VisibleRects, stream << "WebPage::updateVisibleContentRects - setLayoutViewportOverrideRect " << visibleContentRectUpdateInfo.customFixedPositionRect());
+        frameView.setLayoutViewportOverrideRect(LayoutRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
+        if (selectionIsInsideFixedPositionContainer(frame)) {
+            // Ensure that the next layer tree commit contains up-to-date caret/selection rects.
+            frameView.frame().selection().setCaretRectNeedsUpdate();
+            sendPartialEditorStateAndSchedulePostLayoutUpdate();
+        }
 
-            frameView.didUpdateViewportOverrideRects();
-        } else
-            frameView.setCustomFixedPositionLayoutRect(enclosingIntRect(visibleContentRectUpdateInfo.customFixedPositionRect()));
+        frameView.didUpdateViewportOverrideRects();
     }
 
     if (!visibleContentRectUpdateInfo.isChangingObscuredInsetsInteractively())

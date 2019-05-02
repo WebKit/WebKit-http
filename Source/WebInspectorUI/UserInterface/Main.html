@@ -45,6 +45,7 @@
     <link rel="stylesheet" href="Views/ButtonToolbarItem.css">
     <link rel="stylesheet" href="Views/CPUTimelineOverviewGraph.css">
     <link rel="stylesheet" href="Views/CPUTimelineView.css">
+    <link rel="stylesheet" href="Views/CPUUsageStackedView.css">
     <link rel="stylesheet" href="Views/CPUUsageView.css">
     <link rel="stylesheet" href="Views/CallFrameIcons.css">
     <link rel="stylesheet" href="Views/CallFrameTreeElement.css">
@@ -196,6 +197,7 @@
     <link rel="stylesheet" href="Views/Slider.css">
     <link rel="stylesheet" href="Views/SoftContextMenu.css">
     <link rel="stylesheet" href="Views/SourceCodeTextEditor.css">
+    <link rel="stylesheet" href="Views/SourcesNavigationSidebarPanel.css">
     <link rel="stylesheet" href="Views/SpreadsheetCSSStyleDeclarationEditor.css">
     <link rel="stylesheet" href="Views/SpreadsheetCSSStyleDeclarationSection.css">
     <link rel="stylesheet" href="Views/SpreadsheetRulesStyleDetailsPanel.css">
@@ -275,11 +277,12 @@
 
     <script src="Base/WebInspector.js"></script>
     <script src="Base/Platform.js"></script>
+    <script src="Base/Debouncer.js"></script>
     <script src="Base/DebuggableType.js"></script>
-    <script src="Base/IndexSet.js"></script>
     <script src="Base/LinkedList.js"></script>
     <script src="Base/ListMultimap.js"></script>
     <script src="Base/Object.js"></script>
+    <script src="Base/Throttler.js"></script>
 
     <script src="Base/DOMUtilities.js"></script>
     <script src="Base/EventListener.js"></script>
@@ -291,6 +294,7 @@
     <script src="Base/ObjectStore.js"></script>
     <script src="Base/URLUtilities.js"></script>
     <script src="Base/Utilities.js"></script>
+    <script src="Base/SearchUtilities.js"></script>
     <script src="Base/Setting.js"></script>
     <script src="Base/YieldableTask.js"></script>
 
@@ -555,6 +559,7 @@
     <script src="Views/ResourcesTabContentView.js"></script>
     <script src="Views/SearchTabContentView.js"></script>
     <script src="Views/SettingsTabContentView.js"></script>
+    <script src="Views/SourcesTabContentView.js"></script>
     <script src="Views/StorageTabContentView.js"></script>
     <script src="Views/TimelineTabContentView.js"></script>
 
@@ -577,6 +582,7 @@
     <script src="Views/ApplicationCacheFrameContentView.js"></script>
     <script src="Views/ApplicationCacheFrameTreeElement.js"></script>
     <script src="Views/ApplicationCacheManifestTreeElement.js"></script>
+    <script src="Views/AreaChart.js"></script>
     <script src="Views/AuditNavigationSidebarPanel.js"></script>
     <script src="Views/AuditTestCaseContentView.js"></script>
     <script src="Views/AuditTestGroupContentView.js"></script>
@@ -588,6 +594,7 @@
     <script src="Views/ButtonToolbarItem.js"></script>
     <script src="Views/CPUTimelineOverviewGraph.js"></script>
     <script src="Views/CPUTimelineView.js"></script>
+    <script src="Views/CPUUsageStackedView.js"></script>
     <script src="Views/CPUUsageView.js"></script>
     <script src="Views/CSSStyleSheetTreeElement.js"></script>
     <script src="Views/CallFrameTreeElement.js"></script>
@@ -704,7 +711,6 @@
     <script src="Views/LayoutTimelineOverviewGraph.js"></script>
     <script src="Views/LayoutTimelineView.js"></script>
     <script src="Views/LegacyCPUTimelineView.js"></script>
-    <script src="Views/LineChart.js"></script>
     <script src="Views/LogContentView.js"></script>
     <script src="Views/MediaTimelineDataGridNode.js"></script>
     <script src="Views/MediaTimelineOverviewGraph.js"></script>
@@ -787,6 +793,7 @@
     <script src="Views/SourceCodeTextEditor.js"></script>
     <script src="Views/SourceCodeTimelineTimelineDataGridNode.js"></script>
     <script src="Views/SourceCodeTimelineTreeElement.js"></script>
+    <script src="Views/SourcesNavigationSidebarPanel.js"></script>
     <script src="Views/SourceMapResourceTreeElement.js"></script>
     <script src="Views/SpanningDataGridNode.js"></script>
 
@@ -801,7 +808,8 @@
     <script src="Views/SpringEditor.js"></script>
     <script src="Views/SVGImageResourceClusterContentView.js"></script>
     <script src="Views/StackTraceView.js"></script>
-    <script src="Views/StackedLineChart.js"></script>
+    <script src="Views/StackedAreaChart.js"></script>
+    <script src="Views/StackedColumnChart.js"></script>
     <script src="Views/StorageSidebarPanel.js"></script>
     <script src="Views/SyntaxHighlightingSupport.js"></script>
     <script src="Views/TextContentView.js"></script>

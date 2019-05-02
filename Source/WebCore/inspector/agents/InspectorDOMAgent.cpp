@@ -1594,15 +1594,6 @@ Ref<Inspector::Protocol::DOM::Node> InspectorDOMAgent::buildObjectForNode(Node* 
         value->setShadowRootType(shadowRootType(shadowRoot.mode()));
     }
 
-    // Need to enable AX to get the computed role.
-    if (!WebCore::AXObjectCache::accessibilityEnabled())
-        WebCore::AXObjectCache::enableAccessibility();
-
-    if (AXObjectCache* axObjectCache = node->document().axObjectCache()) {
-        if (AccessibilityObject* axObject = axObjectCache->getOrCreate(node))
-            value->setRole(axObject->computedRoleString());
-    }
-
     return value;
 }
 
@@ -1742,21 +1733,18 @@ Ref<Inspector::Protocol::DOM::EventListener> InspectorDOMAgent::buildObjectForEv
         value->setHasBreakpoint(hasBreakpoint);
     return value;
 }
-    
-void InspectorDOMAgent::processAccessibilityChildren(RefPtr<AccessibilityObject>&& axObject, RefPtr<JSON::ArrayOf<int>>&& childNodeIds)
+
+void InspectorDOMAgent::processAccessibilityChildren(AccessibilityObject& axObject, JSON::ArrayOf<int>& childNodeIds)
 {
-    const auto& children = axObject->children();
+    const auto& children = axObject.children();
     if (!children.size())
         return;
-    
-    if (!childNodeIds)
-        childNodeIds = JSON::ArrayOf<int>::create();
-    
+
     for (const auto& childObject : children) {
         if (Node* childNode = childObject->node())
-            childNodeIds->addItem(pushNodePathToFrontend(childNode));
+            childNodeIds.addItem(pushNodePathToFrontend(childNode));
         else
-            processAccessibilityChildren(childObject.copyRef(), childNodeIds.copyRef());
+            processAccessibilityChildren(*childObject, childNodeIds);
     }
 }
     
@@ -1832,7 +1820,10 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
                     checked = Inspector::Protocol::DOM::AccessibilityProperties::Checked::True;
             }
             
-            processAccessibilityChildren(axObject, WTFMove(childNodeIds));
+            if (!axObject->children().isEmpty()) {
+                childNodeIds = JSON::ArrayOf<int>::create();
+                processAccessibilityChildren(*axObject, *childNodeIds);
+            }
             
             Vector<Element*> controlledElements;
             axObject->elementsFromAttribute(controlledElements, aria_controlsAttr);

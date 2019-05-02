@@ -405,7 +405,7 @@ static WebCore::FloatBoxExtent floatBoxExtent(UIEdgeInsets insets)
     WebKit::RemoteScrollingCoordinatorProxy* scrollingCoordinator = _page->scrollingCoordinatorProxy();
 
     CGRect unobscuredContentRectRespectingInputViewBounds = [self _computeUnobscuredContentRectRespectingInputViewBounds:unobscuredContentRect inputViewBounds:inputViewBounds];
-    WebCore::FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredContentRect, unobscuredContentRectRespectingInputViewBounds, _page->customFixedPositionRect(), zoomScale, WebCore::FrameView::LayoutViewportConstraint::ConstrainedToDocumentRect, scrollingCoordinator->visualViewportEnabled());
+    WebCore::FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredContentRect, unobscuredContentRectRespectingInputViewBounds, _page->customFixedPositionRect(), zoomScale, WebCore::FrameView::LayoutViewportConstraint::ConstrainedToDocumentRect);
 
     WebKit::VisibleContentRectUpdateInfo visibleContentRectUpdateInfo(
         visibleContentRect,
@@ -435,12 +435,12 @@ static WebCore::FloatBoxExtent floatBoxExtent(UIEdgeInsets insets)
 
     _sizeChangedSinceLastVisibleContentRectUpdate = NO;
 
-    WebCore::FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->customFixedPositionRect(), zoomScale, WebCore::FrameView::LayoutViewportConstraint::Unconstrained, scrollingCoordinator->visualViewportEnabled());
-    scrollingCoordinator->viewportChangedViaDelegatedScrolling(scrollingCoordinator->rootScrollingNodeID(), fixedPositionRect, zoomScale);
+    WebCore::FloatRect layoutViewport = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->customFixedPositionRect(), zoomScale, WebCore::FrameView::LayoutViewportConstraint::Unconstrained);
+    scrollingCoordinator->viewportChangedViaDelegatedScrolling(layoutViewport, zoomScale);
 
     drawingArea->updateDebugIndicator();
     
-    [self updateFixedClippingView:fixedPositionRect];
+    [self updateFixedClippingView:layoutViewport];
 
     if (wasStableState && !isStableState)
         [self _didExitStableState];

@@ -123,6 +123,7 @@ http/tests/plugins/supported-plugin-origin-specific-visibility.html [ Skip ]
 http/tests/plugins/supported-plugin-on-specific-origin.html [ Skip ]
 http/tests/plugins/unsupported-plugin-on-specific-origin.html [ Skip ]
 plugins/unsupported-plugin.html [ Skip ]
+plugins/unsupported-plugin-with-replacement-in-iframe-crash.html [ Skip ]
 
 # Color input is not yet implemented on Mac WK1. Currently, using it erroneously triggers an ASSERT_NOT_REACHED.
 webkit.org/b/119094 fast/forms/color/input-color-onchange-event.html [ Skip ]
@@ -670,3 +671,5 @@ webkit.org/b/191639 imported/blink/compositing/squashing/squashing-into-ancestor
 webkit.org/b/190627  [ Mojave+ ] compositing/masks/compositing-clip-path-change-no-repaint.html  [ Pass Failure ]
 
 webkit.org/b/172384 fast/hidpi/hidpi-long-page-with-inset-element.html [ Skip ]
+
+webkit.org/b/194309 media/modern-media-controls/compact-media-controls/compact-media-controls-layout.html [ Pass Failure ]

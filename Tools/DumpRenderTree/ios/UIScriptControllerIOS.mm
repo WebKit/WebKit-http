@@ -94,6 +94,10 @@ void UIScriptController::setMinimumEffectiveWidth(double)
 {
 }
 
+void UIScriptController::setAllowsViewportShrinkToFit(bool)
+{
+}
+
 void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef)
 {
 }
@@ -335,6 +339,16 @@ void UIScriptController::platformSetDidHideMenuCallback()
 JSObjectRef UIScriptController::rectForMenuAction(JSStringRef) const
 {
     return nullptr;
+}
+
+JSObjectRef UIScriptController::menuRect() const
+{
+    return nullptr;
+}
+
+bool UIScriptController::isShowingMenu() const
+{
+    return false;
 }
 
 void UIScriptController::platformSetDidEndScrollingCallback()

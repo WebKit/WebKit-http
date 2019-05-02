@@ -334,6 +334,7 @@ bool AccessibilityObject::accessibleNameDerivesFromContent() const
     case AccessibilityRole::Menu:
     case AccessibilityRole::MenuBar:
     case AccessibilityRole::ProgressIndicator:
+    case AccessibilityRole::Meter:
     case AccessibilityRole::RadioGroup:
     case AccessibilityRole::ScrollBar:
     case AccessibilityRole::Slider:
@@ -408,16 +409,19 @@ bool AccessibilityObject::isNonNativeTextControl() const
 
 bool AccessibilityObject::isLandmark() const
 {
-    AccessibilityRole role = roleValue();
-    
-    return role == AccessibilityRole::LandmarkBanner
-        || role == AccessibilityRole::LandmarkComplementary
-        || role == AccessibilityRole::LandmarkContentInfo
-        || role == AccessibilityRole::LandmarkDocRegion
-        || role == AccessibilityRole::LandmarkMain
-        || role == AccessibilityRole::LandmarkNavigation
-        || role == AccessibilityRole::LandmarkRegion
-        || role == AccessibilityRole::LandmarkSearch;
+    switch (roleValue()) {
+    case AccessibilityRole::LandmarkBanner:
+    case AccessibilityRole::LandmarkComplementary:
+    case AccessibilityRole::LandmarkContentInfo:
+    case AccessibilityRole::LandmarkDocRegion:
+    case AccessibilityRole::LandmarkMain:
+    case AccessibilityRole::LandmarkNavigation:
+    case AccessibilityRole::LandmarkRegion:
+    case AccessibilityRole::LandmarkSearch:
+        return true;
+    default:
+        return false;
+    }
 }
 
 bool AccessibilityObject::hasMisspelling() const
@@ -947,6 +951,7 @@ bool AccessibilityObject::isARIAControl(AccessibilityRole ariaRole)
 bool AccessibilityObject::isRangeControl() const
 {
     switch (roleValue()) {
+    case AccessibilityRole::Meter:
     case AccessibilityRole::ProgressIndicator:
     case AccessibilityRole::Slider:
     case AccessibilityRole::ScrollBar:
@@ -1010,16 +1015,16 @@ bool AccessibilityObject::press()
         HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AccessibilityHitTest);
         HitTestResult hitTestResult(clickPoint());
         document->renderView()->hitTest(request, hitTestResult);
-        if (hitTestResult.innerNode()) {
-            Node* innerNode = hitTestResult.innerNode()->deprecatedShadowAncestorNode();
-            if (is<Element>(*innerNode))
-                hitTestElement = downcast<Element>(innerNode);
-            else if (innerNode)
+        if (auto* innerNode = hitTestResult.innerNode()) {
+            if (auto* shadowHost = innerNode->shadowHost())
+                hitTestElement = shadowHost;
+            else if (is<Element>(*innerNode))
+                hitTestElement = &downcast<Element>(*innerNode);
+            else
                 hitTestElement = innerNode->parentElement();
         }
     }
-    
-    
+
     // Prefer the actionElement instead of this node, if the actionElement is inside this node.
     Element* pressElement = this->element();
     if (!pressElement || actionElem->isDescendantOf(*pressElement))
@@ -2505,6 +2510,9 @@ String AccessibilityObject::computedRoleString() const
     if (role == AccessibilityRole::HorizontalRule)
         return reverseAriaRoleMap().get(static_cast<int>(AccessibilityRole::Splitter));
 
+    if (role == AccessibilityRole::Meter)
+        return reverseAriaRoleMap().get(static_cast<int>(AccessibilityRole::ProgressIndicator));
+
     if (role == AccessibilityRole::PopUpButton || role == AccessibilityRole::ToggleButton)
         return reverseAriaRoleMap().get(static_cast<int>(AccessibilityRole::Button));
 
@@ -2706,23 +2714,14 @@ AccessibilityObjectInterface* AccessibilityObject::elementAccessibilityHitTest(c
     
 AXObjectCache* AccessibilityObject::axObjectCache() const
 {
-    Document* doc = document();
-    if (doc)
-        return doc->axObjectCache();
-    return nullptr;
+    auto* document = this->document();
+    return document ? document->axObjectCache() : nullptr;
 }
     
 AccessibilityObjectInterface* AccessibilityObject::focusedUIElement() const
 {
-    Document* document = this->document();
-    if (!document)
-        return nullptr;
-    
-    Page* page = document->page();
-    if (!page)
-        return nullptr;
-    
-    return AXObjectCache::focusedUIElementForPage(page);
+    auto* page = this->page();
+    return page ? AXObjectCache::focusedUIElementForPage(page) : nullptr;
 }
     
 AccessibilitySortDirection AccessibilityObject::sortDirection() const

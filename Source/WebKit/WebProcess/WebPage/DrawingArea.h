@@ -29,6 +29,7 @@
 #include "DrawingAreaInfo.h"
 #include "LayerTreeContext.h"
 #include "MessageReceiver.h"
+#include "WebPage.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/IntRect.h>
@@ -61,7 +62,6 @@ namespace WebKit {
 
 struct ColorSpaceData;
 class LayerTreeHost;
-class WebPage;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
 
@@ -74,13 +74,13 @@ public:
     virtual ~DrawingArea();
     
     DrawingAreaType type() const { return m_type; }
+    DrawingAreaIdentifier identifier() const { return m_identifier; }
 
     virtual void setNeedsDisplay() = 0;
     virtual void setNeedsDisplayInRect(const WebCore::IntRect&) = 0;
     virtual void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollDelta) = 0;
 
     // FIXME: These should be pure virtual.
-    virtual void pageBackgroundTransparencyChanged() { }
     virtual void forceRepaint() { }
     virtual bool forceRepaintAsync(CallbackID) { return false; }
     virtual void setLayerTreeStateIsFrozen(bool) { }
@@ -140,7 +140,7 @@ public:
     virtual void updateGeometry(const WebCore::IntSize& viewSize, bool flushSynchronously, const WTF::MachSendRight& fencePort) { }
 #endif
 
-    virtual void layerHostDidFlushLayers() { };
+    virtual void layerHostDidFlushLayers() { }
 
 #if USE(COORDINATED_GRAPHICS)
     virtual void didChangeViewportAttributes(WebCore::ViewportAttributes&&) = 0;
@@ -150,10 +150,20 @@ public:
     virtual void deviceOrPageScaleFactorChanged() = 0;
 #endif
 
+    virtual void adoptLayersFromDrawingArea(DrawingArea&) { }
+
+    void removeMessageReceiverIfNeeded();
+
 protected:
-    DrawingArea(DrawingAreaType, WebPage&);
+    DrawingArea(DrawingAreaType, DrawingAreaIdentifier, WebPage&);
+
+    template<typename U> bool send(const U& message)
+    {
+        return m_webPage.send(message, m_identifier.toUInt64(), { });
+    }
 
     DrawingAreaType m_type;
+    DrawingAreaIdentifier m_identifier;
     WebPage& m_webPage;
 
 #if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
@@ -186,6 +196,8 @@ private:
     virtual void setNativeSurfaceHandleForCompositing(uint64_t) = 0;
     virtual void destroyNativeSurfaceHandleForCompositing(bool&) = 0;
 #endif
+
+    bool m_hasRemovedMessageReceiver { false };
 };
 
 } // namespace WebKit

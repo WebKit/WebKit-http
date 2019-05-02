@@ -43,7 +43,6 @@ $(PROJECT_DIR)/builtins/MapIteratorPrototype.js
 $(PROJECT_DIR)/builtins/MapPrototype.js
 $(PROJECT_DIR)/builtins/ModuleLoader.js
 $(PROJECT_DIR)/builtins/NumberConstructor.js
-$(PROJECT_DIR)/builtins/NumberPrototype.js
 $(PROJECT_DIR)/builtins/ObjectConstructor.js
 $(PROJECT_DIR)/builtins/PromiseConstructor.js
 $(PROJECT_DIR)/builtins/PromiseOperations.js
@@ -94,7 +93,6 @@ $(PROJECT_DIR)/inspector/protocol/Inspector.json
 $(PROJECT_DIR)/inspector/protocol/LayerTree.json
 $(PROJECT_DIR)/inspector/protocol/Memory.json
 $(PROJECT_DIR)/inspector/protocol/Network.json
-$(PROJECT_DIR)/inspector/protocol/OverlayTypes.json
 $(PROJECT_DIR)/inspector/protocol/Page.json
 $(PROJECT_DIR)/inspector/protocol/Recording.json
 $(PROJECT_DIR)/inspector/protocol/Runtime.json

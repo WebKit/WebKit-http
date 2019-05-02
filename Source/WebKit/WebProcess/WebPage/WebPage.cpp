@@ -194,12 +194,14 @@
 #include <WebCore/PrintContext.h>
 #include <WebCore/PromisedAttachmentInfo.h>
 #include <WebCore/Range.h>
+#include <WebCore/RegistrableDomain.h>
 #include <WebCore/RemoteDOMWindow.h>
 #include <WebCore/RemoteFrame.h>
 #include <WebCore/RenderLayer.h>
 #include <WebCore/RenderTheme.h>
 #include <WebCore/RenderTreeAsText.h>
 #include <WebCore/RenderView.h>
+#include <WebCore/ResourceLoadStatistics.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/ResourceResponse.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
@@ -518,8 +520,6 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 
     setUseFixedLayout(parameters.useFixedLayout);
 
-    setDrawsBackground(parameters.drawsBackground);
-
     setUnderlayColor(parameters.underlayColor);
 
     setPaginationMode(parameters.paginationMode);
@@ -646,6 +646,8 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #if USE(AUDIO_SESSION)
     PlatformMediaSessionManager::setShouldDeactivateAudioSession(true);
 #endif
+
+    setBackgroundColor(parameters.backgroundColor);
 }
 
 #if ENABLE(WEB_RTC)
@@ -694,9 +696,8 @@ void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
     setSize(parameters.viewSize);
 
     if (m_shouldResetDrawingAreaAfterSuspend) {
-        // Make sure we destroy the previous drawing area before constructing the new one as DrawingArea registers / unregisters
-        // itself as an IPC::MesssageReceiver in its constructor / destructor.
-        m_drawingArea = nullptr;
+        auto oldDrawingArea = std::exchange(m_drawingArea, nullptr);
+        oldDrawingArea->removeMessageReceiverIfNeeded();
         m_shouldResetDrawingAreaAfterSuspend = false;
 
         m_drawingArea = DrawingArea::create(*this, parameters);
@@ -704,8 +705,12 @@ void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
         m_drawingArea->setShouldScaleViewToFitDocument(parameters.shouldScaleViewToFitDocument);
         m_drawingArea->updatePreferences(parameters.store);
         m_drawingArea->setPaintingEnabled(true);
+
+        m_drawingArea->adoptLayersFromDrawingArea(*oldDrawingArea);
+
         unfreezeLayerTree(LayerTreeFreezeReason::PageSuspended);
     }
+    RELEASE_ASSERT(m_drawingArea->identifier() == parameters.drawingAreaIdentifier);
 
     setViewLayoutSize(parameters.viewLayoutSize);
 
@@ -713,6 +718,8 @@ void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
         setActivityState(parameters.activityState, ActivityStateChangeAsynchronous, Vector<CallbackID>());
     if (m_layerHostingMode != parameters.layerHostingMode)
         setLayerHostingMode(parameters.layerHostingMode);
+
+    platformReinitialize();
 }
 
 void WebPage::updateThrottleState()
@@ -1021,6 +1028,8 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
                 else
                     ASSERT_NOT_REACHED();
             }
+
+            postLayoutData.baseWritingDirection = editor.baseWritingDirectionForSelectionStart();
         }
 #endif
     }
@@ -1401,6 +1410,7 @@ void WebPage::loadRequest(LoadParameters&& loadParameters)
     frameLoadRequest.setLockHistory(loadParameters.lockHistory);
     frameLoadRequest.setlockBackForwardList(loadParameters.lockBackForwardList);
     frameLoadRequest.setClientRedirectSourceForHistory(loadParameters.clientRedirectSourceForHistory);
+    frameLoadRequest.setIsRequestFromClientOrUserInput();
 
     corePage()->userInputBridge().loadRequest(WTFMove(frameLoadRequest));
 
@@ -2696,6 +2706,9 @@ void WebPage::setNeedsFontAttributes(bool needsFontAttributes)
 
 void WebPage::restoreSessionInternal(const Vector<BackForwardListItemState>& itemStates, WasRestoredByAPIRequest restoredByAPIRequest, WebBackForwardListProxy::OverwriteExistingItem overwrite)
 {
+    // Since we're merely restoring HistoryItems from the UIProcess, there is no need to send HistoryItem update notifications back to the UIProcess.
+    // Also, with process-swap on navigation, these updates may actually overwrite important state in the UIProcess such as the scroll position.
+    SetForScope<void (*)(WebCore::HistoryItem&)> bypassHistoryItemUpdateNotifications(WebCore::notifyHistoryItemChanged, [](WebCore::HistoryItem&){});
     for (const auto& itemState : itemStates) {
         auto historyItem = toHistoryItem(itemState);
         historyItem->setWasRestoredFromSession(restoredByAPIRequest == WasRestoredByAPIRequest::Yes);
@@ -2905,19 +2918,16 @@ void WebPage::setIndicating(bool indicating)
 }
 #endif
 
-void WebPage::setDrawsBackground(bool drawsBackground)
+void WebPage::setBackgroundColor(const Optional<WebCore::Color>& backgroundColor)
 {
-    if (m_drawsBackground == drawsBackground)
+    if (m_backgroundColor == backgroundColor)
         return;
 
-    m_drawsBackground = drawsBackground;
+    m_backgroundColor = backgroundColor;
 
-    if (FrameView* frameView = mainFrameView()) {
-        bool isTransparent = !drawsBackground;
-        frameView->updateBackgroundRecursively(isTransparent);
-    }
+    if (FrameView* frameView = mainFrameView())
+        frameView->updateBackgroundRecursively(backgroundColor);
 
-    m_drawingArea->pageBackgroundTransparencyChanged();
     m_drawingArea->setNeedsDisplay();
 }
 
@@ -3045,7 +3055,7 @@ void WebPage::setActivityState(OptionSet<ActivityState::Flag> activityState, Act
     if (changed)
         updateThrottleState();
 
-    ASSERT_WITH_MESSAGE(m_page, "setActivityState called on %lld but WebCore page was null", pageID());
+    ASSERT_WITH_MESSAGE(m_page, "setActivityState called on %" PRIu64 " but WebCore page was null", pageID());
     if (m_page) {
         SetForScope<bool> currentlyChangingActivityState { m_changingActivityState, true };
         m_page->setActivityState(activityState);
@@ -6390,13 +6400,13 @@ void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remote
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
 void WebPage::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
 {
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::HasStorageAccess(sessionID(), WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, m_pageID), WTFMove(completionHandler));
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::HasStorageAccess(sessionID(), RegistrableDomain { subFrameHost }, RegistrableDomain { topFrameHost }, frameID, m_pageID), WTFMove(completionHandler));
 }
     
 void WebPage::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
 {
     bool promptEnabled = RuntimeEnabledFeatures::sharedFeatures().storageAccessPromptsEnabled();
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::RequestStorageAccess(sessionID(), WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, m_pageID, promptEnabled), WTFMove(completionHandler));
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::RequestStorageAccess(sessionID(), RegistrableDomain { subFrameHost }, RegistrableDomain { topFrameHost }, frameID, m_pageID, promptEnabled), WTFMove(completionHandler));
 }
 #endif
     

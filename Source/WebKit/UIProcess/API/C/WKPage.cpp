@@ -134,6 +134,8 @@ template<> struct ClientTraits<WKPageFindMatchesClientBase> {
     
 } // namespace API
 
+using namespace WebKit;
+
 WKTypeID WKPageGetTypeID()
 {
     return toAPI(WebPageProxy::APIType);
@@ -2711,3 +2713,16 @@ void WKPageGetApplicationManifest_b(WKPageRef page, WKPageGetApplicationManifest
 }
 #endif
 
+void WKPageDumpAdClickAttribution(WKPageRef page, WKPageDumpAdClickAttributionFunction callback, void* callbackContext)
+{
+    toImpl(page)->dumpAdClickAttribution([callbackContext, callback] (const String& adClickAttribution) {
+        callback(WebKit::toAPI(adClickAttribution.impl()), callbackContext);
+    });
+}
+
+void WKPageClearAdClickAttribution(WKPageRef page, WKPageClearAdClickAttributionFunction callback, void* callbackContext)
+{
+    toImpl(page)->clearAdClickAttribution([callbackContext, callback] () {
+        callback(callbackContext);
+    });
+}

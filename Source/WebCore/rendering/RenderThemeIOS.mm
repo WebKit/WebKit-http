@@ -75,8 +75,13 @@
 #import <pal/spi/cocoa/CoreTextSPI.h>
 #import <pal/spi/ios/UIKitSPI.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/RefPtr.h>
 #import <wtf/StdLibExtras.h>
+
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/RenderThemeIOSAdditions.mm>)
+#include <WebKitAdditions/RenderThemeIOSAdditions.mm>
+#endif
 
 @interface WebCoreRenderThemeBundle : NSObject
 @end
@@ -377,68 +382,57 @@ static void drawJoinedLines(CGContextRef context, const Vector<CGPoint>& points,
 
 bool RenderThemeIOS::paintCheckboxDecorations(const RenderObject& box, const PaintInfo& paintInfo, const IntRect& rect)
 {
-    GraphicsContextStateSaver stateSaver(paintInfo.context());
-    FloatRect clip = addRoundedBorderClip(box, paintInfo.context(), rect);
+    bool checked = isChecked(box);
+    bool indeterminate = isIndeterminate(box);
+    CGContextRef cgContext = paintInfo.context().platformContext();
 
+    GraphicsContextStateSaver stateSaver { paintInfo.context() };
+    auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
     float width = clip.width();
     float height = clip.height();
 
-    bool checked = isChecked(box);
-    bool indeterminate = isIndeterminate(box);
+    if (checked || indeterminate) {
+        drawAxialGradient(cgContext, gradientWithName(ConcaveGradient), clip.location(), FloatPoint { clip.x(), clip.maxY() }, LinearInterpolation);
 
-    CGContextRef cgContext = paintInfo.context().platformContext();
-    if (!checked && !indeterminate) {
-        FloatPoint bottomCenter(clip.x() + clip.width() / 2.0f, clip.maxY());
-        drawAxialGradient(cgContext, gradientWithName(ShadeGradient), clip.location(), FloatPoint(clip.x(), clip.maxY()), LinearInterpolation);
+        constexpr float thicknessRatio = 2 / 14.0;
+        float lineWidth = std::min(width, height) * 2.0f * thicknessRatio;
+
+        Vector<CGPoint, 3> line;
+        Vector<CGPoint, 3> shadow;
+        if (checked) {
+            constexpr CGSize size { 14.0f, 14.0f };
+            constexpr CGPoint pathRatios[] = {
+                { 2.5f / size.width, 7.5f / size.height },
+                { 5.5f / size.width, 10.5f / size.height },
+                { 11.5f / size.width, 2.5f / size.height }
+            };
+
+            line.uncheckedAppend(CGPointMake(clip.x() + width * pathRatios[0].x, clip.y() + height * pathRatios[0].y));
+            line.uncheckedAppend(CGPointMake(clip.x() + width * pathRatios[1].x, clip.y() + height * pathRatios[1].y));
+            line.uncheckedAppend(CGPointMake(clip.x() + width * pathRatios[2].x, clip.y() + height * pathRatios[2].y));
+
+            shadow.uncheckedAppend(shortened(line[0], line[1], lineWidth / 4.0f));
+            shadow.uncheckedAppend(line[1]);
+            shadow.uncheckedAppend(shortened(line[2], line[1], lineWidth / 4.0f));
+        } else {
+            line.uncheckedAppend(CGPointMake(clip.x() + 3.5, clip.center().y()));
+            line.uncheckedAppend(CGPointMake(clip.maxX() - 3.5, clip.center().y()));
+
+            shadow.uncheckedAppend(shortened(line[0], line[1], lineWidth / 4.0f));
+            shadow.uncheckedAppend(shortened(line[1], line[0], lineWidth / 4.0f));
+        }
+
+        lineWidth = std::max<float>(lineWidth, 1);
+        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(shadow) }, kCGLineCapSquare, lineWidth, Color { 0.0f, 0.0f, 0.0f, 0.7f });
+
+        lineWidth = std::max<float>(std::min(clip.width(), clip.height()) * thicknessRatio, 1);
+        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(line) }, kCGLineCapButt, lineWidth, Color { 1.0f, 1.0f, 1.0f, 240 / 255.0f });
+    } else {
+        FloatPoint bottomCenter { clip.x() + clip.width() / 2.0f, clip.maxY() };
+
+        drawAxialGradient(cgContext, gradientWithName(ShadeGradient), clip.location(), FloatPoint { clip.x(), clip.maxY() }, LinearInterpolation);
         drawRadialGradient(cgContext, gradientWithName(ShineGradient), bottomCenter, 0, bottomCenter, sqrtf((width * width) / 4.0f + height * height), ExponentialInterpolation);
-        return false;
     }
-
-    drawAxialGradient(cgContext, gradientWithName(ConcaveGradient), clip.location(), FloatPoint(clip.x(), clip.maxY()), LinearInterpolation);
-
-    static const float thicknessRatio = 2 / 14.0;
-    static const CGSize size = { 14.0f, 14.0f };
-    float lineWidth = std::min(width, height) * 2.0f * thicknessRatio;
-
-    Vector<CGPoint> line;
-    Vector<CGPoint> shadow;
-
-    if (checked) {
-        static const CGPoint pathRatios[3] = {
-            { 2.5f / size.width, 7.5f / size.height },
-            { 5.5f / size.width, 10.5f / size.height },
-            { 11.5f / size.width, 2.5f / size.height }
-        };
-
-        line = {
-            CGPointMake(clip.x() + width * pathRatios[0].x, clip.y() + height * pathRatios[0].y),
-            CGPointMake(clip.x() + width * pathRatios[1].x, clip.y() + height * pathRatios[1].y),
-            CGPointMake(clip.x() + width * pathRatios[2].x, clip.y() + height * pathRatios[2].y)
-        };
-
-        shadow = {
-            shortened(line[0], line[1], lineWidth / 4.0f),
-            line[1],
-            shortened(line[2], line[1], lineWidth / 4.0f)
-        };
-    } else if (indeterminate) {
-        line = {
-            CGPointMake(clip.x() + 3.5, clip.center().y()),
-            CGPointMake(clip.maxX() - 3.5, clip.center().y())
-        };
-
-        shadow = {
-            shortened(line[0], line[1], lineWidth / 4.0f),
-            shortened(line[1], line[0], lineWidth / 4.0f)
-        };
-    }
-
-    lineWidth = std::max<float>(lineWidth, 1);
-    drawJoinedLines(cgContext, shadow, kCGLineCapSquare, lineWidth, Color(0.0f, 0.0f, 0.0f, 0.7f));
-
-    lineWidth = std::max<float>(std::min(clip.width(), clip.height()) * thicknessRatio, 1);
-    drawJoinedLines(cgContext, line, kCGLineCapButt, lineWidth, Color(1.0f, 1.0f, 1.0f, 240 / 255.0f));
-
     return false;
 }
 
@@ -1424,7 +1418,14 @@ String RenderThemeIOS::mediaControlsBase64StringForIconNameAndType(const String&
 
 Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::Options> options) const
 {
+    const bool useSystemAppearance = options.contains(StyleColor::Options::UseSystemAppearance);
     const bool forVisitedLink = options.contains(StyleColor::Options::ForVisitedLink);
+
+    auto& cache = colorCache(options);
+
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/RenderThemeIOSSystemColorAdditions.mm>)
+#include <WebKitAdditions/RenderThemeIOSSystemColorAdditions.mm>
+#endif
 
     // The system color cache below can't handle visited links. The only color value
     // that cares about visited links is CSSValueWebkitLink, so handle it here by
@@ -1432,48 +1433,45 @@ Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
     if (forVisitedLink && cssValueID == CSSValueWebkitLink)
         return RenderTheme::systemColor(cssValueID, options);
 
+    ASSERT_UNUSED(useSystemAppearance, !useSystemAppearance);
     ASSERT(!forVisitedLink);
 
-    auto addResult = m_systemColorCache.add(cssValueID, Color());
-    if (!addResult.isNewEntry)
-        return addResult.iterator->value;
+    return cache.systemStyleColors.ensure(cssValueID, [this, cssValueID, options] () -> Color {
+        auto cssColorToSelector = [cssValueID] () -> SEL {
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/RenderThemeIOSColorToSelectorAdditions.mm>)
+#include <WebKitAdditions/RenderThemeIOSColorToSelectorAdditions.mm>
+#endif
 
-    Color color;
-    switch (cssValueID) {
-    case CSSValueAppleWirelessPlaybackTargetActive:
-        color = [PAL::getUIColorClass() systemBlueColor].CGColor;
-        break;
-    case CSSValueAppleSystemBlue:
-        color = [PAL::getUIColorClass() systemBlueColor].CGColor;
-        break;
-    case CSSValueAppleSystemGray:
-        color = [PAL::getUIColorClass() systemGrayColor].CGColor;
-        break;
-    case CSSValueAppleSystemGreen:
-        color = [PAL::getUIColorClass() systemGreenColor].CGColor;
-        break;
-    case CSSValueAppleSystemOrange:
-        color = [PAL::getUIColorClass() systemOrangeColor].CGColor;
-        break;
-    case CSSValueAppleSystemPink:
-        color = [PAL::getUIColorClass() systemPinkColor].CGColor;
-        break;
-    case CSSValueAppleSystemRed:
-        color = [PAL::getUIColorClass() systemRedColor].CGColor;
-        break;
-    case CSSValueAppleSystemYellow:
-        color = [PAL::getUIColorClass() systemYellowColor].CGColor;
-        break;
-    default:
-        break;
-    }
+            switch (cssValueID) {
+            case CSSValueAppleWirelessPlaybackTargetActive:
+            case CSSValueAppleSystemBlue:
+                return @selector(systemBlueColor);
+            case CSSValueAppleSystemGray:
+                return @selector(systemGrayColor);
+            case CSSValueAppleSystemGreen:
+                return @selector(systemGreenColor);
+            case CSSValueAppleSystemOrange:
+                return @selector(systemOrangeColor);
+            case CSSValueAppleSystemPink:
+                return @selector(systemPinkColor);
+            case CSSValueAppleSystemPurple:
+                return @selector(systemPurpleColor);
+            case CSSValueAppleSystemRed:
+                return @selector(systemRedColor);
+            case CSSValueAppleSystemYellow:
+                return @selector(systemYellowColor);
+            default:
+                return nullptr;
+            }
+        };
 
-    if (!color.isValid())
-        color = RenderTheme::systemColor(cssValueID, options);
+        if (auto selector = cssColorToSelector()) {
+            if (auto color = wtfObjCMsgSend<UIColor *>(PAL::getUIColorClass(), selector))
+                return Color(color.CGColor, Color::Semantic);
+        }
 
-    addResult.iterator->value = color;
-
-    return addResult.iterator->value;
+        return RenderTheme::systemColor(cssValueID, options);
+    }).iterator->value;
 }
 
 #if ENABLE(ATTACHMENT_ELEMENT)
@@ -1660,13 +1658,13 @@ static RetainPtr<UIImage> iconForAttachment(const RenderAttachment& attachment, 
         else
             UTI = UTIFromMIMEType(attachmentType);
 
-#if !PLATFORM(WATCHOS)
+#if PLATFORM(IOS)
         [documentInteractionController setUTI:static_cast<NSString *>(UTI)];
 #endif
     }
 
     RetainPtr<UIImage> result;
-#if !PLATFORM(WATCHOS)
+#if PLATFORM(IOS)
     NSArray *icons = [documentInteractionController icons];
     if (!icons.count)
         return nil;

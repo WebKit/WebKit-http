@@ -116,9 +116,11 @@ static UIImage *emptyImage()
 
     __block RetainPtr<UIImage> resultImage;
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [_renderer renderDrawing:[_pencilView drawing] completion:^(UIImage *image) {
         resultImage = image;
     }];
+ALLOW_DEPRECATED_DECLARATIONS_END
 
     // FIXME: Ideally we would not synchronously wait for this rendering,
     // but NSFileWrapper requires data synchronously, and our clients expect
@@ -134,7 +136,9 @@ static UIImage *emptyImage()
     RetainPtr<UIImage> image = [self renderedDrawing];
     RetainPtr<NSMutableData> PNGData = adoptNS([[NSMutableData alloc] init]);
     RetainPtr<CGImageDestinationRef> imageDestination = adoptCF(CGImageDestinationCreateWithData((__bridge CFMutableDataRef)PNGData.get(), kUTTypePNG, 1, nil));
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     NSString *base64Drawing = [[[_pencilView drawing] serialize] base64EncodedStringWithOptions:0];
+ALLOW_DEPRECATED_DECLARATIONS_END
     NSDictionary *properties = nil;
     if (base64Drawing) {
         // FIXME: We should put this somewhere less user-facing than the EXIF User Comment field.
@@ -162,7 +166,9 @@ static UIImage *emptyImage()
         return;
     RetainPtr<NSData> drawingData = adoptNS([[NSData alloc] initWithBase64EncodedString:base64Drawing options:0]);
     RetainPtr<PKDrawing> drawing = adoptNS([WebKit::allocPKDrawingInstance() initWithData:drawingData.get() error:nil]);
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [_pencilView setDrawing:drawing.get()];
+ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 - (void)canvasViewDrawingDidChange:(PKCanvasView *)canvasView
@@ -172,7 +178,9 @@ static UIImage *emptyImage()
 
 - (void)_canvasViewWillBeginDrawing:(PKCanvasView *)canvasView
 {
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [_pencilView setInk:_contentView._drawingCoordinator.inkPicker.ink];
+ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 - (void)invalidateAttachment
@@ -191,7 +199,9 @@ static UIImage *emptyImage()
 
 - (void)didChangeInk:(PKInk *)ink
 {
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [_pencilView setInk:ink];
+ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 @end

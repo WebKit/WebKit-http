@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
@@ -75,7 +76,6 @@ typedef NS_ENUM(NSInteger, _WKEditableLinkBehavior) {
 @property (nonatomic, setter=_setSimpleLineLayoutDebugBordersEnabled:) BOOL _simpleLineLayoutDebugBordersEnabled WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 @property (nonatomic, setter=_setAcceleratedDrawingEnabled:) BOOL _acceleratedDrawingEnabled WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 @property (nonatomic, setter=_setDisplayListDrawingEnabled:) BOOL _displayListDrawingEnabled WK_API_AVAILABLE(macosx(10.12), ios(10.0));
-@property (nonatomic, setter=_setVisualViewportEnabled:) BOOL _visualViewportEnabled WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
 @property (nonatomic, setter=_setLargeImageAsyncDecodingEnabled:) BOOL _largeImageAsyncDecodingEnabled WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
 @property (nonatomic, setter=_setAnimatedImageAsyncDecodingEnabled:) BOOL _animatedImageAsyncDecodingEnabled WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
 @property (nonatomic, setter=_setTextAutosizingEnabled:) BOOL _textAutosizingEnabled WK_API_AVAILABLE(macosx(10.12), ios(10.0));
@@ -142,6 +142,8 @@ typedef NS_ENUM(NSInteger, _WKEditableLinkBehavior) {
 - (void)_setEnabled:(BOOL)value forExperimentalFeature:(_WKExperimentalFeature *)feature WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 
 @property (nonatomic, setter=_setShouldEnableTextAutosizingBoost:) BOOL _shouldEnableTextAutosizingBoost WK_API_AVAILABLE(macosx(10.14), ios(12.0));
+
+@property (nonatomic, getter=_isSafeBrowsingEnabled, setter=_setSafeBrowsingEnabled:) BOOL _safeBrowsingEnabled WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (nonatomic, setter=_setStorageAccessPromptsEnabled:) BOOL _storageAccessPromptsEnabled WK_API_AVAILABLE(macosx(10.14), ios(12.0));
 @property (nonatomic, setter=_setColorFilterEnabled:) BOOL _colorFilterEnabled WK_API_AVAILABLE(macosx(10.14), ios(12.0));

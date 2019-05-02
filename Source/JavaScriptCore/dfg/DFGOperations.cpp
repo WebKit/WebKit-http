@@ -503,12 +503,7 @@ EncodedJSValue JIT_OPERATION operationValueAddNotNumber(ExecState* exec, Encoded
     JSValue op1 = JSValue::decode(encodedOp1);
     JSValue op2 = JSValue::decode(encodedOp2);
     
-    ASSERT(!op1.isNumber() || !op2.isNumber());
-    
-    if (op1.isString() && !op2.isObject())
-        return JSValue::encode(jsString(exec, asString(op1), op2.toString(exec)));
-
-    return JSValue::encode(jsAddSlowCase(exec, op1, op2));
+    return JSValue::encode(jsAddNonNumber(exec, op1, op2));
 }
 
 EncodedJSValue JIT_OPERATION operationValueDiv(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
@@ -2897,7 +2892,7 @@ JSCell* JIT_OPERATION operationJSMapFindBucket(ExecState* exec, JSCell* map, Enc
     NativeCallFrameTracer tracer(&vm, exec);
     JSMap::BucketType** bucket = jsCast<JSMap*>(map)->findBucket(exec, JSValue::decode(key), hash);
     if (!bucket)
-        return vm.sentinelMapBucket.get();
+        return vm.sentinelMapBucket();
     return *bucket;
 }
 
@@ -2907,7 +2902,7 @@ JSCell* JIT_OPERATION operationJSSetFindBucket(ExecState* exec, JSCell* map, Enc
     NativeCallFrameTracer tracer(&vm, exec);
     JSSet::BucketType** bucket = jsCast<JSSet*>(map)->findBucket(exec, JSValue::decode(key), hash);
     if (!bucket)
-        return vm.sentinelSetBucket.get();
+        return vm.sentinelSetBucket();
     return *bucket;
 }
 
@@ -2917,7 +2912,7 @@ JSCell* JIT_OPERATION operationSetAdd(ExecState* exec, JSCell* set, EncodedJSVal
     NativeCallFrameTracer tracer(&vm, exec);
     auto* bucket = jsCast<JSSet*>(set)->addNormalized(exec, JSValue::decode(key), JSValue(), hash);
     if (!bucket)
-        return vm.sentinelSetBucket.get();
+        return vm.sentinelSetBucket();
     return bucket;
 }
 
@@ -2927,7 +2922,7 @@ JSCell* JIT_OPERATION operationMapSet(ExecState* exec, JSCell* map, EncodedJSVal
     NativeCallFrameTracer tracer(&vm, exec);
     auto* bucket = jsCast<JSMap*>(map)->addNormalized(exec, JSValue::decode(key), JSValue::decode(value), hash);
     if (!bucket)
-        return vm.sentinelMapBucket.get();
+        return vm.sentinelMapBucket();
     return bucket;
 }
 

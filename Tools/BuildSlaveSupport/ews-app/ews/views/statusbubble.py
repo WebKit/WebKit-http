@@ -32,8 +32,8 @@ import ews.config as config
 
 class StatusBubble(View):
     def _build_bubble(self, build, patch):
-        builder_display_name = build.builder_id  # TODO: fetch display name from buildermapping table https://bugs.webkit.org/show_bug.cgi?id=194599
-        builder_full_name = build.builder_id  # TODO: fetch builder full name from buildermapping table https://bugs.webkit.org/show_bug.cgi?id=194599
+        builder_display_name = build.builder_display_name
+        builder_full_name = build.builder_name
 
         bubble = {
             "name": builder_display_name,

@@ -501,8 +501,6 @@ public:
     
     void postInjectedBundleMessage(const String& messageName, const UserData&);
 
-    bool drawsBackground() const { return m_drawsBackground; }
-
     void setUnderlayColor(const WebCore::Color& color) { m_underlayColor = color; }
     WebCore::Color underlayColor() const { return m_underlayColor; }
 
@@ -664,6 +662,7 @@ public:
     void storeSelectionForAccessibility(bool);
     void startAutoscrollAtPosition(const WebCore::FloatPoint&);
     void cancelAutoscroll();
+    void requestEvasionRectsAboveSelection(CompletionHandler<void(const Vector<WebCore::FloatRect>&)>&&);
 
     void contentSizeCategoryDidChange(const String&);
 
@@ -1148,6 +1147,8 @@ public:
     bool requestDOMPasteAccess();
     WebCore::IntRect rectForElementAtInteractionLocation() const;
 
+    const Optional<WebCore::Color>& backgroundColor() const { return m_backgroundColor; }
+
 private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);
 
@@ -1159,6 +1160,7 @@ private:
     uint64_t messageSenderDestinationID() const override;
 
     void platformInitialize();
+    void platformReinitialize();
     void platformDetach();
     void platformEditorState(WebCore::Frame&, EditorState& result, IncludePostLayoutDataHint) const;
     void sendEditorStateUpdate();
@@ -1283,7 +1285,7 @@ private:
     void setIndicating(bool);
 #endif
 
-    void setDrawsBackground(bool);
+    void setBackgroundColor(const Optional<WebCore::Color>&);
 
 #if PLATFORM(COCOA)
     void setTopContentInsetFenced(float, IPC::Attachment);
@@ -1455,6 +1457,8 @@ private:
 
 #if PLATFORM(COCOA)
     void requestActiveNowPlayingSessionInfo(CallbackID);
+    RetainPtr<NSData> accessibilityRemoteTokenData() const;
+    void accessibilityTransferRemoteToken(RetainPtr<NSData>);
 #endif
 
     void setShouldDispatchFakeMouseMoveEvents(bool dispatch) { m_shouldDispatchFakeMouseMoveEvents = dispatch; }
@@ -1780,7 +1784,7 @@ private:
     bool m_isSuspendedUnderLock { false };
 
     HashSet<String, ASCIICaseInsensitiveHash> m_mimeTypesWithCustomContentProviders;
-    WebCore::Color m_backgroundColor { WebCore::Color::white };
+    Optional<WebCore::Color> m_backgroundColor { WebCore::Color::white };
 
     HashSet<unsigned> m_activeRenderingSuppressionTokens;
     unsigned m_maximumRenderingSuppressionToken { 0 };

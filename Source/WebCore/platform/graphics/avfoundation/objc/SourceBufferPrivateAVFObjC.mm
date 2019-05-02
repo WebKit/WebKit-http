@@ -1031,7 +1031,7 @@ void SourceBufferPrivateAVFObjC::layerDidReceiveError(AVSampleBufferDisplayLayer
 void SourceBufferPrivateAVFObjC::outputObscuredDueToInsufficientExternalProtectionChanged(bool obscured)
 {
 #if ENABLE(ENCRYPTED_MEDIA) && HAVE(AVCONTENTKEYSESSION)
-    if (m_mediaSource->cdmInstance()) {
+    if (m_mediaSource && m_mediaSource->cdmInstance()) {
         m_mediaSource->outputObscuredDueToInsufficientExternalProtectionChanged(obscured);
         return;
     }
@@ -1117,7 +1117,7 @@ void SourceBufferPrivateAVFObjC::enqueueSample(Ref<MediaSample>&& sample, const 
     if (platformSample.type != PlatformSample::CMSampleBufferType)
         return;
 
-    DEBUG_LOG(LOGIDENTIFIER, "track ID = ", trackID, "sample = ", sample.get());
+    DEBUG_LOG(LOGIDENTIFIER, "track ID = ", trackID, ", sample = ", sample.get());
 
     if (trackID == m_enabledVideoTrackID) {
         CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(platformSample.sample.cmSampleBuffer);

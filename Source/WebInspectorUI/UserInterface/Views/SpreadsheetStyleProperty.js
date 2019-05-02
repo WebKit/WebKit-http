@@ -67,6 +67,11 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
                     this._delegate.spreadsheetStylePropertyMouseEnter(event, this);
             });
 
+            new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Slash, () => {
+                this._toggle();
+                this._select();
+            }, this._element);
+
             this._element.copyHandler = this;
         }
     }
@@ -156,9 +161,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             this._checkboxElement.tabIndex = -1;
             this._checkboxElement.addEventListener("click", (event) => {
                 event.stopPropagation();
-                let disabled = !this._checkboxElement.checked;
-                this._property.commentOut(disabled);
-                this.update();
+                this._toggle();
+                console.assert(this._checkboxElement.checked === this._property.enabled);
             });
         }
 
@@ -407,6 +411,20 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
     }
 
     // Private
+
+    _toggle()
+    {
+        this._property.commentOut(this.property.enabled);
+        this.update();
+    }
+
+    _select()
+    {
+        if (this._delegate && this._delegate.spreadsheetStylePropertySelect) {
+            let index = parseInt(this._element.dataset.propertyIndex);
+            this._delegate.spreadsheetStylePropertySelect(index);
+        }
+    }
 
     _isEditable()
     {
@@ -711,7 +729,10 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
     _nameCompletionDataProvider(prefix)
     {
-        return WI.CSSCompletions.cssNameCompletions.startsWith(prefix);
+        return {
+            prefix,
+            completions: WI.CSSCompletions.cssNameCompletions.startsWith(prefix)
+        };
     }
 
     _handleValueBeforeInput(event)
@@ -724,20 +745,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         if (!selection.rangeCount || selection.getRangeAt(0).endOffset !== text.length)
             return;
 
-        // Find the first and last index (if any) of a quote character to ensure that the string
-        // doesn't contain unbalanced quotes. If so, then there's no way that the semicolon could be
-        // part of a string within the value, so we can assume that it's the property "terminator".
-        const quoteRegex = /["']/g;
-        let start = -1;
-        let end = text.length;
-        let match = null;
-        while (match = quoteRegex.exec(text)) {
-            if (start < 0)
-                start = match.index;
-            end = match.index + 1;
-        }
-
-        if (start !== -1 && !text.substring(start, end).hasMatchingEscapedQuotes())
+        let unbalancedCharacters = WI.CSSCompletions.completeUnbalancedValue(text);
+        if (unbalancedCharacters)
             return;
 
         event.preventDefault();
@@ -747,8 +756,17 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
     _valueCompletionDataProvider(prefix)
     {
+        // For "border: 1px so|", we want to suggest "solid" based on "so" prefix.
+        let match = prefix.match(/[a-z0-9()-]+$/i);
+        if (!match)
+            return {completions: [], prefix: ""};
+
+        prefix = match[0];
         let propertyName = this._nameElement.textContent.trim();
-        return WI.CSSKeywordCompletions.forProperty(propertyName).startsWith(prefix);
+        return {
+            prefix,
+            completions: WI.CSSKeywordCompletions.forProperty(propertyName).startsWith(prefix)
+        };
     }
 
     _setupJumpToSymbol(element)

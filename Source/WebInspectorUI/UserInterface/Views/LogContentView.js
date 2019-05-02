@@ -66,12 +66,21 @@ WI.LogContentView = class LogContentView extends WI.ContentView
         this._selectedSearchMatch = null;
         this._selectedSearchMatchIsValid = false;
 
-        this._preserveLogNavigationItem = new WI.CheckboxNavigationItem("perserve-log", WI.UIString("Preserve Log"), !WI.settings.clearLogOnNavigate.value);
+        this._preserveLogNavigationItem = new WI.CheckboxNavigationItem("preserve-log", WI.UIString("Preserve Log"), !WI.settings.clearLogOnNavigate.value);
         this._preserveLogNavigationItem.tooltip = WI.UIString("Do not clear the console on new page loads");
-        this._preserveLogNavigationItem.addEventListener(WI.CheckboxNavigationItem.Event.CheckedDidChange, () => { WI.settings.clearLogOnNavigate.value = !WI.settings.clearLogOnNavigate.value; });
-        WI.settings.clearLogOnNavigate.addEventListener(WI.Setting.Event.Changed, this._clearLogOnNavigateSettingChanged, this);
+        this._preserveLogNavigationItem.addEventListener(WI.CheckboxNavigationItem.Event.CheckedDidChange, () => {
+            WI.settings.clearLogOnNavigate.value = !WI.settings.clearLogOnNavigate.value;
+        });
+        WI.settings.clearLogOnNavigate.addEventListener(WI.Setting.Event.Changed, this._handleClearLogOnNavigateSettingChanged, this);
 
-        this._checkboxsNavigationItemGroup = new WI.GroupNavigationItem([this._preserveLogNavigationItem, new WI.DividerNavigationItem]);
+        this._emulateInUserGestureNavigationItem = new WI.CheckboxNavigationItem("emulate-in-user-gesture", WI.UIString("Emulate User Gesture"), WI.settings.emulateInUserGesture.value);
+        this._emulateInUserGestureNavigationItem.tooltip = WI.UIString("Run console commands as if inside a user gesture");
+        this._emulateInUserGestureNavigationItem.addEventListener(WI.CheckboxNavigationItem.Event.CheckedDidChange, () => {
+            WI.settings.emulateInUserGesture.value = !WI.settings.emulateInUserGesture.value;
+        });
+        WI.settings.emulateInUserGesture.addEventListener(WI.Setting.Event.Changed, this._handleEmulateInUserGestureSettingChanged, this);
+
+        this._checkboxesNavigationItemGroup = new WI.GroupNavigationItem([this._preserveLogNavigationItem, this._emulateInUserGestureNavigationItem, new WI.DividerNavigationItem]);
 
         let scopeBarItems = [
             new WI.ScopeBarItem(WI.LogContentView.Scopes.All, WI.UIString("All"), {exclusive: true}),
@@ -90,6 +99,7 @@ WI.LogContentView = class LogContentView extends WI.ContentView
             let messageChannelBarItems = [
                 new WI.ScopeBarItem(WI.LogContentView.Scopes.AllChannels, WI.UIString("All"), {exclusive: true}),
                 new WI.ScopeBarItem(WI.LogContentView.Scopes.Media, WI.UIString("Media"), {className: "media"}),
+                new WI.ScopeBarItem(WI.LogContentView.Scopes.MediaSource, WI.UIString("MediaSource"), {className: "mediasource"}),
                 new WI.ScopeBarItem(WI.LogContentView.Scopes.WebRTC, WI.UIString("WebRTC"), {className: "webrtc"}),
             ];
 
@@ -136,7 +146,7 @@ WI.LogContentView = class LogContentView extends WI.ContentView
         if (WI.isShowingSplitConsole())
             navigationItems.push(new WI.DividerNavigationItem, this._showConsoleTabNavigationItem);
         else if (WI.isShowingConsoleTab())
-            navigationItems.unshift(this._findBanner, this._checkboxsNavigationItemGroup);
+            navigationItems.unshift(this._findBanner, this._checkboxesNavigationItemGroup);
 
         return navigationItems;
     }
@@ -381,6 +391,8 @@ WI.LogContentView = class LogContentView extends WI.ContentView
             return WI.LogContentView.Scopes.Media;
         case WI.ConsoleMessage.MessageSource.WebRTC:
             return WI.LogContentView.Scopes.WebRTC;
+        case WI.ConsoleMessage.MessageSource.MediaSource:
+            return WI.LogContentView.Scopes.MediaSource;
         }
 
         return undefined;
@@ -520,19 +532,23 @@ WI.LogContentView = class LogContentView extends WI.ContentView
 
         if (!wrapper) {
             // No wrapper under the mouse, so look at the selection to try and find one.
-            if (!selection.isCollapsed) {
-                wrapper = selection.focusNode.parentNode.enclosingNodeOrSelfWithClass(WI.LogContentView.ItemWrapperStyleClassName);
-                selection.removeAllRanges();
-            }
+            if (!selection.isCollapsed)
+                wrapper = selection.focusNode.enclosingNodeOrSelfWithClass(WI.LogContentView.ItemWrapperStyleClassName);
 
-            if (!wrapper)
+            if (!wrapper) {
+                selection.removeAllRanges();
                 return;
+            }
         }
 
         if (!selection.isCollapsed)
             this._clearMessagesSelection();
 
         if (wrapper === this._mouseDownWrapper && !this._mouseMoveIsRowSelection)
+            return;
+
+        // Don't change the selection if the mouse has moved outside of the view (e.g. for faster scrolling).
+        if (!this.element.contains(event.target))
             return;
 
         selection.removeAllRanges();
@@ -645,6 +661,7 @@ WI.LogContentView = class LogContentView extends WI.ContentView
         } else {
             message.classList.add(WI.LogContentView.SelectedStyleClassName);
             this._selectedMessages.push(message);
+            this._selectionRange = null;
         }
 
         if (!rangeSelection)
@@ -844,9 +861,14 @@ WI.LogContentView = class LogContentView extends WI.ContentView
         this.performSearch(this._currentSearchQuery);
     }
 
-    _clearLogOnNavigateSettingChanged()
+    _handleClearLogOnNavigateSettingChanged()
     {
         this._preserveLogNavigationItem.checked = !WI.settings.clearLogOnNavigate.value;
+    }
+
+    _handleEmulateInUserGestureSettingChanged()
+    {
+        this._emulateInUserGestureNavigationItem.checked = WI.settings.emulateInUserGesture.value;
     }
 
     _keyDown(event)
@@ -1045,7 +1067,7 @@ WI.LogContentView = class LogContentView extends WI.ContentView
 
         this.element.classList.add(WI.LogContentView.SearchInProgressStyleClassName);
 
-        let searchRegex = new RegExp(this._currentSearchQuery.escapeForRegExp(), "gi");
+        let searchRegex = WI.SearchUtilities.regExpForString(this._currentSearchQuery, WI.SearchUtilities.defaultSettings);
         this._unfilteredMessageElements().forEach(function(message) {
             let matchRanges = [];
             let text = message.textContent;
@@ -1161,6 +1183,7 @@ WI.LogContentView.Scopes = {
     AllChannels: "log-all-channels",
     Media: "log-media",
     WebRTC: "log-webrtc",
+    MediaSource: "log-mediasource",
 };
 
 WI.LogContentView.ItemWrapperStyleClassName = "console-item";

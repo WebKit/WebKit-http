@@ -34,7 +34,7 @@ WI.TimelineRecordingContentView = class TimelineRecordingContentView extends WI.
 
         this.element.classList.add("timeline-recording");
 
-        this._timelineOverview = new WI.TimelineOverview(this._recording, this);
+        this._timelineOverview = new WI.TimelineOverview(this._recording);
         this._timelineOverview.addEventListener(WI.TimelineOverview.Event.TimeRangeSelectionChanged, this._timeRangeSelectionChanged, this);
         this._timelineOverview.addEventListener(WI.TimelineOverview.Event.RecordSelected, this._recordSelected, this);
         this._timelineOverview.addEventListener(WI.TimelineOverview.Event.TimelineSelected, this._timelineSelected, this);
@@ -55,6 +55,12 @@ WI.TimelineRecordingContentView = class TimelineRecordingContentView extends WI.
         this._filterBarNavigationItem.filterBar.addEventListener(WI.FilterBar.Event.FilterDidChange, this._filterDidChange, this);
         this._timelineContentBrowser.navigationBar.addNavigationItem(this._filterBarNavigationItem);
         this.addSubview(this._timelineContentBrowser);
+
+        this._autoStopCheckboxNavigationItem = new WI.CheckboxNavigationItem("auto-stop-recording", WI.UIString("Stop recording once page loads"), WI.settings.timelinesAutoStop.value);
+        this._autoStopCheckboxNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
+        this._autoStopCheckboxNavigationItem.addEventListener(WI.CheckboxNavigationItem.Event.CheckedDidChange, this._handleAutoStopCheckboxCheckedDidChange, this);
+
+        WI.settings.timelinesAutoStop.addEventListener(WI.Setting.Event.Changed, this._handleTimelinesAutoStopSettingChanged, this);
 
         this._clearTimelineNavigationItem = new WI.ButtonNavigationItem("clear-timeline", WI.UIString("Clear Timeline (%s)").format(WI.clearKeyboardShortcut.displayName), "Images/NavigationItemTrash.svg", 15, 15);
         this._clearTimelineNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
@@ -152,7 +158,11 @@ WI.TimelineRecordingContentView = class TimelineRecordingContentView extends WI.
 
     get navigationItems()
     {
-        return [this._clearTimelineNavigationItem];
+        return [
+            this._autoStopCheckboxNavigationItem,
+            new WI.DividerNavigationItem,
+            this._clearTimelineNavigationItem,
+        ];
     }
 
     get handleCopyEvent()
@@ -260,25 +270,6 @@ WI.TimelineRecordingContentView = class TimelineRecordingContentView extends WI.
 
         const hasChildren = false;
         return new WI.GeneralTreeElement(iconClassName, title, representedObject, hasChildren);
-    }
-
-    // TimelineOverview delegate
-
-    timelineOverviewUserSelectedRecord(timelineOverview, timelineRecord)
-    {
-        let timelineViewForRecord = null;
-        for (let timelineView of this._timelineViewMap.values()) {
-            if (timelineView.representedObject.type === timelineRecord.type) {
-                timelineViewForRecord = timelineView;
-                break;
-            }
-        }
-
-        if (!timelineViewForRecord)
-            return;
-
-        this._timelineContentBrowser.showContentView(timelineViewForRecord);
-        timelineViewForRecord.userSelectedRecordFromOverview(timelineRecord);
     }
 
     // Private
@@ -553,6 +544,16 @@ WI.TimelineRecordingContentView = class TimelineRecordingContentView extends WI.
 
         this._recording.removeEventListener(WI.TimelineRecording.Event.TimesUpdated, this._recordingTimesUpdated, this);
         this._waitingToResetCurrentTime = false;
+    }
+
+    _handleAutoStopCheckboxCheckedDidChange(event)
+    {
+        WI.settings.timelinesAutoStop.value = this._autoStopCheckboxNavigationItem.checked;
+    }
+
+    _handleTimelinesAutoStopSettingChanged(event)
+    {
+        this._autoStopCheckboxNavigationItem.checked = WI.settings.timelinesAutoStop.value;
     }
 
     _clearTimeline(event)

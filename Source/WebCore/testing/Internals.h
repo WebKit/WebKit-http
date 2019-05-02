@@ -225,7 +225,6 @@ public:
     Ref<DOMRect> boundingBox(Element&);
 
     ExceptionOr<Ref<DOMRectList>> inspectorHighlightRects();
-    ExceptionOr<String> inspectorHighlightObject();
 
     ExceptionOr<unsigned> markerCountForNode(Node&, const String&);
     ExceptionOr<RefPtr<Range>> markerRangeForNode(Node&, const String& markerType, unsigned index);
@@ -347,6 +346,7 @@ public:
         LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16,
         LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32,
         LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED = 64,
+        LAYER_TREE_INCLUDES_ROOT_LAYER_PROPERTIES = 128,
     };
     ExceptionOr<String> layerTreeAsText(Document&, unsigned short flags) const;
     ExceptionOr<uint64_t> layerIDForElement(Element&);
@@ -377,6 +377,8 @@ public:
 
     ExceptionOr<void> insertAuthorCSS(const String&) const;
     ExceptionOr<void> insertUserCSS(const String&) const;
+
+    unsigned numberOfIDBTransactions() const;
 
     unsigned numberOfLiveNodes() const;
     unsigned numberOfLiveDocuments() const;
@@ -794,7 +796,7 @@ public:
     };
     Vector<CookieData> getCookies() const;
 
-    void setAlwaysAllowLocalWebarchive() const;
+    void setAlwaysAllowLocalWebarchive(bool);
 
 private:
     explicit Internals(Document&);

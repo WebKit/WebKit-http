@@ -346,6 +346,7 @@ static NSArray *dragAndDropEventNames()
         _shouldAllowMoveOperation = YES;
         [_webView setUIDelegate:self];
         [_webView _setInputDelegate:self];
+        self.dragDestinationAction = WKDragDestinationActionAny & ~WKDragDestinationActionLoad;
     }
     return self;
 }
@@ -766,6 +767,11 @@ static NSArray *dragAndDropEventNames()
 - (void)_webView:(WKWebView *)webView didRemoveAttachment:(_WKAttachment *)attachment
 {
     [_removedAttachments addObject:attachment];
+}
+
+- (WKDragDestinationAction)_webView:(WKWebView *)webView dragDestinationActionMaskForDraggingInfo:(id)draggingInfo
+{
+    return self.dragDestinationAction;
 }
 
 #pragma mark - _WKInputDelegate

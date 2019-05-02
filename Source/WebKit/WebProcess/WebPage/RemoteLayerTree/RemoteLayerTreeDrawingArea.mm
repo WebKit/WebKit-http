@@ -36,6 +36,8 @@
 #import "RemoteScrollingCoordinator.h"
 #import "RemoteScrollingCoordinatorTransaction.h"
 #import "WebPage.h"
+#import "WebPageCreationParameters.h"
+#import "WebPageProxyMessages.h"
 #import "WebProcess.h"
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/DebugPageOverlays.h>
@@ -53,8 +55,8 @@
 namespace WebKit {
 using namespace WebCore;
 
-RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea(WebPage& webPage, const WebPageCreationParameters&)
-    : DrawingArea(DrawingAreaTypeRemoteLayerTree, webPage)
+RemoteLayerTreeDrawingArea::RemoteLayerTreeDrawingArea(WebPage& webPage, const WebPageCreationParameters& parameters)
+    : DrawingArea(DrawingAreaTypeRemoteLayerTree, parameters.drawingAreaIdentifier, webPage)
     , m_remoteLayerTreeContext(std::make_unique<RemoteLayerTreeContext>(webPage))
     , m_rootLayer(GraphicsLayer::create(graphicsLayerFactory(), *this))
     , m_layerFlushTimer(*this, &RemoteLayerTreeDrawingArea::flushLayers)
@@ -145,7 +147,7 @@ void RemoteLayerTreeDrawingArea::updateGeometry(const IntSize& viewSize, bool fl
 
     scheduleCompositingLayerFlush();
 
-    m_webPage.send(Messages::DrawingAreaProxy::DidUpdateGeometry());
+    send(Messages::DrawingAreaProxy::DidUpdateGeometry());
 }
 
 bool RemoteLayerTreeDrawingArea::shouldUseTiledBackingForFrameView(const FrameView& frameView)
@@ -398,10 +400,10 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     m_nextFlushIsForImmediatePaint = false;
     m_waitingForBackingStoreSwap = true;
 
-    m_webPage.send(Messages::RemoteLayerTreeDrawingAreaProxy::WillCommitLayerTree(layerTransaction.transactionID()));
+    send(Messages::RemoteLayerTreeDrawingAreaProxy::WillCommitLayerTree(layerTransaction.transactionID()));
 
     Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree message(layerTransaction, scrollingTransaction);
-    auto commitEncoder = std::make_unique<IPC::Encoder>(Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::receiverName(), Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::name(), m_webPage.pageID());
+    auto commitEncoder = std::make_unique<IPC::Encoder>(Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::receiverName(), Messages::RemoteLayerTreeDrawingAreaProxy::CommitLayerTree::name(), m_identifier.toUInt64());
     commitEncoder->encode(message.arguments());
 
     // FIXME: Move all backing store flushing management to RemoteLayerBackingStoreCollection.
@@ -499,7 +501,7 @@ void RemoteLayerTreeDrawingArea::BackingStoreFlusher::flush()
     m_connection->sendMessage(WTFMove(m_commitEncoder), { });
 }
 
-void RemoteLayerTreeDrawingArea::activityStateDidChange(OptionSet<WebCore::ActivityState::Flag>, ActivityStateChangeID activityStateChangeID, const Vector<CallbackID>&)
+void RemoteLayerTreeDrawingArea::activityStateDidChange(OptionSet<WebCore::ActivityState::Flag>, ActivityStateChangeID activityStateChangeID, const Vector<CallbackID>& callbackIDs)
 {
     // FIXME: Should we suspend painting while not visible, like TiledCoreAnimationDrawingArea? Probably.
 
@@ -508,6 +510,11 @@ void RemoteLayerTreeDrawingArea::activityStateDidChange(OptionSet<WebCore::Activ
         m_activityStateChangeID = activityStateChangeID;
         scheduleCompositingLayerFlushImmediately();
     }
+
+    // FIXME: We may want to match behavior in TiledCoreAnimationDrawingArea by firing these callbacks after the next compositing flush, rather than immediately after
+    // handling an activity state change.
+    for (auto& callbackID : callbackIDs)
+        m_webPage.send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
 void RemoteLayerTreeDrawingArea::addTransactionCallbackID(CallbackID callbackID)
@@ -524,6 +531,15 @@ bool RemoteLayerTreeDrawingArea::dispatchDidReachLayoutMilestone(OptionSet<WebCo
 {
     m_pendingNewlyReachedLayoutMilestones.add(layoutMilestones);
     return true;
+}
+
+void RemoteLayerTreeDrawingArea::adoptLayersFromDrawingArea(DrawingArea& oldDrawingArea)
+{
+    RELEASE_ASSERT(oldDrawingArea.type() == type());
+
+    RemoteLayerTreeDrawingArea& oldRemoteDrawingArea = static_cast<RemoteLayerTreeDrawingArea&>(oldDrawingArea);
+
+    m_remoteLayerTreeContext->adoptLayersFromContext(*oldRemoteDrawingArea.m_remoteLayerTreeContext);
 }
 
 } // namespace WebKit

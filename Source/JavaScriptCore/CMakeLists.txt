@@ -228,9 +228,19 @@ add_custom_command(
     COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/generator/main.rb --bytecodes_h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h --init_bytecodes_asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm --bytecode_structs_h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h --bytecode_indices_h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeIndices.h ${JAVASCRIPTCORE_DIR}/bytecode/BytecodeList.rb
     VERBATIM)
 
+
+if (WTF_OS_MAC_OS_X)
+    execute_process(COMMAND bash -c "date +'%s'" OUTPUT_VARIABLE BUILD_TIME OUTPUT_STRIP_TRAILING_WHITESPACE)
+else ()
+    set(BUILD_TIME 0)
+endif ()
+
+file(WRITE ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeCacheVersion.h "#define JSC_BYTECODE_CACHE_VERSION ${BUILD_TIME}\n")
+
 list(APPEND JavaScriptCore_HEADERS
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeCacheVersion.h
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h
 )
 
 if (WIN32)
@@ -849,6 +859,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/JSModuleLoader.h
     runtime/JSModuleRecord.h
     runtime/JSNativeStdFunction.h
+    runtime/JSNonDestructibleProxy.h
     runtime/JSONObject.h
     runtime/JSObject.h
     runtime/JSObjectInlines.h
@@ -1085,7 +1096,6 @@ set(JavaScriptCore_INSPECTOR_DOMAINS
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Inspector.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/LayerTree.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Network.json
-    ${JAVASCRIPTCORE_DIR}/inspector/protocol/OverlayTypes.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Page.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Recording.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Runtime.json
@@ -1178,7 +1188,6 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/MapPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ModuleLoader.js
     ${JAVASCRIPTCORE_DIR}/builtins/NumberConstructor.js
-    ${JAVASCRIPTCORE_DIR}/builtins/NumberPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/ObjectConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/PromiseConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/PromiseOperations.js

@@ -121,7 +121,7 @@ Lock crashLock;
         CRASH(); \
     } while (false)
 
-std::unique_ptr<Compilation> compileProc(Procedure& procedure, unsigned optLevel = defaultOptLevel())
+std::unique_ptr<Compilation> compileProc(Procedure& procedure, unsigned optLevel = Options::defaultB3OptLevel())
 {
     procedure.setOptLevel(optLevel);
     return std::make_unique<Compilation>(B3::compile(procedure));
@@ -660,7 +660,7 @@ void testAddArgZeroImmZDef()
 
 void testAddLoadTwice()
 {
-    auto test = [&] (unsigned optLevel) {
+    auto test = [&] () {
         Procedure proc;
         BasicBlock* root = proc.addBlock();
         int32_t value = 42;
@@ -671,12 +671,11 @@ void testAddLoadTwice()
             proc, Return, Origin(),
             root->appendNew<Value>(proc, Add, Origin(), load, load));
 
-        auto code = compileProc(proc, optLevel);
+        auto code = compileProc(proc);
         CHECK(invoke<int32_t>(*code) == 42 * 2);
     };
 
-    test(0);
-    test(1);
+    test();
 }
 
 void testAddArgDouble(double a)
@@ -1012,7 +1011,7 @@ void testMulArgs32(int a, int b)
 
 void testMulLoadTwice()
 {
-    auto test = [&] (unsigned optLevel) {
+    auto test = [&] () {
         Procedure proc;
         BasicBlock* root = proc.addBlock();
         int32_t value = 42;
@@ -1023,13 +1022,11 @@ void testMulLoadTwice()
             proc, Return, Origin(),
             root->appendNew<Value>(proc, Mul, Origin(), load, load));
 
-        auto code = compileProc(proc, optLevel);
+        auto code = compileProc(proc);
         CHECK(invoke<int32_t>(*code) == 42 * 42);
     };
 
-    test(0);
-    test(1);
-    test(2);
+    test();
 }
 
 void testMulAddArgsLeft()
@@ -2486,6 +2483,41 @@ void testBitAndSameArg(int64_t a)
     CHECK(compileAndRun<int64_t>(proc, a) == a);
 }
 
+void testBitAndNotNot(int64_t a, int64_t b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* argA = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* argB = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    Value* notA = root->appendNew<Value>(proc, BitXor, Origin(), argA, root->appendNew<Const64Value>(proc, Origin(), -1));
+    Value* notB = root->appendNew<Value>(proc, BitXor, Origin(), argB, root->appendNew<Const64Value>(proc, Origin(), -1));
+    root->appendNewControlValue(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, BitAnd, Origin(),
+            notA,
+            notB));
+
+    CHECK_EQ(compileAndRun<int64_t>(proc, a, b), (~a & ~b));
+}
+
+void testBitAndNotImm(int64_t a, int64_t b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* argA = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* notA = root->appendNew<Value>(proc, BitXor, Origin(), argA, root->appendNew<Const64Value>(proc, Origin(), -1));
+    Value* cstB = root->appendNew<Const64Value>(proc, Origin(), b);
+    root->appendNewControlValue(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, BitAnd, Origin(),
+            notA,
+            cstB));
+
+    CHECK_EQ(compileAndRun<int64_t>(proc, a, b), (~a & b));
+}
+
 void testBitAndImms(int64_t a, int64_t b)
 {
     Procedure proc;
@@ -2870,6 +2902,91 @@ void testBitOrSameArg(int64_t a)
     CHECK(compileAndRun<int64_t>(proc, a) == a);
 }
 
+void testBitOrAndAndArgs(int64_t a, int64_t b, int64_t c)
+{
+    // We want to check every possible ordering of arguments (to properly check every path in B3ReduceStrength):
+    // ((a & b) | (a & c))
+    // ((a & b) | (c & a))
+    // ((b & a) | (a & c))
+    // ((b & a) | (c & a))
+    for (int i = 0; i < 4; ++i) {
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* argA = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+        Value* argB = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+        Value* argC = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2);
+        Value* andAB = i & 2 ? root->appendNew<Value>(proc, BitAnd, Origin(), argA, argB)
+            : root->appendNew<Value>(proc, BitAnd, Origin(), argB, argA);
+        Value* andAC = i & 1 ? root->appendNew<Value>(proc, BitAnd, Origin(), argA, argC)
+            : root->appendNew<Value>(proc, BitAnd, Origin(), argC, argA);
+        root->appendNewControlValue(
+            proc, Return, Origin(),
+            root->appendNew<Value>(
+                proc, BitOr, Origin(),
+                andAB,
+                andAC));
+
+        CHECK_EQ(compileAndRun<int64_t>(proc, a, b, c), ((a & b) | (a & c)));
+    }
+}
+
+void testBitOrAndSameArgs(int64_t a, int64_t b)
+{
+    // We want to check every possible ordering of arguments (to properly check every path in B3ReduceStrength):
+    // ((a & b) | a)
+    // ((b & a) | a)
+    // (a | (a & b))
+    // (a | (b & a))
+    for (int i = 0; i < 4; ++i) {
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* argA = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+        Value* argB = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+        Value* andAB = i & 1 ? root->appendNew<Value>(proc, BitAnd, Origin(), argA, argB)
+            : root->appendNew<Value>(proc, BitAnd, Origin(), argB, argA);
+        Value* result = i & 2 ? root->appendNew<Value>(proc, BitOr, Origin(), andAB, argA)
+            : root->appendNew<Value>(proc, BitOr, Origin(), argA, andAB);
+        root->appendNewControlValue(proc, Return, Origin(), result);
+
+        CHECK_EQ(compileAndRun<int64_t>(proc, a, b), ((a & b) | a));
+    }
+}
+
+void testBitOrNotNot(int64_t a, int64_t b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* argA = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* argB = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+    Value* notA = root->appendNew<Value>(proc, BitXor, Origin(), argA, root->appendNew<Const64Value>(proc, Origin(), -1));
+    Value* notB = root->appendNew<Value>(proc, BitXor, Origin(), argB, root->appendNew<Const64Value>(proc, Origin(), -1));
+    root->appendNewControlValue(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, BitOr, Origin(),
+            notA,
+            notB));
+
+    CHECK_EQ(compileAndRun<int64_t>(proc, a, b), (~a | ~b));
+}
+
+void testBitOrNotImm(int64_t a, int64_t b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    Value* argA = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+    Value* notA = root->appendNew<Value>(proc, BitXor, Origin(), argA, root->appendNew<Const64Value>(proc, Origin(), -1));
+    Value* cstB = root->appendNew<Const64Value>(proc, Origin(), b);
+    root->appendNewControlValue(
+        proc, Return, Origin(),
+        root->appendNew<Value>(
+            proc, BitOr, Origin(),
+            notA,
+            cstB));
+    
+    CHECK_EQ(compileAndRun<int64_t>(proc, a, b), (~a | b));
+}
+
 void testBitOrImms(int64_t a, int64_t b)
 {
     Procedure proc;
@@ -3232,6 +3349,56 @@ void testBitXorSameArg(int64_t a)
     CHECK(!compileAndRun<int64_t>(proc, a));
 }
 
+void testBitXorAndAndArgs(int64_t a, int64_t b, int64_t c)
+{
+    // We want to check every possible ordering of arguments (to properly check every path in B3ReduceStrength):
+    // ((a & b) ^ (a & c))
+    // ((a & b) ^ (c & a))
+    // ((b & a) ^ (a & c))
+    // ((b & a) ^ (c & a))
+    for (int i = 0; i < 4; ++i) {
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* argA = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+        Value* argB = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+        Value* argC = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR2);
+        Value* andAB = i & 2 ? root->appendNew<Value>(proc, BitAnd, Origin(), argA, argB)
+            : root->appendNew<Value>(proc, BitAnd, Origin(), argB, argA);
+        Value* andAC = i & 1 ? root->appendNew<Value>(proc, BitAnd, Origin(), argA, argC)
+            : root->appendNew<Value>(proc, BitAnd, Origin(), argC, argA);
+        root->appendNewControlValue(
+            proc, Return, Origin(),
+            root->appendNew<Value>(
+                proc, BitXor, Origin(),
+                andAB,
+                andAC));
+
+        CHECK_EQ(compileAndRun<int64_t>(proc, a, b, c), ((a & b) ^ (a & c)));
+    }
+}
+
+void testBitXorAndSameArgs(int64_t a, int64_t b)
+{
+    // We want to check every possible ordering of arguments (to properly check every path in B3ReduceStrength):
+    // ((a & b) ^ a)
+    // ((b & a) ^ a)
+    // (a ^ (a & b))
+    // (a ^ (b & a))
+    for (int i = 0; i < 4; ++i) {
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* argA = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
+        Value* argB = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
+        Value* andAB = i & 1 ? root->appendNew<Value>(proc, BitAnd, Origin(), argA, argB)
+            : root->appendNew<Value>(proc, BitAnd, Origin(), argB, argA);
+        Value* result = i & 2 ? root->appendNew<Value>(proc, BitXor, Origin(), andAB, argA)
+            : root->appendNew<Value>(proc, BitXor, Origin(), argA, andAB);
+        root->appendNewControlValue(proc, Return, Origin(), result);
+        
+        CHECK_EQ(compileAndRun<int64_t>(proc, a, b), ((a & b) ^ a));
+    }
+}
+
 void testBitXorImms(int64_t a, int64_t b)
 {
     Procedure proc;
@@ -3521,7 +3688,7 @@ void testBitNotMem32(int32_t a)
     CHECK(isIdentical(input, static_cast<int32_t>((static_cast<uint32_t>(a) ^ 0xffffffff))));
 }
 
-void testBitNotOnBooleanAndBranch32(int64_t a, int64_t b)
+void testNotOnBooleanAndBranch32(int64_t a, int64_t b)
 {
     Procedure proc;
     BasicBlock* root = proc.addBlock();
@@ -3534,7 +3701,7 @@ void testBitNotOnBooleanAndBranch32(int64_t a, int64_t b)
         root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
     Value* argsAreEqual = root->appendNew<Value>(proc, Equal, Origin(), arg1, arg2);
     Value* argsAreNotEqual = root->appendNew<Value>(proc, BitXor, Origin(),
-        root->appendNew<Const32Value>(proc, Origin(), -1),
+        root->appendNew<Const32Value>(proc, Origin(), 1),
         argsAreEqual);
 
     root->appendNewControlValue(
@@ -3551,6 +3718,35 @@ void testBitNotOnBooleanAndBranch32(int64_t a, int64_t b)
         elseCase->appendNew<Const32Value>(proc, Origin(), -42));
 
     int32_t expectedValue = (a != b) ? 42 : -42;
+    CHECK(compileAndRun<int32_t>(proc, a, b) == expectedValue);
+}
+
+void testBitNotOnBooleanAndBranch32(int64_t a, int64_t b)
+{
+    Procedure proc;
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* thenCase = proc.addBlock();
+    BasicBlock* elseCase = proc.addBlock();
+
+    Value* arg1 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+    Value* arg2 = root->appendNew<Value>(proc, Trunc, Origin(),
+        root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1));
+    Value* argsAreEqual = root->appendNew<Value>(proc, Equal, Origin(), arg1, arg2);
+    Value* bitNotArgsAreEqual = root->appendNew<Value>(proc, BitXor, Origin(),
+        root->appendNew<Const32Value>(proc, Origin(), -1),
+        argsAreEqual);
+
+    root->appendNewControlValue(proc, Branch, Origin(),
+        bitNotArgsAreEqual, FrequentedBlock(thenCase), FrequentedBlock(elseCase));
+
+    thenCase->appendNewControlValue(proc, Return, Origin(),
+        thenCase->appendNew<Const32Value>(proc, Origin(), 42));
+
+    elseCase->appendNewControlValue(proc, Return, Origin(),
+        elseCase->appendNew<Const32Value>(proc, Origin(), -42));
+
+    static constexpr int32_t expectedValue = 42;
     CHECK(compileAndRun<int32_t>(proc, a, b) == expectedValue);
 }
 
@@ -8257,6 +8453,13 @@ void testSimplePatchpointWithOuputClobbersGPArgs()
     // spill everything else.
 
     Procedure proc;
+    if (proc.optLevel() < 1) {
+        // FIXME: Air O0 allocator can't handle such programs. We rely on WasmAirIRGenerator
+        // to not use any such constructs where the register allocator is cornered in such
+        // a way.
+        // https://bugs.webkit.org/show_bug.cgi?id=194633
+        return;
+    }
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
     Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
@@ -8330,6 +8533,13 @@ void testSimplePatchpointWithoutOuputClobbersFPArgs()
 void testSimplePatchpointWithOuputClobbersFPArgs()
 {
     Procedure proc;
+    if (proc.optLevel() < 1) {
+        // FIXME: Air O0 allocator can't handle such programs. We rely on WasmAirIRGenerator
+        // to not use any such constructs where the register allocator is cornered in such
+        // a way.
+        // https://bugs.webkit.org/show_bug.cgi?id=194633
+        return;
+    }
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
     Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR1);
@@ -8380,10 +8590,13 @@ void testPatchpointWithEarlyClobber()
         patchpoint->append(ConstrainedValue(arg1, ValueRep::SomeRegister));
         patchpoint->append(ConstrainedValue(arg2, ValueRep::SomeRegister));
         patchpoint->clobberEarly(RegisterSet(registerToClobber));
+        unsigned optLevel = proc.optLevel();
         patchpoint->setGenerator(
             [&] (CCallHelpers& jit, const StackmapGenerationParams& params) {
-                CHECK((params[1].gpr() == GPRInfo::argumentGPR0) == arg1InArgGPR);
-                CHECK((params[2].gpr() == GPRInfo::argumentGPR1) == arg2InArgGPR);
+                if (optLevel > 1) {
+                    CHECK((params[1].gpr() == GPRInfo::argumentGPR0) == arg1InArgGPR);
+                    CHECK((params[2].gpr() == GPRInfo::argumentGPR1) == arg2InArgGPR);
+                }
                 
                 add32(jit, params[1].gpr(), params[2].gpr(), params[0].gpr());
             });
@@ -8719,6 +8932,8 @@ void testPatchpointWithAnyResult()
 void testSimpleCheck()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
     CheckValue* check = root->appendNew<CheckValue>(proc, Check, Origin(), arg);
@@ -8748,9 +8963,11 @@ void testCheckFalse()
     BasicBlock* root = proc.addBlock();
     CheckValue* check = root->appendNew<CheckValue>(
         proc, Check, Origin(), root->appendNew<Const32Value>(proc, Origin(), 0));
+    unsigned optLevel = proc.optLevel();
     check->setGenerator(
         [&] (CCallHelpers&, const StackmapGenerationParams&) {
-            CHECK(!"This should not have executed");
+            if (optLevel > 1)
+                CHECK(!"This should not have executed");
         });
     root->appendNewControlValue(
         proc, Return, Origin(), root->appendNew<Const32Value>(proc, Origin(), 0));
@@ -8763,13 +8980,17 @@ void testCheckFalse()
 void testCheckTrue()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     CheckValue* check = root->appendNew<CheckValue>(
         proc, Check, Origin(), root->appendNew<Const32Value>(proc, Origin(), 1));
+    unsigned optLevel = proc.optLevel();
     check->setGenerator(
         [&] (CCallHelpers& jit, const StackmapGenerationParams& params) {
             AllowMacroScratchRegisterUsage allowScratch(jit);
-            CHECK(params.value()->opcode() == Patchpoint);
+            if (optLevel > 1)
+                CHECK(params.value()->opcode() == Patchpoint);
             CHECK(!params.size());
 
             // This should always work because a function this simple should never have callee
@@ -8789,6 +9010,8 @@ void testCheckTrue()
 void testCheckLessThan()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -8824,6 +9047,8 @@ void testCheckLessThan()
 void testCheckMegaCombo()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* base = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
     Value* index = root->appendNew<Value>(
@@ -8876,6 +9101,8 @@ void testCheckMegaCombo()
 void testCheckTrickyMegaCombo()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* base = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
     Value* index = root->appendNew<Value>(
@@ -8931,6 +9158,8 @@ void testCheckTrickyMegaCombo()
 void testCheckTwoMegaCombos()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* base = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
     Value* index = root->appendNew<Value>(
@@ -8995,6 +9224,8 @@ void testCheckTwoMegaCombos()
 void testCheckTwoNonRedundantMegaCombos()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     
     BasicBlock* root = proc.addBlock();
     BasicBlock* thenCase = proc.addBlock();
@@ -9088,6 +9319,8 @@ void testCheckTwoNonRedundantMegaCombos()
 void testCheckAddImm()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -9124,6 +9357,8 @@ void testCheckAddImm()
 void testCheckAddImmCommute()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -9160,6 +9395,8 @@ void testCheckAddImmCommute()
 void testCheckAddImmSomeRegister()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -9195,6 +9432,8 @@ void testCheckAddImmSomeRegister()
 void testCheckAdd()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -9232,6 +9471,8 @@ void testCheckAdd()
 void testCheckAdd64()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
     Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
@@ -9269,9 +9510,11 @@ void testCheckAddFold(int a, int b)
     Value* arg1 = root->appendNew<Const32Value>(proc, Origin(), a);
     Value* arg2 = root->appendNew<Const32Value>(proc, Origin(), b);
     CheckValue* checkAdd = root->appendNew<CheckValue>(proc, CheckAdd, Origin(), arg1, arg2);
+    unsigned optLevel = proc.optLevel();
     checkAdd->setGenerator(
         [&] (CCallHelpers&, const StackmapGenerationParams&) {
-            CHECK(!"Should have been folded");
+            if (optLevel > 1)
+                CHECK(!"Should have been folded");
         });
     root->appendNewControlValue(proc, Return, Origin(), checkAdd);
 
@@ -9283,6 +9526,8 @@ void testCheckAddFold(int a, int b)
 void testCheckAddFoldFail(int a, int b)
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Const32Value>(proc, Origin(), a);
     Value* arg2 = root->appendNew<Const32Value>(proc, Origin(), b);
@@ -9384,6 +9629,8 @@ void testCheckAddArgumentAliasing32()
 void testCheckAddSelfOverflow64()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
     CheckValue* checkAdd = root->appendNew<CheckValue>(proc, CheckAdd, Origin(), arg, arg);
@@ -9413,6 +9660,8 @@ void testCheckAddSelfOverflow64()
 void testCheckAddSelfOverflow32()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -9444,6 +9693,8 @@ void testCheckAddSelfOverflow32()
 void testCheckSubImm()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -9480,6 +9731,8 @@ void testCheckSubImm()
 void testCheckSubBadImm()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -9522,6 +9775,8 @@ void testCheckSubBadImm()
 void testCheckSub()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -9564,6 +9819,8 @@ NEVER_INLINE double doubleSub(double a, double b)
 void testCheckSub64()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
     Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
@@ -9601,9 +9858,11 @@ void testCheckSubFold(int a, int b)
     Value* arg1 = root->appendNew<Const32Value>(proc, Origin(), a);
     Value* arg2 = root->appendNew<Const32Value>(proc, Origin(), b);
     CheckValue* checkSub = root->appendNew<CheckValue>(proc, CheckSub, Origin(), arg1, arg2);
+    unsigned optLevel = proc.optLevel();
     checkSub->setGenerator(
         [&] (CCallHelpers&, const StackmapGenerationParams&) {
-            CHECK(!"Should have been folded");
+            if (optLevel > 1)
+                CHECK(!"Should have been folded");
         });
     root->appendNewControlValue(proc, Return, Origin(), checkSub);
 
@@ -9615,6 +9874,8 @@ void testCheckSubFold(int a, int b)
 void testCheckSubFoldFail(int a, int b)
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Const32Value>(proc, Origin(), a);
     Value* arg2 = root->appendNew<Const32Value>(proc, Origin(), b);
@@ -9636,6 +9897,8 @@ void testCheckSubFoldFail(int a, int b)
 void testCheckNeg()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Const32Value>(proc, Origin(), 0);
     Value* arg2 = root->appendNew<Value>(
@@ -9668,6 +9931,8 @@ void testCheckNeg()
 void testCheckNeg64()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Const64Value>(proc, Origin(), 0);
     Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
@@ -9698,6 +9963,8 @@ void testCheckNeg64()
 void testCheckMul()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -9735,6 +10002,8 @@ void testCheckMul()
 void testCheckMulMemory()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
 
     int left;
@@ -9787,6 +10056,8 @@ void testCheckMulMemory()
 void testCheckMul2()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
         proc, Trunc, Origin(),
@@ -9823,6 +10094,8 @@ void testCheckMul2()
 void testCheckMul64()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0);
     Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1);
@@ -9860,9 +10133,11 @@ void testCheckMulFold(int a, int b)
     Value* arg1 = root->appendNew<Const32Value>(proc, Origin(), a);
     Value* arg2 = root->appendNew<Const32Value>(proc, Origin(), b);
     CheckValue* checkMul = root->appendNew<CheckValue>(proc, CheckMul, Origin(), arg1, arg2);
+    unsigned optLevel = proc.optLevel();
     checkMul->setGenerator(
         [&] (CCallHelpers&, const StackmapGenerationParams&) {
-            CHECK(!"Should have been folded");
+            if (optLevel > 1)
+                CHECK(!"Should have been folded");
         });
     root->appendNewControlValue(proc, Return, Origin(), checkMul);
 
@@ -9874,6 +10149,8 @@ void testCheckMulFold(int a, int b)
 void testCheckMulFoldFail(int a, int b)
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Const32Value>(proc, Origin(), a);
     Value* arg2 = root->appendNew<Const32Value>(proc, Origin(), b);
@@ -9975,6 +10252,8 @@ void testCheckMulArgumentAliasing32()
 void testCheckMul64SShr()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
     Value* arg1 = root->appendNew<Value>(
         proc, SShr, Origin(),
@@ -10625,7 +10904,7 @@ void testLinearScanWithCalleeOnStack()
 
     // Compiling with 1 as the optimization level enforces the use of linear scan
     // for register allocation.
-    auto code = compileProc(proc, 1);
+    auto code = compileProc(proc);
     CHECK_EQ(invoke<int>(*code, 41, 1), 42);
 
     Options::airLinearScanSpillsEverything() = original;
@@ -12180,6 +12459,8 @@ void testSelectInvert()
 void testCheckSelect()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
 
     CheckValue* check = root->appendNew<CheckValue>(
@@ -12222,6 +12503,8 @@ void testCheckSelect()
 void testCheckSelectCheckSelect()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
 
     CheckValue* check = root->appendNew<CheckValue>(
@@ -12295,6 +12578,8 @@ void testCheckSelectCheckSelect()
 void testCheckSelectAndCSE()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     BasicBlock* root = proc.addBlock();
 
     auto* selectValue = root->appendNew<Value>(
@@ -13029,6 +13314,13 @@ void testSpillUseLargerThanDef()
 void testLateRegister()
 {
     Procedure proc;
+
+    if (!proc.optLevel()) {
+        // FIXME: Make O0 handle such situations:
+        // https://bugs.webkit.org/show_bug.cgi?id=194633
+        return;
+    }
+
     BasicBlock* root = proc.addBlock();
 
     // This works by making all but 1 register be input to the first patchpoint as LateRegister.
@@ -13340,6 +13632,8 @@ void testInterpreter()
 void testReduceStrengthCheckBottomUseInAnotherBlock()
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     
     BasicBlock* one = proc.addBlock();
     BasicBlock* two = proc.addBlock();
@@ -13782,11 +14076,12 @@ void testSomeEarlyRegister()
         if (succeed)
             patchpoint->resultConstraint = ValueRep::SomeEarlyRegister;
         bool ranSecondPatchpoint = false;
+        unsigned optLevel = proc.optLevel();
         patchpoint->setGenerator(
             [&] (CCallHelpers&, const StackmapGenerationParams& params) {
                 if (succeed)
                     CHECK(params[0].gpr() != params[1].gpr());
-                else
+                else if (optLevel > 1)
                     CHECK(params[0].gpr() == params[1].gpr());
                 ranSecondPatchpoint = true;
             });
@@ -13912,6 +14207,13 @@ void testTerminalPatchpointThatNeedsToBeSpilled2()
 {
     // This is a unit test for how FTL's heap allocation fast paths behave.
     Procedure proc;
+
+    // FIXME: Air O0/O1 allocator can't handle such programs. We rely on WasmAirIRGenerator
+    // to not use any such constructs where the register allocator is cornered in such
+    // a way.
+    // https://bugs.webkit.org/show_bug.cgi?id=194633
+    if (proc.optLevel() < 2)
+        return;
     
     BasicBlock* root = proc.addBlock();
     BasicBlock* one = proc.addBlock();
@@ -14372,9 +14674,11 @@ void testPinRegisters()
             a, b, c);
         PatchpointValue* patchpoint = root->appendNew<PatchpointValue>(proc, Void, Origin());
         patchpoint->appendSomeRegister(d);
+        unsigned optLevel = proc.optLevel();
         patchpoint->setGenerator(
             [&] (CCallHelpers&, const StackmapGenerationParams& params) {
-                CHECK_EQ(params[0].gpr(), GPRInfo::regCS0);
+                if (optLevel > 1)
+                    CHECK_EQ(params[0].gpr(), GPRInfo::regCS0);
             });
         root->appendNew<Value>(proc, Return, Origin());
         auto code = compileProc(proc);
@@ -14389,6 +14693,11 @@ void testPinRegisters()
                             usesCSRs |= csrs.get(tmp.reg());
                     });
             }
+        }
+        if (proc.optLevel() < 2) {
+            // Our less good register allocators may use the
+            // pinned CSRs in a move.
+            usesCSRs = false;
         }
         for (const RegisterAtOffset& regAtOffset : proc.calleeSaveRegisterAtOffsetList())
             usesCSRs |= csrs.get(regAtOffset.reg());
@@ -14417,7 +14726,10 @@ void testX86LeaAddAddShlLeft()
     root->appendNew<Value>(proc, Return, Origin(), result);
     
     auto code = compileProc(proc);
-    checkUsesInstruction(*code, "lea 0x64(%rdi,%rsi,4), %rax");
+    if (proc.optLevel() > 1)
+        checkUsesInstruction(*code, "lea 0x64(%rdi,%rsi,4), %rax");
+    else
+        checkUsesInstruction(*code, "lea");
     CHECK_EQ(invoke<intptr_t>(*code, 1, 2), (1 + (2 << 2)) + 100);
 }
 
@@ -14439,7 +14751,10 @@ void testX86LeaAddAddShlRight()
     root->appendNew<Value>(proc, Return, Origin(), result);
     
     auto code = compileProc(proc);
-    checkUsesInstruction(*code, "lea 0x64(%rdi,%rsi,4), %rax");
+    if (proc.optLevel() > 1)
+        checkUsesInstruction(*code, "lea 0x64(%rdi,%rsi,4), %rax");
+    else
+        checkUsesInstruction(*code, "lea");
     CHECK_EQ(invoke<intptr_t>(*code, 1, 2), (1 + (2 << 2)) + 100);
 }
 
@@ -14459,13 +14774,15 @@ void testX86LeaAddAdd()
     
     auto code = compileProc(proc);
     CHECK_EQ(invoke<intptr_t>(*code, 1, 2), (1 + 2) + 100);
-    checkDisassembly(
-        *code,
-        [&] (const char* disassembly) -> bool {
-            return strstr(disassembly, "lea 0x64(%rdi,%rsi), %rax")
-                || strstr(disassembly, "lea 0x64(%rsi,%rdi), %rax");
-        },
-        "Expected to find something like lea 0x64(%rdi,%rsi), %rax but didn't!");
+    if (proc.optLevel() > 1) {
+        checkDisassembly(
+            *code,
+            [&] (const char* disassembly) -> bool {
+                return strstr(disassembly, "lea 0x64(%rdi,%rsi), %rax")
+                    || strstr(disassembly, "lea 0x64(%rsi,%rdi), %rax");
+            },
+            "Expected to find something like lea 0x64(%rdi,%rsi), %rax but didn't!");
+    }
 }
 
 void testX86LeaAddShlRight()
@@ -14483,7 +14800,10 @@ void testX86LeaAddShlRight()
     root->appendNew<Value>(proc, Return, Origin(), result);
     
     auto code = compileProc(proc);
-    checkUsesInstruction(*code, "lea (%rdi,%rsi,4), %rax");
+    if (proc.optLevel() > 1)
+        checkUsesInstruction(*code, "lea (%rdi,%rsi,4), %rax");
+    else
+        checkUsesInstruction(*code, "lea");
     CHECK_EQ(invoke<intptr_t>(*code, 1, 2), 1 + (2 << 2));
 }
 
@@ -14503,13 +14823,15 @@ void testX86LeaAddShlLeftScale1()
     
     auto code = compileProc(proc);
     CHECK_EQ(invoke<intptr_t>(*code, 1, 2), 1 + 2);
-    checkDisassembly(
-        *code,
-        [&] (const char* disassembly) -> bool {
-            return strstr(disassembly, "lea (%rdi,%rsi), %rax")
-                || strstr(disassembly, "lea (%rsi,%rdi), %rax");
-        },
-        "Expected to find something like lea (%rdi,%rsi), %rax but didn't!");
+    if (proc.optLevel() > 1) {
+        checkDisassembly(
+            *code,
+            [&] (const char* disassembly) -> bool {
+                return strstr(disassembly, "lea (%rdi,%rsi), %rax")
+                    || strstr(disassembly, "lea (%rsi,%rdi), %rax");
+            },
+            "Expected to find something like lea (%rdi,%rsi), %rax but didn't!");
+    }
 }
 
 void testX86LeaAddShlLeftScale2()
@@ -14527,7 +14849,10 @@ void testX86LeaAddShlLeftScale2()
     root->appendNew<Value>(proc, Return, Origin(), result);
     
     auto code = compileProc(proc);
-    checkUsesInstruction(*code, "lea (%rdi,%rsi,2), %rax");
+    if (proc.optLevel() > 1)
+        checkUsesInstruction(*code, "lea (%rdi,%rsi,2), %rax");
+    else
+        checkUsesInstruction(*code, "lea");
     CHECK_EQ(invoke<intptr_t>(*code, 1, 2), 1 + (2 << 1));
 }
 
@@ -14546,7 +14871,10 @@ void testX86LeaAddShlLeftScale4()
     root->appendNew<Value>(proc, Return, Origin(), result);
     
     auto code = compileProc(proc);
-    checkUsesInstruction(*code, "lea (%rdi,%rsi,4), %rax");
+    if (proc.optLevel() > 1)
+        checkUsesInstruction(*code, "lea (%rdi,%rsi,4), %rax");
+    else
+        checkUsesInstruction(*code, "lea");
     CHECK_EQ(invoke<intptr_t>(*code, 1, 2), 1 + (2 << 2));
 }
 
@@ -14565,7 +14893,10 @@ void testX86LeaAddShlLeftScale8()
     root->appendNew<Value>(proc, Return, Origin(), result);
     
     auto code = compileProc(proc);
-    checkUsesInstruction(*code, "lea (%rdi,%rsi,8), %rax");
+    if (proc.optLevel() > 1)
+        checkUsesInstruction(*code, "lea (%rdi,%rsi,8), %rax");
+    else
+        checkUsesInstruction(*code, "lea");
     CHECK_EQ(invoke<intptr_t>(*code, 1, 2), 1 + (2 << 3));
 }
 
@@ -14684,7 +15015,7 @@ void testLoadBaseIndexShift2()
                     root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR1),
                     root->appendNew<Const32Value>(proc, Origin(), 2)))));
     auto code = compileProc(proc);
-    if (isX86())
+    if (isX86() && proc.optLevel() > 1)
         checkUsesInstruction(*code, "(%rdi,%rsi,4)");
     int32_t value = 12341234;
     char* ptr = bitwise_cast<char*>(&value);
@@ -14719,6 +15050,9 @@ void testLoadBaseIndexShift32()
 void testOptimizeMaterialization()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
+
     BasicBlock* root = proc.addBlock();
     root->appendNew<CCallValue>(
         proc, Void, Origin(),
@@ -14847,6 +15181,10 @@ static void noOpFunction()
 void testLICMPure()
 {
     Procedure proc;
+
+    if (proc.optLevel() < 2)
+        return;
+
     generateLoop(
         proc,
         [&] (BasicBlock* loop, Value*) -> Value* {
@@ -14864,6 +15202,8 @@ void testLICMPure()
 void testLICMPureSideExits()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
     generateLoop(
         proc,
         [&] (BasicBlock* loop, Value*) -> Value* {
@@ -14887,6 +15227,8 @@ void testLICMPureSideExits()
 void testLICMPureWritesPinned()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
     generateLoop(
         proc,
         [&] (BasicBlock* loop, Value*) -> Value* {
@@ -14910,6 +15252,8 @@ void testLICMPureWritesPinned()
 void testLICMPureWrites()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
     generateLoop(
         proc,
         [&] (BasicBlock* loop, Value*) -> Value* {
@@ -14952,6 +15296,8 @@ void testLICMReadsLocalState()
 void testLICMReadsPinned()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
     generateLoop(
         proc,
         [&] (BasicBlock* loop, Value*) -> Value* {
@@ -14971,6 +15317,8 @@ void testLICMReadsPinned()
 void testLICMReads()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
     generateLoop(
         proc,
         [&] (BasicBlock* loop, Value*) -> Value* {
@@ -14990,6 +15338,8 @@ void testLICMReads()
 void testLICMPureNotBackwardsDominant()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
     auto array = makeArrayForLoops();
     generateLoopNotBackwardsDominant(
         proc, array,
@@ -15026,6 +15376,8 @@ void testLICMPureFoiledByChild()
 void testLICMPureNotBackwardsDominantFoiledByChild()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
     auto array = makeArrayForLoops();
     generateLoopNotBackwardsDominant(
         proc, array,
@@ -15140,6 +15492,8 @@ void testLICMWritesPinned()
 void testLICMControlDependent()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
     generateLoop(
         proc,
         [&] (BasicBlock* loop, Value*) -> Value* {
@@ -15159,6 +15513,8 @@ void testLICMControlDependent()
 void testLICMControlDependentNotBackwardsDominant()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
     auto array = makeArrayForLoops();
     generateLoopNotBackwardsDominant(
         proc, array,
@@ -15229,6 +15585,8 @@ void testLICMReadsPinnedWritesPinned()
 void testLICMReadsWritesDifferentHeaps()
 {
     Procedure proc;
+    if (proc.optLevel() < 2)
+        return;
     generateLoop(
         proc,
         [&] (BasicBlock* loop, Value*) -> Value* {
@@ -16010,6 +16368,8 @@ void testDepend64()
 void testWasmBoundsCheck(unsigned offset)
 {
     Procedure proc;
+    if (proc.optLevel() < 1)
+        return;
     GPRReg pinned = GPRInfo::argumentGPR1;
     proc.pinRegister(pinned);
 
@@ -16377,28 +16737,30 @@ double negativeZero()
     return -zero();
 }
 
+#define PREFIX "O", Options::defaultB3OptLevel(), ": "
+
 #define RUN_NOW(test) do {                      \
         if (!shouldRun(#test))                  \
             break;                              \
-        dataLog(#test "...\n");                 \
+        dataLog(PREFIX #test "...\n");          \
         test;                                   \
-        dataLog(#test ": OK!\n");               \
+        dataLog(PREFIX #test ": OK!\n");        \
     } while (false)
-#define RUN(test) do {                          \
-        if (!shouldRun(#test))                  \
-            break;                              \
-        tasks.append(                           \
-            createSharedTask<void()>(           \
-                [&] () {                        \
-                    dataLog(#test "...\n");     \
-                    test;                       \
-                    dataLog(#test ": OK!\n");   \
-                }));                            \
+#define RUN(test) do {                                 \
+        if (!shouldRun(#test))                         \
+            break;                                     \
+        tasks.append(                                  \
+            createSharedTask<void()>(                  \
+                [&] () {                               \
+                    dataLog(PREFIX #test "...\n");     \
+                    test;                              \
+                    dataLog(PREFIX #test ": OK!\n");   \
+                }));                                   \
     } while (false);
 
 #define RUN_UNARY(test, values) \
     for (auto a : values) {                             \
-        CString testStr = toCString(#test, "(", a.name, ")"); \
+        CString testStr = toCString(PREFIX #test, "(", a.name, ")"); \
         if (!shouldRun(testStr.data()))                 \
             continue;                                   \
         tasks.append(createSharedTask<void()>(          \
@@ -16412,7 +16774,7 @@ double negativeZero()
 #define RUN_BINARY(test, valuesA, valuesB) \
     for (auto a : valuesA) {                                \
         for (auto b : valuesB) {                            \
-            CString testStr = toCString(#test, "(", a.name, ", ", b.name, ")"); \
+            CString testStr = toCString(PREFIX #test, "(", a.name, ", ", b.name, ")"); \
             if (!shouldRun(testStr.data()))                 \
                 continue;                                   \
             tasks.append(createSharedTask<void()>(          \
@@ -16423,11 +16785,25 @@ double negativeZero()
                 }));                                        \
         }                                                   \
     }
+#define RUN_TERNARY(test, valuesA, valuesB, valuesC) \
+    for (auto a : valuesA) {                                    \
+        for (auto b : valuesB) {                                \
+            for (auto c : valuesC) {                            \
+                CString testStr = toCString(#test, "(", a.name, ", ", b.name, ",", c.name, ")"); \
+                if (!shouldRun(testStr.data()))                 \
+                    continue;                                   \
+                tasks.append(createSharedTask<void()>(          \
+                    [=] () {                                    \
+                        dataLog(toCString(testStr, "...\n"));   \
+                        test(a.value, b.value, c.value);        \
+                        dataLog(toCString(testStr, ": OK!\n")); \
+                    }));                                        \
+            }                                                   \
+        }                                                       \
+    }
 
 void run(const char* filter)
 {
-    JSC::initializeThreading();
-
     Deque<RefPtr<SharedTask<void()>>> tasks;
 
     auto shouldRun = [&] (const char* testName) -> bool {
@@ -16751,6 +17127,8 @@ void run(const char* filter)
     RUN_BINARY(testBitAndArgImmFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
     RUN_BINARY(testBitAndImmsFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
     RUN_BINARY(testBitAndArgsFloatWithUselessDoubleConversion, floatingPointOperands<float>(), floatingPointOperands<float>());
+    RUN_BINARY(testBitAndNotNot, int64Operands(), int64Operands());
+    RUN_BINARY(testBitAndNotImm, int64Operands(), int64Operands());
 
     RUN(testBitOrArgs(43, 43));
     RUN(testBitOrArgs(43, 0));
@@ -16813,6 +17191,10 @@ void run(const char* filter)
     RUN_BINARY(testBitOrArgImmFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
     RUN_BINARY(testBitOrImmsFloat, floatingPointOperands<float>(), floatingPointOperands<float>());
     RUN_BINARY(testBitOrArgsFloatWithUselessDoubleConversion, floatingPointOperands<float>(), floatingPointOperands<float>());
+    RUN_TERNARY(testBitOrAndAndArgs, int64Operands(), int64Operands(), int64Operands());
+    RUN_BINARY(testBitOrAndSameArgs, int64Operands(), int64Operands());
+    RUN_BINARY(testBitOrNotNot, int64Operands(), int64Operands());
+    RUN_BINARY(testBitOrNotImm, int64Operands(), int64Operands());
 
     RUN_BINARY(testBitXorArgs, int64Operands(), int64Operands());
     RUN_UNARY(testBitXorSameArg, int64Operands());
@@ -16851,6 +17233,8 @@ void run(const char* filter)
     RUN(testBitXorImmBitXorArgImm32(7, 2, 3));
     RUN(testBitXorImmBitXorArgImm32(6, 1, 6));
     RUN(testBitXorImmBitXorArgImm32(24, 0xffff, 7));
+    RUN_TERNARY(testBitXorAndAndArgs, int64Operands(), int64Operands(), int64Operands());
+    RUN_BINARY(testBitXorAndSameArgs, int64Operands(), int64Operands());
 
     RUN_UNARY(testBitNotArg, int64Operands());
     RUN_UNARY(testBitNotImm, int64Operands());
@@ -16858,6 +17242,7 @@ void run(const char* filter)
     RUN_UNARY(testBitNotArg32, int32Operands());
     RUN_UNARY(testBitNotImm32, int32Operands());
     RUN_UNARY(testBitNotMem32, int32Operands());
+    RUN_BINARY(testNotOnBooleanAndBranch32, int32Operands(), int32Operands());
     RUN_BINARY(testBitNotOnBooleanAndBranch32, int32Operands(), int32Operands());
 
     RUN(testShlArgs(1, 0));
@@ -17995,6 +18380,7 @@ void run(const char* filter)
     for (auto& thread : threads)
         thread->waitForCompletion();
     crashLock.lock();
+    crashLock.unlock();
 }
 
 } // anonymous namespace
@@ -18021,8 +18407,14 @@ int main(int argc, char** argv)
         usage();
         break;
     }
+
+    JSC::initializeThreading();
     
-    run(filter);
+    for (unsigned i = 0; i <= 2; ++i) {
+        JSC::Options::defaultB3OptLevel() = i;
+        run(filter);
+    }
+
     return 0;
 }
 

@@ -93,6 +93,8 @@
 #include "HistoryController.h"
 #include "HistoryItem.h"
 #include "HitTestResult.h"
+#include "IDBRequest.h"
+#include "IDBTransaction.h"
 #include "InspectorClient.h"
 #include "InspectorController.h"
 #include "InspectorFrontendClientLocal.h"
@@ -115,9 +117,6 @@
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
 #include "NetworkLoadInformation.h"
-#if USE(CG)
-#include "PDFDocumentImage.h"
-#endif
 #include "Page.h"
 #include "PageCache.h"
 #include "PageOverlay.h"
@@ -181,15 +180,18 @@
 #include <JavaScriptCore/InspectorFrontendChannel.h>
 #include <JavaScriptCore/JSCInlines.h>
 #include <JavaScriptCore/JSCJSValue.h>
+#include <wtf/HexNumber.h>
 #include <wtf/JSONValues.h>
 #include <wtf/Language.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/URLHelpers.h>
-#include <wtf/text/StringBuffer.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringConcatenateNumbers.h>
-#include <wtf/text/StringView.h>
+
+#if USE(CG)
+#include "PDFDocumentImage.h"
+#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
@@ -619,7 +621,7 @@ ExceptionOr<double> Internals::svgAnimationsInterval(SVGSVGElement& element) con
 
 String Internals::address(Node& node)
 {
-    return String::format("%p", &node);
+    return makeString("0x", hex(reinterpret_cast<uintptr_t>(&node)));
 }
 
 bool Internals::nodeNeedsStyleRecalc(Node& node)
@@ -1543,15 +1545,6 @@ ExceptionOr<Ref<DOMRectList>> Internals::inspectorHighlightRects()
     return DOMRectList::create(highlight.quads);
 }
 
-ExceptionOr<String> Internals::inspectorHighlightObject()
-{
-    Document* document = contextDocument();
-    if (!document || !document->page())
-        return Exception { InvalidAccessError };
-
-    return document->page()->inspectorController().buildObjectForHighlightedNodes()->toJSONString();
-}
-
 ExceptionOr<unsigned> Internals::markerCountForNode(Node& node, const String& markerType)
 {
     OptionSet<DocumentMarker::MarkerType> markerTypes;
@@ -1721,7 +1714,10 @@ ExceptionOr<void> Internals::setViewIsTransparent(bool transparent)
     Document* document = contextDocument();
     if (!document || !document->view())
         return Exception { InvalidAccessError };
-    document->view()->updateBackgroundRecursively(transparent);
+    Optional<Color> backgroundColor;
+    if (transparent)
+        backgroundColor = Color(Color::transparent);
+    document->view()->updateBackgroundRecursively(backgroundColor);
     return { };
 }
 
@@ -2383,6 +2379,11 @@ ExceptionOr<unsigned> Internals::countFindMatches(const String& text, const Vect
     return document->page()->countFindMatches(text, parsedOptions.releaseReturnValue(), 1000);
 }
 
+unsigned Internals::numberOfIDBTransactions() const
+{
+    return IDBTransaction::numberOfIDBTransactions;
+}
+
 unsigned Internals::numberOfLiveNodes() const
 {
     unsigned nodeCount = 0;
@@ -2515,6 +2516,8 @@ static LayerTreeFlags toLayerTreeFlags(unsigned short flags)
         layerTreeFlags |= LayerTreeFlagsIncludeAcceleratesDrawing;
     if (flags & Internals::LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED)
         layerTreeFlags |= LayerTreeFlagsIncludeBackingStoreAttached;
+    if (flags & Internals::LAYER_TREE_INCLUDES_ROOT_LAYER_PROPERTIES)
+        layerTreeFlags |= LayerTreeFlagsIncludeRootLayerProperties;
 
     return layerTreeFlags;
 }
@@ -4935,12 +4938,12 @@ auto Internals::getCookies() const -> Vector<CookieData>
     });
 }
 
-void Internals::setAlwaysAllowLocalWebarchive() const
+void Internals::setAlwaysAllowLocalWebarchive(bool alwaysAllowLocalWebarchive)
 {
-    auto* document = contextDocument();
-    if (!document)
+    auto* localFrame = frame();
+    if (!localFrame)
         return;
-    document->setAlwaysAllowLocalWebarchive();
+    localFrame->loader().setAlwaysAllowLocalWebarchive(alwaysAllowLocalWebarchive);
 }
 
 } // namespace WebCore

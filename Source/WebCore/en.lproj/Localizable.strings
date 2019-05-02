@@ -47,6 +47,9 @@
 "%@ Web Content" = "%@ Web Content";
 
 /* Visible name of the web process. The argument is the application name. */
+"%@ Web Content (Cached)" = "%@ Web Content (Cached)";
+
+/* Visible name of the web process. The argument is the application name. */
 "%@ Web Content (Prewarmed)" = "%@ Web Content (Prewarmed)";
 
 /* Visible name of Web Inspector's web process. The argument is the application name. */
@@ -1252,9 +1255,6 @@
 /* accessibility label for return to real time button */
 "return to realtime" = "return to realtime";
 
-/* accessibility role description for a horizontal rule [<hr>] */
-"separator" = "separator";
-
 /* An ARIA accessibility group that contains a search feature of a website. */
 "search" = "search";
 
@@ -1272,6 +1272,9 @@
 
 /* Verb stating the action that will occur when a radio button is clicked, as used by accessibility */
 "select" = "select";
+
+/* accessibility role description for a horizontal rule [<hr>] */
+"separator" = "separator";
 
 /* HTTP result code string */
 "server error" = "server error";

@@ -71,9 +71,9 @@ struct WebPageCreationParameters {
     
     WebPreferencesStore store;
     DrawingAreaType drawingAreaType;
+    DrawingAreaIdentifier drawingAreaIdentifier;
     WebPageGroupData pageGroupData;
 
-    bool drawsBackground;
     bool isEditable;
 
     WebCore::Color underlayColor;
@@ -193,6 +193,8 @@ struct WebPageCreationParameters {
 #if ENABLE(CONTENT_EXTENSIONS)
     Vector<std::pair<String, WebCompiledContentRuleListData>> contentRuleLists;
 #endif
+
+    Optional<WebCore::Color> backgroundColor;
 };
 
 } // namespace WebKit

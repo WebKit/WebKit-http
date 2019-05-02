@@ -214,6 +214,8 @@ private:
     RefPtr<UniqueIDBDatabaseTransaction> takeNextRunnableTransaction(bool& hadDeferredTransactions);
 
     bool prepareToFinishTransaction(UniqueIDBDatabaseTransaction&);
+    
+    void clearStalePendingOpenDBRequests();
 
     void postDatabaseTask(CrossThreadTask&&);
     void postDatabaseTaskReply(CrossThreadTask&&);
@@ -250,6 +252,7 @@ private:
     HashMap<uint64_t, GetResultCallback> m_getResultCallbacks;
     HashMap<uint64_t, GetAllResultsCallback> m_getAllResultsCallbacks;
     HashMap<uint64_t, CountCallback> m_countCallbacks;
+    Deque<uint64_t> m_callbackQueue;
 
     Timer m_operationAndTransactionTimer;
 

@@ -60,6 +60,7 @@
 #include "Settings.h"
 #include "TiledBacking.h"
 #include "TransformState.h"
+#include <wtf/HexNumber.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/SetForScope.h>
 #include <wtf/text/CString.h>
@@ -1169,8 +1170,11 @@ void RenderLayerCompositor::updateBackingAndHierarchy(RenderLayer& layer, Vector
             layerBacking->updateDebugIndicators(m_showDebugBorders, m_showRepaintCounter);
         }
         
-        if (layerNeedsUpdate || layer.needsCompositingGeometryUpdate() || layer.needsScrollingTreeUpdate())
+        OptionSet<ScrollingNodeChangeFlags> scrollingNodeChanges = { ScrollingNodeChangeFlags::Layer };
+        if (layerNeedsUpdate || layer.needsCompositingGeometryUpdate() || layer.needsScrollingTreeUpdate()) {
             layerBacking->updateGeometry();
+            scrollingNodeChanges.add(ScrollingNodeChangeFlags::LayerGeometry);
+        }
 
         if (auto* reflection = layer.reflectionLayer()) {
             if (auto* reflectionBacking = reflection->backing()) {
@@ -1185,7 +1189,7 @@ void RenderLayerCompositor::updateBackingAndHierarchy(RenderLayer& layer, Vector
 
         // FIXME: do based on dirty flags. Need to do this for changes of geometry, configuration and hierarchy.
         // Need to be careful to do the right thing when a scroll-coordinated layer loses a scroll-coordinated ancestor.
-        stateForDescendants.parentNodeID = updateScrollCoordinationForLayer(layer, scrollingTreeState, layerBacking->coordinatedScrollingRoles(), { ScrollingNodeChangeFlags::Layer, ScrollingNodeChangeFlags::LayerGeometry });
+        stateForDescendants.parentNodeID = updateScrollCoordinationForLayer(layer, scrollingTreeState, layerBacking->coordinatedScrollingRoles(), scrollingNodeChanges);
         stateForDescendants.nextChildIndex = 0;
 
 #if !LOG_DISABLED
@@ -1320,10 +1324,8 @@ void RenderLayerCompositor::logLayerInfo(const RenderLayer& layer, const char* p
     absoluteBounds.move(layer.offsetFromAncestor(m_renderView.layer()));
     
     StringBuilder logString;
-    logString.append(String::format("%*p id %" PRIu64 " (%.3f,%.3f-%.3f,%.3f) %.2fKB", 12 + depth * 2, &layer, backing->graphicsLayer()->primaryLayerID(),
-        absoluteBounds.x().toFloat(), absoluteBounds.y().toFloat(), absoluteBounds.maxX().toFloat(), absoluteBounds.maxY().toFloat(),
-        backing->backingStoreMemoryEstimate() / 1024));
-    
+    logString.append(makeString(pad(' ', 12 + depth * 2, hex(reinterpret_cast<uintptr_t>(&layer))), " id ", backing->graphicsLayer()->primaryLayerID(), " (", FormattedNumber::fixedWidth(absoluteBounds.x().toFloat(), 3), ',', FormattedNumber::fixedWidth(absoluteBounds.y().toFloat(), 3), '-', FormattedNumber::fixedWidth(absoluteBounds.maxX().toFloat(), 3), ',', FormattedNumber::fixedWidth(absoluteBounds.maxY().toFloat(), 3), ") ", FormattedNumber::fixedWidth(backing->backingStoreMemoryEstimate() / 1024, 2), "KB"));
+
     if (!layer.renderer().style().hasAutoZIndex())
         logString.append(makeString(" z-index: ", layer.renderer().style().zIndex()));
 
@@ -1918,6 +1920,8 @@ String RenderLayerCompositor::layerTreeAsText(LayerTreeFlags flags)
         layerTreeBehavior |= LayerTreeAsTextIncludeAcceleratesDrawing;
     if (flags & LayerTreeFlagsIncludeBackingStoreAttached)
         layerTreeBehavior |= LayerTreeAsTextIncludeBackingStoreAttached;
+    if (flags & LayerTreeFlagsIncludeRootLayerProperties)
+        layerTreeBehavior |= LayerTreeAsTextIncludeRootLayerProperties;
 
     // We skip dumping the scroll and clip layers to keep layerTreeAsText output
     // similar between platforms.
@@ -1925,7 +1929,7 @@ String RenderLayerCompositor::layerTreeAsText(LayerTreeFlags flags)
 
     // Dump an empty layer tree only if the only composited layer is the main frame's tiled backing,
     // so that tests expecting us to drop out of accelerated compositing when there are no layers succeed.
-    if (!hasContentCompositingLayers() && documentUsesTiledBacking() && !(layerTreeBehavior & LayerTreeAsTextIncludeTileCaches))
+    if (!hasContentCompositingLayers() && documentUsesTiledBacking() && !(layerTreeBehavior & LayerTreeAsTextIncludeTileCaches) && !(layerTreeBehavior & LayerTreeAsTextIncludeRootLayerProperties))
         layerTreeText = emptyString();
 
     // The true root layer is not included in the dump, so if we want to report
@@ -1989,6 +1993,8 @@ void RenderLayerCompositor::repaintCompositedLayers()
 
 void RenderLayerCompositor::recursiveRepaintLayer(RenderLayer& layer)
 {
+    layer.updateLayerListsIfNeeded();
+
     // FIXME: This method does not work correctly with transforms.
     if (layer.isComposited() && !layer.backing()->paintsIntoCompositedAncestor())
         layer.setBackingNeedsRepaint();

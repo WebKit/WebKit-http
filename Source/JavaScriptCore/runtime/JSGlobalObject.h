@@ -83,6 +83,7 @@ class GlobalCodeBlock;
 class IndirectEvalExecutable;
 class InputCursor;
 class IntlObject;
+class IntlCollator;
 class JSArrayBuffer;
 class JSArrayBufferPrototype;
 class JSCallee;
@@ -129,9 +130,6 @@ template<typename Watchpoint> class ObjectPropertyChangeAdaptiveWatchpoint;
 
 #define FOR_EACH_SIMPLE_BUILTIN_TYPE_WITH_CONSTRUCTOR(macro) \
     macro(String, string, stringObject, StringObject, String, object) \
-    macro(Symbol, symbol, symbolObject, SymbolObject, Symbol, object) \
-    macro(Number, number, numberObject, NumberObject, Number, object) \
-    macro(Boolean, boolean, booleanObject, BooleanObject, Boolean, object) \
     macro(Error, error, error, ErrorInstance, Error, object) \
     macro(Map, map, map, JSMap, Map, object) \
     macro(Set, set, set, JSSet, Set, object) \
@@ -148,7 +146,10 @@ template<typename Watchpoint> class ObjectPropertyChangeAdaptiveWatchpoint;
     macro(JSInternalPromise, internalPromise, internalPromise, JSInternalPromise, InternalPromise, object) \
 
 #define FOR_EACH_LAZY_BUILTIN_TYPE(macro) \
+    macro(Boolean, boolean, booleanObject, BooleanObject, Boolean, object) \
     macro(Date, date, date, DateInstance, Date, object) \
+    macro(Number, number, numberObject, NumberObject, Number, object) \
+    macro(Symbol, symbol, symbolObject, SymbolObject, Symbol, object) \
     DEFINE_STANDARD_BUILTIN(macro, WeakMap, weakMap) \
     DEFINE_STANDARD_BUILTIN(macro, WeakSet, weakSet) \
 
@@ -276,6 +277,11 @@ public:
 
 #if ENABLE(INTL)
     WriteBarrier<IntlObject> m_intlObject;
+    WriteBarrier<IntlCollator> m_defaultCollator;
+    LazyProperty<JSGlobalObject, Structure> m_collatorStructure;
+    LazyProperty<JSGlobalObject, Structure> m_numberFormatStructure;
+    LazyProperty<JSGlobalObject, Structure> m_dateTimeFormatStructure;
+    LazyProperty<JSGlobalObject, Structure> m_pluralRulesStructure;
 #endif
     WriteBarrier<NullGetterFunction> m_nullGetterFunction;
     WriteBarrier<NullSetterFunction> m_nullSetterFunction;
@@ -456,7 +462,11 @@ public:
     InlineWatchpointSet& mapSetWatchpoint() { return m_mapSetWatchpoint; }
     InlineWatchpointSet& setAddWatchpoint() { return m_setAddWatchpoint; }
     InlineWatchpointSet& arraySpeciesWatchpoint() { return m_arraySpeciesWatchpoint; }
-    InlineWatchpointSet& numberToStringWatchpoint() { return m_numberToStringWatchpoint; }
+    InlineWatchpointSet& numberToStringWatchpoint()
+    {
+        RELEASE_ASSERT(VM::canUseJIT());
+        return m_numberToStringWatchpoint;
+    }
     // If this hasn't been invalidated, it means the array iterator protocol
     // is not observable to user code yet.
     InlineWatchpointSet m_arrayIteratorProtocolWatchpoint;
@@ -582,7 +592,7 @@ public:
     JSInternalPromiseConstructor* internalPromiseConstructor() const { return m_internalPromiseConstructor.get(); }
 
 #if ENABLE(INTL)
-    IntlObject* intlObject() const { return m_intlObject.get(); }
+    IntlCollator* defaultCollator(ExecState*);
 #endif
 
     NullGetterFunction* nullGetterFunction() const { return m_nullGetterFunction.get(); }
@@ -618,12 +628,12 @@ public:
     ObjectPrototype* objectPrototype() const { return m_objectPrototype.get(); }
     FunctionPrototype* functionPrototype() const { return m_functionPrototype.get(); }
     ArrayPrototype* arrayPrototype() const { return m_arrayPrototype.get(); }
-    BooleanPrototype* booleanPrototype() const { return m_booleanPrototype.get(); }
+    JSObject* booleanPrototype() const { return m_booleanObjectStructure.prototypeInitializedOnMainThread(this); }
     StringPrototype* stringPrototype() const { return m_stringPrototype.get(); }
-    SymbolPrototype* symbolPrototype() const { return m_symbolPrototype.get(); }
-    NumberPrototype* numberPrototype() const { return m_numberPrototype.get(); }
+    JSObject* numberPrototype() const { return m_numberObjectStructure.prototypeInitializedOnMainThread(this); }
     BigIntPrototype* bigIntPrototype() const { return m_bigIntPrototype.get(); }
     JSObject* datePrototype() const { return m_dateStructure.prototype(this); }
+    JSObject* symbolPrototype() const { return m_symbolObjectStructure.prototypeInitializedOnMainThread(this); }
     RegExpPrototype* regExpPrototype() const { return m_regExpPrototype.get(); }
     ErrorPrototype* errorPrototype() const { return m_errorPrototype.get(); }
     IteratorPrototype* iteratorPrototype() const { return m_iteratorPrototype.get(); }
@@ -671,7 +681,7 @@ public:
         return originalArrayStructureForIndexingType(structure->indexingMode() | IsArray) == structure;
     }
         
-    Structure* booleanObjectStructure() const { return m_booleanObjectStructure.get(); }
+    Structure* booleanObjectStructure() const { return m_booleanObjectStructure.get(this); }
     Structure* callbackConstructorStructure() const { return m_callbackConstructorStructure.get(this); }
     Structure* callbackFunctionStructure() const { return m_callbackFunctionStructure.get(this); }
     Structure* callbackObjectStructure() const { return m_callbackObjectStructure.get(this); }
@@ -684,6 +694,7 @@ public:
     Structure* glibWrapperObjectStructure() const { return m_glibWrapperObjectStructure.get(this); }
 #endif
     Structure* dateStructure() const { return m_dateStructure.get(this); }
+    Structure* symbolObjectStructure() const { return m_symbolObjectStructure.get(this); }
     Structure* nullPrototypeObjectStructure() const { return m_nullPrototypeObjectStructure.get(); }
     Structure* errorStructure() const { return m_errorStructure.get(); }
     Structure* errorStructure(ErrorType errorType) const
@@ -734,14 +745,13 @@ public:
     Structure* getterSetterStructure() const { return m_getterSetterStructure.get(); }
     Structure* nativeStdFunctionStructure() const { return m_nativeStdFunctionStructure.get(this); }
     PropertyOffset functionNameOffset() const { return m_functionNameOffset; }
-    Structure* numberObjectStructure() const { return m_numberObjectStructure.get(); }
+    Structure* numberObjectStructure() const { return m_numberObjectStructure.get(this); }
     Structure* mapStructure() const { return m_mapStructure.get(); }
     Structure* regExpStructure() const { return m_regExpStructure.get(); }
     Structure* generatorFunctionStructure() const { return m_generatorFunctionStructure.get(); }
     Structure* asyncFunctionStructure() const { return m_asyncFunctionStructure.get(); }
     Structure* asyncGeneratorFunctionStructure() const { return m_asyncGeneratorFunctionStructure.get(); }
     Structure* stringObjectStructure() const { return m_stringObjectStructure.get(); }
-    Structure* symbolObjectStructure() const { return m_symbolObjectStructure.get(); }
     Structure* bigIntObjectStructure() const { return m_bigIntObjectStructure.get(); }
     Structure* iteratorResultObjectStructure() const { return m_iteratorResultObjectStructure.get(); }
     Structure* regExpMatchesArrayStructure() const { return m_regExpMatchesArrayStructure.get(); }
@@ -759,6 +769,12 @@ public:
     Structure* webAssemblyWrapperFunctionStructure() const { return m_webAssemblyWrapperFunctionStructure.get(); }
     Structure* webAssemblyToJSCalleeStructure() const { return m_webAssemblyToJSCalleeStructure.get(); }
 #endif // ENABLE(WEBASSEMBLY)
+#if ENABLE(INTL)
+    Structure* collatorStructure() { return m_collatorStructure.get(this); }
+    Structure* numberFormatStructure() { return m_numberFormatStructure.get(this); }
+    Structure* dateTimeFormatStructure() { return m_dateTimeFormatStructure.get(this); }
+    Structure* pluralRulesStructure() { return m_pluralRulesStructure.get(this); }
+#endif // ENABLE(INTL)
 
     JS_EXPORT_PRIVATE void setRemoteDebuggingEnabled(bool);
     JS_EXPORT_PRIVATE bool remoteDebuggingEnabled() const;

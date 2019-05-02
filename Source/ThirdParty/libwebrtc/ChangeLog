@@ -1,3 +1,22 @@
+2019-02-23  Keith Miller  <keith_miller@apple.com>
+
+        Add new mac target numbers
+        https://bugs.webkit.org/show_bug.cgi?id=194955
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2019-02-20  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add SDKVariant.xcconfig to various Xcode projects
+        https://bugs.webkit.org/show_bug.cgi?id=194869
+
+        Rubber-stamped by Jer Noble.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+
 2019-02-04  David Kilzer  <ddkilzer@apple.com>
 
         vp8e_mr_alloc_mem() leaks LOWER_RES_FRAME_INFO if second memory allocation fails

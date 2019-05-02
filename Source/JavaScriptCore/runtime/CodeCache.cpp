@@ -70,8 +70,10 @@ UnlinkedCodeBlockType* CodeCache::getUnlinkedGlobalCodeBlock(VM& vm, ExecutableT
         bool endColumnIsOnStartLine = !lineCount;
         unsigned endColumn = unlinkedCodeBlock->endColumn() + (endColumnIsOnStartLine ? startColumn : 1);
         executable->recordParse(unlinkedCodeBlock->codeFeatures(), unlinkedCodeBlock->hasCapturedVariables(), source.firstLine().oneBasedInt() + lineCount, endColumn);
-        source.provider()->setSourceURLDirective(unlinkedCodeBlock->sourceURLDirective());
-        source.provider()->setSourceMappingURLDirective(unlinkedCodeBlock->sourceMappingURLDirective());
+        if (!unlinkedCodeBlock->sourceURLDirective().isNull())
+            source.provider()->setSourceURLDirective(unlinkedCodeBlock->sourceURLDirective());
+        if (!unlinkedCodeBlock->sourceMappingURLDirective().isNull())
+            source.provider()->setSourceMappingURLDirective(unlinkedCodeBlock->sourceMappingURLDirective());
         return unlinkedCodeBlock;
     }
 
@@ -115,8 +117,10 @@ UnlinkedFunctionExecutable* CodeCache::getUnlinkedGlobalFunctionExecutable(VM& v
         functionConstructorParametersEndPosition);
     UnlinkedFunctionExecutable* executable = m_sourceCode.findCacheAndUpdateAge<UnlinkedFunctionExecutable>(vm, key);
     if (executable && Options::useCodeCache()) {
-        source.provider()->setSourceURLDirective(executable->sourceURLDirective());
-        source.provider()->setSourceMappingURLDirective(executable->sourceMappingURLDirective());
+        if (!executable->sourceURLDirective().isNull())
+            source.provider()->setSourceURLDirective(executable->sourceURLDirective());
+        if (!executable->sourceMappingURLDirective().isNull())
+            source.provider()->setSourceMappingURLDirective(executable->sourceMappingURLDirective());
         return executable;
     }
 
@@ -147,10 +151,12 @@ UnlinkedFunctionExecutable* CodeCache::getUnlinkedGlobalFunctionExecutable(VM& v
     // in the global lexical environment, which we always TDZ check accesses from.
     VariableEnvironment emptyTDZVariables;
     ConstructAbility constructAbility = constructAbilityForParseMode(metadata->parseMode());
-    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, metadata, UnlinkedNormalFunction, constructAbility, JSParserScriptMode::Classic, emptyTDZVariables, DerivedContextType::None);
+    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, metadata, UnlinkedNormalFunction, constructAbility, JSParserScriptMode::Classic, vm.m_compactVariableMap->get(emptyTDZVariables), DerivedContextType::None);
 
-    functionExecutable->setSourceURLDirective(source.provider()->sourceURL());
-    functionExecutable->setSourceMappingURLDirective(source.provider()->sourceMappingURL());
+    if (!source.provider()->sourceURLDirective().isNull())
+        functionExecutable->setSourceURLDirective(source.provider()->sourceURLDirective());
+    if (!source.provider()->sourceMappingURLDirective().isNull())
+        functionExecutable->setSourceMappingURLDirective(source.provider()->sourceMappingURLDirective());
 
     if (Options::useCodeCache())
         m_sourceCode.addCache(key, SourceCodeValue(vm, functionExecutable, m_sourceCode.age()));
@@ -173,10 +179,7 @@ void generateUnlinkedCodeBlockForFunctions(VM& vm, UnlinkedCodeBlock* unlinkedCo
         if (constructorKind == CodeForConstruct && SourceParseModeSet(SourceParseMode::AsyncArrowFunctionMode, SourceParseMode::AsyncMethodMode, SourceParseMode::AsyncFunctionMode).contains(unlinkedExecutable->parseMode()))
             return;
 
-        FunctionExecutable* executable = unlinkedExecutable->link(vm, parentSource);
-        // FIXME: We shouldn't need to create a FunctionExecutable just to get its source code
-        // https://bugs.webkit.org/show_bug.cgi?id=194576
-        SourceCode source = executable->source();
+        SourceCode source = unlinkedExecutable->linkedSourceCode(parentSource);
         UnlinkedFunctionCodeBlock* unlinkedFunctionCodeBlock = unlinkedExecutable->unlinkedCodeBlockFor(vm, source, constructorKind, debuggerMode, error, unlinkedExecutable->parseMode());
         if (unlinkedFunctionCodeBlock)
             generateUnlinkedCodeBlockForFunctions(vm, unlinkedFunctionCodeBlock, source, debuggerMode, error);
@@ -192,30 +195,14 @@ void generateUnlinkedCodeBlockForFunctions(VM& vm, UnlinkedCodeBlock* unlinkedCo
 
 void writeCodeBlock(VM& vm, const SourceCodeKey& key, const SourceCodeValue& value)
 {
-#if OS(DARWIN)
-    const char* cachePath = Options::diskCachePath();
-    if (LIKELY(!cachePath))
-        return;
-
     UnlinkedCodeBlock* codeBlock = jsDynamicCast<UnlinkedCodeBlock*>(vm, value.cell.get());
     if (!codeBlock)
         return;
 
-    std::pair<MallocPtr<uint8_t>, size_t> result = encodeCodeBlock(vm, key, codeBlock);
-
-    String filename = makeString(cachePath, '/', key.hash(), ".cache");
-    int fd = open(filename.utf8().data(), O_CREAT | O_WRONLY, 0666);
-    if (fd == -1)
-        return;
-    int rc = flock(fd, LOCK_EX | LOCK_NB);
-    if (!rc)
-        ::write(fd, result.first.get(), result.second);
-    close(fd);
-#else
-    UNUSED_PARAM(vm);
-    UNUSED_PARAM(key);
-    UNUSED_PARAM(value);
-#endif
+    key.source().provider().cacheBytecode([&] {
+        std::pair<MallocPtr<uint8_t>, size_t> result = encodeCodeBlock(vm, key, codeBlock);
+        return CachedBytecode { WTFMove(result.first), result.second };
+    });
 }
 
 CachedBytecode serializeBytecode(VM& vm, UnlinkedCodeBlock* codeBlock, const SourceCode& source, SourceCodeType codeType, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, DebuggerMode debuggerMode)

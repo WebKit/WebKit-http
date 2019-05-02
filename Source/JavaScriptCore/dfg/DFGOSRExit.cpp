@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -337,6 +337,12 @@ void OSRExit::executeOSRExit(Context& context)
     ExecState* exec = context.fp<ExecState*>();
     ASSERT(&exec->vm() == &vm);
     auto& cpu = context.cpu;
+
+    if (validateDFGDoesGC) {
+        // We're about to exit optimized code. So, there's no longer any optimized
+        // code running that expects no GC.
+        vm.heap.setExpectDoesGC(true);
+    }
 
     if (vm.callFrameForCatch) {
         exec = vm.callFrameForCatch;
@@ -1009,6 +1015,12 @@ void JIT_OPERATION OSRExit::compileOSRExit(ExecState* exec)
     VM* vm = &exec->vm();
     auto scope = DECLARE_THROW_SCOPE(*vm);
 
+    if (validateDFGDoesGC) {
+        // We're about to exit optimized code. So, there's no longer any optimized
+        // code running that expects no GC.
+        vm->heap.setExpectDoesGC(true);
+    }
+
     if (vm->callFrameForCatch)
         RELEASE_ASSERT(vm->callFrameForCatch == exec);
 
@@ -1387,6 +1399,18 @@ void OSRExit::compileExit(CCallHelpers& jit, VM& vm, const OSRExit& exit, const 
         default:
             break;
         }
+    }
+
+    if (validateDFGDoesGC) {
+        // We're about to exit optimized code. So, there's no longer any optimized
+        // code running that expects no GC. We need to set this before arguments
+        // materialization below (see emitRestoreArguments()).
+
+        // Even though we set Heap::m_expectDoesGC in compileOSRExit(), we also need
+        // to set it here because compileOSRExit() is only called on the first time
+        // we exit from this site, but all subsequent exits will take this compiled
+        // ramp without calling compileOSRExit() first.
+        jit.store8(CCallHelpers::TrustedImm32(true), vm.heap.addressOfExpectDoesGC());
     }
 
     // Need to ensure that the stack pointer accounts for the worst-case stack usage at exit. This

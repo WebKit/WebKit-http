@@ -768,6 +768,7 @@ struct _UIWebTouchEvent {
 @property (nonatomic, readonly) CGPoint locationInWindow;
 @property (nonatomic, readonly) UIWebTouchEventType type;
 @property (nonatomic, readonly) const struct _UIWebTouchEvent *lastTouchEvent;
+@property (nonatomic, readonly) NSMapTable<NSNumber *, UITouch *> *activeTouchesByIdentifier;
 @end
 
 typedef NS_ENUM(NSInteger, _UIBackdropViewStylePrivate) {
@@ -987,6 +988,7 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 #endif
 
 @interface UICalloutBar : UIView
++ (UICalloutBar *)activeCalloutBar;
 + (void)fadeSharedCalloutBar;
 @end
 
@@ -1033,11 +1035,6 @@ typedef NSInteger UICompositingMode;
 @end
 
 #endif // USE(APPLE_INTERNAL_SDK)
-
-// FIXME: <rdar://problem/47714562>
-@interface UIWebTouchEventsGestureRecognizer (Staging_47634092)
-@property (nonatomic, readonly) NSMapTable<NSNumber *, UITouch *> *activeTouchesByIdentifier;
-@end
 
 @interface UIGestureRecognizer (Staging_45970040)
 @property (nonatomic, readonly, getter=_modifierFlags) UIKeyModifierFlags modifierFlags;
@@ -1143,6 +1140,7 @@ WTF_EXTERN_C_BEGIN
 
 BOOL UIKeyboardEnabledInputModesAllowOneToManyShortcuts(void);
 BOOL UIKeyboardEnabledInputModesAllowChineseTransliterationForText(NSString *);
+BOOL UIKeyboardIsRightToLeftInputModeActive(void);
 
 extern const float UITableCellDefaultFontSize;
 extern const float UITableViewCellDefaultFontSize;

@@ -29,7 +29,7 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_package(PkgConfig)
-pkg_check_modules(PC_WPEBACKEND_FDO QUIET wpebackend-fdo-0.1)
+pkg_check_modules(PC_WPEBACKEND_FDO QUIET wpebackend-fdo-1.0)
 
 find_path(WPEBACKEND_FDO_INCLUDE_DIRS
     NAMES wpe/fdo.h
@@ -37,11 +37,11 @@ find_path(WPEBACKEND_FDO_INCLUDE_DIRS
 )
 
 find_library(WPEBACKEND_FDO_LIBRARIES
-    NAMES WPEBackend-fdo-0.1
+    NAMES WPEBackend-fdo-1.0
     HINTS ${PC_WPEBACKEND_FDO_LIBDIR} ${PC_WPEBACKEND_FDO_LIBRARY_DIRS}
 )
 
 mark_as_advanced(WPEBACKEND_FDO_INCLUDE_DIRS WPEBACKEND_FDO_LIBRARIES)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(WPEBackend-fdo REQUIRED_VARS WPEBACKEND_FDO_INCLUDE_DIRS WPEBACKEND_FDO_LIBRARIES)
+find_package_handle_standard_args(WPEBACKEND_FDO REQUIRED_VARS WPEBACKEND_FDO_INCLUDE_DIRS WPEBACKEND_FDO_LIBRARIES)

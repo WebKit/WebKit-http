@@ -515,6 +515,7 @@ WI.contentLoaded = function()
     let productionTabClasses = [
         WI.ElementsTabContentView,
         WI.NetworkTabContentView,
+        WI.SourcesTabContentView,
         WI.DebuggerTabContentView,
         WI.ResourcesTabContentView,
         WI.TimelineTabContentView,
@@ -620,6 +621,10 @@ WI.initializeTarget = function(target)
             for (let [setting, value] of WI._overridenDeviceSettings)
                 target.PageAgent.overrideSetting(setting, value);
         }
+
+        // COMPATIBILITY (iOS 11.3)
+        if (target.PageAgent.setShowRulers && WI.settings.showRulers.value)
+            target.PageAgent.setShowRulers(true);
 
         // COMPATIBILITY (iOS 8): Page.setShowPaintRects did not exist.
         if (target.PageAgent.setShowPaintRects && WI.settings.showPaintRects.value)
@@ -1061,6 +1066,26 @@ WI.isShowingElementsTab = function()
     return this.tabBrowser.selectedTabContentView instanceof WI.ElementsTabContentView;
 };
 
+WI.showSourcesTab = function(options = {})
+{
+    let tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.SourcesTabContentView);
+    if (!tabContentView)
+        tabContentView = new WI.SourcesTabContentView;
+
+    if (options.breakpointToSelect instanceof WI.Breakpoint)
+        tabContentView.revealAndSelectBreakpoint(options.breakpointToSelect);
+
+    if (options.showScopeChainSidebar)
+        tabContentView.showScopeChainDetailsSidebarPanel();
+
+    this.tabBrowser.showTabForContentView(tabContentView);
+};
+
+WI.isShowingSourcesTab = function()
+{
+    return this.tabBrowser.selectedTabContentView instanceof WI.SourcesTabContentView;
+};
+
 WI.showDebuggerTab = function(options)
 {
     var tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.DebuggerTabContentView);
@@ -1217,23 +1242,35 @@ WI.tabContentViewClassForRepresentedObject = function(representedObject)
     if (representedObject === this._consoleRepresentedObject)
         return WI.ConsoleTabContentView;
 
-    if (WI.debuggerManager.paused) {
-        if (representedObject instanceof WI.Script)
-            return WI.DebuggerTabContentView;
+    if (WI.settings.experimentalEnableSourcesTab.value) {
+        if (representedObject instanceof WI.Frame
+            || representedObject instanceof WI.FrameCollection
+            || representedObject instanceof WI.Resource
+            || representedObject instanceof WI.ResourceCollection
+            || representedObject instanceof WI.Script
+            || representedObject instanceof WI.ScriptCollection
+            || representedObject instanceof WI.CSSStyleSheet
+            || representedObject instanceof WI.CSSStyleSheetCollection)
+            return WI.SourcesTabContentView;
+    } else {
+        if (WI.debuggerManager.paused) {
+            if (representedObject instanceof WI.Script)
+                return WI.DebuggerTabContentView;
 
-        if (representedObject instanceof WI.Resource && (representedObject.type === WI.Resource.Type.Document || representedObject.type === WI.Resource.Type.Script))
-            return WI.DebuggerTabContentView;
+            if (representedObject instanceof WI.Resource && (representedObject.type === WI.Resource.Type.Document || representedObject.type === WI.Resource.Type.Script))
+                return WI.DebuggerTabContentView;
+        }
+
+        if (representedObject instanceof WI.Frame
+            || representedObject instanceof WI.FrameCollection
+            || representedObject instanceof WI.Resource
+            || representedObject instanceof WI.ResourceCollection
+            || representedObject instanceof WI.Script
+            || representedObject instanceof WI.ScriptCollection
+            || representedObject instanceof WI.CSSStyleSheet
+            || representedObject instanceof WI.CSSStyleSheetCollection)
+            return WI.ResourcesTabContentView;
     }
-
-    if (representedObject instanceof WI.Frame
-        || representedObject instanceof WI.FrameCollection
-        || representedObject instanceof WI.Resource
-        || representedObject instanceof WI.ResourceCollection
-        || representedObject instanceof WI.Script
-        || representedObject instanceof WI.ScriptCollection
-        || representedObject instanceof WI.CSSStyleSheet
-        || representedObject instanceof WI.CSSStyleSheetCollection)
-        return WI.ResourcesTabContentView;
 
     if (representedObject instanceof WI.DOMStorageObject || representedObject instanceof WI.CookieStorageObject ||
         representedObject instanceof WI.DatabaseTableObject || representedObject instanceof WI.DatabaseObject ||
@@ -1494,7 +1531,10 @@ WI._dragOver = function(event)
 
 WI._debuggerDidPause = function(event)
 {
-    this.showDebuggerTab({showScopeChainSidebar: WI.settings.showScopeChainOnPause.value});
+    if (WI.settings.experimentalEnableSourcesTab.value)
+        WI.showSourcesTab({showScopeChainSidebar: WI.settings.showScopeChainOnPause.value});
+    else
+        WI.showDebuggerTab({showScopeChainSidebar: WI.settings.showScopeChainOnPause.value});
 
     this._dashboardContainer.showDashboardViewForRepresentedObject(this._dashboards.debugger);
 
@@ -2069,6 +2109,9 @@ WI._handleDeviceSettingsToolbarButtonClicked = function(event)
     const userAgents = [
         [
             { name: WI.UIString("Default"), value: "default" },
+        ],
+        [
+            { name: "Safari 12.2", value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.2 Safari/605.1.15" },
         ],
         [
             { name: `Safari ${emDash} iOS 12.1.3 ${emDash} iPhone`, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 12_1_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1" },

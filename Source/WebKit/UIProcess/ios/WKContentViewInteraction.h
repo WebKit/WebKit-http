@@ -131,7 +131,9 @@ typedef std::pair<WebKit::InteractionInformationRequest, InteractionInformationC
     M(increaseSize) \
     M(decreaseSize) \
     M(pasteAndMatchStyle) \
-    M(makeTextWritingDirectionNatural)
+    M(makeTextWritingDirectionNatural) \
+    M(makeTextWritingDirectionLeftToRight) \
+    M(makeTextWritingDirectionRightToLeft)
 
 #define FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(M) \
     M(_alignCenter) \
@@ -259,7 +261,9 @@ struct WKAutoCorrectionData {
     WebKit::InteractionInformationAtPosition _positionInformation;
     WebKit::FocusedElementInformation _focusedElementInformation;
     RetainPtr<NSObject<WKFormPeripheral>> _inputPeripheral;
+#if !USE(UIKIT_KEYBOARD_ADDITIONS)
     RetainPtr<UIEvent> _uiEventBeingResent;
+#endif
     BlockPtr<void(::WebEvent *, BOOL)> _keyWebEventHandler;
 
     CGPoint _lastInteractionLocation;

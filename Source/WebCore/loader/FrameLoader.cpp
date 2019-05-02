@@ -145,7 +145,6 @@
 #include "DocumentType.h"
 #include "ResourceLoader.h"
 #include "RuntimeApplicationChecks.h"
-#include "WKContentObservation.h"
 #endif
 
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Network, "%p - FrameLoader::" fmt, this, ##__VA_ARGS__)
@@ -1381,8 +1380,6 @@ void FrameLoader::loadURL(FrameLoadRequest&& frameLoadRequest, const String& ref
 
     if (!targetFrame && !effectiveFrameName.isEmpty()) {
         action = action.copyWithShouldOpenExternalURLsPolicy(shouldOpenExternalURLsPolicyToApply(m_frame, frameLoadRequest));
-        policyChecker().setLoadType(newLoadType);
-        RELEASE_ASSERT(!isBackForwardLoadType(policyChecker().loadType()));
         policyChecker().checkNewWindowPolicy(WTFMove(action), WTFMove(request), WTFMove(formState), effectiveFrameName, [this, allowNavigationToInvalidURL, openerPolicy, completionHandler = completionHandlerCaller.release()] (const ResourceRequest& request, WeakPtr<FormState>&& formState, const String& frameName, const NavigationAction& action, ShouldContinue shouldContinue) mutable {
             continueLoadAfterNewWindowPolicy(request, formState.get(), frameName, action, shouldContinue, allowNavigationToInvalidURL, openerPolicy);
             completionHandler();
@@ -1467,7 +1464,6 @@ void FrameLoader::load(FrameLoadRequest&& request)
 
     if (request.shouldCheckNewWindowPolicy()) {
         NavigationAction action { request.requester(), request.resourceRequest(), InitiatedByMainFrame::Unknown, NavigationType::Other, request.shouldOpenExternalURLsPolicy() };
-        RELEASE_ASSERT(!isBackForwardLoadType(policyChecker().loadType()));
         policyChecker().checkNewWindowPolicy(WTFMove(action), WTFMove(request.resourceRequest()), { }, request.frameName(), [this] (const ResourceRequest& request, WeakPtr<FormState>&& formState, const String& frameName, const NavigationAction& action, ShouldContinue shouldContinue) {
             continueLoadAfterNewWindowPolicy(request, formState.get(), frameName, action, shouldContinue, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Suppress);
         });
@@ -1479,6 +1475,7 @@ void FrameLoader::load(FrameLoadRequest&& request)
         request.setSubstituteData(defaultSubstituteDataForURL(request.resourceRequest().url()));
 
     Ref<DocumentLoader> loader = m_client.createDocumentLoader(request.resourceRequest(), request.substituteData());
+    loader->setAllowsWebArchiveForMainFrame(request.isRequestFromClientOrUserInput());
     addSameSiteInfoToRequestIfNeeded(loader->request());
     applyShouldOpenExternalURLsPolicyToNewDocumentLoader(m_frame, loader, request);
 
@@ -1776,6 +1773,7 @@ void FrameLoader::reload(OptionSet<ReloadOption> options)
     // Create a new document loader for the reload, this will become m_documentLoader eventually,
     // but first it has to be the "policy" document loader, and then the "provisional" document loader.
     Ref<DocumentLoader> loader = m_client.createDocumentLoader(initialRequest, defaultSubstituteDataForURL(initialRequest.url()));
+    loader->setAllowsWebArchiveForMainFrame(m_documentLoader->allowsWebArchiveForMainFrame());
     applyShouldOpenExternalURLsPolicyToNewDocumentLoader(m_frame, loader, InitiatedByMainFrame::Unknown, m_documentLoader->shouldOpenExternalURLsPolicyToPropagate());
 
     loader->setUserContentExtensionsEnabled(!options.contains(ReloadOption::DisableContentBlockers));
@@ -2868,8 +2866,9 @@ void FrameLoader::addExtraFieldsToRequest(ResourceRequest& request, FrameLoadTyp
 
     // Don't set the cookie policy URL if it's already been set.
     // But make sure to set it on all requests regardless of protocol, as it has significance beyond the cookie policy (<rdar://problem/6616664>).
+    bool isMainFrameMainResource = isMainResource && m_frame.isMainFrame();
     if (request.firstPartyForCookies().isEmpty()) {
-        if (isMainResource && m_frame.isMainFrame())
+        if (isMainFrameMainResource)
             request.setFirstPartyForCookies(request.url());
         else if (Document* document = m_frame.document())
             request.setFirstPartyForCookies(document->firstPartyForCookies());
@@ -2886,8 +2885,8 @@ void FrameLoader::addExtraFieldsToRequest(ResourceRequest& request, FrameLoadTyp
             ASSERT(ownerFrame || m_frame.isMainFrame());
         }
         addSameSiteInfoToRequestIfNeeded(request, initiator);
-        request.setIsTopSite(isMainResource && m_frame.isMainFrame());
     }
+    request.setIsTopSite(isMainFrameMainResource);
 
     Page* page = frame().page();
     bool hasSpecificCachePolicy = request.cachePolicy() != ResourceRequestCachePolicy::UseProtocolCachePolicy;
@@ -3020,7 +3019,6 @@ void FrameLoader::loadPostRequest(FrameLoadRequest&& request, const String& refe
             return;
         }
 
-        RELEASE_ASSERT(!isBackForwardLoadType(policyChecker().loadType()));
         policyChecker().checkNewWindowPolicy(WTFMove(action), WTFMove(workingResourceRequest), WTFMove(formState), frameName, [this, allowNavigationToInvalidURL, openerPolicy, completionHandler = WTFMove(completionHandler)] (const ResourceRequest& request, WeakPtr<FormState>&& formState, const String& frameName, const NavigationAction& action, ShouldContinue shouldContinue) mutable {
             continueLoadAfterNewWindowPolicy(request, formState.get(), frameName, action, shouldContinue, allowNavigationToInvalidURL, openerPolicy);
             completionHandler();

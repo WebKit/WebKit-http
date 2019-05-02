@@ -28,26 +28,37 @@
 #if ENABLE(WEBGPU)
 
 #include "GPUBuffer.h"
-
+#include "GPUBufferUsage.h"
+#include "JSDOMPromiseDeferred.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
+namespace JSC {
+class ArrayBuffer;
+}
+
 namespace WebCore {
+
+struct GPUBufferDescriptor;
 
 class WebGPUBuffer : public RefCounted<WebGPUBuffer> {
 public:
-    static Ref<WebGPUBuffer> create(Ref<GPUBuffer>&&);
+    static Ref<WebGPUBuffer> create(RefPtr<GPUBuffer>&&);
 
-    const GPUBuffer& buffer() const { return m_buffer.get(); }
+    RefPtr<const GPUBuffer> buffer() const { return m_buffer; }
 
-    JSC::ArrayBuffer* mapping() const { return m_buffer->mapping(); }
-    void unmap() { /* FIXME: Unimplemented stub. */ }
-    void destroy() { /* FIXME: Unimplemented stub. */ }
+    using BufferMappingPromise = DOMPromiseDeferred<IDLInterface<JSC::ArrayBuffer*>>;
+    void mapReadAsync(BufferMappingPromise&&);
+    void mapWriteAsync(BufferMappingPromise&&);
+    void unmap();
+    void destroy();
 
 private:
-    explicit WebGPUBuffer(Ref<GPUBuffer>&&);
+    explicit WebGPUBuffer(RefPtr<GPUBuffer>&&);
 
-    Ref<GPUBuffer> m_buffer;
+    void rejectOrRegisterPromiseCallback(BufferMappingPromise&&, bool);
+
+    RefPtr<GPUBuffer> m_buffer;
 };
 
 } // namespace WebCore

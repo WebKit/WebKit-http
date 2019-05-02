@@ -89,7 +89,6 @@
 #include "PointerCaptureController.h"
 #include "PointerLockController.h"
 #include "ProgressTracker.h"
-#include "PublicSuffix.h"
 #include "RenderLayerCompositor.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
@@ -148,6 +147,10 @@
 
 #if ENABLE(DATA_INTERACTION)
 #include "SelectionRect.h"
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+#include "ContentChangeObserver.h"
 #endif
 
 namespace WebCore {
@@ -232,6 +235,9 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_performanceLoggingClient(WTFMove(pageConfiguration.performanceLoggingClient))
     , m_webGLStateTracker(WTFMove(pageConfiguration.webGLStateTracker))
     , m_libWebRTCProvider(WTFMove(pageConfiguration.libWebRTCProvider))
+#if PLATFORM(IOS_FAMILY)
+    , m_contentChangeObserver(std::make_unique<ContentChangeObserver>(*this))
+#endif
     , m_verticalScrollElasticity(ScrollElasticityAllowed)
     , m_horizontalScrollElasticity(ScrollElasticityAllowed)
     , m_domTimerAlignmentInterval(DOMTimer::defaultAlignmentInterval())
@@ -2369,19 +2375,12 @@ void Page::logNavigation(const Navigation& navigation)
     diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::navigationKey(), navigationDescription, ShouldSample::No);
 
     if (!navigation.domain.isEmpty())
-        diagnosticLoggingClient().logDiagnosticMessageWithEnhancedPrivacy(DiagnosticLoggingKeys::domainVisitedKey(), navigation.domain, ShouldSample::No);
+        diagnosticLoggingClient().logDiagnosticMessageWithEnhancedPrivacy(DiagnosticLoggingKeys::domainVisitedKey(), navigation.domain.string(), ShouldSample::Yes);
 }
 
 void Page::mainFrameLoadStarted(const URL& destinationURL, FrameLoadType type)
 {
-    String domain;
-#if ENABLE(PUBLIC_SUFFIX_LIST)
-    domain = topPrivatelyControlledDomain(destinationURL.host().toString());
-#else
-    UNUSED_PARAM(destinationURL);
-#endif
-
-    Navigation navigation = { domain, type };
+    Navigation navigation = { RegistrableDomain { destinationURL }, type };
 
     // To avoid being too verbose, we only log navigations if the page is or becomes visible. This avoids logging non-user observable loads.
     if (!isVisible()) {
@@ -2639,19 +2638,6 @@ void Page::appearanceDidChange()
         document->styleScope().evaluateMediaQueriesForAppearanceChange();
         document->evaluateMediaQueryList();
     }
-}
-
-void Page::installedPageOverlaysChanged()
-{
-    if (isInWindow()) {
-        if (pageOverlayController().hasViewOverlays())
-            chrome().client().attachViewOverlayGraphicsLayer(&pageOverlayController().layerWithViewOverlays());
-        else
-            chrome().client().attachViewOverlayGraphicsLayer(nullptr);
-    }
-
-    if (auto* frameView = mainFrame().view())
-        frameView->setNeedsCompositingConfigurationUpdate();
 }
 
 void Page::setUnobscuredSafeAreaInsets(const FloatBoxExtent& insets)

@@ -62,14 +62,10 @@ namespace JSC {
     macro(Number) \
     macro(Array) \
     macro(ArrayBuffer) \
-    macro(String) \
     macro(RegExp) \
-    macro(Map) \
     macro(Promise) \
     macro(Reflect) \
     macro(InternalPromise) \
-    macro(abs) \
-    macro(floor) \
     macro(trunc) \
     macro(create) \
     macro(defineProperty) \
@@ -130,13 +126,9 @@ namespace JSC {
     macro(asyncGeneratorQueueItemNext) \
     macro(asyncGeneratorQueueItemPrevious) \
     macro(generatorResumeMode) \
-    macro(Collator) \
-    macro(DateTimeFormat) \
-    macro(NumberFormat) \
-    macro(PluralRules) \
+    macro(dateTimeFormat) \
     macro(intlSubstituteValue) \
     macro(thisTimeValue) \
-    macro(thisNumberValue) \
     macro(newTargetLocal) \
     macro(derivedConstructor) \
     macro(isTypedArrayView) \
@@ -182,14 +174,6 @@ namespace JSC {
     macro(hasOwnLengthProperty) \
     macro(importModule) \
     macro(propertyIsEnumerable) \
-    macro(WebAssembly) \
-    macro(Module) \
-    macro(Instance) \
-    macro(Memory) \
-    macro(Table) \
-    macro(CompileError) \
-    macro(LinkError) \
-    macro(RuntimeError) \
     macro(meta) \
     macro(webAssemblyCompileStreamingInternal) \
     macro(webAssemblyInstantiateStreamingInternal) \

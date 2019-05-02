@@ -54,6 +54,10 @@ WTF_EXTERN_C_END
 - (CGFloat)_iOSMacScale;
 @end
 
+#if __has_include(<UIKit/UIFocusRingStyle.h>)
+#import <UIKit/UIFocusRingStyle.h>
+#endif
+
 #else // USE(APPLE_INTERNAL_SDK)
 
 #import <UIKit/UIKit.h>
@@ -109,6 +113,7 @@ typedef enum {
 + (UIColor *)systemGreenColor;
 + (UIColor *)systemOrangeColor;
 + (UIColor *)systemPinkColor;
++ (UIColor *)systemPurpleColor;
 + (UIColor *)systemRedColor;
 + (UIColor *)systemYellowColor;
 
@@ -147,6 +152,12 @@ NS_ASSUME_NONNULL_END
 #if ENABLE(FULL_KEYBOARD_ACCESS)
 @interface UIColor (IPI)
 + (UIColor *)keyboardFocusIndicatorColor;
+@end
+
+@interface UIFocusRingStyle (Staging_47831886)
++ (CGFloat)cornerRadius;
++ (CGFloat)maxAlpha;
++ (CGFloat)alphaThreshold;
 @end
 #endif
 

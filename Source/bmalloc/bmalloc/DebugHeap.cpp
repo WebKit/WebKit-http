@@ -33,6 +33,8 @@
 #include <thread>
 
 namespace bmalloc {
+
+DebugHeap* debugHeapCache { nullptr };
     
 #if BOS(DARWIN)
 
@@ -43,10 +45,10 @@ DebugHeap::DebugHeap(std::lock_guard<Mutex>&)
     malloc_set_zone_name(m_zone, "WebKit Using System Malloc");
 }
 
-void* DebugHeap::malloc(size_t size)
+void* DebugHeap::malloc(size_t size, bool crashOnFailure)
 {
     void* result = malloc_zone_malloc(m_zone, size);
-    if (!result)
+    if (!result && crashOnFailure)
         BCRASH();
     return result;
 }
@@ -79,10 +81,10 @@ DebugHeap::DebugHeap(std::lock_guard<Mutex>&)
 {
 }
 
-void* DebugHeap::malloc(size_t size)
+void* DebugHeap::malloc(size_t size, bool crashOnFailure)
 {
     void* result = ::malloc(size);
-    if (!result)
+    if (!result && crashOnFailure)
         BCRASH();
     return result;
 }

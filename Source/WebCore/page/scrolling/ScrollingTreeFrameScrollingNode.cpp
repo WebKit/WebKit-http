@@ -82,16 +82,8 @@ void ScrollingTreeFrameScrollingNode::commitStateBeforeChildren(const ScrollingS
         m_maxLayoutViewportOrigin = state.maxLayoutViewportOrigin();
 }
 
-void ScrollingTreeFrameScrollingNode::setScrollPosition(const FloatPoint& scrollPosition)
-{
-    FloatPoint newScrollPosition = scrollPosition.constrainedBetween(minimumScrollPosition(), maximumScrollPosition());
-    setScrollPositionWithoutContentEdgeConstraints(newScrollPosition);
-}
-
 FloatRect ScrollingTreeFrameScrollingNode::layoutViewportForScrollPosition(const FloatPoint& visibleContentOrigin, float scale) const
 {
-    ASSERT(scrollingTree().visualViewportEnabled());
-
     FloatRect visibleContentRect(visibleContentOrigin, scrollableAreaSize());
     LayoutRect visualViewport(FrameView::visibleDocumentRect(visibleContentRect, headerHeight(), footerHeight(), totalContentsSize(), scale));
     LayoutRect layoutViewport(m_layoutViewport);

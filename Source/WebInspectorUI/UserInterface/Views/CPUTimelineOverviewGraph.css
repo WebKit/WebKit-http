@@ -39,7 +39,7 @@ body .timeline-overview > .graphs-container > .timeline-overview-graph.cpu {
     padding: 2px;
     font-size: 8px;
     color: hsl(0, 0%, 50%);
-    background-color: white;
+    background-color: var(--timeline-odd-background-color);
     pointer-events: none;
 
     --cpu-timeline-overview-graph-legend-offset-end: 0;
@@ -54,24 +54,32 @@ body[dir=rtl] .timeline-overview-graph.cpu > .legend {
 }
 
 .timeline-overview-graph.cpu:nth-child(even) > .legend {
-    background-color: hsl(0, 0%, 96%);
+    background-color: var(--timeline-even-background-color);
 }
 
-@media (prefers-color-scheme: dark) {
-    .timeline-overview-graph.cpu > .legend {
-        background-color: hsl(0, 0%, 21%);
-    }
+body[dir=rtl] .timeline-overview-graph.cpu > .stacked-column-chart {
+    transform: scaleX(-1);
+}
 
-    .timeline-overview-graph.cpu:nth-child(even) > .legend {
-        background-color: hsl(0, 0%, 25%);
-    }
+.timeline-overview-graph.cpu > .stacked-column-chart > svg > rect {
+    stroke: var(--cpu-stroke-color);
+    fill: var(--cpu-fill-color);
+}
+
+.timeline-overview-graph.cpu > .stacked-column-chart > svg > rect.main-thread-usage {
+    fill: var(--cpu-main-thread-fill-color);
+}
+
+.timeline-overview-graph.cpu > .stacked-column-chart > svg > rect.worker-thread-usage {
+    fill: var(--cpu-worker-thread-fill-color);
+}
+
+/* LegacyCPUTimeline */
+.timeline-overview-graph.cpu > .column-chart > svg > rect {
+    stroke: var(--cpu-stroke-color);
+    fill: var(--cpu-main-thread-fill-color);
 }
 
 body[dir=rtl] .timeline-overview-graph.cpu > .column-chart {
     transform: scaleX(-1);
-}
-
-.timeline-overview-graph.cpu > .column-chart > svg > rect {
-    stroke: var(--cpu-stroke-color);
-    fill: var(--cpu-fill-color);
 }

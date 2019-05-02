@@ -101,6 +101,7 @@ class WebAutomationSession;
 class WebContextSupplement;
 class WebPageGroup;
 class WebPageProxy;
+class WebProcessCache;
 struct NetworkProcessCreationParameters;
 struct StatisticsData;
 struct WebProcessCreationParameters;
@@ -175,6 +176,8 @@ public:
     template<typename T> void sendToNetworkingProcessRelaunchingIfNecessary(T&& message);
 
     void processDidFinishLaunching(WebProcessProxy*);
+
+    WebProcessCache& webProcessCache() { return m_webProcessCache.get(); }
 
     // Disconnect the process from the context.
     void disconnectProcess(WebProcessProxy*);
@@ -454,7 +457,7 @@ public:
     BackgroundWebProcessToken backgroundWebProcessToken() const { return BackgroundWebProcessToken(m_backgroundWebProcessCounter.count()); }
 #endif
 
-    void processForNavigation(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, CompletionHandler<void(Ref<WebProcessProxy>&&, SuspendedPageProxy*, const String&)>&&);
+    void processForNavigation(WebPageProxy&, const API::Navigation&, Ref<WebProcessProxy>&& sourceProcess, const URL& sourceURL, ProcessSwapRequestedByClient, CompletionHandler<void(Ref<WebProcessProxy>&&, SuspendedPageProxy*, const String&)>&&);
 
     // SuspendedPageProxy management.
     void addSuspendedPage(std::unique_ptr<SuspendedPageProxy>&&);
@@ -464,6 +467,8 @@ public:
     void removeSuspendedPage(SuspendedPageProxy&);
     bool hasSuspendedPageFor(WebProcessProxy&, WebPageProxy* = nullptr) const;
     unsigned maxSuspendedPageCount() const { return m_maxSuspendedPageCount; }
+    RefPtr<WebProcessProxy> findReusableSuspendedPageProcess(const String&, WebPageProxy&);
+    void clearSuspendedPages();
 
     void didReachGoodTimeToPrewarm();
 
@@ -479,6 +484,9 @@ public:
     void sendDisplayConfigurationChangedMessageForTesting();
     void clearCurrentModifierStateForTesting();
 
+    void dumpAdClickAttribution(PAL::SessionID, CompletionHandler<void(const String&)>&&);
+    void clearAdClickAttribution(PAL::SessionID, CompletionHandler<void()>&&);
+
 #if PLATFORM(GTK) || PLATFORM(WPE)
     void setSandboxEnabled(bool enabled) { m_sandboxEnabled = enabled; };
     void addSandboxPath(const CString& path, SandboxPermission permission) { m_extraSandboxPaths.add(path, permission); };
@@ -492,12 +500,12 @@ private:
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void platformInvalidateContext();
 
-    void processForNavigationInternal(WebPageProxy&, const API::Navigation&, ProcessSwapRequestedByClient, CompletionHandler<void(Ref<WebProcessProxy>&&, SuspendedPageProxy*, const String&)>&&);
+    void processForNavigationInternal(WebPageProxy&, const API::Navigation&, Ref<WebProcessProxy>&& sourceProcess, const URL& sourceURL, ProcessSwapRequestedByClient, CompletionHandler<void(Ref<WebProcessProxy>&&, SuspendedPageProxy*, const String&)>&&);
 
     RefPtr<WebProcessProxy> tryTakePrewarmedProcess(WebsiteDataStore&);
 
     WebProcessProxy& createNewWebProcess(WebsiteDataStore&, WebProcessProxy::IsPrewarmed = WebProcessProxy::IsPrewarmed::No);
-    void initializeNewWebProcess(WebProcessProxy&, WebsiteDataStore&);
+    void initializeNewWebProcess(WebProcessProxy&, WebsiteDataStore&, WebProcessProxy::IsPrewarmed = WebProcessProxy::IsPrewarmed::No);
 
     void requestWebContentStatistics(StatisticsRequest&);
     void requestNetworkingStatistics(StatisticsRequest&);
@@ -505,7 +513,7 @@ private:
     void platformInitializeNetworkProcess(NetworkProcessCreationParameters&);
 
     void handleMessage(IPC::Connection&, const String& messageName, const UserData& messageBody);
-    void handleSynchronousMessage(IPC::Connection&, const String& messageName, const UserData& messageBody, UserData& returnUserData);
+    void handleSynchronousMessage(IPC::Connection&, const String& messageName, const UserData& messageBody, CompletionHandler<void(UserData&&)>&&);
 
     void didGetStatistics(const StatisticsData&, uint64_t callbackID);
 
@@ -545,6 +553,8 @@ private:
     void unregisterNotificationObservers();
 #endif
 
+    void setApplicationIsActive(bool);
+
     void addPlugInAutoStartOriginHash(const String& pageOrigin, unsigned plugInOriginHash, PAL::SessionID);
     void plugInDidReceiveUserInteraction(unsigned plugInOriginHash, PAL::SessionID);
 
@@ -553,7 +563,7 @@ private:
     void resolvePathsForSandboxExtensions();
     void platformResolvePathsForSandboxExtensions();
 
-    void addProcessToOriginCacheSet(WebPageProxy&);
+    void addProcessToOriginCacheSet(WebProcessProxy&, const URL&);
     void removeProcessFromOriginCacheSet(WebProcessProxy&);
 
     void tryPrewarmWithDomainInformation(WebProcessProxy&, const URL&);
@@ -646,6 +656,8 @@ private:
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     RetainPtr<NSObject> m_scrollerStyleNotificationObserver;
 #endif
+    RetainPtr<NSObject> m_activationObserver;
+    RetainPtr<NSObject> m_deactivationObserver;
 
     std::unique_ptr<HighPerformanceGraphicsUsageSampler> m_highPerformanceGraphicsUsageSampler;
     std::unique_ptr<PerActivityStateCPUUsageSampler> m_perActivityStateCPUUsageSampler;
@@ -736,6 +748,7 @@ private:
     Deque<std::unique_ptr<SuspendedPageProxy>> m_suspendedPages;
     unsigned m_maxSuspendedPageCount { 0 };
 
+    UniqueRef<WebProcessCache> m_webProcessCache;
     HashMap<String, RefPtr<WebProcessProxy>> m_swappedProcessesPerRegistrableDomain;
 
     HashMap<String, std::unique_ptr<WebCore::PrewarmInformation>> m_prewarmInformationPerRegistrableDomain;

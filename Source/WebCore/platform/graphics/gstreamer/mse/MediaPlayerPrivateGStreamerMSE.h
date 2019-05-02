@@ -82,8 +82,8 @@ public:
     void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase>, bool firstTrackDetected);
     void notifySeekNeedsDataForTime(const MediaTime&);
 
-    static bool supportsCodec(String codec);
-    static bool supportsAllCodecs(const Vector<String>& codecs);
+    void blockDurationChanges();
+    void unblockDurationChanges();
 
 private:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
@@ -114,6 +114,8 @@ private:
     RefPtr<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     MediaTime m_mediaTimeDuration;
     bool m_mseSeekCompleted = true;
+    bool m_areDurationChangesBlocked = false;
+    bool m_shouldReportDurationWhenUnblocking = false;
     RefPtr<PlaybackPipeline> m_playbackPipeline;
 };
 

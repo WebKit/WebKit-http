@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,6 +43,7 @@
 #include "CodeBlockWithJITType.h"
 #include "DFGAbstractInterpreterInlines.h"
 #include "DFGCapabilities.h"
+#include "DFGDoesGC.h"
 #include "DFGDominators.h"
 #include "DFGInPlaceAbstractState.h"
 #include "DFGMayExit.h"
@@ -525,7 +526,12 @@ private:
         
         m_interpreter.startExecuting();
         m_interpreter.executeKnownEdgeTypes(m_node);
-        
+
+        if (validateDFGDoesGC) {
+            bool expectDoesGC = doesGC(m_graph, m_node);
+            m_out.store(m_out.constBool(expectDoesGC), m_out.absolute(vm().heap.addressOfExpectDoesGC()));
+        }
+
         switch (m_node->op()) {
         case DFG::Upsilon:
             compileUpsilon();
@@ -9738,9 +9744,9 @@ private:
         m_out.appendTo(notPresentInTable, continuation);
         ValueFromBlock notPresentResult;
         if (m_node->child1().useKind() == MapObjectUse)
-            notPresentResult = m_out.anchor(weakPointer(vm().sentinelMapBucket.get()));
+            notPresentResult = m_out.anchor(weakPointer(vm().sentinelMapBucket()));
         else if (m_node->child1().useKind() == SetObjectUse)
-            notPresentResult = m_out.anchor(weakPointer(vm().sentinelSetBucket.get()));
+            notPresentResult = m_out.anchor(weakPointer(vm().sentinelSetBucket()));
         else
             RELEASE_ASSERT_NOT_REACHED();
         m_out.jump(continuation);
@@ -9786,10 +9792,10 @@ private:
         m_out.appendTo(noBucket, hasBucket);
         ValueFromBlock noBucketResult;
         if (m_node->bucketOwnerType() == BucketOwnerType::Map)
-            noBucketResult = m_out.anchor(weakPointer(vm().sentinelMapBucket.get()));
+            noBucketResult = m_out.anchor(weakPointer(vm().sentinelMapBucket()));
         else {
             ASSERT(m_node->bucketOwnerType() == BucketOwnerType::Set);
-            noBucketResult = m_out.anchor(weakPointer(vm().sentinelSetBucket.get()));
+            noBucketResult = m_out.anchor(weakPointer(vm().sentinelSetBucket()));
         }
         m_out.jump(continuation);
 

@@ -297,7 +297,7 @@ static bool executeDelete(Frame& frame, Event*, EditorCommandSource source, cons
     case CommandFromDOMWithUserInterface:
         // If the current selection is a caret, delete the preceding character. IE performs forwardDelete, but we currently side with Firefox.
         // Doesn't scroll to make the selection visible, or modify the kill ring (this time, siding with IE, not Firefox).
-        TypingCommand::deleteKeyPressed(*frame.document(), frame.selection().granularity() == WordGranularity ? TypingCommand::SmartDelete : 0);
+        TypingCommand::deleteKeyPressed(*frame.document(), frame.editor().shouldSmartDelete() ? TypingCommand::SmartDelete : 0);
         return true;
     }
     ASSERT_NOT_REACHED();
@@ -585,7 +585,7 @@ static bool executeMakeTextWritingDirectionLeftToRight(Frame& frame, Event*, Edi
     auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyUnicodeBidi, CSSValueEmbed);
     style->setProperty(CSSPropertyDirection, CSSValueLtr);
-    frame.editor().applyStyle(style.ptr(), EditAction::SetWritingDirection);
+    frame.editor().applyStyle(style.ptr(), EditAction::SetInlineWritingDirection);
     return true;
 }
 
@@ -593,7 +593,7 @@ static bool executeMakeTextWritingDirectionNatural(Frame& frame, Event*, EditorC
 {
     auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyUnicodeBidi, CSSValueNormal);
-    frame.editor().applyStyle(style.ptr(), EditAction::SetWritingDirection);
+    frame.editor().applyStyle(style.ptr(), EditAction::SetInlineWritingDirection);
     return true;
 }
 
@@ -602,7 +602,7 @@ static bool executeMakeTextWritingDirectionRightToLeft(Frame& frame, Event*, Edi
     auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyUnicodeBidi, CSSValueEmbed);
     style->setProperty(CSSPropertyDirection, CSSValueRtl);
-    frame.editor().applyStyle(style.ptr(), EditAction::SetWritingDirection);
+    frame.editor().applyStyle(style.ptr(), EditAction::SetInlineWritingDirection);
     return true;
 }
 

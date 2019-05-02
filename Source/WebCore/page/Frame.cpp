@@ -108,7 +108,7 @@
 #include <wtf/text/StringBuilder.h>
 
 #if PLATFORM(IOS_FAMILY)
-#include "WKContentObservation.h"
+#include "ContentChangeObserver.h"
 #endif
 
 namespace WebCore {
@@ -838,7 +838,7 @@ void Frame::willDetachPage()
         page()->scrollingCoordinator()->willDestroyScrollableArea(*m_view);
 
 #if PLATFORM(IOS_FAMILY)
-    if (WebThreadCountOfObservedDOMTimers() > 0 && m_page) {
+    if (page() && page()->contentChangeObserver().countOfObservedDOMTimers()) {
         LOG(ContentObservation, "Frame::willDetachPage: remove registered timers.");
         m_page->chrome().client().clearContentChangeObservers(*this);
     }
@@ -934,7 +934,7 @@ RefPtr<Range> Frame::rangeForPoint(const IntPoint& framePoint)
     return nullptr;
 }
 
-void Frame::createView(const IntSize& viewportSize, bool transparent,
+void Frame::createView(const IntSize& viewportSize, const Optional<Color>& backgroundColor,
     const IntSize& fixedLayoutSize, const IntRect& fixedVisibleContentRect,
     bool useFixedLayout, ScrollbarMode horizontalScrollbarMode, bool horizontalLock,
     ScrollbarMode verticalScrollbarMode, bool verticalLock)
@@ -965,7 +965,7 @@ void Frame::createView(const IntSize& viewportSize, bool transparent,
 
     setView(frameView.copyRef());
 
-    frameView->updateBackgroundRecursively(transparent);
+    frameView->updateBackgroundRecursively(backgroundColor);
 
     if (isMainFrame)
         frameView->setParentVisible(true);
