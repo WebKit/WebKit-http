@@ -50,7 +50,7 @@ class ResourceLoadStatisticsMemoryStore;
 // This is always constructed / used / destroyed on the WebResourceLoadStatisticsStore's statistics queue.
 class ResourceLoadStatisticsDatabaseStore final : public ResourceLoadStatisticsStore {
 public:
-    ResourceLoadStatisticsDatabaseStore(WebResourceLoadStatisticsStore&, WorkQueue&, const String& storageDirectoryPath);
+    ResourceLoadStatisticsDatabaseStore(WebResourceLoadStatisticsStore&, WorkQueue&, ShouldIncludeLocalhost, const String& storageDirectoryPath);
 
     void populateFromMemoryStore(const ResourceLoadStatisticsMemoryStore&);
 
@@ -91,13 +91,14 @@ public:
     void calculateAndSubmitTelemetry() const override;
 
     void hasStorageAccess(const SubFrameDomain&, const TopFrameDomain&, Optional<FrameID>, PageID, CompletionHandler<void(bool)>&&) override;
-    void requestStorageAccess(SubFrameDomain&&, TopFrameDomain&&, FrameID, PageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&&) override;
+    void requestStorageAccess(SubFrameDomain&&, TopFrameDomain&&, FrameID, PageID, CompletionHandler<void(StorageAccessStatus)>&&) override;
     void grantStorageAccess(SubFrameDomain&&, TopFrameDomain&&, FrameID, PageID, bool userWasPromptedNow, CompletionHandler<void(bool)>&&) override;
 
     void logFrameNavigation(const NavigatedToDomain&, const TopFrameDomain&, const NavigatedFromDomain&, bool isRedirect, bool isMainFrame) override;
     void logUserInteraction(const TopFrameDomain&) override;
     void logSubresourceLoading(const SubResourceDomain&, const TopFrameDomain&, WallTime lastSeen) override;
     void logSubresourceRedirect(const RedirectedFromDomain&, const RedirectedToDomain&) override;
+    void logCrossSiteLoadWithLinkDecoration(const NavigatedFromDomain&, const NavigatedToDomain&) override;
 
     void clearUserInteraction(const RegistrableDomain&) override;
     bool hasHadUserInteraction(const RegistrableDomain&) override;
@@ -174,6 +175,8 @@ private:
     mutable WebCore::SQLiteStatement m_topFrameUniqueRedirectsToExists;
     WebCore::SQLiteStatement m_topFrameUniqueRedirectsFrom;
     mutable WebCore::SQLiteStatement m_topFrameUniqueRedirectsFromExists;
+    WebCore::SQLiteStatement m_topFrameLinkDecorationsFrom;
+    mutable WebCore::SQLiteStatement m_topFrameLinkDecorationsFromExists;
     WebCore::SQLiteStatement m_subframeUnderTopFrameDomains;
     mutable WebCore::SQLiteStatement m_subframeUnderTopFrameDomainExists;
     WebCore::SQLiteStatement m_subresourceUnderTopFrameDomains;

@@ -40,9 +40,9 @@
 //
 //  <div class="stacked-column-chart">
 //      <svg viewBox="0 0 800 75">
-//          <rect class="section-class-name-3" width="<w>" height="<h3>" transform="translate(<x>, <y>)" />
-//          <rect class="section-class-name-2" width="<w>" height="<h2>" transform="translate(<x>, <y>)" />
-//          <rect class="section-class-name-1" width="<w>" height="<h1>" transform="translate(<x>, <y>)" />
+//          <rect class="section-class-name-3" width="<w>" height="<h3>" x="<x>" y="<y>" />
+//          <rect class="section-class-name-2" width="<w>" height="<h2>" x="<x>" y="<y>" />
+//          <rect class="section-class-name-1" width="<w>" height="<h1>" x="<x>" y="<y>" />
 //          ...
 //      </svg>
 //  </div>
@@ -84,11 +84,11 @@ WI.StackedColumnChart = class StackedColumnChart extends WI.View
         this._sections = sectionClassNames;
     }
 
-    addColumnSet(x, totalHeight, width, heights)
+    addColumnSet(x, totalHeight, width, heights, additionalClass)
     {
         console.assert(heights.length === this._sections.length, "Wrong number of sections in columns set", heights.length, this._sections.length);
 
-        this._columns.push({x, totalHeight, width, heights});
+        this._columns.push({x, totalHeight, width, heights, additionalClass});
     }
 
     clear()
@@ -107,7 +107,7 @@ WI.StackedColumnChart = class StackedColumnChart extends WI.View
 
         this._svgElement.removeChildren();
 
-        for (let {x, totalHeight, width, heights} of this._columns) {
+        for (let {x, totalHeight, width, heights, additionalClass} of this._columns) {
             for (let i = heights.length - 1; i >= 0; --i) {
                 let height = heights[i];
                 // Next rect will be identical, skip this one.
@@ -116,9 +116,12 @@ WI.StackedColumnChart = class StackedColumnChart extends WI.View
                 let y = totalHeight - height;
                 let rect = this._svgElement.appendChild(createSVGElement("rect"));
                 rect.classList.add(this._sections[i]);
+                if (additionalClass)
+                    rect.classList.add(additionalClass);
                 rect.setAttribute("width", width);
                 rect.setAttribute("height", height);
-                rect.setAttribute("transform", `translate(${x}, ${y})`);
+                rect.setAttribute("x", x);
+                rect.setAttribute("y", y);
             }
         }
     }

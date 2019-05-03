@@ -1275,6 +1275,19 @@ addEventListener("deviceorientation", (event) => {
 
 @end
 
+@interface WebsitePoliciesDeviceOrientationUIDelegate : NSObject <WKUIDelegatePrivate> {
+}
+@end
+
+@implementation WebsitePoliciesDeviceOrientationUIDelegate
+
+- (void)_webView:(WKWebView *)webView shouldAllowDeviceOrientationAndMotionAccessRequestedByFrame:(WKFrameInfo *)requestingFrame decisionHandler:(void (^)(BOOL))decisionHandler
+{
+    decisionHandler(YES);
+}
+
+@end
+
 static void runWebsitePoliciesDeviceOrientationEventTest(bool websitePolicyValue)
 {
     auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
@@ -1287,11 +1300,19 @@ static void runWebsitePoliciesDeviceOrientationEventTest(bool websitePolicyValue
 
     auto delegate = adoptNS([[WebsitePoliciesDeviceOrientationDelegate alloc] initWithDeviceOrientationEventEnabled:websitePolicyValue]);
     [webView setNavigationDelegate:delegate.get()];
+    auto uiDelegate = adoptNS([[WebsitePoliciesDeviceOrientationUIDelegate alloc] init]);
+    [webView setUIDelegate:uiDelegate.get()];
 
     NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"test://localhost/main.html"]];
     [webView loadRequest:request];
     TestWebKitAPI::Util::run(&finishedNavigation);
     finishedNavigation = false;
+
+    bool askedForPermission = false;
+    [webView evaluateJavaScript:@"DeviceOrientationEvent.requestPermission()" completionHandler: [&] (id result, NSError *error) {
+        askedForPermission = true;
+    }];
+    TestWebKitAPI::Util::run(&askedForPermission);
 
     __block bool didReceiveMessage = false;
     [webView performAfterReceivingMessage:@"received-device-orientation-event" action:^{

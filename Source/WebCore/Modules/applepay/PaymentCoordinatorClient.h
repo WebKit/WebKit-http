@@ -49,8 +49,8 @@ public:
 
     virtual Optional<String> validatedPaymentNetwork(const String&) = 0;
     virtual bool canMakePayments() = 0;
-    virtual void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler) = 0;
-    virtual void openPaymentSetup(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler) = 0;
+    virtual void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&&) = 0;
+    virtual void openPaymentSetup(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&&) = 0;
 
     virtual bool showPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, const ApplePaySessionPaymentRequest&) = 0;
     virtual void completeMerchantValidation(const PaymentMerchantSession&) = 0;
@@ -63,6 +63,7 @@ public:
     virtual void paymentCoordinatorDestroyed() = 0;
 
     virtual bool isMockPaymentCoordinator() const { return false; }
+    virtual bool isWebPaymentCoordinator() const { return false; }
 
 protected:
     virtual ~PaymentCoordinatorClient() = default;

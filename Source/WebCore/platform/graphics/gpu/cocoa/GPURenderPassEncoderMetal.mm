@@ -113,9 +113,23 @@ static bool populateMtlDepthStencilAttachment(MTLRenderPassDepthAttachmentDescri
     return true;
 }
 
+static void useAttachments(GPUCommandBuffer& buffer, GPURenderPassDescriptor&& descriptor)
+{
+    for (auto& colorAttachment : descriptor.colorAttachments)
+        buffer.useTexture(WTFMove(colorAttachment.attachment));
+    if (descriptor.depthStencilAttachment)
+        buffer.useTexture(WTFMove((*descriptor.depthStencilAttachment).attachment));
+}
+
 RefPtr<GPURenderPassEncoder> GPURenderPassEncoder::tryCreate(Ref<GPUCommandBuffer>&& buffer, GPURenderPassDescriptor&& descriptor)
 {
     const char* const functionName = "GPURenderPassEncoder::tryCreate()";
+
+    // Only one command encoder may be active at a time.
+    if (buffer->isEncodingPass()) {
+        LOG(WebGPU, "%s: Existing pass encoder must be ended first!");
+        return nullptr;
+    }
 
     RetainPtr<MTLRenderPassDescriptor> mtlDescriptor;
 
@@ -137,11 +151,13 @@ RefPtr<GPURenderPassEncoder> GPURenderPassEncoder::tryCreate(Ref<GPUCommandBuffe
         && !populateMtlDepthStencilAttachment(mtlDescriptor.get().depthAttachment, *descriptor.depthStencilAttachment, functionName))
         return nullptr;
 
+    buffer->endBlitEncoding();
+
     RetainPtr<MTLRenderCommandEncoder> mtlEncoder;
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
-    mtlEncoder = retainPtr([buffer->platformCommandBuffer() renderCommandEncoderWithDescriptor:mtlDescriptor.get()]);
+    mtlEncoder = [buffer->platformCommandBuffer() renderCommandEncoderWithDescriptor:mtlDescriptor.get()];
 
     END_BLOCK_OBJC_EXCEPTIONS;
 
@@ -150,6 +166,9 @@ RefPtr<GPURenderPassEncoder> GPURenderPassEncoder::tryCreate(Ref<GPUCommandBuffe
         return nullptr;
     }
 
+    // All is well; ensure GPUCommandBuffer is aware of new attachments.
+    useAttachments(buffer, WTFMove(descriptor));
+    
     return adoptRef(new GPURenderPassEncoder(WTFMove(buffer), WTFMove(mtlEncoder)));
 }
 
@@ -159,13 +178,28 @@ GPURenderPassEncoder::GPURenderPassEncoder(Ref<GPUCommandBuffer>&& commandBuffer
 {
 }
 
-PlatformProgrammablePassEncoder *GPURenderPassEncoder::platformPassEncoder() const
+MTLCommandEncoder *GPURenderPassEncoder::platformPassEncoder() const
 {
     return m_platformRenderPassEncoder.get();
 }
 
-void GPURenderPassEncoder::setPipeline(Ref<GPURenderPipeline>&& pipeline)
+void GPURenderPassEncoder::endPass()
 {
+    if (!m_platformRenderPassEncoder)
+        return;
+    GPUProgrammablePassEncoder::endPass();
+    m_platformRenderPassEncoder = nullptr;
+}
+
+void GPURenderPassEncoder::setPipeline(Ref<const GPURenderPipeline>&& pipeline)
+{
+    if (!m_platformRenderPassEncoder) {
+        LOG(WebGPU, "GPURenderPassEncoder::setPipeline(): Invalid operation: Encoding is ended!");
+        return;
+    }
+
+    // FIXME: Metal throws an error if the MTLPipelineState's attachment formats do not match the MTLCommandEncoder's attachment formats. Does this have to be validated at the Web GPU level?
+
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
     if (pipeline->depthStencilState())
@@ -180,6 +214,11 @@ void GPURenderPassEncoder::setPipeline(Ref<GPURenderPipeline>&& pipeline)
 
 void GPURenderPassEncoder::setVertexBuffers(unsigned long index, Vector<Ref<GPUBuffer>>&& buffers, Vector<unsigned long long>&& offsets)
 {
+    if (!m_platformRenderPassEncoder) {
+        LOG(WebGPU, "GPURenderPassEncoder::setVertexBuffers(): Invalid operation: Encoding is ended!");
+        return;
+    }
+
     ASSERT(buffers.size() && offsets.size() == buffers.size());
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
@@ -196,24 +235,36 @@ void GPURenderPassEncoder::setVertexBuffers(unsigned long index, Vector<Ref<GPUB
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 
-static MTLPrimitiveType primitiveTypeForGPUPrimitiveTopology(PrimitiveTopology type)
+static MTLPrimitiveType primitiveTypeForGPUPrimitiveTopology(GPUPrimitiveTopology type)
 {
     switch (type) {
-    case PrimitiveTopology::PointList:
+    case GPUPrimitiveTopology::PointList:
         return MTLPrimitiveTypePoint;
-    case PrimitiveTopology::LineList:
+    case GPUPrimitiveTopology::LineList:
         return MTLPrimitiveTypeLine;
-    case PrimitiveTopology::LineStrip:
+    case GPUPrimitiveTopology::LineStrip:
         return MTLPrimitiveTypeLineStrip;
-    case PrimitiveTopology::TriangleList:
+    case GPUPrimitiveTopology::TriangleList:
         return MTLPrimitiveTypeTriangle;
-    case PrimitiveTopology::TriangleStrip:
+    case GPUPrimitiveTopology::TriangleStrip:
         return MTLPrimitiveTypeTriangleStrip;
     }
+
+    ASSERT_NOT_REACHED();
 }
 
 void GPURenderPassEncoder::draw(unsigned long vertexCount, unsigned long instanceCount, unsigned long firstVertex, unsigned long firstInstance)
 {
+    if (!m_platformRenderPassEncoder) {
+        LOG(WebGPU, "GPURenderPassEncoder::draw(): Invalid operation: Encoding is ended!");
+        return;
+    }
+
+    if (!m_pipeline) {
+        LOG(WebGPU, "GPURenderPassEncoder::draw(): No valid GPURenderPipeline found!");
+        return;
+    }
+
     [m_platformRenderPassEncoder 
         drawPrimitives:primitiveTypeForGPUPrimitiveTopology(m_pipeline->primitiveTopology())
         vertexStart:firstVertex
@@ -224,19 +275,37 @@ void GPURenderPassEncoder::draw(unsigned long vertexCount, unsigned long instanc
 
 #if USE(METAL)
 
-void GPURenderPassEncoder::useResource(MTLResource *resource, unsigned long usage)
+void GPURenderPassEncoder::useResource(MTLResource *resource, unsigned usage)
 {
+    if (!m_platformRenderPassEncoder) {
+        LOG(WebGPU, "GPURenderPassEncoder: Invalid operation: Encoding is ended!");
+        return;
+    }
+    BEGIN_BLOCK_OBJC_EXCEPTIONS;
     [m_platformRenderPassEncoder useResource:resource usage:usage];
+    END_BLOCK_OBJC_EXCEPTIONS;
 }
 
-void GPURenderPassEncoder::setVertexBuffer(MTLBuffer *buffer, unsigned long offset, unsigned long index)
+void GPURenderPassEncoder::setVertexBuffer(MTLBuffer *buffer, unsigned offset, unsigned index)
 {
+    if (!m_platformRenderPassEncoder) {
+        LOG(WebGPU, "GPURenderPassEncoder: Invalid operation: Encoding is ended!");
+        return;
+    }
+    BEGIN_BLOCK_OBJC_EXCEPTIONS;
     [m_platformRenderPassEncoder setVertexBuffer:buffer offset:offset atIndex:index];
+    END_BLOCK_OBJC_EXCEPTIONS;
 }
 
-void GPURenderPassEncoder::setFragmentBuffer(MTLBuffer *buffer, unsigned long offset, unsigned long index)
+void GPURenderPassEncoder::setFragmentBuffer(MTLBuffer *buffer, unsigned offset, unsigned index)
 {
+    if (!m_platformRenderPassEncoder) {
+        LOG(WebGPU, "GPURenderPassEncoder: Invalid operation: Encoding is ended!");
+        return;
+    }
+    BEGIN_BLOCK_OBJC_EXCEPTIONS;
     [m_platformRenderPassEncoder setFragmentBuffer:buffer offset:offset atIndex:index];
+    END_BLOCK_OBJC_EXCEPTIONS;
 }
 
 #endif // USE(METAL)

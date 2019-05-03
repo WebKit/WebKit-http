@@ -25,7 +25,7 @@
 // https://github.com/gpuweb/gpuweb/blob/master/design/sketch.webidl
 
 typedef unsigned long u32;
-typedef u32 GPUTextureUsageFlags;
+typedef unsigned long GPUTextureUsageFlags;
 
 [
     Conditional=WEBGPU,

@@ -59,7 +59,6 @@ set(JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
 
 set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/ArrayConstructor.cpp
-    runtime/ArrayIteratorPrototype.cpp
     runtime/AsyncFromSyncIteratorPrototype.cpp
     runtime/AsyncGeneratorPrototype.cpp
     runtime/BigIntConstructor.cpp
@@ -95,7 +94,6 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/RegExpPrototype.cpp
     runtime/SetPrototype.cpp
     runtime/StringConstructor.cpp
-    runtime/StringIteratorPrototype.cpp
     runtime/StringPrototype.cpp
     runtime/SymbolConstructor.cpp
     runtime/SymbolPrototype.cpp
@@ -1000,6 +998,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     yarr/RegularExpression.h
     yarr/Yarr.h
     yarr/YarrErrorCode.h
+    yarr/YarrFlags.h
     yarr/YarrInterpreter.h
     yarr/YarrJIT.h
     yarr/YarrParser.h

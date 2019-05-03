@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -400,8 +400,6 @@ VM::VM(VMType vmType, HeapType heapType)
     functionCodeBlockStructure.set(*this, FunctionCodeBlock::createStructure(*this, 0, jsNull()));
     hashMapBucketSetStructure.set(*this, HashMapBucket<HashMapBucketDataKey>::createStructure(*this, 0, jsNull()));
     hashMapBucketMapStructure.set(*this, HashMapBucket<HashMapBucketDataKeyValue>::createStructure(*this, 0, jsNull()));
-    setIteratorStructure.set(*this, JSSetIterator::createStructure(*this, 0, jsNull()));
-    mapIteratorStructure.set(*this, JSMapIterator::createStructure(*this, 0, jsNull()));
     bigIntStructure.set(*this, JSBigInt::createStructure(*this, 0, jsNull()));
     executableToCodeBlockEdgeStructure.set(*this, ExecutableToCodeBlockEdge::createStructure(*this, nullptr, jsNull()));
 
@@ -811,7 +809,7 @@ void VM::clearSourceProviderCaches()
     sourceProviderCacheMap.clear();
 }
 
-void VM::throwException(ExecState* exec, Exception* exception)
+Exception* VM::throwException(ExecState* exec, Exception* exception)
 {
     ASSERT(exec == topCallFrame || exec->isGlobalExec() || exec == exec->lexicalGlobalObject()->callFrameAtDebuggerEntry());
     CallFrame* throwOriginFrame = exec->isGlobalExec() ? exec : topJSCallFrame();
@@ -830,22 +828,22 @@ void VM::throwException(ExecState* exec, Exception* exception)
     m_nativeStackTraceOfLastThrow = StackTrace::captureStackTrace(Options::unexpectedExceptionStackTraceLimit());
     m_throwingThread = &Thread::current();
 #endif
+    return exception;
 }
 
-JSValue VM::throwException(ExecState* exec, JSValue thrownValue)
+Exception* VM::throwException(ExecState* exec, JSValue thrownValue)
 {
     VM& vm = *this;
     Exception* exception = jsDynamicCast<Exception*>(vm, thrownValue);
     if (!exception)
         exception = Exception::create(*this, thrownValue);
 
-    throwException(exec, exception);
-    return JSValue(exception);
+    return throwException(exec, exception);
 }
 
-JSObject* VM::throwException(ExecState* exec, JSObject* error)
+Exception* VM::throwException(ExecState* exec, JSObject* error)
 {
-    return asObject(throwException(exec, JSValue(error)));
+    return throwException(exec, JSValue(error));
 }
 
 void VM::setStackPointerAtVMEntry(void* sp)
@@ -1291,6 +1289,19 @@ DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW(moduleProgramExecutableSpace, destructi
 
 #undef DYNAMIC_SPACE_AND_SET_DEFINE_MEMBER_SLOW
 
+Structure* VM::setIteratorStructureSlow()
+{
+    ASSERT(!m_setIteratorStructure);
+    m_setIteratorStructure.set(*this, JSSetIterator::createStructure(*this, 0, jsNull()));
+    return m_setIteratorStructure.get();
+}
+
+Structure* VM::mapIteratorStructureSlow()
+{
+    ASSERT(!m_mapIteratorStructure);
+    m_mapIteratorStructure.set(*this, JSMapIterator::createStructure(*this, 0, jsNull()));
+    return m_mapIteratorStructure.get();
+}
 
 JSCell* VM::sentinelSetBucketSlow()
 {

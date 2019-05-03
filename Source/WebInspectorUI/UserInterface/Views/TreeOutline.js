@@ -817,7 +817,7 @@ WI.TreeOutline = class TreeOutline extends WI.Object
             treeElement = treeElement.children.lastValue;
 
         let item = this.objectForSelection(treeElement);
-        if (treeElement.selectable)
+        if (this.canSelectTreeElement(treeElement))
             return item;
         return this.selectionControllerPreviousSelectableItem(controller, item);
     }
@@ -834,7 +834,7 @@ WI.TreeOutline = class TreeOutline extends WI.Object
         const dontPopulate = true;
 
         while (treeElement = treeElement.traversePreviousTreeElement(skipUnrevealed, stayWithin, dontPopulate)) {
-            if (treeElement.selectable)
+            if (this.canSelectTreeElement(treeElement))
                 return this.objectForSelection(treeElement);
         }
 
@@ -853,7 +853,7 @@ WI.TreeOutline = class TreeOutline extends WI.Object
         const dontPopulate = true;
 
         while (treeElement = treeElement.traverseNextTreeElement(skipUnrevealed, stayWithin, dontPopulate)) {
-            if (treeElement.selectable)
+            if (this.canSelectTreeElement(treeElement))
                 return this.objectForSelection(treeElement);
         }
 
@@ -861,6 +861,13 @@ WI.TreeOutline = class TreeOutline extends WI.Object
     }
 
     // Protected
+
+    canSelectTreeElement(treeElement)
+    {
+        // Can be overridden by subclasses.
+
+        return treeElement.selectable;
+    }
 
     objectForSelection(treeElement)
     {
@@ -939,7 +946,6 @@ WI.TreeOutline = class TreeOutline extends WI.Object
         WI.TreeOutline._styleElement = document.createElement("style");
 
         let maximumTreeDepth = 32;
-        let baseLeftPadding = 5; // Matches the padding in TreeOutline.css for the item class. Keep in sync.
         let depthPadding = 10;
 
         let styleText = "";
@@ -948,13 +954,8 @@ WI.TreeOutline = class TreeOutline extends WI.Object
             // Keep all the elements at the same depth once the maximum is reached.
             childrenSubstring += i === maximumTreeDepth ? " .children" : " > .children";
             styleText += `.${WI.TreeOutline.ElementStyleClassName}:not(.${WI.TreeOutline.CustomIndentStyleClassName})${childrenSubstring} > .item { `;
-
-            if (WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL)
-                styleText += "padding-right: ";
-            else
-                styleText += "padding-left: ";
-
-            styleText += (baseLeftPadding + (depthPadding * i)) + "px; }\n";
+            styleText += `-webkit-padding-start: calc(var(--tree-outline-item-padding) + ${depthPadding * i}px);`;
+            styleText += ` };\n`;
         }
 
         WI.TreeOutline._styleElement.textContent = styleText;

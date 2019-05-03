@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007-2008, 2016 Apple Inc. All Rights Reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All Rights Reserved.
  *  Copyright (C) 2009 Torch Mobile, Inc.
  *
  *  This library is free software; you can redistribute it and/or
@@ -24,10 +24,10 @@
 
 #include "Error.h"
 #include "GetterSetter.h"
-#include "JSCInlines.h"
 #include "RegExpGlobalDataInlines.h"
 #include "RegExpPrototype.h"
 #include "StructureInlines.h"
+#include "YarrFlags.h"
 
 namespace JSC {
 
@@ -88,13 +88,13 @@ RegExpConstructor::RegExpConstructor(VM& vm, Structure* structure)
 
 void RegExpConstructor::finishCreation(VM& vm, RegExpPrototype* regExpPrototype, GetterSetter* speciesSymbol)
 {
-    Base::finishCreation(vm, "RegExp"_s);
+    Base::finishCreation(vm, vm.propertyNames->RegExp.string(), NameVisibility::Visible, NameAdditionMode::WithoutStructureTransition);
     ASSERT(inherits(vm, info()));
 
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, regExpPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(2), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 
-    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+    putDirectNonIndexAccessorWithoutTransition(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
 
 template<int N>
@@ -177,23 +177,22 @@ inline Structure* getRegExpStructure(ExecState* exec, JSGlobalObject* globalObje
     return structure;
 }
 
-inline RegExpFlags toFlags(ExecState* exec, JSValue flags)
+inline OptionSet<Yarr::Flags> toFlags(ExecState* exec, JSValue flags)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (flags.isUndefined())
-        return NoFlags;
-    JSString* flagsString = flags.toStringOrNull(exec);
-    EXCEPTION_ASSERT(!!scope.exception() == !flagsString);
-    if (UNLIKELY(!flagsString))
-        return InvalidFlags;
-
-    RegExpFlags result = regExpFlags(flagsString->value(exec));
-    RETURN_IF_EXCEPTION(scope, InvalidFlags);
-    if (result == InvalidFlags)
+        return { };
+    
+    auto result = Yarr::parseFlags(flags.toWTFString(exec));
+    RETURN_IF_EXCEPTION(scope, { });
+    if (!result) {
         throwSyntaxError(exec, scope, "Invalid flags supplied to RegExp constructor."_s);
-    return result;
+        return { };
+    }
+
+    return result.value();
 }
 
 static JSObject* regExpCreate(ExecState* exec, JSGlobalObject* globalObject, JSValue newTarget, JSValue patternArg, JSValue flagsArg)
@@ -204,14 +203,14 @@ static JSObject* regExpCreate(ExecState* exec, JSGlobalObject* globalObject, JSV
     String pattern = patternArg.isUndefined() ? emptyString() : patternArg.toWTFString(exec);
     RETURN_IF_EXCEPTION(scope, nullptr);
 
-    RegExpFlags flags = toFlags(exec, flagsArg);
-    EXCEPTION_ASSERT(!!scope.exception() == (flags == InvalidFlags));
-    if (UNLIKELY(flags == InvalidFlags))
-        return nullptr;
+    auto flags = toFlags(exec, flagsArg);
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     RegExp* regExp = RegExp::create(vm, pattern, flags);
-    if (!regExp->isValid())
-        return throwException(exec, scope, regExp->errorToThrow(exec));
+    if (UNLIKELY(!regExp->isValid())) {
+        throwException(exec, scope, regExp->errorToThrow(exec));
+        return nullptr;
+    }
 
     Structure* structure = getRegExpStructure(exec, globalObject, newTarget);
     RETURN_IF_EXCEPTION(scope, nullptr);
@@ -244,14 +243,14 @@ JSObject* constructRegExp(ExecState* exec, JSGlobalObject* globalObject, const A
         RETURN_IF_EXCEPTION(scope, nullptr);
 
         if (!flagsArg.isUndefined()) {
-            RegExpFlags flags = toFlags(exec, flagsArg);
-            EXCEPTION_ASSERT(!!scope.exception() == (flags == InvalidFlags));
-            if (flags == InvalidFlags)
-                return nullptr;
-            regExp = RegExp::create(vm, regExp->pattern(), flags);
+            auto flags = toFlags(exec, flagsArg);
+            RETURN_IF_EXCEPTION(scope, nullptr);
 
-            if (!regExp->isValid())
-                return throwException(exec, scope, regExp->errorToThrow(exec));
+            regExp = RegExp::create(vm, regExp->pattern(), flags);
+            if (UNLIKELY(!regExp->isValid())) {
+                throwException(exec, scope, regExp->errorToThrow(exec));
+                return nullptr;
+            }
         }
 
         return RegExpObject::create(vm, structure, regExp);

@@ -50,6 +50,12 @@
     --background-color-content: white;
     --background-color-code: white;
 
+    /* Gray background with lighter foreground. In dark mode this is lighter. */
+    --gray-background-color: hsl(0, 0%, 66%);
+    --gray-foreground-color: white;
+
+    --link-text-color: hsl(0, 0%, 33%);
+
     --selected-foreground-color: white;
     --selected-secondary-text-color: hsla(0, 100%, 100%, 0.7);
     --selected-background-color: hsl(212, 92%, 54%);
@@ -126,13 +132,14 @@
     --memory-max-comparison-fill-color: hsl(220, 10%, 75%);
     --memory-max-comparison-stroke-color: hsl(220, 10%, 55%);
 
-    --cpu-stroke-color: hsl(118, 33%, 42%);
-    --cpu-fill-color: hsl(81, 80%, 50%);
+    --cpu-other-thread-fill-color: hsl(81, 80%, 50%);
+    --cpu-other-thread-stroke-color: hsl(81, 80%, 30%);
     --cpu-main-thread-fill-color: hsl(118, 43%, 55%);
-    --cpu-worker-thread-fill-color: hsl(45, 94.75%, 55%);
+    --cpu-main-thread-stroke-color: hsl(118, 33%, 42%);
+    --cpu-worker-thread-fill-color: hsl(59, 79%, 62%);
+    --cpu-worker-thread-stroke-color: hsl(59, 79%, 37%);
+    --cpu-overlay-color: var(--cpu-main-thread-stroke-color);
 
-    --cpu-idle-fill-color: hsl(220, 10%, 75%);
-    --cpu-idle-stroke-color: hsl(220, 10%, 55%);
     --cpu-script-fill-color: hsl(269, 65%, 75%);
     --cpu-script-stroke-color: hsl(269, 33%, 50%);
     --cpu-style-fill-color: hsl(22, 60%, 70%);
@@ -215,6 +222,11 @@ body.window-inactive * {
         --background-color-content: hsl(0, 0%, 21%);
         --background-color-code: hsl(0, 0%, 21%);
 
+        --gray-background-color: hsl(0, 0%, 50%);
+        --gray-foreground-color: hsl(0, 0%, 33%);
+
+        --link-text-color: var(--text-color-secondary);
+
         --background-color-alternate: hsla(0, 0%, var(--foreground-lightness), 0.05);
         --background-color-selected: hsla(0, 0%, var(--foreground-lightness), 0.1);
 
@@ -287,6 +299,8 @@ body.window-inactive * {
         --network-system-color: hsl(79, 95%, 50%);
         --network-pseudo-header-color: hsl(312, 55%, 61%);
         --network-error-color: hsl(0, 54%, 55%);
+
+        --cpu-overlay-color: hsl(36, 98%, 50%);
 
         --cpu-low-color: hsl(110, 52%, 56%);
         --cpu-medium-color: hsl(46, 91%, 62%);

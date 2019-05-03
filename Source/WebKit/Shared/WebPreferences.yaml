@@ -12,6 +12,15 @@ DeviceOrientationEventEnabled:
   condition: ENABLE(DEVICE_ORIENTATION)
   webcoreName: deviceOrientationEventEnabled
 
+DeviceOrientationPermissionAPIEnabled:
+  type: bool
+  defaultValue: defaultDeviceOrientationPermissionAPIEnabled()
+  condition: ENABLE(DEVICE_ORIENTATION)
+  webcoreName: deviceOrientationPermissionAPIEnabled
+  humanReadableName: "Permission API for device orientation / motion access."
+  humanReadableDescription: "DeviceOrientationEvent.requestPermission() / DeviceMotionEvent.requestPermission()"
+  category: experimental
+
 JavaScriptEnabled:
   type: bool
   defaultValue: true
@@ -483,6 +492,11 @@ ThreadedScrollingEnabled:
 SimpleLineLayoutEnabled:
   type: bool
   defaultValue: true
+
+ContentChangeObserverEnabled:
+  type: bool
+  defaultValue: true
+  condition: PLATFORM(IOS_FAMILY)
 
 SubpixelCSSOMElementMetricsEnabled:
   type: bool
@@ -1148,11 +1162,6 @@ StorageAccessAPIEnabled:
   type: bool
   defaultValue: true
 
-StorageAccessPromptsEnabled:
-  type: bool
-  defaultValue: true
-  webcoreBinding: RuntimeEnabledFeatures
-
 LinkPreloadEnabled:
   type: bool
   defaultValue: true
@@ -1399,7 +1408,7 @@ ServiceWorkersEnabled:
 
 AsyncFrameScrollingEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_ASYNC_FRAME_SCROLLING_ENABLED
   humanReadableName: "Async Frame Scrolling"
   humanReadableDescription: "Perform frame scrolling off the main thread"
   category: internal
@@ -1460,6 +1469,15 @@ SelectionAcrossShadowBoundariesEnabled:
   humanReadableDescription: "Allow user-initiated selection across shadow DOM boundaries"
   category: internal
   webcoreName: selectionAcrossShadowBoundariesEnabled
+
+FasterClicksEnabled:
+  type: bool
+  defaultValue: true
+  condition: PLATFORM(IOS_FAMILY)
+  humanReadableName: "Faster clicks"
+  humanReadableDescription: "Support faster clicks on zoomable pages"
+  webcoreBinding: none
+  category: internal
 
 InputTypeColorEnabled:
   type: bool
@@ -1547,7 +1565,7 @@ DOMPasteAccessRequestsEnabled:
 
 MouseEventsSimulationEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: false
   humanReadableName: "Mouse events simulation"
   humanReadableDescription: "Enable mouse events dispatch along with touch events on iOS"
   webcoreBinding: RuntimeEnabledFeatures
@@ -1570,6 +1588,14 @@ ReferrerPolicyAttributeEnabled:
   humanReadableDescription: "Enable Referrer Policy attribute"
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
+
+ApplePayRemoteUIEnabled:
+  category: internal
+  condition: ENABLE(APPLE_PAY_REMOTE_UI)
+  defaultValue: true
+  humanReadableDescription: "Enable Apple Pay Remote UI"
+  humanReadableName: "Apple Pay Remote UI"
+  type: bool
 
 # Deprecated
 

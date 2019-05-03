@@ -219,8 +219,8 @@ WebInspectorFrontendClient::WebInspectorFrontendClient(WebView* inspectedWebView
     : InspectorFrontendClientLocal(&inspectedWebView->page()->inspectorController(),  core(frontendWebView.get()), WTFMove(settings))
     , m_inspectedWebView(inspectedWebView)
     , m_inspectedWebViewHwnd(inspectedWebViewHwnd)
-    , m_inspectorClient(inspectorClient)
     , m_frontendHwnd(frontendHwnd)
+    , m_inspectorClient(inspectorClient)
     , m_frontendWebView(frontendWebView)
     , m_frontendWebViewHwnd(frontendWebViewHwnd)
     , m_attached(false)
@@ -450,7 +450,7 @@ void WebInspectorFrontendClient::destroyInspectorView()
 void WebInspectorFrontendClient::updateWindowTitle()
 {
     String title = makeString("Web Inspector ", static_cast<UChar>(0x2014), ' ', m_inspectedURL);
-    ::SetWindowText(m_frontendHwnd, title.charactersWithNullTermination().data());
+    ::SetWindowText(m_frontendHwnd, title.wideCharacters().data());
 }
 
 LRESULT WebInspectorFrontendClient::onGetMinMaxInfo(WPARAM, LPARAM lParam)

@@ -1,3 +1,84 @@
+2019-03-12  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Win] Fix a slew of simple clang-cl warnings.
+        https://bugs.webkit.org/show_bug.cgi?id=195652
+
+        Reviewed by Don Olmstead.
+
+        * pal/win/LoggingWin.cpp:
+        (PAL::logLevelString): -Wwritable-strings
+
+2019-03-12  Timothy Hatcher  <timothy@apple.com>
+
+        Expose document attributes and body background color through HTMLConverter.
+        https://bugs.webkit.org/show_bug.cgi?id=195636
+        rdar://problem/45055697
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cocoa/NSAttributedStringSPI.h:
+        (NSBackgroundColorDocumentAttribute): Added.
+
+2019-03-12  Jennifer Moore  <jennifer.moore@apple.com>
+
+        Check whether to launch a default action instead of action sheet
+        https://bugs.webkit.org/show_bug.cgi?id=195225
+        <rdar://problem/47715544>
+
+        Reviewed by Daniel Bates.
+
+        Add new SPI declarations.
+
+        * pal/spi/ios/DataDetectorsUISPI.h:
+
+2019-03-11  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Add Optional to Forward.h.
+        https://bugs.webkit.org/show_bug.cgi?id=195586
+
+        Reviewed by Darin Adler.
+
+        * pal/crypto/tasn1/Utilities.cpp:
+        * pal/crypto/tasn1/Utilities.h:
+        Remove unnecessary includes from headers.
+
+2019-03-11  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Use PKPaymentAuthorizationController to present the Apple Pay UI remotely from the Networking service on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=195530
+        <rdar://problem/48747164>
+
+        Reviewed by Alex Christensen.
+
+        * pal/cocoa/PassKitSoftLink.h: Soft-linked PKPaymentAuthorizationController on iOS.
+        * pal/cocoa/PassKitSoftLink.mm: Ditto.
+        * pal/spi/cocoa/PassKitSPI.h: Declared PKPaymentAuthorizationControllerPrivateDelegate and
+        related SPI.
+
+2019-03-11  Alex Christensen  <achristensen@webkit.org>
+
+        Soft linking to Reveal framework should be optional
+        https://bugs.webkit.org/show_bug.cgi?id=195576
+        <rdar://problem/46822452>
+
+        Reviewed by Megan Gardner.
+
+        * pal/spi/cocoa/RevealSPI.h:
+
+2019-03-07  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Untangle PKPaymentAuthorizationViewController from WebPaymentCoordinatorProxy
+        https://bugs.webkit.org/show_bug.cgi?id=195349
+        <rdar://problem/48625510>
+
+        Reviewed by Alex Christensen.
+
+        Moved soft-linking of PKPaymentErrorDomain from WebPaymentCoordinatorProxy to here and used
+        a more descriptive platform macro.
+
+        * pal/cocoa/PassKitSoftLink.h:
+        * pal/cocoa/PassKitSoftLink.mm:
+
 2019-03-01  Conrad Shultz  <conrad_shultz@apple.com>
 
         Improper use of PLATFORM(TVOS) in PAL

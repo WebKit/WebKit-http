@@ -63,6 +63,7 @@
 #include "WebsiteDataStore.h"
 #include "WebsiteDataStoreParameters.h"
 #include "WebsiteDataType.h"
+#include <WebCore/CookieJar.h>
 #include <WebCore/DNS.h>
 #include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/DiagnosticLoggingClient.h>
@@ -75,6 +76,7 @@
 #include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/SecurityOriginData.h>
+#include <WebCore/StorageQuotaManager.h>
 #include <wtf/Algorithms.h>
 #include <wtf/CallbackAggregator.h>
 #include <wtf/OptionSet.h>
@@ -167,7 +169,7 @@ NetworkProcess::~NetworkProcess()
 {
     for (auto& callbacks : m_cacheStorageParametersCallbacks.values()) {
         for (auto& callback : callbacks)
-            callback(String { }, 0);
+            callback(String { });
     }
 }
 
@@ -567,6 +569,8 @@ void NetworkProcess::destroySession(const PAL::SessionID& sessionID)
     m_swServers.remove(sessionID);
     m_swDatabasePaths.remove(sessionID);
 #endif
+
+    m_storageQuotaManagers.remove(sessionID);
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -782,6 +786,19 @@ void NetworkProcess::setNotifyPagesWhenDataRecordsWereScanned(PAL::SessionID ses
     }
 }
 
+void NetworkProcess::setIsRunningResourceLoadStatisticsTest(PAL::SessionID sessionID, bool value, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->setIsRunningTest(value, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
+}
+
 void NetworkProcess::setNotifyPagesWhenTelemetryWasCaptured(PAL::SessionID sessionID, bool value, CompletionHandler<void()>&& completionHandler)
 {
     if (auto* networkSession = this->networkSession(sessionID)) {
@@ -960,11 +977,11 @@ void NetworkProcess::hasStorageAccess(PAL::SessionID sessionID, const Registrabl
     }
 }
 
-void NetworkProcess::requestStorageAccess(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, Optional<uint64_t> frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&& completionHandler)
+void NetworkProcess::requestStorageAccess(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, Optional<uint64_t> frameID, uint64_t pageID, CompletionHandler<void(StorageAccessStatus)>&& completionHandler)
 {
     if (auto* networkSession = this->networkSession(sessionID)) {
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
-            resourceLoadStatistics->requestStorageAccess(subFrameDomain, topFrameDomain, frameID.value(), pageID, promptEnabled, WTFMove(completionHandler));
+            resourceLoadStatistics->requestStorageAccess(subFrameDomain, topFrameDomain, frameID.value(), pageID, WTFMove(completionHandler));
         else
             completionHandler(StorageAccessStatus::CannotRequestAccess);
     } else {
@@ -973,11 +990,11 @@ void NetworkProcess::requestStorageAccess(PAL::SessionID sessionID, const Regist
     }
 }
 
-void NetworkProcess::requestStorageAccessGranted(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, uint64_t frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(bool)>&& completionHandler)
+void NetworkProcess::requestStorageAccessGranted(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&& completionHandler)
 {
     if (auto* networkSession = this->networkSession(sessionID)) {
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
-            resourceLoadStatistics->requestStorageAccessGranted(subFrameDomain, topFrameDomain, frameID, pageID, promptEnabled, WTFMove(completionHandler));
+            resourceLoadStatistics->requestStorageAccessGranted(subFrameDomain, topFrameDomain, frameID, pageID, WTFMove(completionHandler));
         else
             completionHandler(false);
     } else {
@@ -1183,12 +1200,22 @@ void NetworkProcess::resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID ses
     completionHandler();
 }
 
-void NetworkProcess::committedCrossSiteLoadWithLinkDecoration(PAL::SessionID sessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, uint64_t pageID)
+void NetworkProcess::committedCrossSiteLoadWithLinkDecoration(PAL::SessionID sessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, uint64_t pageID, CompletionHandler<void()>&& completionHandler)
 {
     if (auto* networkStorageSession = storageSession(sessionID))
         networkStorageSession->committedCrossSiteLoadWithLinkDecoration(fromDomain, toDomain, pageID);
     else
         ASSERT_NOT_REACHED();
+    
+    if (auto* networkSession = this->networkSession(sessionID)) {
+        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+            resourceLoadStatistics->logCrossSiteLoadWithLinkDecoration(fromDomain, toDomain, WTFMove(completionHandler));
+        else
+            completionHandler();
+    } else {
+        ASSERT_NOT_REACHED();
+        completionHandler();
+    }
 }
 
 void NetworkProcess::resetCrossSiteLoadsWithLinkDecorationForTesting(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
@@ -1466,7 +1493,7 @@ static Vector<WebsiteData::Entry> filterForRegistrableDomains(const Vector<Regis
     return result;
 }
 
-void NetworkProcess::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, Vector<RegistrableDomain>&& domains, bool shouldNotifyPage, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&& completionHandler)
+void NetworkProcess::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, Vector<RegistrableDomain>&& domains, bool shouldNotifyPage, IncludeHttpOnlyCookies includeHttpOnlyCookies, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&& completionHandler)
 {
     OptionSet<WebsiteDataFetchOption> fetchOptions = WebsiteDataFetchOption::DoNotCreateProcesses;
 
@@ -1513,7 +1540,7 @@ void NetworkProcess::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataSt
         if (auto* networkStorageSession = storageSession(sessionID)) {
             networkStorageSession->getHostnamesWithCookies(websiteDataStore.hostNamesWithCookies);
             hostnamesWithCookiesToDelete = filterForRegistrableDomains(domains, websiteDataStore.hostNamesWithCookies);
-            networkStorageSession->deleteCookiesForHostnames(hostnamesWithCookiesToDelete);
+            networkStorageSession->deleteCookiesForHostnames(hostnamesWithCookiesToDelete, includeHttpOnlyCookies);
         }
     }
 
@@ -1596,6 +1623,16 @@ void NetworkProcess::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataSt
             clearDiskCacheEntries(cache(), entriesToDelete, [callbackAggregator = callbackAggregator.copyRef()] { });
         });
     }
+}
+
+void NetworkProcess::deleteCookiesForTesting(PAL::SessionID sessionID, RegistrableDomain domain, bool includeHttpOnlyCookies, CompletionHandler<void()>&& completionHandler)
+{
+    OptionSet<WebsiteDataType> cookieType = WebsiteDataType::Cookies;
+
+    deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(sessionID, cookieType, { domain }, true, includeHttpOnlyCookies ? IncludeHttpOnlyCookies::Yes : IncludeHttpOnlyCookies::No, [completionHandler = WTFMove(completionHandler)] (const HashSet<RegistrableDomain>& domainsDeletedFor) mutable {
+        UNUSED_PARAM(domainsDeletedFor);
+        completionHandler();
+    });
 }
 
 void NetworkProcess::registrableDomainsWithWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, bool shouldNotifyPage, CompletionHandler<void(HashSet<RegistrableDomain>&&)>&& completionHandler)
@@ -1916,16 +1953,20 @@ void NetworkProcess::prefetchDNS(const String& hostname)
     WebCore::prefetchDNS(hostname);
 }
 
-void NetworkProcess::cacheStorageParameters(PAL::SessionID sessionID, CacheStorageParametersCallback&& callback)
+void NetworkProcess::cacheStorageRootPath(PAL::SessionID sessionID, CacheStorageRootPathCallback&& callback)
 {
     m_cacheStorageParametersCallbacks.ensure(sessionID, [&] {
         parentProcessConnection()->send(Messages::NetworkProcessProxy::RetrieveCacheStorageParameters { sessionID }, 0);
-        return Vector<CacheStorageParametersCallback> { };
+        return Vector<CacheStorageRootPathCallback> { };
     }).iterator->value.append(WTFMove(callback));
 }
 
 void NetworkProcess::setCacheStorageParameters(PAL::SessionID sessionID, uint64_t quota, String&& cacheStorageDirectory, SandboxExtension::Handle&& handle)
 {
+    m_storageQuotaManagers.ensure(sessionID, [] {
+        return StorageQuotaManagers { };
+    }).iterator->value.defaultQuota = quota;
+
     auto iterator = m_cacheStorageParametersCallbacks.find(sessionID);
     if (iterator == m_cacheStorageParametersCallbacks.end())
         return;
@@ -1934,7 +1975,7 @@ void NetworkProcess::setCacheStorageParameters(PAL::SessionID sessionID, uint64_
     auto callbacks = WTFMove(iterator->value);
     m_cacheStorageParametersCallbacks.remove(iterator);
     for (auto& callback : callbacks)
-        callback(String { cacheStorageDirectory }, quota);
+        callback(String { cacheStorageDirectory });
 }
 
 void NetworkProcess::preconnectTo(const URL& url, WebCore::StoredCredentialsPolicy storedCredentialsPolicy)
@@ -2257,6 +2298,18 @@ void NetworkProcess::addServiceWorkerSession(PAL::SessionID sessionID, String& s
 void NetworkProcess::requestStorageSpace(PAL::SessionID sessionID, const ClientOrigin& origin, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t>)>&& callback)
 {
     parentProcessConnection()->sendWithAsyncReply(Messages::NetworkProcessProxy::RequestStorageSpace { sessionID, origin, quota, currentSize, spaceRequired }, WTFMove(callback), 0);
+}
+
+StorageQuotaManager& NetworkProcess::storageQuotaManager(PAL::SessionID sessionID, const ClientOrigin& origin)
+{
+    auto& storageQuotaManagers = m_storageQuotaManagers.ensure(sessionID, [] {
+        return StorageQuotaManagers { };
+    }).iterator->value;
+    return *storageQuotaManagers.managersPerOrigin.ensure(origin, [this, &storageQuotaManagers, sessionID, &origin] {
+        return std::make_unique<StorageQuotaManager>(storageQuotaManagers.defaultQuota, [this, sessionID, origin](uint64_t quota, uint64_t currentSpace, uint64_t spaceIncrease, auto callback) {
+            this->requestStorageSpace(sessionID, origin, quota, currentSpace, spaceIncrease, WTFMove(callback));
+        });
+    }).iterator->value;
 }
 
 #if !PLATFORM(COCOA)

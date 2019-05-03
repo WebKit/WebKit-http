@@ -24,6 +24,18 @@
  */
 // https://github.com/gpuweb/gpuweb/blob/master/design/sketch.webidl
 
+typedef unsigned long GPUTextureUsageFlags;
+
+[
+    Conditional=WEBGPU,
+    EnabledAtRuntime=WebGPU,
+    ImplementedAs=WebGPUSwapChainDescriptor
+] dictionary WebGPUSwapChainDescriptor {
+    required GPUCanvasContext context;
+    required GPUTextureFormat format;
+    GPUTextureUsageFlags usage = 16; // FIXME: How to set this to GPUTextureUsage.OUTPUT_ATTACHMENT in IDL?
+};
+
 [
     Conditional=WEBGPU,
     EnabledAtRuntime=WebGPU,
@@ -33,8 +45,9 @@
 
     WebGPUBuffer createBuffer(GPUBufferDescriptor descriptor);
     WebGPUTexture createTexture(GPUTextureDescriptor descriptor);
+    WebGPUSampler createSampler(GPUSamplerDescriptor descriptor);
 
-    WebGPUBindGroupLayout createBindGroupLayout(WebGPUBindGroupLayoutDescriptor descriptor);
+    WebGPUBindGroupLayout createBindGroupLayout(GPUBindGroupLayoutDescriptor descriptor);
     WebGPUPipelineLayout createPipelineLayout(WebGPUPipelineLayoutDescriptor descriptor);
     WebGPUBindGroup createBindGroup(WebGPUBindGroupDescriptor descriptor);
 
@@ -44,14 +57,13 @@
     // FIXME: Currently, WebGPUCommandBufferDescriptor is an empty dictionary.
     WebGPUCommandBuffer createCommandBuffer(/*WebGPUCommandBufferDescriptor descriptor*/);
 
+    WebGPUSwapChain createSwapChain(WebGPUSwapChainDescriptor descriptor);
+
     WebGPUQueue getQueue();
 
     // FIXME: Unimplemented.
     // readonly attribute WebGPUExtensions extensions;
     // readonly attribute WebGPULimits limits;
-
-    // WebGPUTexture createTexture(WebGPUTextureDescriptor descriptor);
-    // WebGPUSampler createSampler(WebGPUSamplerDescriptor descriptor);
 
     // WebGPUComputePipeline createComputePipeline(WebGPUComputePipelineDescriptor descriptor);
     // WebGPUFence createFence(WebGPUFenceDescriptor descriptor);

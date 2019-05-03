@@ -272,7 +272,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         experimentalSettingsView.addSetting(WI.UIString("User Interface:"), WI.settings.experimentalEnableNewTabBar, WI.UIString("Enable New Tab Bar"));
         experimentalSettingsView.addSeparator();
 
-        experimentalSettingsView.addSetting(WI.unlocalizedString("CPU Usage:"), WI.settings.experimentalEnableCPUUsageEnhancements, WI.unlocalizedString("Enhancements"));
+        experimentalSettingsView.addSetting(WI.UIString("Styles:"), WI.settings.experimentalEnableStylesJumpToEffective, WI.UIString("Show Jump to Effective Property Button"));
         experimentalSettingsView.addSeparator();
 
         let reloadInspectorButton = document.createElement("button");
@@ -302,7 +302,7 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         listenForChange(WI.settings.experimentalEnableSourcesTab);
         listenForChange(WI.settings.experimentalEnableLayersTab);
         listenForChange(WI.settings.experimentalEnableNewTabBar);
-        listenForChange(WI.settings.experimentalEnableCPUUsageEnhancements);
+        listenForChange(WI.settings.experimentalEnableStylesJumpToEffective);
 
         this.addSettingsView(experimentalSettingsView);
     }

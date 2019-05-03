@@ -446,6 +446,9 @@ simpleLineLayoutDebugBordersEnabled:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
 
+contentChangeObserverEnabled:
+  initial: defaultContentChangeObserverEnabled()
+
 subpixelCSSOMElementMetricsEnabled:
   initial: false
 
@@ -649,15 +652,18 @@ fontLoadTimingOverride:
 shouldIgnoreFontLoadCompletions:
   initial: false
 
-paymentRequestEnabled:
-  initial: false
-  conditional: PAYMENT_REQUEST
-applePayEnabled:
-  initial: false
-  conditional: APPLE_PAY
 applePayCapabilityDisclosureAllowed:
-  initial: true
   conditional: APPLE_PAY
+  initial: true
+applePayEnabled:
+  conditional: APPLE_PAY
+  initial: false
+applePayRemoteUIEnabled:
+  conditional: APPLE_PAY_REMOTE_UI
+  initial: true
+paymentRequestEnabled:
+  conditional: PAYMENT_REQUEST
+  initial: false
 
 javaEnabled:
   initial: false
@@ -762,6 +768,11 @@ touchEventEmulationEnabled:
 deviceOrientationEventEnabled:
   type: bool
   initial: true
+  conditional: DEVICE_ORIENTATION
+
+deviceOrientationPermissionAPIEnabled:
+  type: bool
+  initial: false
   conditional: DEVICE_ORIENTATION
 
 shouldEnableTextAutosizingBoost:

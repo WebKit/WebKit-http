@@ -232,6 +232,7 @@ class WebOpenPanelResultListener;
 class WebPageGroupProxy;
 class WebPageInspectorTargetController;
 class WebPageOverlay;
+class WebPaymentCoordinator;
 class WebPopupMenu;
 class WebTouchEvent;
 class WebURLSchemeHandlerProxy;
@@ -251,6 +252,7 @@ struct InteractionInformationAtPosition;
 struct InteractionInformationRequest;
 struct LoadParameters;
 struct PrintInfo;
+struct TextInputContext;
 struct WebAutocorrectionContext;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
@@ -592,6 +594,9 @@ public:
     void viewportPropertiesDidChange(const WebCore::ViewportArguments&);
     void executeEditCommandWithCallback(const String&, const String& argument, CallbackID);
 
+    void textInputContextsInRect(WebCore::FloatRect, CompletionHandler<void(const Vector<WebKit::TextInputContext>&)>&&);
+    void focusTextInputContext(const TextInputContext&, CompletionHandler<void(bool)>&&);
+
 #if PLATFORM(IOS_FAMILY)
     WebCore::FloatSize screenSize() const;
     WebCore::FloatSize availableScreenSize() const;
@@ -609,12 +614,13 @@ public:
     bool hasStablePageScaleFactor() const { return m_hasStablePageScaleFactor; }
 
     void handleTap(const WebCore::IntPoint&, OptionSet<WebKit::WebEvent::Modifier>, uint64_t lastLayerTreeTransactionId);
-    void potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
+    void potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint&, bool shouldRequestMagnificationInformation);
     void commitPotentialTap(OptionSet<WebKit::WebEvent::Modifier>, uint64_t lastLayerTreeTransactionId);
     void commitPotentialTapFailed();
     void cancelPotentialTap();
     void cancelPotentialTapInFrame(WebFrame&);
     void tapHighlightAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
+    void didRecognizeLongPress();
 
     void inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint&);
     void inspectorNodeSearchEndedAtPosition(const WebCore::FloatPoint&);
@@ -652,6 +658,7 @@ public:
     void setFocusedElementValue(const String&);
     void setFocusedElementValueAsNumber(double);
     void setFocusedElementSelectedIndex(uint32_t index, bool allowMultipleSelection);
+    void setIsShowingInputViewForFocusedElement(bool);
     void updateSelectionAppearance();
     void getSelectionContext(CallbackID);
     void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, OptionSet<WebKit::WebEvent::Modifier>, uint64_t requestID);
@@ -1110,6 +1117,10 @@ public:
     void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& callback);
 #endif
 
+#if ENABLE(DEVICE_ORIENTATION)
+    void shouldAllowDeviceOrientationAndMotionAccess(uint64_t frameID, WebCore::SecurityOriginData&&, CompletionHandler<void(bool)>&&);
+#endif
+
     void showShareSheet(WebCore::ShareDataWithParsedURL&, WTF::CompletionHandler<void(bool)>&& callback);
     void didCompleteShareSheet(bool wasCompleted, ShareSheetCallbackID contextId);
     
@@ -1151,6 +1162,10 @@ public:
 
     void suspendAllMediaBuffering();
     void resumeAllMediaBuffering();
+
+#if ENABLE(APPLE_PAY)
+    WebPaymentCoordinator* paymentCoordinator();
+#endif
 
 private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);
@@ -1274,6 +1289,7 @@ private:
     static bool logicalScroll(WebCore::Page*, WebCore::ScrollLogicalDirection, WebCore::ScrollGranularity);
 
     void loadURLInFrame(URL&&, uint64_t frameID);
+    void loadDataInFrame(IPC::DataReference&&, String&& MIMEType, String&& encodingName, URL&& baseURL, uint64_t frameID);
 
     enum class WasRestoredByAPIRequest { No, Yes };
     void restoreSessionInternal(const Vector<BackForwardListItemState>&, WasRestoredByAPIRequest, WebBackForwardListProxy::OverwriteExistingItem);
@@ -1513,6 +1529,8 @@ private:
 
     void cancelGesturesBlockedOnSynchronousReplies();
 
+    bool shouldDispatchUpdateAfterFocusingElement(const WebCore::Element&) const;
+
     uint64_t m_pageID;
 
     std::unique_ptr<WebCore::Page> m_page;
@@ -1657,7 +1675,7 @@ private:
 #endif
 
 #if ENABLE(DATALIST_ELEMENT)
-    WebDataListSuggestionPicker* m_activeDataListSuggestionPicker { nullptr };
+    WeakPtr<WebDataListSuggestionPicker> m_activeDataListSuggestionPicker;
 #endif
 
     RefPtr<WebOpenPanelResultListener> m_activeOpenPanelResultListener;
@@ -1710,10 +1728,9 @@ private:
     Optional<WebCore::IntSize> m_viewportSizeForCSSViewportUnits;
 
     bool m_userIsInteracting { false };
-    bool m_isFocusingElementDueToUserInteraction { false };
     bool m_hasEverFocusedElementDueToUserInteractionSincePageTransition { false };
-    bool m_needsHiddenContentEditableQuirk { false };
-    bool m_needsPlainTextQuirk { false };
+    bool m_isTouchBarUpdateSupressedForHiddenContentEditable { false };
+    bool m_isNeverRichlyEditableForTouchBar { false };
     bool m_changingActivityState { false };
 
 #if ENABLE(CONTEXT_MENUS)
@@ -1721,7 +1738,7 @@ private:
 #endif
 
     RefPtr<WebCore::Element> m_focusedElement;
-    bool m_hasPendingBlurNotification { false };
+    RefPtr<WebCore::Element> m_recentlyBlurredElement;
     bool m_hasPendingEditorStateUpdate { false };
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -1732,6 +1749,8 @@ private:
     RefPtr<WebCore::Range> m_currentWordRange;
     RefPtr<WebCore::Node> m_interactionNode;
     WebCore::IntPoint m_lastInteractionLocation;
+
+    bool m_isShowingInputViewForFocusedElement { false };
     
     enum SelectionAnchor { Start, End };
     SelectionAnchor m_selectionAnchor { Start };

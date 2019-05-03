@@ -63,7 +63,7 @@ interface TestRunner {
     void clearDOMCache(DOMString origin);
     boolean hasDOMCache(DOMString origin);
     unsigned long domCacheSize(DOMString origin);
-    void allowCacheStorageQuotaIncrease();
+    void setAllowStorageQuotaIncrease(boolean value);
 
     // Special options.
     void keepWebHistory();
@@ -103,6 +103,9 @@ interface TestRunner {
     void execCommand(DOMString name, DOMString showUI, DOMString value);
     boolean isCommandEnabled(DOMString name);
     unsigned long windowCount();
+
+    // Device Orientation Motion.
+    void setShouldAllowDeviceOrientationAndMotionAccess(boolean value);
 
     // Special DOM variables.
     attribute boolean globalFlag;
@@ -306,6 +309,7 @@ interface TestRunner {
     void statisticsUpdateCookieBlocking(object completionHandler);
     void statisticsSubmitTelemetry();
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(boolean value);
+    void setStatisticsIsRunningTest(boolean value);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(boolean value);
     void setStatisticsNotifyPagesWhenTelemetryWasCaptured(boolean value);
     void setStatisticsMinimumTimeBetweenDataRecordsRemoval(double seconds);
@@ -315,6 +319,7 @@ interface TestRunner {
     void statisticsClearInMemoryAndPersistentStore(object callback);
     void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned long hours, object callback);
     void statisticsClearThroughWebsiteDataRemoval(object callback);
+    void statisticsDeleteCookiesForHost(DOMString hostName, boolean includeHttpOnlyCookies);
     void setStatisticsCacheMaxAgeCap(double seconds);
     void statisticsResetToConsistentState(object completionHandler);
 

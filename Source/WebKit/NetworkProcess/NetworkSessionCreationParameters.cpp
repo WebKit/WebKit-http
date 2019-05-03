@@ -79,6 +79,9 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << resourceLoadStatisticsDirectory;
     encoder << resourceLoadStatisticsDirectoryExtensionHandle;
     encoder << enableResourceLoadStatistics;
+    encoder << shouldIncludeLocalhostInResourceLoadStatistics;
+    encoder << enableResourceLoadStatisticsDebugMode;
+    encoder << resourceLoadStatisticsManualPrevalentResource;
 }
 
 Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::decode(IPC::Decoder& decoder)
@@ -172,6 +175,21 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     if (!enableResourceLoadStatistics)
         return WTF::nullopt;
 
+    Optional<bool> shouldIncludeLocalhostInResourceLoadStatistics;
+    decoder >> shouldIncludeLocalhostInResourceLoadStatistics;
+    if (!shouldIncludeLocalhostInResourceLoadStatistics)
+        return WTF::nullopt;
+
+    Optional<bool> enableResourceLoadStatisticsDebugMode;
+    decoder >> enableResourceLoadStatisticsDebugMode;
+    if (!enableResourceLoadStatisticsDebugMode)
+        return WTF::nullopt;
+
+    Optional<WebCore::RegistrableDomain> resourceLoadStatisticsManualPrevalentResource;
+    decoder >> resourceLoadStatisticsManualPrevalentResource;
+    if (!resourceLoadStatisticsManualPrevalentResource)
+        return WTF::nullopt;
+
     return {{
         sessionID
         , WTFMove(*boundInterfaceIdentifier)
@@ -196,6 +214,9 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         , WTFMove(*resourceLoadStatisticsDirectory)
         , WTFMove(*resourceLoadStatisticsDirectoryExtensionHandle)
         , WTFMove(*enableResourceLoadStatistics)
+        , WTFMove(*shouldIncludeLocalhostInResourceLoadStatistics)
+        , WTFMove(*enableResourceLoadStatisticsDebugMode)
+        , WTFMove(*resourceLoadStatisticsManualPrevalentResource)
     }};
 }
 

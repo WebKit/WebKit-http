@@ -29,10 +29,7 @@
 
 #include "GPUCommandBuffer.h"
 
-#include <wtf/Optional.h>
-#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -44,13 +41,13 @@ struct GPUExtent3D;
 struct WebGPURenderPassDescriptor;
 
 struct WebGPUBufferCopyView : GPUBufferCopyViewBase {
-    Optional<GPUBufferCopyView> asGPUBufferCopyView() const;
+    Optional<GPUBufferCopyView> tryCreateGPUBufferCopyView() const;
 
     RefPtr<WebGPUBuffer> buffer;
 };
 
 struct WebGPUTextureCopyView : GPUTextureCopyViewBase {
-    Optional<GPUTextureCopyView> asGPUTextureCopyView() const;
+    Optional<GPUTextureCopyView> tryCreateGPUTextureCopyView() const;
 
     RefPtr<WebGPUTexture> texture;
 };
@@ -59,7 +56,7 @@ class WebGPUCommandBuffer : public RefCounted<WebGPUCommandBuffer> {
 public:
     static Ref<WebGPUCommandBuffer> create(Ref<GPUCommandBuffer>&&);
 
-    const GPUCommandBuffer& commandBuffer() const { return m_commandBuffer.get(); }
+    GPUCommandBuffer& commandBuffer() const { return m_commandBuffer.get(); }
 
     RefPtr<WebGPURenderPassEncoder> beginRenderPass(WebGPURenderPassDescriptor&&);
     void copyBufferToBuffer(const WebGPUBuffer&, unsigned long srcOffset, const WebGPUBuffer&, unsigned long dstOffset, unsigned long size);

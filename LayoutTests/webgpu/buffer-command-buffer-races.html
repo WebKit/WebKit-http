@@ -44,26 +44,26 @@ fragment float4 fragment_main(VertexOut v [[stage_in]])
 
 function createInputStateDescriptor() {
     return {
-        indexFormat: WebGPUIndexFormat.UINT32,
+        indexFormat: "uint32",
         attributes: [{
             shaderLocation: 0,
             inputSlot: 0,
             offset: 0,
-            format: WebGPUVertexFormat.FLOAT_R32_G32
+            format: "float2"
         }, {
             shaderLocation: 1,
             inputSlot: 1,
             offset: 0,
-            format: WebGPUVertexFormat.FLOAT_R32_G32_B32
+            format: "float3"
         }],
         inputs: [{
             inputSlot: 0,
             stride: 4 * 2,
-            stepMode: WebGPUInputStepMode.VERTEX
+            stepMode: "vertex"
         }, {
             inputSlot: 1,
             stride: 4 * 3,
-            stepMode: WebGPUInputStepMode.INSTANCE
+            stepMode: "instance"
         }]
     }
 }
@@ -88,7 +88,7 @@ function drawAndSubmitCommands(device, pipeline, attachment, vertexBuffer, color
 async function test() {
     const device = await getBasicDevice();
     const canvas = document.querySelector("canvas");
-    const context = createBasicContext(canvas, device);
+    const swapChain = createBasicSwapChain(canvas, device);
     // FIXME: Replace with non-MSL shaders.
     const shaderModule = device.createShaderModule({ code: shaderCode });
     const inputStateDescriptor = createInputStateDescriptor();
@@ -107,7 +107,7 @@ async function test() {
     colorBuffer.setSubData(0, greenArray.buffer);
 
     const attachment = {
-        attachment: context.getNextTexture().createDefaultTextureView(),
+        attachment: swapChain.getCurrentTexture().createDefaultTextureView(),
         loadOp: "load",
         storeOp: "store",
         clearColor: { r: 1, g: 0, b: 0, a: 1 }
@@ -148,8 +148,6 @@ async function test() {
     upperLeftBuffer.destroy();
     middleBuffer.destroy();
     upperRightBuffer.destroy();
-    
-    context.present();
 
     if (window.testRunner)
         testRunner.notifyDone();

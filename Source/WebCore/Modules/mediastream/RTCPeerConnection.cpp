@@ -70,8 +70,10 @@ Ref<RTCPeerConnection> RTCPeerConnection::create(ScriptExecutionContext& context
     // Let's make it uncollectable until the pc is closed by JS or the page stops it.
     if (!peerConnection->isClosed()) {
         peerConnection->m_pendingActivity = peerConnection->makePendingActivity(peerConnection.get());
-        if (auto* page = downcast<Document>(context).page())
+        if (auto* page = downcast<Document>(context).page()) {
             peerConnection->registerToController(page->rtcController());
+            page->libWebRTCProvider().setEnableLogging(!context.sessionID().isEphemeral());
+        }
     }
     return peerConnection;
 }
@@ -311,7 +313,7 @@ ExceptionOr<Vector<MediaEndpointConfiguration::CertificatePEM>> RTCPeerConnectio
     Vector<MediaEndpointConfiguration::CertificatePEM> certificates;
     certificates.reserveInitialCapacity(configuration.certificates.size());
     for (auto& certificate : configuration.certificates) {
-        if (!originsMatch(origin, certificate->origin()))
+        if (!origin.isSameOriginAs(certificate->origin()))
             return Exception { InvalidAccessError, "Certificate does not have a valid origin" };
 
         if (currentMilliSeconds > certificate->expires())

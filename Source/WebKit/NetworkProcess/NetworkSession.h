@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "WebResourceLoadStatisticsStore.h"
 #include <WebCore/RegistrableDomain.h>
 #include <pal/SessionID.h>
 #include <wtf/HashSet.h>
@@ -38,6 +39,7 @@
 namespace WebCore {
 class AdClickAttribution;
 class NetworkStorageSession;
+enum class IncludeHttpOnlyCookies : bool;
 enum class ShouldSample : bool;
 }
 
@@ -72,7 +74,7 @@ public:
     WebResourceLoadStatisticsStore* resourceLoadStatistics() const { return m_resourceLoadStatistics.get(); }
     void setResourceLoadStatisticsEnabled(bool);
     void notifyResourceLoadStatisticsProcessed();
-    void deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType>, Vector<WebCore::RegistrableDomain>&&, bool shouldNotifyPage, CompletionHandler<void(const HashSet<WebCore::RegistrableDomain>&)>&&);
+    void deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType>, Vector<WebCore::RegistrableDomain>&&, bool shouldNotifyPage, WebCore::IncludeHttpOnlyCookies, CompletionHandler<void(const HashSet<WebCore::RegistrableDomain>&)>&&);
     void registrableDomainsWithWebsiteData(OptionSet<WebsiteDataType>, bool shouldNotifyPage, CompletionHandler<void(HashSet<WebCore::RegistrableDomain>&&)>&&);
     void logDiagnosticMessageWithValue(const String& message, const String& description, unsigned value, unsigned significantFigures, WebCore::ShouldSample);
     void notifyPageStatisticsTelemetryFinished(unsigned totalPrevalentResources, unsigned totalPrevalentResourcesWithUserInteraction, unsigned top3SubframeUnderTopFrameOrigins);
@@ -90,6 +92,9 @@ protected:
     String m_resourceLoadStatisticsDirectory;
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     RefPtr<WebResourceLoadStatisticsStore> m_resourceLoadStatistics;
+    ShouldIncludeLocalhost m_shouldIncludeLocalhostInResourceLoadStatistics { ShouldIncludeLocalhost::Yes };
+    EnableResourceLoadStatisticsDebugMode m_enableResourceLoadStatisticsDebugMode { EnableResourceLoadStatisticsDebugMode::No };
+    WebCore::RegistrableDomain m_resourceLoadStatisticsManualPrevalentResource;
 #endif
     UniqueRef<NetworkAdClickAttribution> m_adClickAttribution;
 };

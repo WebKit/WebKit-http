@@ -746,6 +746,19 @@ WI.TimelineRuler = class TimelineRuler extends WI.View
         this._needsMarkerLayout();
     }
 
+    _shouldIgnoreMicroMovement(event)
+    {
+        if (this._mousePassedMicroMovementTest)
+            return false;
+
+        let pixels = Math.abs(event.pageX - this._mouseStartX);
+        if (pixels <= 4)
+            return true;
+
+        this._mousePassedMicroMovementTest = true;
+        return false;
+    }
+
     _handleClick(event)
     {
         if (!this._enabled)
@@ -761,7 +774,10 @@ WI.TimelineRuler = class TimelineRuler extends WI.View
                 continue;
 
             // Clone the event to dispatch it on the new element.
-            newTarget.dispatchEvent(new event.constructor(event.type, event));
+            let newEvent = new event.constructor(event.type, event);
+            newTarget.dispatchEvent(newEvent);
+            if (newEvent.__timelineRecordClickEventHandled)
+                event.stop();
             return;
         }
     }
@@ -797,6 +813,9 @@ WI.TimelineRuler = class TimelineRuler extends WI.View
 
         this._mouseMoved = false;
 
+        this._mousePassedMicroMovementTest = false;
+        this._mouseStartX = event.pageX;
+
         this._mouseMoveEventListener = this._handleMouseMove.bind(this);
         this._mouseUpEventListener = this._handleMouseUp.bind(this);
 
@@ -811,6 +830,9 @@ WI.TimelineRuler = class TimelineRuler extends WI.View
     _handleMouseMove(event)
     {
         console.assert(event.button === 0);
+
+        if (this._shouldIgnoreMicroMovement(event))
+            return;
 
         this._mouseMoved = true;
 

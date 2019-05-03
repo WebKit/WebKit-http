@@ -30,8 +30,8 @@
 #include "NetworkProcess.h"
 #include "NetworkProcessProxyMessages.h"
 #include "WebProcessProxy.h"
-#include "WebResourceLoadStatisticsStore.h"
 #include <WebCore/AdClickAttribution.h>
+#include <WebCore/CookieJar.h>
 #include <WebCore/NetworkStorageSession.h>
 
 #if PLATFORM(COCOA)
@@ -98,8 +98,14 @@ void NetworkSession::setResourceLoadStatisticsEnabled(bool enable)
     // FIXME(193728): Support ResourceLoadStatistics for ephemeral sessions, too.
     if (m_sessionID.isEphemeral())
         return;
-    
-    m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(*this, m_resourceLoadStatisticsDirectory);
+
+    m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(*this, m_resourceLoadStatisticsDirectory, m_shouldIncludeLocalhostInResourceLoadStatistics);
+
+    if (m_enableResourceLoadStatisticsDebugMode == EnableResourceLoadStatisticsDebugMode::Yes)
+        m_resourceLoadStatistics->setResourceLoadStatisticsDebugMode(true, [] { });
+    // This should always be forwarded since debug mode may be enabled at runtime.
+    if (!m_resourceLoadStatisticsManualPrevalentResource.isEmpty())
+        m_resourceLoadStatistics->setPrevalentResourceForDebugMode(m_resourceLoadStatisticsManualPrevalentResource, [] { });
 }
 
 void NetworkSession::notifyResourceLoadStatisticsProcessed()
@@ -117,16 +123,16 @@ void NetworkSession::notifyPageStatisticsTelemetryFinished(unsigned totalPrevale
     m_networkProcess->parentProcessConnection()->send(Messages::NetworkProcessProxy::NotifyResourceLoadStatisticsTelemetryFinished(totalPrevalentResources, totalPrevalentResourcesWithUserInteraction, top3SubframeUnderTopFrameOrigins), 0);
 }
 
-void NetworkSession::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType> dataTypes, Vector<RegistrableDomain>&& domains, bool shouldNotifyPage, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&& completionHandler)
+void NetworkSession::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType> dataTypes, Vector<RegistrableDomain>&& domains, bool shouldNotifyPage, IncludeHttpOnlyCookies includeHttpOnlyCookies, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&& completionHandler)
 {
-    m_networkProcess->deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(m_sessionID, dataTypes, WTFMove(domains), shouldNotifyPage, WTFMove(completionHandler));
+    m_networkProcess->deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(m_sessionID, dataTypes, WTFMove(domains), shouldNotifyPage, includeHttpOnlyCookies, WTFMove(completionHandler));
 }
 
 void NetworkSession::registrableDomainsWithWebsiteData(OptionSet<WebsiteDataType> dataTypes, bool shouldNotifyPage, CompletionHandler<void(HashSet<RegistrableDomain>&&)>&& completionHandler)
 {
     m_networkProcess->registrableDomainsWithWebsiteData(m_sessionID, dataTypes, shouldNotifyPage, WTFMove(completionHandler));
 }
-#endif
+#endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
 void NetworkSession::storeAdClickAttribution(WebCore::AdClickAttribution&& adClickAttribution)
 {

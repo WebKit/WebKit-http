@@ -51,7 +51,8 @@ class GPURenderPassEncoder : public GPUProgrammablePassEncoder {
 public:
     static RefPtr<GPURenderPassEncoder> tryCreate(Ref<GPUCommandBuffer>&&, GPURenderPassDescriptor&&);
 
-    void setPipeline(Ref<GPURenderPipeline>&&) final;
+    void endPass() final;
+    void setPipeline(Ref<const GPURenderPipeline>&&) final;
 
     void setVertexBuffers(unsigned long, Vector<Ref<GPUBuffer>>&&, Vector<unsigned long long>&&);
     void draw(unsigned long vertexCount, unsigned long instanceCount, unsigned long firstVertex, unsigned long firstInstance);
@@ -64,13 +65,13 @@ private:
 
 #if USE(METAL)
     // GPUProgrammablePassEncoder
-    void useResource(MTLResource *, unsigned long usage) final;
-    void setVertexBuffer(MTLBuffer *, unsigned long offset, unsigned long index) final;
-    void setFragmentBuffer(MTLBuffer *, unsigned long offset, unsigned long index) final;
+    void useResource(MTLResource *, unsigned usage) final;
+    void setVertexBuffer(MTLBuffer *, unsigned offset, unsigned index) final;
+    void setFragmentBuffer(MTLBuffer *, unsigned offset, unsigned index) final;
 #endif // USE(METAL)
 
     PlatformRenderPassEncoderSmartPtr m_platformRenderPassEncoder;
-    RefPtr<GPURenderPipeline> m_pipeline;
+    RefPtr<const GPURenderPipeline> m_pipeline;
 };
 
 } // namespace WebCore

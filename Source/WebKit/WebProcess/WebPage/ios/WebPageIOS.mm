@@ -43,6 +43,7 @@
 #import "SandboxUtilities.h"
 #import "UIKitSPI.h"
 #import "UserData.h"
+#import "ViewGestureGeometryCollector.h"
 #import "VisibleContentRectUpdateInfo.h"
 #import "WKAccessibilityWebPageObjectIOS.h"
 #import "WebAutocorrectionContext.h"
@@ -179,6 +180,12 @@ static void computeEditableRootHasContentAndPlainText(const VisibleSelection& se
     data.hasPlainText = data.hasContent && hasAnyPlainText(Range::create(root->document(), VisiblePosition { startInEditableRoot }, VisiblePosition { lastPositionInNode(root) }));
 }
 
+static bool enclosingLayerIsTransparentOrFullyClipped(const RenderObject& renderer)
+{
+    auto* enclosingLayer = renderer.enclosingLayer();
+    return enclosingLayer && enclosingLayer->isTransparentOrFullyClippedRespectingParentFrames();
+}
+
 void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePostLayoutDataHint shouldIncludePostLayoutData) const
 {
     if (frame.editor().hasComposition()) {
@@ -246,9 +253,10 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
     postLayoutData.insideFixedPosition = startNodeIsInsideFixedPosition || endNodeIsInsideFixedPosition;
     if (!selection.isNone()) {
         if (m_focusedElement && m_focusedElement->renderer()) {
-            postLayoutData.focusedElementRect = view->contentsToRootView(m_focusedElement->renderer()->absoluteBoundingBoxRect());
-            postLayoutData.caretColor = m_focusedElement->renderer()->style().caretColor();
-            postLayoutData.elementIsTransparentOrFullyClipped = m_focusedElement->renderer()->isTransparentOrFullyClippedRespectingParentFrames();
+            auto& renderer = *m_focusedElement->renderer();
+            postLayoutData.focusedElementRect = view->contentsToRootView(renderer.absoluteBoundingBoxRect());
+            postLayoutData.caretColor = renderer.style().caretColor();
+            postLayoutData.elementIsTransparentOrFullyClipped = enclosingLayerIsTransparentOrFullyClipped(renderer);
         }
         computeEditableRootHasContentAndPlainText(selection, postLayoutData);
     }
@@ -552,31 +560,29 @@ void WebPage::handleSyntheticClick(Node& nodeRespondingToClick, const WebCore::F
         mainframe.document()->updateStyleIfNeeded();
     }
 
-    m_pendingSyntheticClickNode = nullptr;
-    m_pendingSyntheticClickLocation = FloatPoint();
-    m_pendingSyntheticClickModifiers = { };
-
     if (m_isClosed)
         return;
 
-    switch (respondingDocument.contentChangeObserver().observedContentChange()) {
-    case WKContentVisibilityChange:
+    auto& contentChangeObserver = respondingDocument.contentChangeObserver();
+    auto observedContentChange = contentChangeObserver.observedContentChange();
+    if (observedContentChange == WKContentVisibilityChange) {
         // The move event caused new contents to appear. Don't send the click event.
         LOG(ContentObservation, "handleSyntheticClick: Observed meaningful visible change -> hover.");
         return;
-    case WKContentIndeterminateChange: {
-        // Wait for callback to completePendingSyntheticClickForContentChangeObserver() to decide whether to send the click event.
-        m_pendingSyntheticClickNode = &nodeRespondingToClick;
-        m_pendingSyntheticClickLocation = location;
-        m_pendingSyntheticClickModifiers = modifiers;
-        LOG(ContentObservation, "handleSyntheticClick: Observed some change, but can't decide it yet -> wait.");
-        return;
-    } case WKContentNoChange:
-        LOG(ContentObservation, "handleSyntheticClick: No change was observed -> click.");
+    }
+    const Seconds observationDuration = 32_ms;
+    contentChangeObserver.startContentObservationForDuration(observationDuration);
+    if (contentChangeObserver.observedContentChange() == WKContentNoChange) {
+        ASSERT(!respondingDocument.settings().contentChangeObserverEnabled());
         completeSyntheticClick(nodeRespondingToClick, location, modifiers, WebCore::OneFingerTap);
         return;
     }
-    ASSERT_NOT_REACHED();
+
+    LOG(ContentObservation, "handleSyntheticClick: Can't decide it yet -> wait.");
+    // Wait for callback to completePendingSyntheticClickForContentChangeObserver() to decide whether to send the click event.
+    m_pendingSyntheticClickNode = &nodeRespondingToClick;
+    m_pendingSyntheticClickLocation = location;
+    m_pendingSyntheticClickModifiers = modifiers;
 }
 
 void WebPage::completePendingSyntheticClickForContentChangeObserver()
@@ -633,6 +639,11 @@ void WebPage::completeSyntheticClick(Node& nodeRespondingToClick, const WebCore:
     // keyboard is not on screen.
     if (newFocusedElement && newFocusedElement == oldFocusedElement)
         elementDidRefocus(*newFocusedElement);
+
+    if (nodeRespondingToClick.document().frame())
+        nodeRespondingToClick.document().frame()->eventHandler().dispatchSyntheticMouseOut(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::NoType, 0, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::NoTap));
+    if (m_isClosed)
+        return;
 
     if (!tapWasHandled || !nodeRespondingToClick.isElementNode())
         send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(location)));
@@ -803,9 +814,22 @@ void WebPage::handleStylusSingleTapAtPoint(const WebCore::IntPoint& point, uint6
     frame.document()->setFocusedElement(image.get());
 }
 
-void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint& position)
+void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoint& position, bool shouldRequestMagnificationInformation)
 {
     m_potentialTapNode = m_page->mainFrame().nodeRespondingToClickEvents(position, m_potentialTapLocation, m_potentialTapSecurityOrigin.get());
+
+    if (shouldRequestMagnificationInformation && m_potentialTapNode && m_viewGestureGeometryCollector) {
+        // FIXME: Could this be combined into tap highlight?
+        FloatPoint origin = position;
+        FloatRect renderRect;
+        bool fitEntireRect;
+        double viewportMinimumScale;
+        double viewportMaximumScale;
+
+        m_viewGestureGeometryCollector->computeZoomInformationForNode(*m_potentialTapNode, origin, renderRect, fitEntireRect, viewportMinimumScale, viewportMaximumScale);
+        send(Messages::WebPageProxy::HandleSmartMagnificationInformationForPotentialTap(requestID, renderRect, fitEntireRect, viewportMinimumScale, viewportMaximumScale));
+    }
+
     sendTapHighlightForNodeIfNecessary(requestID, m_potentialTapNode.get());
 #if ENABLE(TOUCH_EVENTS)
     if (m_potentialTapNode && !m_potentialTapNode->allowsDoubleTapGesture())
@@ -860,7 +884,8 @@ void WebPage::cancelPotentialTap()
 void WebPage::cancelPotentialTapInFrame(WebFrame& frame)
 {
     if (m_potentialTapNode) {
-        Frame* potentialTapFrame = m_potentialTapNode->document().frame();
+        m_potentialTapNode->document().contentChangeObserver().willNotProceedWithClick();
+        auto* potentialTapFrame = m_potentialTapNode->document().frame();
         if (potentialTapFrame && !potentialTapFrame->tree().isDescendantOf(frame.coreFrame()))
             return;
     }
@@ -868,6 +893,11 @@ void WebPage::cancelPotentialTapInFrame(WebFrame& frame)
     m_potentialTapNode = nullptr;
     m_potentialTapLocation = FloatPoint();
     m_potentialTapSecurityOrigin = nullptr;
+}
+
+void WebPage::didRecognizeLongPress()
+{
+    ContentChangeObserver::didRecognizeLongPress(m_page->mainFrame());
 }
 
 void WebPage::tapHighlightAtPosition(uint64_t requestID, const FloatPoint& position)
@@ -898,6 +928,11 @@ void WebPage::blurFocusedElement()
         return;
 
     m_focusedElement->blur();
+}
+
+void WebPage::setIsShowingInputViewForFocusedElement(bool showingInputView)
+{
+    m_isShowingInputViewForFocusedElement = showingInputView;
 }
 
 void WebPage::setFocusedElementValue(const String& value)
@@ -1523,7 +1558,7 @@ void WebPage::requestEvasionRectsAboveSelection(CompletionHandler<void(const Vec
         return;
     }
 
-    if (!m_focusedElement || !m_focusedElement->renderer() || m_focusedElement->renderer()->isTransparentOrFullyClippedRespectingParentFrames()) {
+    if (!m_focusedElement || !m_focusedElement->renderer() || enclosingLayerIsTransparentOrFullyClipped(*m_focusedElement->renderer())) {
         reply({ });
         return;
     }
@@ -2489,7 +2524,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
         auto& elementFrame = m_page->focusController().focusedOrMainFrame();
         information.elementRect = elementRectInRootViewCoordinates(*m_focusedElement, elementFrame);
         information.nodeFontSize = renderer->style().fontDescription().computedSize();
-        information.elementIsTransparentOrFullyClipped = renderer->isTransparentOrFullyClippedRespectingParentFrames();
+        information.elementIsTransparentOrFullyClipped = enclosingLayerIsTransparentOrFullyClipped(*renderer);
 
         bool inFixed = false;
         renderer->localToContainerPoint(FloatPoint(), nullptr, UseTransforms, &inFixed);
@@ -3003,8 +3038,6 @@ void WebPage::applicationWillEnterForeground(bool isSuspendedUnderLock)
     m_isSuspendedUnderLock = false;
     cancelMarkLayersVolatile();
 
-    // FIXME: In iOS, we sometimes never unset ProcessSuspended. See <rdar://problem/48538837>.
-    unfreezeLayerTree(LayerTreeFreezeReason::ProcessSuspended);
     unfreezeLayerTree(LayerTreeFreezeReason::BackgroundApplication);
 
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationWillEnterForegroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": @(isSuspendedUnderLock)}];

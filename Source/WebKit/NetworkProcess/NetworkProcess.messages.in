@@ -107,7 +107,7 @@ messages -> NetworkProcess LegacyReceiver {
     LogUserInteraction(PAL::SessionID sessionID, WebCore::RegistrableDomain topFrameDomain) -> () Async
     RemoveAllStorageAccess(PAL::SessionID sessionID) -> () Async
     RemovePrevalentDomains(PAL::SessionID sessionID, Vector<WebCore::RegistrableDomain> domainsWithInteraction)
-    RequestStorageAccess(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain, WebCore::RegistrableDomain topFrameDomain, Optional<uint64_t> frameID, uint64_t pageID, bool promptEnabled) -> (enum:uint8_t WebKit::StorageAccessStatus storageAccessStatus) Async
+    RequestStorageAccess(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain, WebCore::RegistrableDomain topFrameDomain, Optional<uint64_t> frameID, uint64_t pageID) -> (enum:uint8_t WebKit::StorageAccessStatus storageAccessStatus) Async
     ResetParametersToDefaultValues(PAL::SessionID sessionID) -> () Async
     ScheduleClearInMemoryAndPersistent(PAL::SessionID sessionID, Optional<WallTime> modifiedSince, enum:bool WebKit::ShouldGrandfatherStatistics shouldGrandfather) -> () Async
     ScheduleCookieBlockingUpdate(PAL::SessionID sessionID) -> () Async
@@ -121,6 +121,7 @@ messages -> NetworkProcess LegacyReceiver {
     SetPruneEntriesDownTo(PAL::SessionID sessionID, uint64_t maximumEntryCount) -> () Async
     SetShouldClassifyResourcesBeforeDataRecordsRemoval(PAL::SessionID sessionID, bool value) -> () Async
     SetNotifyPagesWhenDataRecordsWereScanned(PAL::SessionID sessionID, bool value) -> () Async
+    SetIsRunningResourceLoadStatisticsTest(PAL::SessionID sessionID, bool value) -> () Async
     SetNotifyPagesWhenTelemetryWasCaptured(PAL::SessionID sessionID, bool value) -> () Async
     SetResourceLoadStatisticsDebugMode(PAL::SessionID sessionID, bool debugMode) -> () Async
     SetVeryPrevalentResource(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async
@@ -132,8 +133,9 @@ messages -> NetworkProcess LegacyReceiver {
     SetTopFrameUniqueRedirectTo(PAL::SessionID sessionID, WebCore::RegistrableDomain topFrameDomain, WebCore::RegistrableDomain redirectedToDomain) -> () Async
     SetTopFrameUniqueRedirectFrom(PAL::SessionID sessionID, WebCore::RegistrableDomain topFrameDomain, WebCore::RegistrableDomain redirectedFromDomain) -> () Async
     ResetCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID) -> () Async
-    CommittedCrossSiteLoadWithLinkDecoration(PAL::SessionID sessionID, WebCore::RegistrableDomain fromDomain, WebCore::RegistrableDomain toDomain, uint64_t pageID)
+    CommittedCrossSiteLoadWithLinkDecoration(PAL::SessionID sessionID, WebCore::RegistrableDomain fromDomain, WebCore::RegistrableDomain toDomain, uint64_t pageID) -> () Async
     ResetCrossSiteLoadsWithLinkDecorationForTesting(PAL::SessionID sessionID) -> () Async
+    DeleteCookiesForTesting(PAL::SessionID sessionID, WebCore::RegistrableDomain domain, bool includeHttpOnlyCookies) -> () Async
 #endif
 
     SetSessionIsControlledByAutomation(PAL::SessionID sessionID, bool controlled);

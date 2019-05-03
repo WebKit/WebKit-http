@@ -93,9 +93,12 @@ protected:
 
     virtual void currentScrollPositionChanged();
     WEBCORE_EXPORT virtual void updateViewportForCurrentScrollPosition(Optional<FloatRect> = { }) { }
+    virtual bool scrollPositionAndLayoutViewportMatch(const FloatPoint& position, Optional<FloatRect> overrideLayoutViewport);
 
     WEBCORE_EXPORT virtual void repositionScrollingLayers() { }
     WEBCORE_EXPORT virtual void repositionRelatedLayers() { }
+
+    void applyLayerPositions(const FloatRect& layoutViewport, FloatSize& cumulativeDelta) override;
 
     const FloatSize& reachableContentsSize() const { return m_reachableContentsSize; }
     const LayoutRect& parentRelativeScrollableRect() const { return m_parentRelativeScrollableRect; }

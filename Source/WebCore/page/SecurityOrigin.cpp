@@ -491,21 +491,21 @@ static inline bool areOriginsMatching(const SecurityOrigin& origin1, const Secur
 }
 
 // This function mimics the result of string comparison of serialized origins.
-bool originsMatch(const SecurityOrigin& origin1, const SecurityOrigin& origin2)
+bool serializedOriginsMatch(const SecurityOrigin& origin1, const SecurityOrigin& origin2)
 {
     if (&origin1 == &origin2)
         return true;
 
-    ASSERT(areOriginsMatching(origin1, origin2) == (origin1.toString() == origin2.toString()));
+    ASSERT(!areOriginsMatching(origin1, origin2) || (origin1.toString() == origin2.toString()));
     return areOriginsMatching(origin1, origin2);
 }
 
-bool originsMatch(const SecurityOrigin* origin1, const SecurityOrigin* origin2)
+bool serializedOriginsMatch(const SecurityOrigin* origin1, const SecurityOrigin* origin2)
 {
     if (!origin1 || !origin2)
         return origin1 == origin2;
 
-    return originsMatch(*origin1, *origin2);
+    return serializedOriginsMatch(*origin1, *origin2);
 }
 
 Ref<SecurityOrigin> SecurityOrigin::createFromString(const String& originString)

@@ -28,6 +28,8 @@ fast/shadow-dom/dragging-element-with-shadow-tree.html [ Pass ]
 fast/shadow-dom/dragging-element-inside-shadow-tree.html [ Pass ]
 http/tests/security/clipboard/drag-drop-html-cross-origin-iframe-in-same-origin.html [ Pass ]
 
+http/tests/security/xss-DENIED-xsl-external-entity-no-logging.xml [ Pass ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -92,6 +94,7 @@ webkit.org/b/178272 [ Sierra ] http/tests/media/video-play-progress.html [ Pass 
 webkit.org/b/178272 [ Sierra ] http/tests/security/canvas-remote-read-remote-video-localhost.html [ Pass Timeout ]
 webkit.org/b/178272 [ Sierra ] http/tests/security/canvas-remote-read-remote-video-redirect.html [ Pass Timeout ]
 webkit.org/b/178272 [ Sierra ] http/tests/security/video-cross-origin-caching.html [ Pass Timeout ]
+http/tests/security/xss-DENIED-xsl-external-entity.xml [ Skip ]
 
 # rdar://problem/20001985
 [ Sierra ] http/tests/xmlhttprequest/range-test.html [ Failure ]
@@ -288,6 +291,9 @@ inspector/heap/getRemoteObject.html [ Skip ]
 inspector/unit-tests/heap-snapshot.html [ Skip ]
 inspector/unit-tests/heap-snapshot-collection-event.html [ Skip ]
 
+# WK1 Inspector cannot leverage InspectorAdditions runtime enabled features
+inspector/canvas/recording-html-2d.html
+
 webkit.org/b/188708 inspector/dom-debugger/event-breakpoint-with-navigation.html [ Pass Timeout ]
 
 # These tests check ScrollAnimator events for main frame scrollbars that use native widgets in WK1.
@@ -348,8 +354,6 @@ imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/ass
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-async-delegate.html [ Skip ]
 http/tests/download/convert-cached-load-to-download.html [ Skip ]
-
-webkit.org/b/156629 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html [ Pass Failure ]
 
 webkit.org/b/157007 fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]
 webkit.org/b/157007 legacy-animation-engine/fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]

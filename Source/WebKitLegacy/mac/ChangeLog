@@ -1,3 +1,90 @@
+2019-03-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove a site specific hack for AppleConnect plugin
+        https://bugs.webkit.org/show_bug.cgi?id=195643
+
+        Reviewed by Simon Fraser.
+
+        r66437 added a workaround for AppleConnect plugin.
+
+        Remove this code since Safari doesn't even use WebKitLegacy anymore,
+        and other WebKit clients support AppleConnect plugins.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::createPlugin):
+
+2019-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r242688, r242643, r242624.
+
+        Caused multiple layout test failures and crashes on iOS and macOS.
+
+        Reverted changeset:
+
+        "requestAnimationFrame should execute before the next frame"
+        https://bugs.webkit.org/show_bug.cgi?id=177484
+        https://trac.webkit.org/changeset/242624/webkit
+
+        * WebView/WebView.mm:
+        (-[WebView _viewWillDrawInternal]):
+
+2019-03-09  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] CanMakePaymentsWithActiveCard and OpenPaymentSetup should be async messages
+        https://bugs.webkit.org/show_bug.cgi?id=195526
+        <rdar://problem/48745636>
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebPaymentCoordinatorClient.h:
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm:
+        (WebPaymentCoordinatorClient::canMakePaymentsWithActiveCard):
+        (WebPaymentCoordinatorClient::openPaymentSetup):
+
+2019-03-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        requestAnimationFrame should execute before the next frame
+        https://bugs.webkit.org/show_bug.cgi?id=177484
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebView.mm:
+        (-[WebView _viewWillDrawInternal]):
+        Call Page::renderingUpdate() which implements  "Update the rendering"
+        step of the HTML Event Loop specification.
+
+2019-03-07  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Add a setting to be able to turn content change observation on/off
+        https://bugs.webkit.org/show_bug.cgi?id=195353
+        <rdar://problem/48626394>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences contentChangeObserverEnabled]):
+        (-[WebPreferences setContentChangeObserverEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-03-06  Sam Weinig  <sam@webkit.org>
+
+        WebKitLegacy does not need to generate an export file for i386 anymore
+        https://bugs.webkit.org/show_bug.cgi?id=195380
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        Simplify EXPORTED_SYMBOLS_FILE down to just a single path to a generated file.
+        It still needs to be generated, since we are concatenating the shared exports
+        file with a macOS or iOS specific one.
+
+        * WebKit.mac.exp:
+        Remove i386 specific symbols that we were previously stripping.
+
 2019-03-06  Rob Buis  <rbuis@igalia.com>
 
         Consider supporting the `referrerpolicy` attribute.

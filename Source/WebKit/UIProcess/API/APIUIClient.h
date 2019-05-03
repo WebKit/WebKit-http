@@ -73,7 +73,7 @@ class UIClient {
 public:
     virtual ~UIClient() { }
 
-    virtual void createNewPage(WebKit::WebPageProxy&, Ref<FrameInfo>&&, WebCore::ResourceRequest&&, WebCore::WindowFeatures&&, WebKit::NavigationActionData&&, CompletionHandler<void(RefPtr<WebKit::WebPageProxy>&&)>&& completionHandler) { completionHandler(nullptr); }
+    virtual void createNewPage(WebKit::WebPageProxy&, WebCore::WindowFeatures&&, Ref<API::NavigationAction>&&, CompletionHandler<void(RefPtr<WebKit::WebPageProxy>&&)>&& completionHandler) { completionHandler(nullptr); }
     virtual void showPage(WebKit::WebPageProxy*) { }
     virtual void fullscreenMayReturnToInline(WebKit::WebPageProxy*) { }
     virtual void didEnterFullscreen(WebKit::WebPageProxy*) { }
@@ -171,6 +171,10 @@ public:
 #if ENABLE(POINTER_LOCK)
     virtual void requestPointerLock(WebKit::WebPageProxy*) { }
     virtual void didLosePointerLock(WebKit::WebPageProxy*) { }
+#endif
+
+#if ENABLE(DEVICE_ORIENTATION)
+    virtual void shouldAllowDeviceOrientationAndMotionAccess(WebKit::WebPageProxy&, WebKit::WebFrameProxy& webFrameProxy, const WebCore::SecurityOriginData&, CompletionHandler<void(bool)>&& completionHandler) { completionHandler(false); }
 #endif
 
     virtual void didClickAutoFillButton(WebKit::WebPageProxy&, Object*) { }

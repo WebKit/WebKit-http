@@ -649,8 +649,8 @@ void WebProcessProxy::processDidTerminateOrFailedToLaunch()
         callback(false);
 
     if (m_isInProcessCache) {
-        auto removedProcess = processPool().webProcessCache().takeProcess(registrableDomain(), websiteDataStore());
-        ASSERT_UNUSED(removedProcess, removedProcess.get() == this);
+        processPool().webProcessCache().removeProcess(*this, WebProcessCache::ShouldShutDownProcess::No);
+        ASSERT(!m_isInProcessCache);
     }
 
     shutDown();
@@ -834,9 +834,6 @@ void WebProcessProxy::didDestroyUserGestureToken(uint64_t identifier)
 
 bool WebProcessProxy::canBeAddedToWebProcessCache() const
 {
-    if (registrableDomain().isEmpty())
-        return false;
-
     if (isServiceWorkerProcess())
         return false;
 
@@ -851,7 +848,7 @@ void WebProcessProxy::maybeShutDown(AllowProcessCaching allowProcessCaching)
     if (state() == State::Terminated || !canTerminateAuxiliaryProcess())
         return;
 
-    if (allowProcessCaching == AllowProcessCaching::Yes && canBeAddedToWebProcessCache() && processPool().webProcessCache().addProcessIfPossible(registrableDomain(), *this))
+    if (allowProcessCaching == AllowProcessCaching::Yes && canBeAddedToWebProcessCache() && processPool().webProcessCache().addProcessIfPossible(*this))
         return;
 
     shutDown();
@@ -1172,7 +1169,7 @@ void WebProcessProxy::didSetAssertionState(AssertionState state)
             page->processWillBecomeForeground();
         break;
     
-    case AssertionState::Download:
+    case AssertionState::UnboundedNetworking:
         ASSERT_NOT_REACHED();
     }
 
@@ -1415,7 +1412,7 @@ void WebProcessProxy::didCheckProcessLocalPortForActivity(uint64_t callbackIdent
     callback(isLocallyReachable ? MessagePortChannelProvider::HasActivity::Yes : MessagePortChannelProvider::HasActivity::No);
 }
 
-void WebProcessProxy::didCollectPrewarmInformation(const String& domain, const WebCore::PrewarmInformation& prewarmInformation)
+void WebProcessProxy::didCollectPrewarmInformation(const WebCore::RegistrableDomain& domain, const WebCore::PrewarmInformation& prewarmInformation)
 {
     processPool().didCollectPrewarmInformation(domain, prewarmInformation);
 }
@@ -1427,14 +1424,16 @@ void WebProcessProxy::activePagesDomainsForTesting(CompletionHandler<void(Vector
 
 void WebProcessProxy::didStartProvisionalLoadForMainFrame(const URL& url)
 {
+    RELEASE_ASSERT(!isInProcessCache());
+
     // This process has been used for several registrable domains already.
-    if (m_registrableDomain && m_registrableDomain->isNull())
+    if (m_registrableDomain && m_registrableDomain->isEmpty())
         return;
 
-    auto registrableDomain = toRegistrableDomain(url);
+    auto registrableDomain = WebCore::RegistrableDomain { url };
     if (m_registrableDomain && *m_registrableDomain != registrableDomain) {
         // Null out registrable domain since this process has now been used for several domains.
-        m_registrableDomain = String();
+        m_registrableDomain = WebCore::RegistrableDomain { };
         return;
     }
 

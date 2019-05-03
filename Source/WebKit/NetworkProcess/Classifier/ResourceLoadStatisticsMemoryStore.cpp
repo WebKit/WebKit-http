@@ -48,7 +48,7 @@
 namespace WebKit {
 using namespace WebCore;
 
-constexpr unsigned statisticsModelVersion { 15 };
+constexpr unsigned statisticsModelVersion { 16 };
 
 struct StatisticsLastSeen {
     RegistrableDomain domain;
@@ -67,14 +67,10 @@ static void pruneResources(HashMap<RegistrableDomain, ResourceLoadStatistics>& s
         statisticsMap.remove(statisticsToPrune[i].domain);
 }
 
-ResourceLoadStatisticsMemoryStore::ResourceLoadStatisticsMemoryStore(WebResourceLoadStatisticsStore& store, WorkQueue& workQueue)
-    : ResourceLoadStatisticsStore(store, workQueue)
+ResourceLoadStatisticsMemoryStore::ResourceLoadStatisticsMemoryStore(WebResourceLoadStatisticsStore& store, WorkQueue& workQueue, ShouldIncludeLocalhost shouldIncludeLocalhost)
+    : ResourceLoadStatisticsStore(store, workQueue, shouldIncludeLocalhost)
 {
     ASSERT(!RunLoop::isMain());
-
-#if PLATFORM(COCOA)
-    registerUserDefaultsIfNeeded();
-#endif
 
     workQueue.dispatchAfter(5_s, [weakThis = makeWeakPtr(*this)] {
         if (weakThis)
@@ -175,6 +171,8 @@ bool ResourceLoadStatisticsMemoryStore::isPrevalentDueToDebugMode(ResourceLoadSt
 void ResourceLoadStatisticsMemoryStore::classifyPrevalentResources()
 {
     for (auto& resourceStatistic : m_resourceStatisticsMap.values()) {
+        if (shouldSkip(resourceStatistic.registrableDomain))
+            continue;
         if (isPrevalentDueToDebugMode(resourceStatistic))
             setPrevalentResource(resourceStatistic, ResourceLoadPrevalence::High);
         else if (!resourceStatistic.isVeryPrevalentResource) {
@@ -223,7 +221,7 @@ void ResourceLoadStatisticsMemoryStore::hasStorageAccess(const SubFrameDomain& s
     });
 }
 
-void ResourceLoadStatisticsMemoryStore::requestStorageAccess(SubFrameDomain&& subFrameDomain, TopFrameDomain&& topFrameDomain, FrameID frameID, uint64_t pageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&& completionHandler)
+void ResourceLoadStatisticsMemoryStore::requestStorageAccess(SubFrameDomain&& subFrameDomain, TopFrameDomain&& topFrameDomain, FrameID frameID, uint64_t pageID, CompletionHandler<void(StorageAccessStatus)>&& completionHandler)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -244,18 +242,19 @@ void ResourceLoadStatisticsMemoryStore::requestStorageAccess(SubFrameDomain&& su
         return;
     }
 
-    auto userWasPromptedEarlier = promptEnabled && hasUserGrantedStorageAccessThroughPrompt(subFrameStatistic, topFrameDomain);
-    if (promptEnabled && !userWasPromptedEarlier) {
+    auto userWasPromptedEarlier = hasUserGrantedStorageAccessThroughPrompt(subFrameStatistic, topFrameDomain);
+    if (!userWasPromptedEarlier) {
 #if !RELEASE_LOG_DISABLED
         RELEASE_LOG_INFO_IF(debugLoggingEnabled(), ResourceLoadStatisticsDebug, "About to ask the user whether they want to grant storage access to %{public}s under %{public}s or not.", subFrameDomain.string().utf8().data(), topFrameDomain.string().utf8().data());
 #endif
         completionHandler(StorageAccessStatus::RequiresUserPrompt);
         return;
-    } else if (userWasPromptedEarlier) {
+    }
+
 #if !RELEASE_LOG_DISABLED
+    if (userWasPromptedEarlier)
         RELEASE_LOG_INFO_IF(debugLoggingEnabled(), ResourceLoadStatisticsDebug, "Storage access was granted to %{public}s under %{public}s.", subFrameDomain.string().utf8().data(), topFrameDomain.string().utf8().data());
 #endif
-    }
 
     subFrameStatistic.timesAccessedAsFirstPartyDueToStorageAccessAPI++;
 
@@ -306,8 +305,7 @@ void ResourceLoadStatisticsMemoryStore::grantStorageAccessInternal(SubFrameDomai
         return;
     }
 
-    // FIXME: Remove m_storageAccessPromptsEnabled check if prompting is no longer experimental.
-    if (userWasPromptedNowOrEarlier && storageAccessPromptsEnabled()) {
+    if (userWasPromptedNowOrEarlier) {
         auto& subFrameStatistic = ensureResourceStatisticsForRegistrableDomain(subFrameDomain);
         ASSERT(subFrameStatistic.hadUserInteraction);
         ASSERT(subFrameStatistic.storageAccessUnderTopFrameDomains.contains(topFrameDomain));
@@ -424,6 +422,19 @@ void ResourceLoadStatisticsMemoryStore::logUserInteraction(const TopFrameDomain&
     statistics.mostRecentUserInteractionTime = WallTime::now();
 }
 
+void ResourceLoadStatisticsMemoryStore::logCrossSiteLoadWithLinkDecoration(const NavigatedFromDomain& fromDomain, const NavigatedToDomain& toDomain)
+{
+    ASSERT(!RunLoop::isMain());
+    ASSERT(fromDomain != toDomain);
+
+    auto& toStatistics = ensureResourceStatisticsForRegistrableDomain(toDomain);
+    toStatistics.topFrameLinkDecorationsFrom.add(fromDomain);
+    
+    auto& fromStatistics = ensureResourceStatisticsForRegistrableDomain(fromDomain);
+    if (fromStatistics.isPrevalentResource)
+        toStatistics.gotLinkDecorationFromPrevalentResource = true;
+}
+
 void ResourceLoadStatisticsMemoryStore::clearUserInteraction(const RegistrableDomain& domain)
 {
     ASSERT(!RunLoop::isMain());
@@ -444,6 +455,9 @@ bool ResourceLoadStatisticsMemoryStore::hasHadUserInteraction(const RegistrableD
 void ResourceLoadStatisticsMemoryStore::setPrevalentResource(ResourceLoadStatistics& resourceStatistic, ResourceLoadPrevalence newPrevalence)
 {
     ASSERT(!RunLoop::isMain());
+
+    if (shouldSkip(resourceStatistic.registrableDomain))
+        return;
 
     resourceStatistic.isPrevalentResource = true;
     resourceStatistic.isVeryPrevalentResource = newPrevalence == ResourceLoadPrevalence::VeryHigh;
@@ -473,6 +487,9 @@ bool ResourceLoadStatisticsMemoryStore::isPrevalentResource(const RegistrableDom
 {
     ASSERT(!RunLoop::isMain());
 
+    if (shouldSkip(domain))
+        return false;
+
     auto mapEntry = m_resourceStatisticsMap.find(domain);
     return mapEntry == m_resourceStatisticsMap.end() ? false : mapEntry->value.isPrevalentResource;
 }
@@ -481,6 +498,9 @@ bool ResourceLoadStatisticsMemoryStore::isVeryPrevalentResource(const Registrabl
 {
     ASSERT(!RunLoop::isMain());
 
+    if (shouldSkip(domain))
+        return false;
+    
     auto mapEntry = m_resourceStatisticsMap.find(domain);
     return mapEntry == m_resourceStatisticsMap.end() ? false : mapEntry->value.isPrevalentResource && mapEntry->value.isVeryPrevalentResource;
 }
@@ -837,6 +857,9 @@ void ResourceLoadStatisticsMemoryStore::setPrevalentResource(const RegistrableDo
 {
     ASSERT(!RunLoop::isMain());
 
+    if (shouldSkip(domain))
+        return;
+    
     auto& resourceStatistic = ensureResourceStatisticsForRegistrableDomain(domain);
     setPrevalentResource(resourceStatistic, ResourceLoadPrevalence::High);
 }
@@ -845,6 +868,9 @@ void ResourceLoadStatisticsMemoryStore::setVeryPrevalentResource(const Registrab
 {
     ASSERT(!RunLoop::isMain());
 
+    if (shouldSkip(domain))
+        return;
+    
     auto& resourceStatistic = ensureResourceStatisticsForRegistrableDomain(domain);
     setPrevalentResource(resourceStatistic, ResourceLoadPrevalence::VeryHigh);
 }

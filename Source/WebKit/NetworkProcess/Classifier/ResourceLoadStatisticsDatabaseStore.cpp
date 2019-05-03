@@ -75,6 +75,10 @@ constexpr auto topFrameUniqueRedirectsFromQuery = "INSERT INTO TopFrameUniqueRed
     "SELECT ?, domainID FROM ObservedDomains WHERE registrableDomain = ?"_s;
 constexpr auto topFrameUniqueRedirectsFromExistsQuery = "SELECT EXISTS (SELECT 1 FROM TopFrameUniqueRedirectsFrom WHERE targetDomainID = ? "
     "AND fromDomainID = (SELECT domainID FROM ObservedDomains WHERE registrableDomain = ?))"_s;
+constexpr auto topFrameLinkDecorationsFromQuery = "INSERT INTO TopFrameLinkDecorationsFrom (fromDomainID, toDomainID) "
+    "SELECT ?, domainID FROM ObservedDomains WHERE registrableDomain = ?"_s;
+constexpr auto topFrameLinkDecorationsFromExistsQuery = "SELECT EXISTS (SELECT 1 FROM TopFrameLinkDecorationsFrom WHERE fromDomainID = ? "
+    "AND toDomainID = (SELECT domainID FROM ObservedDomains WHERE registrableDomain = ?))"_s;
 constexpr auto subframeUnderTopFrameDomainsQuery = "INSERT INTO SubframeUnderTopFrameDomains (subFrameDomainID, topFrameDomainID) "
     "SELECT ?, domainID FROM ObservedDomains WHERE registrableDomain = ?"_s;
 constexpr auto subframeUnderTopFrameDomainExistsQuery = "SELECT EXISTS (SELECT 1 FROM SubframeUnderTopFrameDomains WHERE subFrameDomainID = ? "
@@ -128,7 +132,12 @@ constexpr auto createTopFrameUniqueRedirectsFrom = "CREATE TABLE TopFrameUniqueR
     "targetDomainID INTEGER NOT NULL, fromDomainID INTEGER NOT NULL, "
     "FOREIGN KEY(targetDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE, "
     "FOREIGN KEY(fromDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE);"_s;
-    
+
+constexpr auto createTopFrameLinkDecorationsFrom = "CREATE TABLE TopFrameLinkDecorationsFrom ("
+    "fromDomainID INTEGER NOT NULL, toDomainID INTEGER NOT NULL, "
+    "FOREIGN KEY(fromDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE, "
+    "FOREIGN KEY(toDomainID) REFERENCES TopLevelDomains(topLevelDomainID) ON DELETE CASCADE);"_s;
+
 constexpr auto createSubframeUnderTopFrameDomains = "CREATE TABLE SubframeUnderTopFrameDomains ("
     "subFrameDomainID INTEGER NOT NULL, topFrameDomainID INTEGER NOT NULL, "
     "FOREIGN KEY(subFrameDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE, "
@@ -149,8 +158,8 @@ constexpr auto createSubresourceUniqueRedirectsFrom = "CREATE TABLE SubresourceU
     "FOREIGN KEY(subresourceDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE, "
     "FOREIGN KEY(fromDomainID) REFERENCES ObservedDomains(domainID) ON DELETE CASCADE);"_s;
     
-ResourceLoadStatisticsDatabaseStore::ResourceLoadStatisticsDatabaseStore(WebResourceLoadStatisticsStore& store, WorkQueue& workQueue, const String& storageDirectoryPath)
-    : ResourceLoadStatisticsStore(store, workQueue)
+ResourceLoadStatisticsDatabaseStore::ResourceLoadStatisticsDatabaseStore(WebResourceLoadStatisticsStore& store, WorkQueue& workQueue, ShouldIncludeLocalhost shouldIncludeLocalhost, const String& storageDirectoryPath)
+    : ResourceLoadStatisticsStore(store, workQueue, shouldIncludeLocalhost)
     , m_storageDirectoryPath(storageDirectoryPath + "/observations.db")
     , m_observedDomainCount(m_database, observedDomainCountQuery)
     , m_insertObservedDomainStatement(m_database, insertObservedDomainQuery)
@@ -161,6 +170,8 @@ ResourceLoadStatisticsDatabaseStore::ResourceLoadStatisticsDatabaseStore(WebReso
     , m_topFrameUniqueRedirectsToExists(m_database, topFrameUniqueRedirectsToExistsQuery)
     , m_topFrameUniqueRedirectsFrom(m_database, topFrameUniqueRedirectsFromQuery)
     , m_topFrameUniqueRedirectsFromExists(m_database, topFrameUniqueRedirectsFromExistsQuery)
+    , m_topFrameLinkDecorationsFrom(m_database, topFrameLinkDecorationsFromQuery)
+    , m_topFrameLinkDecorationsFromExists(m_database, topFrameLinkDecorationsFromExistsQuery)
     , m_subframeUnderTopFrameDomains(m_database, subframeUnderTopFrameDomainsQuery)
     , m_subframeUnderTopFrameDomainExists(m_database, subframeUnderTopFrameDomainExistsQuery)
     , m_subresourceUnderTopFrameDomains(m_database, subresourceUnderTopFrameDomainsQuery)
@@ -182,10 +193,6 @@ ResourceLoadStatisticsDatabaseStore::ResourceLoadStatisticsDatabaseStore(WebReso
     , m_findExpiredUserInteractionStatement(m_database, findExpiredUserInteractionQuery)
 {
     ASSERT(!RunLoop::isMain());
-
-#if PLATFORM(COCOA)
-    registerUserDefaultsIfNeeded();
-#endif
 
     if (!m_database.open(m_storageDirectoryPath)) {
         RELEASE_LOG_ERROR(Network, "%p - ResourceLoadStatisticsDatabaseStore::open failed, error message: %{public}s, database path: %{public}s", this, m_database.lastErrorMsg(), m_storageDirectoryPath.utf8().data());
@@ -259,6 +266,11 @@ bool ResourceLoadStatisticsDatabaseStore::createSchema()
         return false;
     }
 
+    if (!m_database.executeCommand(createTopFrameLinkDecorationsFrom)) {
+        LOG_ERROR("Could not create TopFrameLinkDecorationsFrom table in database (%i) - %s", m_database.lastError(), m_database.lastErrorMsg());
+        return false;
+    }
+    
     if (!m_database.executeCommand(createSubframeUnderTopFrameDomains)) {
         LOG_ERROR("Could not create SubframeUnderTopFrameDomains table in database (%i) - %s", m_database.lastError(), m_database.lastErrorMsg());
         return false;
@@ -673,6 +685,9 @@ void ResourceLoadStatisticsDatabaseStore::reclassifyResources()
     auto notVeryPrevalentResources = findNotVeryPrevalentResources();
 
     for (auto& resourceStatistic : notVeryPrevalentResources.values()) {
+        if (shouldSkip(resourceStatistic.registerableDomain))
+            continue;
+
         auto newPrevalence = classifier().calculateResourcePrevalence(resourceStatistic.subresourceUnderTopFrameDomainsCount, resourceStatistic.subresourceUniqueRedirectsToCount, resourceStatistic.subframeUnderTopFrameDomainsCount, resourceStatistic.topFrameUniqueRedirectsToCount, resourceStatistic.prevalence);
         if (newPrevalence != resourceStatistic.prevalence)
             setPrevalentResource(resourceStatistic.registerableDomain, newPrevalence);
@@ -726,7 +741,7 @@ void ResourceLoadStatisticsDatabaseStore::hasStorageAccess(const SubFrameDomain&
     });
 }
 
-void ResourceLoadStatisticsDatabaseStore::requestStorageAccess(SubFrameDomain&& subFrameDomain, TopFrameDomain&& topFrameDomain, FrameID frameID, PageID pageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&& completionHandler)
+void ResourceLoadStatisticsDatabaseStore::requestStorageAccess(SubFrameDomain&& subFrameDomain, TopFrameDomain&& topFrameDomain, FrameID frameID, PageID pageID, CompletionHandler<void(StorageAccessStatus)>&& completionHandler)
 {
     ASSERT(!RunLoop::isMain());
 
@@ -752,8 +767,8 @@ void ResourceLoadStatisticsDatabaseStore::requestStorageAccess(SubFrameDomain&& 
         break;
     };
 
-    auto userWasPromptedEarlier = promptEnabled && hasUserGrantedStorageAccessThroughPrompt(subFrameStatus.second, topFrameDomain);
-    if (promptEnabled && !userWasPromptedEarlier) {
+    auto userWasPromptedEarlier = hasUserGrantedStorageAccessThroughPrompt(subFrameStatus.second, topFrameDomain);
+    if (!userWasPromptedEarlier) {
 #if !RELEASE_LOG_DISABLED
         RELEASE_LOG_INFO_IF(debugLoggingEnabled(), ResourceLoadStatisticsDebug, "About to ask the user whether they want to grant storage access to %{public}s under %{public}s or not.", subFrameDomain.string().utf8().data(), topFrameDomain.string().utf8().data());
 #endif
@@ -820,8 +835,7 @@ void ResourceLoadStatisticsDatabaseStore::grantStorageAccessInternal(SubFrameDom
         return;
     }
 
-    // FIXME: Remove m_storageAccessPromptsEnabled check if prompting is no longer experimental.
-    if (userWasPromptedNowOrEarlier && storageAccessPromptsEnabled()) {
+    if (userWasPromptedNowOrEarlier) {
 #ifndef NDEBUG
         auto subFrameStatus = ensureResourceStatisticsForRegistrableDomain(subFrameDomain);
         ASSERT(subFrameStatus.first == AddedRecord::No);
@@ -966,6 +980,19 @@ void ResourceLoadStatisticsDatabaseStore::logSubresourceRedirect(const Redirecte
         scheduleStatisticsProcessingRequestIfNecessary();
 }
 
+void ResourceLoadStatisticsDatabaseStore::logCrossSiteLoadWithLinkDecoration(const NavigatedFromDomain& fromDomain, const NavigatedToDomain& toDomain)
+{
+    ASSERT(!RunLoop::isMain());
+    ASSERT(fromDomain != toDomain);
+
+    auto fromDomainResult = ensureResourceStatisticsForRegistrableDomain(fromDomain);
+
+    if (!relationshipExists(m_topFrameLinkDecorationsFromExists, fromDomainResult.second, toDomain)) {
+        insertDomainRelationship(m_topFrameLinkDecorationsFrom, fromDomainResult.second, toDomain);
+        scheduleStatisticsProcessingRequestIfNecessary();
+    }
+}
+
 void ResourceLoadStatisticsDatabaseStore::setUserInteraction(const RegistrableDomain& domain, bool hadUserInteraction, WallTime mostRecentInteraction)
 {
     ASSERT(!RunLoop::isMain());
@@ -1037,6 +1064,8 @@ bool ResourceLoadStatisticsDatabaseStore::hasHadUserInteraction(const Registrabl
 void ResourceLoadStatisticsDatabaseStore::setPrevalentResource(const RegistrableDomain& domain, ResourceLoadPrevalence newPrevalence)
 {
     ASSERT(!RunLoop::isMain());
+    if (shouldSkip(domain))
+        return;
 
     if (m_updatePrevalentResourceStatement.bindInt(1, 1) != SQLITE_OK
         || m_updatePrevalentResourceStatement.bindText(2, domain.string()) != SQLITE_OK
@@ -1110,12 +1139,18 @@ bool ResourceLoadStatisticsDatabaseStore::isPrevalentResource(const RegistrableD
 {
     ASSERT(!RunLoop::isMain());
 
+    if (shouldSkip(domain))
+        return false;
+
     return predicateValueForDomain(m_isPrevalentResourceStatement, domain);
 }
 
 bool ResourceLoadStatisticsDatabaseStore::isVeryPrevalentResource(const RegistrableDomain& domain) const
 {
     ASSERT(!RunLoop::isMain());
+
+    if (shouldSkip(domain))
+        return false;
 
     return predicateValueForDomain(m_isVeryPrevalentResourceStatement, domain);
 }
@@ -1555,6 +1590,9 @@ void ResourceLoadStatisticsDatabaseStore::setPrevalentResource(const Registrable
 {
     ASSERT(!RunLoop::isMain());
 
+    if (shouldSkip(domain))
+        return;
+
     ensureResourceStatisticsForRegistrableDomain(domain);
     setPrevalentResource(domain, ResourceLoadPrevalence::High);
 }
@@ -1563,6 +1601,9 @@ void ResourceLoadStatisticsDatabaseStore::setVeryPrevalentResource(const Registr
 {
     ASSERT(!RunLoop::isMain());
 
+    if (shouldSkip(domain))
+        return;
+    
     ensureResourceStatisticsForRegistrableDomain(domain);
     setPrevalentResource(domain, ResourceLoadPrevalence::VeryHigh);
 }

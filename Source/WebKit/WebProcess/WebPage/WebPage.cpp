@@ -194,6 +194,7 @@
 #include <WebCore/PointerCaptureController.h>
 #include <WebCore/PrintContext.h>
 #include <WebCore/PromisedAttachmentInfo.h>
+#include <WebCore/Quirks.h>
 #include <WebCore/Range.h>
 #include <WebCore/RegistrableDomain.h>
 #include <WebCore/RemoteDOMWindow.h>
@@ -637,7 +638,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     m_userContentController->addUserStyleSheets(parameters.userStyleSheets);
     m_userContentController->addUserScriptMessageHandlers(parameters.messageHandlers);
 #if ENABLE(CONTENT_EXTENSIONS)
-    m_userContentController->addContentRuleLists(parameters.contentRuleLists);
+    m_userContentController->addContentRuleLists(WTFMove(parameters.contentRuleLists));
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -1388,6 +1389,18 @@ void WebPage::loadURLInFrame(URL&& url, uint64_t frameID)
         return;
 
     frame->coreFrame()->loader().load(FrameLoadRequest(*frame->coreFrame(), ResourceRequest(url), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
+}
+
+void WebPage::loadDataInFrame(IPC::DataReference&& data, String&& MIMEType, String&& encodingName, URL&& baseURL, uint64_t frameID)
+{
+    WebFrame* frame = WebProcess::singleton().webFrame(frameID);
+    if (!frame)
+        return;
+
+    auto sharedBuffer = SharedBuffer::create(reinterpret_cast<const char*>(data.data()), data.size());
+    ResourceResponse response(baseURL, MIMEType, sharedBuffer->size(), encodingName);
+    SubstituteData substituteData(WTFMove(sharedBuffer), baseURL, WTFMove(response), SubstituteData::SessionHistoryVisibility::Hidden);
+    frame->coreFrame()->loader().load(FrameLoadRequest(*frame->coreFrame(), ResourceRequest(baseURL), ShouldOpenExternalURLsPolicy::ShouldNotAllow, WTFMove(substituteData)));
 }
 
 #if !PLATFORM(COCOA)
@@ -3124,19 +3137,21 @@ void WebPage::didStartPageTransition()
     bool hasPreviouslyFocusedDueToUserInteraction = m_hasEverFocusedElementDueToUserInteractionSincePageTransition;
 #endif
     m_hasEverFocusedElementDueToUserInteractionSincePageTransition = false;
-    m_isFocusingElementDueToUserInteraction = false;
     m_lastEditorStateWasContentEditable = EditorStateIsContentEditable::Unset;
 #if PLATFORM(MAC)
     if (hasPreviouslyFocusedDueToUserInteraction)
         send(Messages::WebPageProxy::SetHasHadSelectionChangesFromUserInteraction(m_hasEverFocusedElementDueToUserInteractionSincePageTransition));
-    if (m_needsHiddenContentEditableQuirk) {
-        m_needsHiddenContentEditableQuirk = false;
-        send(Messages::WebPageProxy::SetNeedsHiddenContentEditableQuirk(m_needsHiddenContentEditableQuirk));
+    if (m_isTouchBarUpdateSupressedForHiddenContentEditable) {
+        m_isTouchBarUpdateSupressedForHiddenContentEditable = false;
+        send(Messages::WebPageProxy::SetIsTouchBarUpdateSupressedForHiddenContentEditable(m_isTouchBarUpdateSupressedForHiddenContentEditable));
     }
-    if (m_needsPlainTextQuirk) {
-        m_needsPlainTextQuirk = false;
-        send(Messages::WebPageProxy::SetNeedsPlainTextQuirk(m_needsPlainTextQuirk));
+    if (m_isNeverRichlyEditableForTouchBar) {
+        m_isNeverRichlyEditableForTouchBar = false;
+        send(Messages::WebPageProxy::SetIsNeverRichlyEditableForTouchBar(m_isNeverRichlyEditableForTouchBar));
     }
+#endif
+#if PLATFORM(IOS_FAMILY)
+    m_isShowingInputViewForFocusedElement = false;
 #endif
 }
 
@@ -3144,13 +3159,6 @@ void WebPage::didCompletePageTransition()
 {
     unfreezeLayerTree(LayerTreeFreezeReason::PageTransition);
 
-    if (m_LayerTreeFreezeReasons.contains(LayerTreeFreezeReason::ProcessSuspended)) {
-        RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebPage (PageID=%" PRIu64 ") - LayerTreeFreezeReason::ProcessSuspended was set when removing LayerTreeFreezeReason::PageTransition; current reasons are %d",
-            this, m_pageID, m_LayerTreeFreezeReasons.toRaw());
-    }
-
-    // FIXME: In iOS, we sometimes never unset ProcessSuspended. See <rdar://problem/48154508>.
-    unfreezeLayerTree(LayerTreeFreezeReason::ProcessSuspended);
     RELEASE_LOG_IF_ALLOWED("%p - WebPage - Did complete page transition", this);
 
     bool isInitialEmptyDocument = !m_mainFrame;
@@ -3900,19 +3908,19 @@ void WebPage::didChooseColor(const WebCore::Color& color)
 
 void WebPage::setActiveDataListSuggestionPicker(WebDataListSuggestionPicker* dataListSuggestionPicker)
 {
-    m_activeDataListSuggestionPicker = dataListSuggestionPicker;
+    m_activeDataListSuggestionPicker = makeWeakPtr(dataListSuggestionPicker);
 }
 
 void WebPage::didSelectDataListOption(const String& selectedOption)
 {
-    m_activeDataListSuggestionPicker->didSelectOption(selectedOption);
+    if (m_activeDataListSuggestionPicker)
+        m_activeDataListSuggestionPicker->didSelectOption(selectedOption);
 }
 
 void WebPage::didCloseSuggestions()
 {
-    if (m_activeDataListSuggestionPicker)
-        m_activeDataListSuggestionPicker->didCloseSuggestions();
-    m_activeDataListSuggestionPicker = nullptr;
+    if (auto picker = std::exchange(m_activeDataListSuggestionPicker, nullptr))
+        picker->didCloseSuggestions();
 }
 
 #endif
@@ -5202,39 +5210,6 @@ void WebPage::cancelComposition()
 }
 #endif
 
-#if PLATFORM(MAC)
-static bool needsHiddenContentEditableQuirk(bool needsQuirks, const URL& url)
-{
-    if (!needsQuirks)
-        return false;
-
-    return equalLettersIgnoringASCIICase(url.host(), "docs.google.com");
-}
-
-static bool needsPlainTextQuirk(bool needsQuirks, const URL& url)
-{
-    if (!needsQuirks)
-        return false;
-
-    auto host = url.host();
-
-    if (equalLettersIgnoringASCIICase(host, "twitter.com"))
-        return true;
-
-    if (equalLettersIgnoringASCIICase(host, "onedrive.live.com"))
-        return true;
-
-    String path = url.path();
-    if (equalLettersIgnoringASCIICase(host, "www.icloud.com") && (path.contains("notes") || url.fragmentIdentifier().contains("notes")))
-        return true;
-
-    if (equalLettersIgnoringASCIICase(host, "trix-editor.org"))
-        return true;
-
-    return false;
-}
-#endif
-
 void WebPage::didApplyStyle()
 {
     sendEditorStateUpdate();
@@ -5264,14 +5239,14 @@ void WebPage::didChangeSelection()
     m_hasEverFocusedElementDueToUserInteractionSincePageTransition |= m_userIsInteracting;
 
     if (!hasPreviouslyFocusedDueToUserInteraction && m_hasEverFocusedElementDueToUserInteractionSincePageTransition) {
-        if (needsHiddenContentEditableQuirk(m_page->settings().needsSiteSpecificQuirks(), m_page->mainFrame().document()->url())) {
-            m_needsHiddenContentEditableQuirk = true;
-            send(Messages::WebPageProxy::SetNeedsHiddenContentEditableQuirk(m_needsHiddenContentEditableQuirk));
+        if (frame.document()->quirks().isTouchBarUpdateSupressedForHiddenContentEditable()) {
+            m_isTouchBarUpdateSupressedForHiddenContentEditable = true;
+            send(Messages::WebPageProxy::SetIsTouchBarUpdateSupressedForHiddenContentEditable(m_isTouchBarUpdateSupressedForHiddenContentEditable));
         }
 
-        if (needsPlainTextQuirk(m_page->settings().needsSiteSpecificQuirks(), m_page->mainFrame().document()->url())) {
-            m_needsPlainTextQuirk = true;
-            send(Messages::WebPageProxy::SetNeedsPlainTextQuirk(m_needsPlainTextQuirk));
+        if (frame.document()->quirks().isNeverRichlyEditableForTouchBar()) {
+            m_isNeverRichlyEditableForTouchBar = true;
+            send(Messages::WebPageProxy::SetIsNeverRichlyEditableForTouchBar(m_isNeverRichlyEditableForTouchBar));
         }
 
         send(Messages::WebPageProxy::SetHasHadSelectionChangesFromUserInteraction(m_hasEverFocusedElementDueToUserInteractionSincePageTransition));
@@ -5310,18 +5285,32 @@ void WebPage::elementDidRefocus(WebCore::Element& element)
 {
     elementDidFocus(element);
 
-    if (m_isFocusingElementDueToUserInteraction)
+    if (m_userIsInteracting)
         scheduleFullEditorStateUpdate();
+}
+
+bool WebPage::shouldDispatchUpdateAfterFocusingElement(const Element& element) const
+{
+    if (m_focusedElement == &element || m_recentlyBlurredElement == &element) {
+#if PLATFORM(IOS_FAMILY)
+        return !m_isShowingInputViewForFocusedElement;
+#else
+        return false;
+#endif
+    }
+    return true;
 }
 
 void WebPage::elementDidFocus(WebCore::Element& element)
 {
-    if (m_focusedElement == &element && m_isFocusingElementDueToUserInteraction)
+    if (!shouldDispatchUpdateAfterFocusingElement(element)) {
+        m_focusedElement = &element;
+        m_recentlyBlurredElement = nullptr;
         return;
+    }
 
     if (element.hasTagName(WebCore::HTMLNames::selectTag) || element.hasTagName(WebCore::HTMLNames::inputTag) || element.hasTagName(WebCore::HTMLNames::textareaTag) || element.hasEditableStyle()) {
         m_focusedElement = &element;
-        m_isFocusingElementDueToUserInteraction |= m_userIsInteracting;
 
 #if PLATFORM(IOS_FAMILY)
 
@@ -5337,35 +5326,30 @@ void WebPage::elementDidFocus(WebCore::Element& element)
 
         m_formClient->willBeginInputSession(this, &element, WebFrame::fromCoreFrame(*element.document().frame()), m_userIsInteracting, userData);
 
-        send(Messages::WebPageProxy::ElementDidFocus(information, m_userIsInteracting, m_hasPendingBlurNotification, m_changingActivityState, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+        send(Messages::WebPageProxy::ElementDidFocus(information, m_userIsInteracting, m_recentlyBlurredElement, m_changingActivityState, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 #elif PLATFORM(MAC)
-        if (element.hasTagName(WebCore::HTMLNames::selectTag))
-            send(Messages::WebPageProxy::SetEditableElementIsFocused(false));
-        else
-            send(Messages::WebPageProxy::SetEditableElementIsFocused(true));
+        // FIXME: This can be unified with the iOS code above by bringing ElementDidFocus to macOS.
+        // This also doesn't take other noneditable controls into account, such as input type color.
+        send(Messages::WebPageProxy::SetEditableElementIsFocused(!element.hasTagName(WebCore::HTMLNames::selectTag)));
 #endif
-        m_hasPendingBlurNotification = false;
+        m_recentlyBlurredElement = nullptr;
     }
 }
 
 void WebPage::elementDidBlur(WebCore::Element& element)
 {
     if (m_focusedElement == &element) {
-        m_hasPendingBlurNotification = true;
-        RefPtr<WebPage> protectedThis(this);
-        callOnMainThread([protectedThis] {
-            if (protectedThis->m_hasPendingBlurNotification) {
+        m_recentlyBlurredElement = WTFMove(m_focusedElement);
+        callOnMainThread([protectedThis = makeRefPtr(this)] {
+            if (protectedThis->m_recentlyBlurredElement) {
 #if PLATFORM(IOS_FAMILY)
                 protectedThis->send(Messages::WebPageProxy::ElementDidBlur());
 #elif PLATFORM(MAC)
                 protectedThis->send(Messages::WebPageProxy::SetEditableElementIsFocused(false));
 #endif
             }
-            protectedThis->m_hasPendingBlurNotification = false;
+            protectedThis->m_recentlyBlurredElement = nullptr;
         });
-
-        m_isFocusingElementDueToUserInteraction = false;
-        m_focusedElement = nullptr;
     }
 }
 
@@ -6343,8 +6327,14 @@ void WebPage::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uin
     
 void WebPage::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
 {
-    bool promptEnabled = RuntimeEnabledFeatures::sharedFeatures().storageAccessPromptsEnabled();
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::RequestStorageAccess(sessionID(), RegistrableDomain::uncheckedCreateFromHost(subFrameHost), RegistrableDomain::uncheckedCreateFromHost(topFrameHost), frameID, m_pageID, promptEnabled), WTFMove(completionHandler));
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::RequestStorageAccess(sessionID(), RegistrableDomain::uncheckedCreateFromHost(subFrameHost), RegistrableDomain::uncheckedCreateFromHost(topFrameHost), frameID, m_pageID), WTFMove(completionHandler));
+}
+#endif
+
+#if ENABLE(DEVICE_ORIENTATION)
+void WebPage::shouldAllowDeviceOrientationAndMotionAccess(uint64_t frameID, WebCore::SecurityOriginData&& origin, CompletionHandler<void(bool)>&& completionHandler)
+{
+    sendWithAsyncReply(Messages::WebPageProxy::RequestDeviceOrientationAndMotionAccess(frameID, WTFMove(origin)), WTFMove(completionHandler));
 }
 #endif
     
@@ -6468,6 +6458,94 @@ WebCore::IntRect WebPage::rectForElementAtInteractionLocation() const
 }
 
 #endif // !PLATFORM(IOS_FAMILY)
+
+static IntRect elementRectInRootViewCoordinates(const Element& element, const Frame& frame)
+{
+    auto* view = frame.view();
+    if (!view)
+        return { };
+
+    auto* renderer = element.renderer();
+    if (!renderer)
+        return { };
+
+    return view->contentsToRootView(renderer->absoluteBoundingBoxRect());
+}
+
+static bool isEditableTextInputElement(Element& element)
+{
+    if (is<HTMLTextFormControlElement>(element)) {
+        if (!element.isTextField() && !is<HTMLTextAreaElement>(element))
+            return false;
+        return downcast<HTMLTextFormControlElement>(element).isInnerTextElementEditable();
+    }
+
+    return element.isRootEditableElement();
+}
+
+void WebPage::textInputContextsInRect(WebCore::FloatRect searchRect, CompletionHandler<void(const Vector<TextInputContext>&)>&& completionHandler)
+{
+    Vector<WebKit::TextInputContext> textInputContexts;
+
+    for (Frame* frame = &m_page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        Document* document = frame->document();
+        if (!document)
+            continue;
+
+        Deque<Node*> nodesToSearch;
+        nodesToSearch.append(document);
+        while (!nodesToSearch.isEmpty()) {
+            auto node = nodesToSearch.takeFirst();
+
+            // It is possible to have nested text input contexts (e.g. <input type='text'> inside contenteditable) but
+            // in this case we just take the outermost context and skip the rest.
+            if (!is<Element>(*node) || !isEditableTextInputElement(downcast<Element>(*node))) {
+                for (auto* child = node->firstChild(); child; child = child->nextSibling())
+                    nodesToSearch.append(child);
+                continue;
+            }
+
+            auto& element = downcast<Element>(*node);
+
+            IntRect elementRect = elementRectInRootViewCoordinates(element, *frame);
+            if (!searchRect.intersects(elementRect))
+                continue;
+
+            WebKit::TextInputContext context;
+            context.webPageIdentifier = m_pageID;
+            context.documentIdentifier = document->identifier();
+            context.elementIdentifier = document->identifierForElement(element);
+            context.boundingRect = elementRect;
+
+            textInputContexts.append(context);
+        }
+    }
+
+    completionHandler(textInputContexts);
+}
+
+void WebPage::focusTextInputContext(const TextInputContext& textInputContext, CompletionHandler<void(bool)>&& completionHandler)
+{
+    completionHandler([&] {
+        if (textInputContext.webPageIdentifier != m_pageID)
+            return false;
+
+        auto* document = Document::allDocumentsMap().get(textInputContext.documentIdentifier);
+        if (!document)
+            return false;
+
+        if (document->page() != m_page.get())
+            return false;
+
+        auto* element = document->searchForElementByIdentifier(textInputContext.elementIdentifier);
+        if (!element)
+            return false;
+
+        element->focus();
+
+        return true;
+    }());
+}
 
 } // namespace WebKit
 

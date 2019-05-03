@@ -82,6 +82,11 @@ class VisualViewport;
 class WebKitNamespace;
 class WebKitPoint;
 
+#if ENABLE(DEVICE_ORIENTATION)
+class DeviceMotionController;
+class DeviceOrientationController;
+#endif
+
 struct ImageBitmapOptions;
 struct WindowFeatures;
 
@@ -108,8 +113,19 @@ public:
     // the network load. See also SecurityContext::isSecureTransitionTo.
     void didSecureTransitionTo(Document&);
 
-    void registerProperty(DOMWindowProperty&);
-    void unregisterProperty(DOMWindowProperty&);
+    class Observer {
+    public:
+        virtual ~Observer() { }
+
+        virtual void suspendForPageCache() { }
+        virtual void resumeFromPageCache() { }
+        virtual void willDestroyGlobalObjectInCachedFrame() { }
+        virtual void willDestroyGlobalObjectInFrame() { }
+        virtual void willDetachGlobalObjectFromFrame() { }
+    };
+
+    void registerObserver(Observer&);
+    void unregisterObserver(Observer&);
 
     void resetUnlessSuspendedForDocumentSuspension();
     void suspendForPageCache();
@@ -311,6 +327,19 @@ public:
     unsigned scrollEventListenerCount() const { return m_scrollEventListenerCount; }
 #endif
 
+#if ENABLE(DEVICE_ORIENTATION)
+    void startListeningForDeviceOrientationIfNecessary();
+    void stopListeningForDeviceOrientationIfNecessary();
+    void startListeningForDeviceMotionIfNecessary();
+    void stopListeningForDeviceMotionIfNecessary();
+
+    bool isAllowedToUseDeviceMotionOrientation(String& message) const;
+    bool isAllowedToAddDeviceMotionOrientationListener(String& message) const;
+
+    DeviceOrientationController* deviceOrientationController() const;
+    DeviceMotionController* deviceMotionController() const;
+#endif
+
     void resetAllGeolocationPermission();
 
 #if ENABLE(IOS_TOUCH_EVENTS) || ENABLE(IOS_GESTURE_EVENTS)
@@ -351,8 +380,6 @@ private:
     static ExceptionOr<RefPtr<Frame>> createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures&, DOMWindow& activeWindow, Frame& firstFrame, Frame& openerFrame, const WTF::Function<void(DOMWindow&)>& prepareDialogFunction = nullptr);
     bool isInsecureScriptAccess(DOMWindow& activeWindow, const String& urlString);
 
-    void resetDOMWindowProperties();
-
 #if ENABLE(DEVICE_ORIENTATION)
     void failedToRegisterDeviceMotionEventListener();
 #endif
@@ -366,9 +393,10 @@ private:
 
     bool m_shouldPrintWhenFinishedLoading { false };
     bool m_suspendedForDocumentSuspension { false };
+    bool m_isSuspendingObservers { false };
     Optional<bool> m_canShowModalDialogOverride;
 
-    HashSet<DOMWindowProperty*> m_properties;
+    HashSet<Observer*> m_observers;
 
     mutable RefPtr<Crypto> m_crypto;
     mutable RefPtr<History> m_history;

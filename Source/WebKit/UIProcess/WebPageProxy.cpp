@@ -83,6 +83,7 @@
 #include "SharedBufferDataReference.h"
 #include "TextChecker.h"
 #include "TextCheckerState.h"
+#include "TextInputContext.h"
 #include "UIMessagePortChannelProvider.h"
 #include "URLSchemeTaskParameters.h"
 #include "UndoOrRedo.h"
@@ -766,6 +767,11 @@ bool WebPageProxy::suspendCurrentPageIfPossible(API::Navigation& navigation, Opt
     // If the client forced a swap then it may not be Web-compatible to suspend the previous page because other windows may have an opener link to the page.
     if (processSwapRequestedByClient == ProcessSwapRequestedByClient::Yes) {
         RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "suspendCurrentPageIfPossible: Not suspending current page for process pid %i because the swap was requested by the client", m_process->processIdentifier());
+        return false;
+    }
+
+    if (!hasCommittedAnyProvisionalLoads()) {
+        RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "suspendCurrentPageIfPossible: Not suspending current page for process pid %i because has not committed any load yet", m_process->processIdentifier());
         return false;
     }
 
@@ -4083,7 +4089,7 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
             RegistrableDomain currentDomain { currentURL };
             URL requesterURL { URL(), requesterOrigin.toString() };
             if (!currentDomain.matches(requesterURL))
-                m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::CommittedCrossSiteLoadWithLinkDecoration(m_websiteDataStore->sessionID(), RegistrableDomain { requesterURL }, currentDomain, m_pageID));
+                m_process->processPool().committedCrossSiteLoadWithLinkDecoration(m_websiteDataStore->sessionID(), RegistrableDomain { requesterURL }, currentDomain, m_pageID);
         }
 #endif
     }
@@ -4601,10 +4607,18 @@ void WebPageProxy::decidePolicyForNavigationAction(Ref<WebProcessProxy>&& proces
 
         auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), destinationFrameInfo.ptr(), WTF::nullopt, WTFMove(request), originalRequest.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity), mainFrameNavigation);
 
+#if HAVE(LOAD_OPTIMIZER)
+WEBPAGEPROXY_LOADOPTIMIZER_ADDITIONS_3
+#endif
+
         m_navigationClient->decidePolicyForNavigationAction(*this, WTFMove(navigationAction), WTFMove(listener), process->transformHandlesToObjects(userData.object()).get());
     }
 
     m_shouldSuppressAppLinksInNextNavigationPolicyDecision = false;
+
+#if HAVE(LOAD_OPTIMIZER)
+WEBPAGEPROXY_LOADOPTIMIZER_ADDITIONS_4
+#endif
 }
 
 WebPageProxy* WebPageProxy::nonEphemeralWebPageProxy()
@@ -4890,14 +4904,24 @@ void WebPageProxy::didUpdateHistoryTitle(const String& title, const String& url,
 
 // UIClient
 
+using NewPageCallback = CompletionHandler<void(RefPtr<WebPageProxy>&&)>;
+using UIClientCallback = Function<void(Ref<API::NavigationAction>&&, NewPageCallback&&)>;
+static void tryOptimizingLoad(Ref<API::NavigationAction>&& navigationAction, WebPageProxy& page, NewPageCallback&& newPageCallback, UIClientCallback&& uiClientCallback)
+{
+#if HAVE(LOAD_OPTIMIZER)
+WEBPAGEPROXY_LOADOPTIMIZER_ADDITIONS_6
+#else
+    ASSERT_UNUSED(page, page.pageID());
+    uiClientCallback(WTFMove(navigationAction), WTFMove(newPageCallback));
+#endif
+}
+
 void WebPageProxy::createNewPage(const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, ResourceRequest&& request, WindowFeatures&& windowFeatures, NavigationActionData&& navigationActionData, Messages::WebPageProxy::CreateNewPage::DelayedReply&& reply)
 {
     MESSAGE_CHECK(m_process, m_process->webFrame(originatingFrameInfoData.frameID));
     auto originatingFrameInfo = API::FrameInfo::create(originatingFrameInfoData, m_process->webPage(originatingPageID));
-
     auto mainFrameURL = m_mainFrame->url();
-
-    m_uiClient->createNewPage(*this, WTFMove(originatingFrameInfo), WTFMove(request), WTFMove(windowFeatures), WTFMove(navigationActionData), [this, protectedThis = makeRef(*this), mainFrameURL, request, reply = WTFMove(reply)] (RefPtr<WebPageProxy> newPage) mutable {
+    auto completionHandler = [this, protectedThis = makeRef(*this), mainFrameURL, request, reply = WTFMove(reply)] (RefPtr<WebPageProxy> newPage) mutable {
         if (!newPage) {
             reply(0, WTF::nullopt);
             return;
@@ -4909,6 +4933,18 @@ void WebPageProxy::createNewPage(const FrameInfoData& originatingFrameInfoData, 
 
         WebsiteDataStore::cloneSessionData(*this, *newPage);
         newPage->m_shouldSuppressAppLinksInNextNavigationPolicyDecision = hostsAreEqual(URL({ }, mainFrameURL), request.url());
+
+#if HAVE(LOAD_OPTIMIZER)
+WEBPAGEPROXY_LOADOPTIMIZER_ADDITIONS_5
+#endif
+    };
+
+    auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
+    bool shouldOpenAppLinks = !hostsAreEqual(originatingFrameInfo->request().url(), request.url());
+    auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), originatingFrameInfo.ptr(), nullptr, WTF::nullopt, WTFMove(request), URL(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
+
+    tryOptimizingLoad(WTFMove(navigationAction), *this, WTFMove(completionHandler), [this, protectedThis = makeRef(*this), windowFeatures = WTFMove(windowFeatures)] (Ref<API::NavigationAction>&& navigationAction, CompletionHandler<void(RefPtr<WebPageProxy>&&)>&& completionHandler) mutable {
+        m_uiClient->createNewPage(*this, WTFMove(windowFeatures), WTFMove(navigationAction), WTFMove(completionHandler));
     });
 }
     
@@ -5524,14 +5560,14 @@ void WebPageProxy::setHasHadSelectionChangesFromUserInteraction(bool hasHadUserS
     m_hasHadSelectionChangesFromUserInteraction = hasHadUserSelectionChanges;
 }
 
-void WebPageProxy::setNeedsHiddenContentEditableQuirk(bool needsHiddenContentEditableQuirk)
+void WebPageProxy::setIsTouchBarUpdateSupressedForHiddenContentEditable(bool ignoreTouchBarUpdate)
 {
-    m_needsHiddenContentEditableQuirk = needsHiddenContentEditableQuirk;
+    m_isTouchBarUpdateSupressedForHiddenContentEditable = ignoreTouchBarUpdate;
 }
 
-void WebPageProxy::setNeedsPlainTextQuirk(bool needsPlainTextQuirk)
+void WebPageProxy::setIsNeverRichlyEditableForTouchBar(bool isNeverRichlyEditable)
 {
-    m_needsPlainTextQuirk = needsPlainTextQuirk;
+    m_isNeverRichlyEditableForTouchBar = isNeverRichlyEditable;
 }
 
 void WebPageProxy::requestDOMPasteAccess(const WebCore::IntRect& elementRect, const String& originIdentifier, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&& completionHandler)
@@ -6441,7 +6477,7 @@ void WebPageProxy::logDiagnosticMessageWithValue(const String& message, const St
     if (!effectiveClient)
         return;
 
-    effectiveClient->logDiagnosticMessageWithValue(this, message, description, String::number(value, significantFigures));
+    effectiveClient->logDiagnosticMessageWithValue(this, message, description, String::numberToStringFixedPrecision(value, significantFigures));
 }
 
 void WebPageProxy::logDiagnosticMessageWithEnhancedPrivacy(const String& message, const String& description, ShouldSample shouldSample)
@@ -7173,6 +7209,16 @@ void WebPageProxy::clearUserMediaState()
         m_userMediaPermissionRequestManager->clearCachedState();
 #endif
 }
+
+#if ENABLE(DEVICE_ORIENTATION)
+void WebPageProxy::requestDeviceOrientationAndMotionAccess(uint64_t frameID, WebCore::SecurityOriginData&& originData, CompletionHandler<void(bool)>&& completionHandler)
+{
+    WebFrameProxy* frame = m_process->webFrame(frameID);
+    MESSAGE_CHECK(m_process, frame);
+
+    m_uiClient->shouldAllowDeviceOrientationAndMotionAccess(*this, *frame, WTFMove(originData), WTFMove(completionHandler));
+}
+#endif
 
 void WebPageProxy::requestNotificationPermission(uint64_t requestID, const String& originString)
 {
@@ -8758,35 +8804,6 @@ void WebPageProxy::clearAdClickAttribution(CompletionHandler<void()>&& completio
     m_process->processPool().clearAdClickAttribution(m_websiteDataStore->sessionID(), WTFMove(completionHandler));
 }
 
-#if ENABLE(APPLE_PAY)
-
-IPC::Connection* WebPageProxy::paymentCoordinatorConnection(const WebPaymentCoordinatorProxy&)
-{
-    return messageSenderConnection();
-}
-
-IPC::MessageReceiverMap& WebPageProxy::paymentCoordinatorMessageReceiver(const WebPaymentCoordinatorProxy&)
-{
-    return process().messageReceiverMap();
-}
-
-const String& WebPageProxy::paymentCoordinatorSourceApplicationBundleIdentifier(const WebPaymentCoordinatorProxy&)
-{
-    return websiteDataStore().sourceApplicationBundleIdentifier();
-}
-
-const String& WebPageProxy::paymentCoordinatorSourceApplicationSecondaryIdentifier(const WebPaymentCoordinatorProxy&)
-{
-    return websiteDataStore().sourceApplicationSecondaryIdentifier();
-}
-
-uint64_t WebPageProxy::paymentCoordinatorDestinationID(const WebPaymentCoordinatorProxy&)
-{
-    return messageSenderDestinationID();
-}
-
-#endif
-
 void WebPageProxy::addObserver(WebViewDidMoveToWindowObserver& observer)
 {
     auto result = m_webViewDidMoveToWindowObservers.add(&observer, makeWeakPtr(observer));
@@ -8807,6 +8824,26 @@ void WebPageProxy::webViewDidMoveToWindow()
             continue;
         observer.value->webViewDidMoveToWindow();
     }
+}
+
+void WebPageProxy::textInputContextsInRect(WebCore::FloatRect rect, CompletionHandler<void(const Vector<WebKit::TextInputContext>&)>&& completionHandler)
+{
+    if (!isValid()) {
+        completionHandler({ });
+        return;
+    }
+
+    m_process->connection()->sendWithAsyncReply(Messages::WebPage::TextInputContextsInRect(rect), WTFMove(completionHandler), m_pageID);
+}
+
+void WebPageProxy::focusTextInputContext(const TextInputContext& context, CompletionHandler<void(bool)>&& completionHandler)
+{
+    if (!isValid()) {
+        completionHandler(false);
+        return;
+    }
+
+    m_process->connection()->sendWithAsyncReply(Messages::WebPage::FocusTextInputContext(context), WTFMove(completionHandler), m_pageID);
 }
 
 } // namespace WebKit

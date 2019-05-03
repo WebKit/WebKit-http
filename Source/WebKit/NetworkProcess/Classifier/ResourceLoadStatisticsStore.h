@@ -146,6 +146,8 @@ public:
     virtual void calculateAndSubmitTelemetry() const = 0;
 
     void setNotifyPagesWhenDataRecordsWereScanned(bool);
+    void setIsRunningTest(bool);
+    bool shouldSkip(const RegistrableDomain&) const;
     void setShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
     void setShouldSubmitTelemetry(bool);
     void setTimeToLiveUserInteraction(Seconds);
@@ -156,13 +158,14 @@ public:
     void setPrevalentResourceForDebugMode(const RegistrableDomain&);
 
     virtual void hasStorageAccess(const SubFrameDomain&, const TopFrameDomain&, Optional<FrameID>, PageID, CompletionHandler<void(bool)>&&) = 0;
-    virtual void requestStorageAccess(SubFrameDomain&&, TopFrameDomain&&, FrameID, PageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&&) = 0;
+    virtual void requestStorageAccess(SubFrameDomain&&, TopFrameDomain&&, FrameID, PageID, CompletionHandler<void(StorageAccessStatus)>&&) = 0;
     virtual void grantStorageAccess(SubFrameDomain&&, TopFrameDomain&&, FrameID, PageID, bool userWasPromptedNow, CompletionHandler<void(bool)>&&) = 0;
 
     virtual void logFrameNavigation(const NavigatedToDomain&, const TopFrameDomain&, const NavigatedFromDomain&, bool isRedirect, bool isMainFrame) = 0;
     virtual void logUserInteraction(const TopFrameDomain&) = 0;
     virtual void logSubresourceLoading(const SubResourceDomain&, const TopFrameDomain&, WallTime lastSeen) = 0;
     virtual void logSubresourceRedirect(const RedirectedFromDomain&, const RedirectedToDomain&) = 0;
+    virtual void logCrossSiteLoadWithLinkDecoration(const NavigatedFromDomain&, const NavigatedToDomain&) = 0;
 
     virtual void clearUserInteraction(const RegistrableDomain&) = 0;
     virtual bool hasHadUserInteraction(const RegistrableDomain&) = 0;
@@ -183,13 +186,10 @@ protected:
     static Vector<OperatingDate> mergeOperatingDates(const Vector<OperatingDate>& existingDates, Vector<OperatingDate>&& newDates);
     static void debugLogDomainsInBatches(const char* action, const Vector<RegistrableDomain>& domains);
 
-    ResourceLoadStatisticsStore(WebResourceLoadStatisticsStore&, WorkQueue&);
+    ResourceLoadStatisticsStore(WebResourceLoadStatisticsStore&, WorkQueue&, ShouldIncludeLocalhost);
 
     bool hasStatisticsExpired(const ResourceLoadStatistics&) const;
     bool hasStatisticsExpired(WallTime mostRecentUserInteractionTime) const;
-#if PLATFORM(COCOA)
-    void registerUserDefaultsIfNeeded();
-#endif
     void scheduleStatisticsProcessingRequestIfNecessary();
     void mergeOperatingDates(Vector<OperatingDate>&&);
     virtual Vector<RegistrableDomain> ensurePrevalentResourcesForDebugMode() = 0;
@@ -215,6 +215,7 @@ protected:
         bool shouldNotifyPagesWhenDataRecordsWereScanned { false };
         bool shouldClassifyResourcesBeforeDataRecordsRemoval { true };
         bool shouldSubmitTelemetry { true };
+        bool isRunningTest { false };
     };
     const Parameters& parameters() const { return m_parameters; }
     const Vector<OperatingDate>& operatingDates() const { return m_operatingDates; }
@@ -227,12 +228,10 @@ protected:
     const RegistrableDomain& debugStaticPrevalentResource() const { return m_debugStaticPrevalentResource; }
     bool debugLoggingEnabled() const { return m_debugLoggingEnabled; };
     bool debugModeEnabled() const { return m_debugModeEnabled; }
-    bool storageAccessPromptsEnabled() const { return m_storageAccessPromptsEnabled; }
 
     static constexpr unsigned maxNumberOfRecursiveCallsInRedirectTraceBack { 50 };
 
 private:
-    void setStorageAccessPromptsEnabled(bool enabled) { m_storageAccessPromptsEnabled  = enabled; }
     bool shouldRemoveDataRecords() const;
     void setDebugLogggingEnabled(bool enabled) { m_debugLoggingEnabled  = enabled; }
     void setDataRecordsBeingRemoved(bool);
@@ -262,8 +261,8 @@ private:
     const RegistrableDomain m_debugStaticPrevalentResource { URL { URL(), "https://3rdpartytestwebkit.org"_s } };
     bool m_debugLoggingEnabled { false };
     bool m_debugModeEnabled { false };
-    bool m_storageAccessPromptsEnabled { false };
     bool m_dataRecordsBeingRemoved { false };
+    ShouldIncludeLocalhost m_shouldIncludeLocalhost { ShouldIncludeLocalhost::Yes };
 };
 
 } // namespace WebKit

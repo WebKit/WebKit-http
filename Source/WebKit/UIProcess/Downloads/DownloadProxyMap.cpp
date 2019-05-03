@@ -30,12 +30,20 @@
 #include "DownloadProxy.h"
 #include "DownloadProxyMessages.h"
 #include "MessageReceiverMap.h"
+#include "ProcessAssertion.h"
 #include <wtf/StdLibExtras.h>
+
+#if PLATFORM(COCOA)
+#include <wtf/cocoa/Entitlements.h>
+#endif
 
 namespace WebKit {
 
 DownloadProxyMap::DownloadProxyMap(NetworkProcessProxy& process)
     : m_process(&process)
+#if PLATFORM(COCOA)
+    , m_shouldTakeAssertion(WTF::processHasEntitlement("com.apple.multitasking.systemappassertions"))
+#endif
 {
 }
 
@@ -49,6 +57,11 @@ DownloadProxy* DownloadProxyMap::createDownloadProxy(WebProcessPool& processPool
     auto downloadProxy = DownloadProxy::create(*this, processPool, resourceRequest);
     m_downloads.set(downloadProxy->downloadID(), downloadProxy.copyRef());
 
+    if (m_downloads.size() == 1 && m_shouldTakeAssertion) {
+        ASSERT(!m_downloadAssertion);
+        m_downloadAssertion = std::make_unique<ProcessAssertion>(getCurrentProcessID(), "WebKit downloads"_s, AssertionState::UnboundedNetworking);
+    }
+
     m_process->addMessageReceiver(Messages::DownloadProxy::messageReceiverName(), downloadProxy->downloadID().downloadID(), downloadProxy.get());
 
     return downloadProxy.ptr();
@@ -58,11 +71,19 @@ void DownloadProxyMap::downloadFinished(DownloadProxy* downloadProxy)
 {
     auto downloadID = downloadProxy->downloadID();
 
+    // The DownloadProxy may be holding the last reference to the process pool.
+    auto protectedProcessPool = makeRefPtr(m_process->processPool());
+
     ASSERT(m_downloads.contains(downloadID));
 
     m_process->removeMessageReceiver(Messages::DownloadProxy::messageReceiverName(), downloadID.downloadID());
     downloadProxy->invalidate();
     m_downloads.remove(downloadID);
+
+    if (m_downloads.isEmpty() && m_shouldTakeAssertion) {
+        ASSERT(m_downloadAssertion);
+        m_downloadAssertion = nullptr;
+    }
 }
 
 void DownloadProxyMap::processDidClose()
@@ -75,6 +96,7 @@ void DownloadProxyMap::processDidClose()
     }
 
     m_downloads.clear();
+    m_downloadAssertion = nullptr;
     m_process = nullptr;
 }
 

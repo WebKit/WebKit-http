@@ -1,14 +1,12 @@
 async function getBasicDevice() {
-    const adapter = await window.webgpu.requestAdapter({ powerPreference: "low-power" });
+    const adapter = await gpu.requestAdapter({ powerPreference: "low-power" });
     const device = adapter.createDevice();
     return device;
 }
 
-function createBasicContext(canvas, device) {
-    const context = canvas.getContext("webgpu");
-    // FIXME: Implement and specify a WebGPUTextureUsageEnum.
-    context.configure({ device: device, format:"b8g8r8a8-unorm", width: canvas.width, height: canvas.height });
-    return context;
+function createBasicSwapChain(canvas, device) {
+    const context = canvas.getContext("gpu");
+    return device.createSwapChain({ context: context, format: "bgra8unorm" });
 }
 
 function createBasicDepthStateDescriptor() {
@@ -31,12 +29,12 @@ function createBasicDepthTexture(canvas, device) {
         mipLevelCount: 1,
         sampleCount: 1,
         dimension: "2d",
-        format: "d32-float-s8-uint",
+        format: "depth32float-stencil8",
         usage: GPUTextureUsage.OUTPUT_ATTACHMENT
     });
 }
 
-function createBasicPipeline(shaderModule, device, pipelineLayout, inputStateDescriptor, depthStateDescriptor, primitiveTopology = "triangleStrip") {
+function createBasicPipeline(shaderModule, device, pipelineLayout, inputStateDescriptor, depthStateDescriptor, primitiveTopology = "triangle-strip") {
     const vertexStageDescriptor = {
         module: shaderModule,
         entryPoint: "vertex_main" 
@@ -47,10 +45,13 @@ function createBasicPipeline(shaderModule, device, pipelineLayout, inputStateDes
         entryPoint: "fragment_main"
     };
 
+    const basicColorState = { format: "bgra8unorm" };
+
     const pipelineDescriptor = {
         vertexStage: vertexStageDescriptor,
         fragmentStage: fragmentStageDescriptor,
-        primitiveTopology: primitiveTopology
+        primitiveTopology: primitiveTopology,
+        colorStates: [basicColorState]
     };
 
     if (pipelineLayout)
@@ -65,9 +66,9 @@ function createBasicPipeline(shaderModule, device, pipelineLayout, inputStateDes
     return device.createRenderPipeline(pipelineDescriptor);
 }
 
-function beginBasicRenderPass(context, commandBuffer) {
+function beginBasicRenderPass(swapChain, commandBuffer) {
     const basicAttachment = {
-        attachment: context.getNextTexture().createDefaultTextureView(),
+        attachment: swapChain.getCurrentTexture().createDefaultTextureView(),
         loadOp: "clear",
         storeOp: "store",
         clearColor: { r: 1.0, g: 0, b: 0, a: 1.0 }

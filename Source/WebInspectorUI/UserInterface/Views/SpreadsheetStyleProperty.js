@@ -39,6 +39,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         this._contentElement = null;
         this._nameElement = null;
         this._valueElement = null;
+        this._jumpToEffectivePropertyButton = null;
 
         this._nameTextField = null;
         this._valueTextField = null;
@@ -261,6 +262,22 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         let elementTitle = "";
 
         if (this._property.overridden) {
+            if (!this._jumpToEffectivePropertyButton && this._delegate && this._delegate.spreadsheetStylePropertySelectByProperty && WI.settings.experimentalEnableStylesJumpToEffective.value) {
+                console.assert(this._property.overridingProperty, `Overridden property is missing overridingProperty: ${this._property.formattedText}`);
+                if (this._property.overridingProperty) {
+                    this._jumpToEffectivePropertyButton = WI.createGoToArrowButton();
+                    this._jumpToEffectivePropertyButton.classList.add("select-effective-property");
+                    this._jumpToEffectivePropertyButton.dataset.value = this._property.overridingProperty.rawValue;
+                    this._element.append(this._jumpToEffectivePropertyButton);
+
+                    this._jumpToEffectivePropertyButton.addEventListener("click", (event) => {
+                        console.assert(this._property.overridingProperty);
+                        event.stop();
+                        this._delegate.spreadsheetStylePropertySelectByProperty(this._property.overridingProperty);
+                    });
+                }
+            }
+
             classNames.push("overridden");
             if (duplicatePropertyExistsBelow(this._property)) {
                 classNames.push("has-warning");
@@ -500,29 +517,24 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
             innerElement.textContent = value;
             this._handleValueChange();
+
+            if (type === WI.InlineSwatch.Type.Variable)
+                this._renderValue(this._property.rawValue);
         }, this);
 
         if (this._delegate && typeof this._delegate.stylePropertyInlineSwatchActivated === "function") {
             swatch.addEventListener(WI.InlineSwatch.Event.Activated, () => {
-                this._swatchActive = true;
                 this._delegate.stylePropertyInlineSwatchActivated();
             });
         }
 
         if (this._delegate && typeof this._delegate.stylePropertyInlineSwatchDeactivated === "function") {
             swatch.addEventListener(WI.InlineSwatch.Event.Deactivated, () => {
-                this._swatchActive = false;
                 this._delegate.stylePropertyInlineSwatchDeactivated();
             });
         }
 
         tokenElement.append(swatch.element, innerElement);
-
-        // Prevent the value from editing when clicking on the swatch.
-        swatch.element.addEventListener("click", (event) => {
-            if (this._swatchActive || event.shiftKey)
-                event.stop();
-        });
 
         return tokenElement;
     }

@@ -31,17 +31,19 @@
 #include "GPUBindGroup.h"
 #include "GPUBindGroupBinding.h"
 #include "GPUBindGroupDescriptor.h"
+#include "GPUBindGroupLayoutDescriptor.h"
 #include "GPUBufferBinding.h"
 #include "GPUBufferDescriptor.h"
 #include "GPUCommandBuffer.h"
 #include "GPUPipelineStageDescriptor.h"
 #include "GPURenderPipelineDescriptor.h"
+#include "GPUSampler.h"
+#include "GPUSamplerDescriptor.h"
 #include "GPUShaderModuleDescriptor.h"
 #include "GPUTextureDescriptor.h"
 #include "Logging.h"
 #include "WebGPUBindGroup.h"
 #include "WebGPUBindGroupBinding.h"
-#include "WebGPUBindGroupDescriptor.h"
 #include "WebGPUBindGroupLayout.h"
 #include "WebGPUBuffer.h"
 #include "WebGPUBufferBinding.h"
@@ -52,8 +54,10 @@
 #include "WebGPUQueue.h"
 #include "WebGPURenderPipeline.h"
 #include "WebGPURenderPipelineDescriptor.h"
+#include "WebGPUSampler.h"
 #include "WebGPUShaderModule.h"
 #include "WebGPUShaderModuleDescriptor.h"
+#include "WebGPUSwapChain.h"
 #include "WebGPUTexture.h"
 
 namespace WebCore {
@@ -84,15 +88,20 @@ Ref<WebGPUTexture> WebGPUDevice::createTexture(GPUTextureDescriptor&& descriptor
     return WebGPUTexture::create(WTFMove(texture));
 }
 
-Ref<WebGPUBindGroupLayout> WebGPUDevice::createBindGroupLayout(WebGPUBindGroupLayoutDescriptor&& descriptor) const
+Ref<WebGPUSampler> WebGPUDevice::createSampler(const GPUSamplerDescriptor& descriptor) const
 {
-    auto layout = m_device->tryCreateBindGroupLayout(GPUBindGroupLayoutDescriptor { descriptor.bindings });
+    auto sampler = m_device->tryCreateSampler(descriptor);
+    return WebGPUSampler::create(WTFMove(sampler));
+}
+
+Ref<WebGPUBindGroupLayout> WebGPUDevice::createBindGroupLayout(const GPUBindGroupLayoutDescriptor& descriptor) const
+{
+    auto layout = m_device->tryCreateBindGroupLayout(descriptor);
     return WebGPUBindGroupLayout::create(WTFMove(layout));
 }
 
 Ref<WebGPUPipelineLayout> WebGPUDevice::createPipelineLayout(WebGPUPipelineLayoutDescriptor&& descriptor) const
 {
-    // FIXME: Is an empty pipelineLayout an error?
     auto bindGroupLayouts = descriptor.bindGroupLayouts.map([] (const auto& layout) -> RefPtr<const GPUBindGroupLayout> {
         return layout->bindGroupLayout();
     });
@@ -102,11 +111,11 @@ Ref<WebGPUPipelineLayout> WebGPUDevice::createPipelineLayout(WebGPUPipelineLayou
 
 Ref<WebGPUBindGroup> WebGPUDevice::createBindGroup(WebGPUBindGroupDescriptor&& descriptor) const
 {
-    auto gpuDescriptor = descriptor.asGPUBindGroupDescriptor();
+    auto gpuDescriptor = descriptor.tryCreateGPUBindGroupDescriptor();
     if (!gpuDescriptor)
         return WebGPUBindGroup::create(nullptr);
 
-    auto bindGroup = GPUBindGroup::create(WTFMove(*gpuDescriptor));
+    auto bindGroup = GPUBindGroup::tryCreate(*gpuDescriptor);
     return WebGPUBindGroup::create(WTFMove(bindGroup));
 }
 
@@ -118,29 +127,14 @@ RefPtr<WebGPUShaderModule> WebGPUDevice::createShaderModule(WebGPUShaderModuleDe
     return nullptr;
 }
 
-static Optional<GPUPipelineStageDescriptor> validateAndConvertPipelineStage(const WebGPUPipelineStageDescriptor& descriptor)
+Ref<WebGPURenderPipeline> WebGPUDevice::createRenderPipeline(const WebGPURenderPipelineDescriptor& descriptor) const
 {
-    if (!descriptor.module || !descriptor.module->module() || descriptor.entryPoint.isEmpty())
-        return WTF::nullopt;
+    auto gpuDescriptor = descriptor.tryCreateGPURenderPipelineDescriptor();
+    if (!gpuDescriptor)
+        return WebGPURenderPipeline::create(nullptr);
 
-    return GPUPipelineStageDescriptor { descriptor.module->module(), descriptor.entryPoint };
-}
-
-RefPtr<WebGPURenderPipeline> WebGPUDevice::createRenderPipeline(WebGPURenderPipelineDescriptor&& descriptor) const
-{
-    auto pipelineLayout = descriptor.layout ? descriptor.layout->pipelineLayout() : nullptr;
-
-    auto vertexStage = validateAndConvertPipelineStage(descriptor.vertexStage);
-    auto fragmentStage = validateAndConvertPipelineStage(descriptor.fragmentStage);
-
-    if (!vertexStage || !fragmentStage) {
-        LOG(WebGPU, "WebGPUDevice::createRenderPipeline(): Invalid WebGPUPipelineStageDescriptor!");
-        return nullptr;
-    }
-
-    if (auto pipeline = m_device->createRenderPipeline(GPURenderPipelineDescriptor { WTFMove(pipelineLayout), WTFMove(*vertexStage), WTFMove(*fragmentStage), descriptor.primitiveTopology, WTFMove(descriptor.depthStencilState), WTFMove(descriptor.inputState) }))
-        return WebGPURenderPipeline::create(pipeline.releaseNonNull());
-    return nullptr;
+    auto pipeline = m_device->createRenderPipeline(WTFMove(*gpuDescriptor));
+    return WebGPURenderPipeline::create(WTFMove(pipeline));
 }
 
 RefPtr<WebGPUCommandBuffer> WebGPUDevice::createCommandBuffer() const
@@ -150,7 +144,21 @@ RefPtr<WebGPUCommandBuffer> WebGPUDevice::createCommandBuffer() const
     return nullptr;
 }
 
-RefPtr<WebGPUQueue> WebGPUDevice::getQueue()
+Ref<WebGPUSwapChain> WebGPUDevice::createSwapChain(const WebGPUSwapChainDescriptor& descriptor) const
+{
+    if (!descriptor.context) {
+        LOG(WebGPU, "GPUSwapChain::create(): Invalid GPUCanvasContext!");
+        return WebGPUSwapChain::create(nullptr);
+    }
+
+    auto gpuSwapChain = m_device->tryCreateSwapChain(descriptor, descriptor.context->canvasBase().width(), descriptor.context->canvasBase().height());
+    auto newSwapChain = WebGPUSwapChain::create(gpuSwapChain.copyRef());
+    if (gpuSwapChain)
+        descriptor.context->replaceSwapChain(newSwapChain.copyRef());
+    return newSwapChain;
+}
+
+RefPtr<WebGPUQueue> WebGPUDevice::getQueue() const
 {
     if (!m_queue)
         m_queue = WebGPUQueue::create(m_device->getQueue());

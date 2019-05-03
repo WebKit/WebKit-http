@@ -1,3 +1,779 @@
+2019-03-13  Shawn Roberts  <sroberts@apple.com>
+
+        http/tests/websocket/tests/hybi/handshake-ok-with-legacy-sec-websocket-response-headers.html is a flaky failure on Mac WK2
+        https://bugs.webkit.org/show_bug.cgi?id=173041
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations: Marking as flaky until a fix lands
+
+2019-03-12  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Update GPURenderPipelineDescriptor and add GPUColorStateDescriptor.format
+        https://bugs.webkit.org/show_bug.cgi?id=195518
+        <rdar://problem/46322356>
+
+        Reviewed by Myles C. Maxfield.
+
+        Update all tests with new enum styles and re-namings, and specify the format of the color attachment.
+
+        * webgpu/blit-commands.html:
+        * webgpu/buffer-command-buffer-races.html:
+        * webgpu/buffer-resource-triangles.html:
+        * webgpu/depth-enabled-triangle-strip.html:
+        * webgpu/js/webgpu-functions.js:
+        (createBasicSwapChain):
+        (createBasicDepthTexture):
+        * webgpu/render-pipelines-expected.txt:
+        * webgpu/render-pipelines.html: Remove error cases, as createRenderPipeline no longer returns a null value on failure.
+        * webgpu/shader-modules.html:
+        * webgpu/texture-triangle-strip.html:
+        * webgpu/textures-textureviews.html:
+        * webgpu/vertex-buffer-triangle-strip.html:
+
+2019-03-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Input view sometimes flickers when blurring and refocusing an element
+        https://bugs.webkit.org/show_bug.cgi?id=195639
+        <rdar://problem/48735337>
+
+        Reviewed by Tim Horton.
+
+        Add a test to ensure that the form control interaction doesn't stop and start again when blurring and focusing
+        an editable element.
+
+        * fast/forms/ios/keyboard-stability-when-refocusing-element-expected.txt: Added.
+        * fast/forms/ios/keyboard-stability-when-refocusing-element.html: Added.
+
+2019-03-12  Dean Jackson  <dino@apple.com>
+
+        [WebGL] WebGLBuffer can be too large
+        https://bugs.webkit.org/show_bug.cgi?id=195068
+        <rdar://problem/48414289>
+
+        Reviewed by Antoine Quint.
+
+        * fast/canvas/webgl/largeBuffer-expected.txt: Added.
+        * fast/canvas/webgl/largeBuffer.html: Added.
+
+2019-03-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, fix a typo in TestExpecations.
+
+        * platform/mac/TestExpectations:
+
+2019-03-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: export recording as HTML
+        https://bugs.webkit.org/show_bug.cgi?id=195311
+        <rdar://problem/48588673>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/recording-html-2d.html: Added.
+        * inspector/canvas/recording-html-2d-expected.txt: Added.
+        * inspector/canvas/recording-2d-expected.txt: Added.
+        * inspector/canvas/resources/recording-utilities.js:
+        (TestPage.registerInitializer.log):
+        (TestPage.registerInitializer.window.startRecording):
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2019-03-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: there should be a centralized place for reusable code
+        https://bugs.webkit.org/show_bug.cgi?id=195265
+        <rdar://problem/47040673>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/audit/manager-start-setup.html: Added.
+        * inspector/audit/manager-start-setup-expected.txt: Added.
+        * inspector/model/auditTestCase.html:
+        * inspector/model/auditTestCase-expected.txt:
+        * inspector/model/auditTestGroup.html:
+        * inspector/model/auditTestGroup-expected.txt:
+
+2019-03-12  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Add test to ensure that a web page can prevent the default for Command + A
+        https://bugs.webkit.org/show_bug.cgi?id=192425
+
+        Reviewed by Wenson Hsieh. 
+
+        Skip the test until we have the UIKit fix for <rdar://problem/46430796>.
+
+        * fast/events/ios/key-command-select-all-prevent-default.html: Added.
+        * platform/ios/TestExpectations:
+
+2019-03-12  Zalan Bujtas  <zalan@apple.com>
+
+        [Synthetic Click] Dispatch mouseout soon after mouseup
+        https://bugs.webkit.org/show_bug.cgi?id=195575
+        <rdar://problem/47093049>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/mouse-out-event-should-fire-on-click-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/mouse-out-event-should-fire-on-click.html: Added.
+
+2019-03-12  Antti Koivisto  <antti@apple.com>
+
+        Compositing layer that renders two positioned elements should not hit test
+        https://bugs.webkit.org/show_bug.cgi?id=195371
+        <rdar://problem/48649586>
+
+        Reviewed by Simon Fraser.
+
+        * fast/scrolling/ios/overflow-scroll-overlap-2-expected.txt: Added.
+        * fast/scrolling/ios/overflow-scroll-overlap-2.html: Added.
+
+2019-03-12  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [Media][MSE] Don't emit timeUpdate after play() if currentTime hasn't changed
+        https://bugs.webkit.org/show_bug.cgi?id=195454
+
+        Reviewed by Jer Noble.
+
+        This patch removes expectations for the first timeUpdate event after
+        play(), because currentTime doesn't actually change in that scenario
+        and the spec[1] states that a timeupdate event is fired if "The current
+        playback position changed as part of normal playback or in an
+        especially interesting way, for example discontinuously."
+
+        [1] https://www.w3.org/TR/html52/semantics-embedded-content.html#eventdef-media-timeupdate
+
+        * media/video-paused-0-rate.html: Don't require the timeUpdate event when currentTime=0 to pass the test.
+        * media/video-play-pause-events-expected.txt: Ditto, and changed test description.
+        * media/video-play-pause-events.html: Changed test description to reflect the new behaviour.
+        * media/video-play-pause-exception-expected.txt: Don't require the timeUpdate event.
+
+2019-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r242763.
+
+        Causes layout test crashes on iOS simulator
+
+        Reverted changeset:
+
+        "[Synthetic Click] Dispatch mouseout soon after mouseup"
+        https://bugs.webkit.org/show_bug.cgi?id=195575
+        https://trac.webkit.org/changeset/242763
+
+2019-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, rebaseline tests after r242757.
+
+        * http/tests/adClickAttribution/anchor-tag-attributes-validation-expected.txt:
+        * http/tests/security/anchor-download-block-crossorigin-expected.txt:
+
+2019-03-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Add testing API to hit-test and scroll overflow scrollers
+        https://bugs.webkit.org/show_bug.cgi?id=195278
+
+        Reviewed by Antti Koivisto.
+        
+        The test loads a scaled page with accelerated overflow:scroll, and hit-tests
+        near the top-left and bottom-right corners to test the point conversion logic.
+
+        * scrollingcoordinator/ios/scroll-element-at-point-expected.txt: Added.
+        * scrollingcoordinator/ios/scroll-element-at-point.html: Added.
+
+2019-03-11  Zalan Bujtas  <zalan@apple.com>
+
+        [Synthetic Click] Dispatch mouseout soon after mouseup
+        https://bugs.webkit.org/show_bug.cgi?id=195575
+        <rdar://problem/47093049>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/mouse-out-event-should-fire-on-click-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/mouse-out-event-should-fire-on-click.html: Added.
+
+2019-03-11  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Update GPUSwapChainDescriptor, GPUSwapChain and implement GPUCanvasContext
+        https://bugs.webkit.org/show_bug.cgi?id=194406
+        <rdar://problem/47892466>
+
+        Reviewed by Myles C. Maxfield.
+
+        Update all tests for new WebGPUSwapChain and GPUCanvasContext, and window object name change from 'webgpu' to 'gpu'.
+        In addition, all tests have been updated to WPT style. 
+
+        * webgpu/adapter-options.html:
+        * webgpu/buffer-command-buffer-races.html:
+        * webgpu/buffer-resource-triangles.html:
+        * webgpu/command-buffers-expected.txt:
+        * webgpu/command-buffers.html:
+        * webgpu/depth-enabled-triangle-strip.html:
+        * webgpu/js/basic-webgpu-functions.js: Removed. No longer needed.
+        * webgpu/js/webgpu-functions.js:
+        (async.getBasicDevice):
+        (createBasicSwapChain): Renamed from createBasicContext.
+        (beginBasicRenderPass):
+        (createBasicContext): Deleted.
+        (createBasicDepthStateDescriptor): Deleted.
+        * webgpu/queue-creation.html:
+        * webgpu/render-command-encoding-expected.txt:
+        * webgpu/render-command-encoding.html:
+        * webgpu/render-passes-expected.txt: Removed.
+        * webgpu/render-passes.html: Removed for redundancy with other tests.
+        * webgpu/shader-modules-expected.txt:
+        * webgpu/shader-modules.html:
+        * webgpu/simple-triangle-strip.html:
+        * webgpu/texture-triangle-strip.html:
+        * webgpu/textures-textureviews.html:
+        * webgpu/vertex-buffer-triangle-strip.html:
+        * webgpu/webgpu-basics-expected.txt: Removed.
+        * webgpu/webgpu-basics.html: Removed for redundancy with other tests.
+        * webgpu/webgpu-enabled-expected.txt:
+        * webgpu/webgpu-enabled.html:
+
+2019-03-11  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] REGRESSION (r242687): Programmatic scroll of overflow scroll results in bad rendering
+        https://bugs.webkit.org/show_bug.cgi?id=195584
+        
+        Unreviewed test gardening. Mark compositing/ios/overflow-scroll-update-overlap.html as failing
+        since I want to unskip and land a fix with additional tests.
+
+        * platform/ios-wk2/TestExpectations:
+
+2019-03-11  Dean Jackson  <dino@apple.com>
+
+        [iOS] Implement a faster click detection that intercepts double-tap-to-zoom if possible
+        https://bugs.webkit.org/show_bug.cgi?id=195473
+        <rdar://problem/48718396>
+
+        Reviewed by Wenson Hsieh (with some help from Dan Bates).
+
+        Implement a test (iPad only) that sets up a page with zoomable content
+        but not quite at a significant scale, meaning we should dispatch a click
+        event rather than Double Tap To Zoom.
+
+        In order to do this, a humanSpeedDoubleTapAt() method was added to
+        UIHelper that sleeps a bit between taps, otherwise the double tap
+        gesture is recognized before the Web Process has had a chance to
+        evaluate the potential click.
+
+        * fast/events/ios/ipad/fast-click-double-tap-sends-click-on-insignificant-zoom-expected.txt: Added.
+        * fast/events/ios/ipad/fast-click-double-tap-sends-click-on-insignificant-zoom.html: Added.
+        * platform/ios/TestExpectations:
+        * platform/ipad/TestExpectations:
+        * resources/ui-helper.js:
+        (window.UIHelper.humanSpeedDoubleTapAt):
+
+2019-03-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Dispatching reentrant "contextmenu" events may cause crashes
+        https://bugs.webkit.org/show_bug.cgi?id=195571
+        <rdar://problem/48086046>
+
+        Reviewed by Andy Estes.
+
+        Add a test to verify that triggering reentrant "contextmenu" events from script does not cause a crash.
+
+        * fast/events/contextmenu-reentrancy-crash-expected.txt: Added.
+        * fast/events/contextmenu-reentrancy-crash.html: Added.
+
+2019-03-11  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION: Layout Test media/media-fullscreen-return-to-inline.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=193399
+
+        Unreviewed test gardening. 
+
+        * platform/mac/TestExpectations:
+
+2019-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, fix a test expecation linter warning for macOS.
+
+        * platform/mac/TestExpectations: Delete the entry for 'media/modern-media-controls/media-documents/ipad'.
+
+2019-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [ iOS Sim ] Layout Test imported/w3c/web-platform-tests/webrtc/simplecall-no-ssrcs.https.html is a flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=195433
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Skip the test.
+
+2019-03-11  Youenn Fablet  <youenn@apple.com>
+
+        Allow storage quota increase by default in WTR
+        https://bugs.webkit.org/show_bug.cgi?id=195541
+
+        Reviewed by Geoffrey Garen.
+
+        * http/wpt/cache-storage/cache-quota.any.js:
+        (promise_test):
+
+2019-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r242688, r242643, r242624.
+
+        Caused multiple layout test failures and crashes on iOS and macOS.
+
+        Reverted changeset:
+
+        "requestAnimationFrame should execute before the next frame"
+        https://bugs.webkit.org/show_bug.cgi?id=177484
+        https://trac.webkit.org/changeset/242624/webkit
+
+        * TestExpectations:
+        * animations/animation-multiple-callbacks-timestamp.html:
+        * animations/no-style-recalc-during-accelerated-animation-expected.txt:
+        * animations/no-style-recalc-during-accelerated-animation.html:
+        * platform/mac-wk2/TestExpectations:
+
+2019-03-11  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Make it possible exclude localhost from classification
+        https://bugs.webkit.org/show_bug.cgi?id=195474
+        <rdar://problem/47520577>
+
+        Reviewed by Brent Fulgham.
+
+        This patch makes sure that all test cases that need to, call the enableFeature()
+        function in http/tests/resourceLoadStatistics/resources/util.js.
+
+        The enableFeature() now calls the new function testRunner.setStatisticsIsRunningTest().
+
+        * http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html:
+        * http/tests/resourceLoadStatistics/resources/set-cookie-on-redirect.php:
+        * http/tests/resourceLoadStatistics/resources/util.js:
+        (setEnableFeature):
+        * http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-user-interaction.html:
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction.html:
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-without-user-interaction.html:
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe.html:
+        * http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-with-unique-origin.html:
+        * http/tests/storageAccess/request-storage-access-same-origin-iframe.html:
+        * http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe.html:
+        * http/tests/storageAccess/request-storage-access-top-frame.html:
+
+2019-03-11  Javier Fernandez  <jfernandez@igalia.com>
+
+        Unreviewed GTK test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=195551
+
+        Unreviewed test gardening.
+
+        Mark the text-transform-capitilize-026.html as flaky for all platforms.
+
+        * TestExpectations:
+
+2019-03-10  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Fix failing test cases
+        https://bugs.webkit.org/show_bug.cgi?id=195524
+        <rdar://problem/48745101>
+
+        Reviewed by Simon Fraser.
+
+        They've been failing ever since the 32ms fixed time window was introduced. 
+
+        * fast/events/touch/ios/content-observation/click-instead-of-hover-simple.html:
+        * fast/events/touch/ios/content-observation/stuck-with-hover-state.html:
+
+2019-03-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Mark two tests as failing after r242624
+        https://bugs.webkit.org/show_bug.cgi?id=195531
+
+        Unreviewed test gardening.
+
+        These tests are failing:
+        accessibility/mac/selection-notification-focus-change.html [ Failure ]
+        compositing/video/video-clip-change-src.html [ ImageOnlyFailure ]
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-03-09  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS Simulator] LayoutTest/scrollingcoordinator/ios/nested-fixed-layer-positions.html is flaky fail
+        https://bugs.webkit.org/show_bug.cgi?id=171628
+
+        Unreviewed test gardening.
+        
+        I can't reproduce flakiness for this test. Let's see if it's fixed.
+
+        * platform/ios-wk2/TestExpectations:
+
+2019-03-09  Simon Fraser  <simon.fraser@apple.com>
+
+        [ios-simulator WK2] LayoutTest scrollingcoordinator/ios/non-stable-viewport-scroll.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=168924
+
+        Unreviewed test gardening.
+        
+        Let's try a new expectation for this test (it's non-flakey for me for 100 iterations).
+
+        * platform/ios-wk2/TestExpectations:
+        * scrollingcoordinator/ios/non-stable-viewport-scroll-expected.txt:
+
+2019-03-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a test for scrolling tree adjustment of fixed layers (r242601)
+        https://bugs.webkit.org/show_bug.cgi?id=195521
+
+        Reviewed by Sam Weinig.
+        
+        This test sets the "unstable" scrolling state (as if the user is actively scrolling) and scrolls,
+        then changes style to trigger a scrolling tree commit with a changed offset for a fixed layer.
+        The test shows the wrong fixed layer position before r242601.
+
+        Helpers are added to UIHelper to do the scroll, and to wrap setTimeout in an async function.
+        Sadly we have to wait about 120ms for the scrollbars to fade out.
+
+        * resources/ui-helper.js:
+        (window.UIHelper.async.delayFor):
+        (window.UIHelper.async.immediateScrollTo):
+        (window.UIHelper.async.immediateUnstableScrollTo):
+        * scrollingcoordinator/ios/ui-scroll-fixed-expected.html: Added.
+        * scrollingcoordinator/ios/ui-scroll-fixed.html: Added.
+
+2019-03-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r242551): Sporadic hangs when tapping to change selection on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=195475
+        <rdar://problem/48721153>
+
+        Reviewed by Chris Dumez.
+
+        Add a new layout test that taps to change selection 20 times in a contenteditable area and additionally
+        disables IPC timeout, to ensure that any IPC deadlocks will result in the test failing due to timing out.
+
+        * editing/selection/ios/change-selection-by-tapping-expected.txt: Added.
+        * editing/selection/ios/change-selection-by-tapping.html: Added.
+
+2019-03-09  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Click event fires immediately on hover menu at seriouseats.com
+        https://bugs.webkit.org/show_bug.cgi?id=195520
+        <rdar://problem/48740098>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/move-content-from-offscreen-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/move-content-from-offscreen.html: Added.
+
+2019-03-09  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Start observing for content change between touchEnd and mouseMoved start
+        https://bugs.webkit.org/show_bug.cgi?id=195510
+        <rdar://problem/48735695>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/visibility-change-after-touch-end-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/visibility-change-after-touch-end.html: Added.
+
+2019-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [ iOS Simulator ] REGRESSION (r237087) Layout Test fast/viewport/ios/*-width-viewport-after-changing-view-scale.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=195341
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2019-03-08  Chris Dumez  <cdumez@apple.com>
+
+        Add support for Device Orientation / Motion permission API
+        https://bugs.webkit.org/show_bug.cgi?id=195329
+        <rdar://problem/47645367>
+
+        Reviewed by Geoffrey Garen.
+
+        Add layout test coverage.
+
+        * TestExpectations:
+        * fast/device-orientation/device-motion-request-permission-denied-expected.txt: Added.
+        * fast/device-orientation/device-motion-request-permission-denied.html: Added.
+        * fast/device-orientation/device-motion-request-permission-granted-expected.txt: Added.
+        * fast/device-orientation/device-motion-request-permission-granted.html: Added.
+        * fast/device-orientation/device-motion-request-permission-user-gesture-expected.txt: Added.
+        * fast/device-orientation/device-motion-request-permission-user-gesture.html: Added.
+        * fast/device-orientation/device-orientation-request-permission-denied-expected.txt: Added.
+        * fast/device-orientation/device-orientation-request-permission-denied.html: Added.
+        * fast/device-orientation/device-orientation-request-permission-granted-expected.txt: Added.
+        * fast/device-orientation/device-orientation-request-permission-granted.html: Added.
+        * fast/device-orientation/device-orientation-request-permission-user-gesture-expected.txt: Added.
+        * fast/device-orientation/device-orientation-request-permission-user-gesture.html: Added.
+        * http/tests/events/device-orientation-motion-non-secure-context.html:
+        * http/tests/events/device-orientation-motion-secure-context-expected.txt:
+        * http/tests/events/device-orientation-motion-secure-context.html:
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios/http/tests/events/device-orientation-motion-non-secure-context-expected.txt:
+        * platform/ios/http/tests/events/device-orientation-motion-secure-context-expected.txt:
+
+2019-03-08  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Expand "isConsideredClickable" to descendants
+        https://bugs.webkit.org/show_bug.cgi?id=195478
+        <rdar://problem/48724935>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/clickable-content-is-inside-a-container-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/clickable-content-is-inside-a-container.html: Added.
+
+2019-03-08  Truitt Savell  <tsavell@apple.com>
+
+        (r242595) Layout Tests in imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/* are failing
+        https://bugs.webkit.org/show_bug.cgi?id=195466
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2019-03-08  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test http/tests/referrer-policy-iframe/no-referrer/cross-origin-http-http.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=195461
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-03-07  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Check if visibility change happens while dispatching mouseMoved
+        https://bugs.webkit.org/show_bug.cgi?id=195421
+        <rdar://problem/48682004>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/visibility-change-happens-while-in-mousemoved-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/visibility-change-happens-while-in-mousemoved.html: Added.
+
+2019-03-07  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Check if max-height change triggers visible content change.
+        https://bugs.webkit.org/show_bug.cgi?id=195417
+        <rdar://problem/48680631>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/visibility-change-is-max-height-change-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/visibility-change-is-max-height-change.html: Added.
+
+2019-03-07  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Click event fires immediately on hover menu at Ebbets.com
+        https://bugs.webkit.org/show_bug.cgi?id=195397
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/visibility-change-on-touch-start-simple-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/visibility-change-on-touch-start-simple.html: Added.
+
+2019-03-07  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Introduce fixed duration content observation
+        https://bugs.webkit.org/show_bug.cgi?id=195295
+        <rdar://problem/48579913>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/visibility-change-happens-on-timer-hops-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/visibility-change-happens-on-timer-hops.html: Added.
+
+2019-03-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        requestAnimationFrame should execute before the next frame
+        https://bugs.webkit.org/show_bug.cgi?id=177484
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+        There is a slight difference between the actual DRT and the expected DRT
+        due to animation timing change. But these two tests are not animating
+        correctly if they are opened in Safari with web animation turned on. 
+
+        * animations/animation-multiple-callbacks-timestamp.html:
+        Fix variable names used by an error message.
+        * animations/no-style-recalc-during-accelerated-animation-expected.txt:
+        * animations/no-style-recalc-during-accelerated-animation.html:
+        One extra styleReclc was incurred due to the document styleRecalcTimer.
+        I think this timer is not needed anymore. I will look at removing it in
+        a separate patch.
+
+2019-03-07  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Add a setting to be able to turn content change observation on/off
+        https://bugs.webkit.org/show_bug.cgi?id=195353
+        <rdar://problem/48626394>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/click-instead-of-hover-simple-expected.txt: Renamed from LayoutTests/fast/events/touch/ios/click-instead-of-hover-simple-expected.txt.
+        * fast/events/touch/ios/content-observation/click-instead-of-hover-simple.html: Renamed from LayoutTests/fast/events/touch/ios/click-instead-of-hover-simple.html.
+        * fast/events/touch/ios/content-observation/hover-when-style-change-is-async-expected.txt: Renamed from LayoutTests/fast/events/touch/ios/hover-when-style-change-is-async-expected.txt.
+        * fast/events/touch/ios/content-observation/hover-when-style-change-is-async.html: Renamed from LayoutTests/fast/events/touch/ios/hover-when-style-change-is-async.html.
+        * fast/events/touch/ios/content-observation/stuck-with-hover-state-expected.txt: Renamed from LayoutTests/fast/events/touch/ios/stuck-with-hover-state-expected.txt.
+        * fast/events/touch/ios/content-observation/stuck-with-hover-state.html: Renamed from LayoutTests/fast/events/touch/ios/stuck-with-hover-state.html.
+        * fast/events/touch/ios/content-observation/style-recalc-schedule-and-force-relalc-expected.txt: Renamed from LayoutTests/fast/events/touch/ios/style-recalc-schedule-and-force-relalc-expected.txt.
+        * fast/events/touch/ios/content-observation/style-recalc-schedule-and-force-relalc.html: Renamed from LayoutTests/fast/events/touch/ios/style-recalc-schedule-and-force-relalc.html.
+        * fast/events/touch/ios/content-observation/visibility-change-happens-at-the-second-timer-expected.txt: Renamed from LayoutTests/fast/events/touch/ios/visibility-change-happens-at-the-second-timer-expected.txt.
+        * fast/events/touch/ios/content-observation/visibility-change-happens-at-the-second-timer.html: Renamed from LayoutTests/fast/events/touch/ios/visibility-change-happens-at-the-second-timer.html.
+
+2019-03-07  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [WinCairo] Unreviewed test gardening.
+
+        * platform/wincairo/TestExpectations:
+
+2019-03-07  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] GPUSampler implementation
+        https://bugs.webkit.org/show_bug.cgi?id=195427
+        <rdar://problem/48686011>
+
+        Reviewed by Dean Jackson.
+
+        Update texture-triangle-strip to use a GPUSampler provided through bindings instead of creating one in shader.
+
+        * webgpu/texture-triangle-strip.html:
+
+2019-03-07  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION: ( r231040 ) Layout Test http/tests/security/xss-DENIED-xsl-external-entity.xml is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=189724
+        <rdar://problem/48422520>
+
+        Reviewed by Geoffrey Garen.
+
+        Copy the flaky test into a new test for which we use DumpJSConsoleLogInStdErr.
+        This should make the new test no longer flaky in WK1.
+        Run this new test for WK1 only and run the original test for WK2 only.
+
+        * TestExpectations:
+        * http/tests/security/xss-DENIED-xsl-external-entity-no-logging-expected.txt: Added.
+        * http/tests/security/xss-DENIED-xsl-external-entity-no-logging.xml: Added.
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2019-03-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Protocol: add type checking when commands are called via invoke
+        https://bugs.webkit.org/show_bug.cgi?id=195310
+        <rdar://problem/48588679>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/inspector-backend-invocation-return-value.html:
+        * inspector/protocol/inspector-backend-invocation-return-value-expected.txt:
+
+2019-03-07  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Log first-party navigations with link decoration
+        https://bugs.webkit.org/show_bug.cgi?id=195301
+        <rdar://problem/48569971>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/resourceLoadStatistics/log-cross-site-load-with-link-decoration-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/log-cross-site-load-with-link-decoration.html: Added.
+
+2019-03-07  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Make it possible to purge only script-accessible cookies
+        https://bugs.webkit.org/show_bug.cgi?id=195383
+        <rdar://problem/48570136>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/cookies/resources/set-http-only-cookie.php: Added.
+        * http/tests/resourceLoadStatistics/delete-script-accessible-cookies-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/delete-script-accessible-cookies.html: Added.
+
+2019-03-07  Frederic Wang  <fwang@igalia.com>
+
+        Update WPT tests for embedded content
+        https://bugs.webkit.org/show_bug.cgi?id=194770
+
+        Reviewed by Rob Buis.
+
+        * TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_anchor_download_allow_downloads_without_user_activation.sub.tentative-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_anchor_download_block_downloads_without_user_activation.sub.tentative-expected.txt: Added.
+        * tests-options.json:
+
+2019-03-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM Debugger: event breakpoints still fire when breakpoints are disabled
+        https://bugs.webkit.org/show_bug.cgi?id=195377
+        <rdar://problem/48651645>
+
+        Reviewed by Joseph Pecoraro and Matt Baker.
+
+        * inspector/dom-debugger/event-listener-breakpoints.html:
+        * inspector/dom-debugger/event-listener-breakpoints-expected.txt:
+
+2019-03-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Crash when attempting to change input type while dismissing datalist suggestions
+        https://bugs.webkit.org/show_bug.cgi?id=195384
+        <rdar://problem/48563718>
+
+        Reviewed by Brent Fulgham.
+
+        Add a new layout test to exercise this scenario.
+
+        * fast/forms/datalist/change-input-type-after-closing-datalist-suggestions-expected.txt: Added.
+        * fast/forms/datalist/change-input-type-after-closing-datalist-suggestions.html: Added.
+
+2019-03-06  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] GPUTexture and GPUTextureView updates, and related GPUBindGroup updates
+        https://bugs.webkit.org/show_bug.cgi?id=195347
+
+        Reviewed by Dean Jackson.
+
+        * webgpu/blit-commands.html:
+        * webgpu/resources/blue-checkered.png: Added.
+        * webgpu/texture-triangle-strip-expected.html: Added. Draw a reference for blue-checkered.png with Canvas2D.
+        * webgpu/texture-triangle-strip.html: Added. Draw blue-checkered.png as a texture on a Web GPU quad.
+
+        Renaming updates, no change in behavior:
+        * webgpu/bind-groups.html:
+        * webgpu/buffer-resource-triangles.html:
+        * webgpu/pipeline-layouts.html:
+        * webgpu/render-pipelines.html:
+
+2019-03-06  Antti Koivisto  <antti@apple.com>
+
+        [iOS] Basic hit testing for content overlapping fast-scrollable overflow
+        https://bugs.webkit.org/show_bug.cgi?id=195360
+
+        Reviewed by Simon Fraser.
+
+        * fast/scrolling/ios/overflow-scroll-overlap-expected.txt: Added.
+        * fast/scrolling/ios/overflow-scroll-overlap.html: Added.
+
+2019-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Statistics and Sources sections
+        https://bugs.webkit.org/show_bug.cgi?id=195202
+
+        Reviewed by Devin Rousso.
+
+        * inspector/unit-tests/map-utilities-expected.txt: Added.
+        * inspector/unit-tests/map-utilities.html: Added.
+        * inspector/unit-tests/set-utilities-expected.txt:
+        * inspector/unit-tests/set-utilities.html:
+
 2019-03-06  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [iOS] Frequent 1 second IPC deadlocks when showing a paste callout

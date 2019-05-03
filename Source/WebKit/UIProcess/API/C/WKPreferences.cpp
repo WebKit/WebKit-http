@@ -208,16 +208,6 @@ bool WKPreferencesGetJavaScriptCanOpenWindowsAutomatically(WKPreferencesRef pref
     return toImpl(preferencesRef)->javaScriptCanOpenWindowsAutomatically();
 }
 
-void WKPreferencesSetStorageAccessPromptsEnabled(WKPreferencesRef preferencesRef, bool enabled)
-{
-    toImpl(preferencesRef)->setStorageAccessPromptsEnabled(enabled);
-}
-
-bool WKPreferencesGetStorageAccessPromptsEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->storageAccessPromptsEnabled();
-}
-
 void WKPreferencesSetHyperlinkAuditingEnabled(WKPreferencesRef preferencesRef, bool hyperlinkAuditingEnabled)
 {
     toImpl(preferencesRef)->setHyperlinkAuditingEnabled(hyperlinkAuditingEnabled);
@@ -1348,6 +1338,16 @@ void WKPreferencesSetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef prefer
 bool WKPreferencesGetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->simpleLineLayoutDebugBordersEnabled();
+}
+
+void WKPreferencesSetContentChangeObserverEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setContentChangeObserverEnabled(flag);
+}
+
+bool WKPreferencesGetContentChangeObserverEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->contentChangeObserverEnabled();
 }
 
 void WKPreferencesSetNewBlockInsideInlineModelEnabled(WKPreferencesRef, bool)

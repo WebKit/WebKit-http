@@ -38,6 +38,10 @@
 class BString;
 #endif
 
+#if OS(WINDOWS)
+#include <wtf/text/win/WCharStringExtras.h>
+#endif
+
 namespace WTF {
 
 // Declarations of string operations
@@ -337,6 +341,18 @@ public:
 #if PLATFORM(HAIKU)
     String(const BString&);
     operator BString() const;
+#endif
+
+#if OS(WINDOWS)
+#if U_ICU_VERSION_MAJOR_NUM >= 59
+    String(const wchar_t* characters, unsigned length)
+        : String(ucharFrom(characters), length) { }
+
+    String(const wchar_t* characters)
+        : String(ucharFrom(characters)) { }
+#endif
+
+    WTF_EXPORT_PRIVATE Vector<wchar_t> wideCharacters() const;
 #endif
 
     WTF_EXPORT_PRIVATE static String make8BitFrom16BitSource(const UChar*, size_t);

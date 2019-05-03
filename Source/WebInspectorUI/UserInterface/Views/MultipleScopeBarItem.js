@@ -82,7 +82,7 @@ WI.MultipleScopeBarItem = class MultipleScopeBarItem extends WI.Object
             return optionElement;
         }
 
-        for (var scopeBarItem of this._scopeBarItems) {
+        for (var scopeBarItem of this._visibleScopeBarItems) {
             if (scopeBarItem.selected && !this._selectedScopeBarItem)
                 this._selectedScopeBarItem = scopeBarItem;
             else if (scopeBarItem.selected) {
@@ -92,6 +92,7 @@ WI.MultipleScopeBarItem = class MultipleScopeBarItem extends WI.Object
             }
 
             scopeBarItem.addEventListener(WI.ScopeBarItem.Event.SelectionChanged, this._itemSelectionDidChange, this);
+            scopeBarItem.addEventListener(WI.ScopeBarItem.Event.HiddenChanged, this._handleItemHiddenChanged, this);
 
             this._selectElement.appendChild(createOption(scopeBarItem));
         }
@@ -130,7 +131,11 @@ WI.MultipleScopeBarItem = class MultipleScopeBarItem extends WI.Object
 
         this._element.classList.toggle("selected", !!selectedScopeBarItem);
         this._selectedScopeBarItem = selectedScopeBarItem || null;
-        this._selectElement.selectedIndex = this._scopeBarItems.indexOf(this._selectedScopeBarItem);
+
+        let selectedIndex = this._visibleScopeBarItems.indexOf(this._selectedScopeBarItem);
+        if (selectedIndex < 0)
+            selectedIndex = 0;
+        this._selectElement.selectedIndex = selectedIndex;
 
         if (this._selectedScopeBarItem) {
             this.displaySelectedItem();
@@ -165,23 +170,38 @@ WI.MultipleScopeBarItem = class MultipleScopeBarItem extends WI.Object
 
     // Private
 
+    get _visibleScopeBarItems()
+    {
+        return this._scopeBarItems.filter((item) => !item.hidden);
+    }
+
     _handleMouseDown(event)
     {
         // Only handle left mouse clicks.
         if (event.button !== 0)
             return;
 
-        // Only support click to select when the item is not selected yet.
-        // Clicking when selected will cause the menu it appear instead.
-        if (this._element.classList.contains("selected"))
+        if (event.__original)
             return;
+
+        // Only support click to select when the item is not selected yet.
+        // Clicking when selected will cause the menu to appear instead.
+        if (this._element.classList.contains("selected")) {
+            let newEvent = new event.constructor(event.type, event);
+            newEvent.__original = event;
+
+            event.stop();
+
+            this._selectElement.dispatchEvent(newEvent);
+            return;
+        }
 
         this.selected = true;
     }
 
     _selectElementSelectionChanged(event)
     {
-        this.selectedScopeBarItem = this._scopeBarItems[this._selectElement.selectedIndex];
+        this.selectedScopeBarItem = this._visibleScopeBarItems[this._selectElement.selectedIndex];
     }
 
     _itemSelectionDidChange(event)
@@ -189,5 +209,11 @@ WI.MultipleScopeBarItem = class MultipleScopeBarItem extends WI.Object
         if (this._ignoreItemSelectedEvent)
             return;
         this.selectedScopeBarItem = event.target.selected ? event.target : null;
+    }
+
+    _handleItemHiddenChanged(event)
+    {
+        // Regenerate the <select> with the new options.
+        this.scopeBarItems = this._scopeBarItems;
     }
 };

@@ -665,6 +665,9 @@ private:
         case ArithUnary:
             compileArithUnary();
             break;
+        case ValueBitNot:
+            compileValueBitNot();
+            break;
         case ArithBitNot:
             compileArithBitNot();
             break;
@@ -2890,15 +2893,22 @@ private:
         }
     }
     
-    void compileArithBitNot()
+    void compileValueBitNot()
     {
-        if (m_node->child1().useKind() == UntypedUse) {
-            LValue operand = lowJSValue(m_node->child1());
-            LValue result = vmCall(Int64, m_out.operation(operationValueBitNot), m_callFrame, operand);
+        if (m_node->child1().useKind() == BigIntUse) {
+            LValue operand = lowBigInt(m_node->child1());
+            LValue result = vmCall(pointerType(), m_out.operation(operationBitNotBigInt), m_callFrame, operand);
             setJSValue(result);
             return;
         }
 
+        LValue operand = lowJSValue(m_node->child1());
+        LValue result = vmCall(Int64, m_out.operation(operationValueBitNot), m_callFrame, operand);
+        setJSValue(result);
+    }
+
+    void compileArithBitNot()
+    {
         setInt32(m_out.bitNot(lowInt32(m_node->child1())));
     }
 
@@ -6811,7 +6821,7 @@ private:
         LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(
-            m_out.aboveOrEqual(value, m_out.constInt32(maxSingleCharacterString)),
+            m_out.above(value, m_out.constInt32(maxSingleCharacterString)),
             rarely(slowCase), usually(smallIntCase));
 
         LBasicBlock lastNext = m_out.appendTo(smallIntCase, slowCase);

@@ -533,10 +533,11 @@ public:
     Strong<Structure> functionCodeBlockStructure;
     Strong<Structure> hashMapBucketSetStructure;
     Strong<Structure> hashMapBucketMapStructure;
-    Strong<Structure> setIteratorStructure;
-    Strong<Structure> mapIteratorStructure;
     Strong<Structure> bigIntStructure;
     Strong<Structure> executableToCodeBlockEdgeStructure;
+
+    Strong<Structure> m_setIteratorStructure;
+    Strong<Structure> m_mapIteratorStructure;
 
     Strong<JSCell> emptyPropertyNameEnumerator;
 
@@ -562,6 +563,20 @@ public:
 
     AtomicStringTable* atomicStringTable() const { return m_atomicStringTable; }
     WTF::SymbolRegistry& symbolRegistry() { return m_symbolRegistry; }
+
+    Structure* setIteratorStructure()
+    {
+        if (LIKELY(m_setIteratorStructure))
+            return m_setIteratorStructure.get();
+        return setIteratorStructureSlow();
+    }
+
+    Structure* mapIteratorStructure()
+    {
+        if (LIKELY(m_mapIteratorStructure))
+            return m_mapIteratorStructure.get();
+        return mapIteratorStructureSlow();
+    }
 
     JSCell* sentinelSetBucket()
     {
@@ -907,6 +922,8 @@ private:
     static VM*& sharedInstanceInternal();
     void createNativeThunk();
 
+    JS_EXPORT_PRIVATE Structure* setIteratorStructureSlow();
+    JS_EXPORT_PRIVATE Structure* mapIteratorStructureSlow();
     JSCell* sentinelSetBucketSlow();
     JSCell* sentinelMapBucketSlow();
 
@@ -946,9 +963,9 @@ private:
     bool isSafeToRecurseSoftCLoop() const;
 #endif // ENABLE(C_LOOP)
 
-    JS_EXPORT_PRIVATE void throwException(ExecState*, Exception*);
-    JS_EXPORT_PRIVATE JSValue throwException(ExecState*, JSValue);
-    JS_EXPORT_PRIVATE JSObject* throwException(ExecState*, JSObject*);
+    JS_EXPORT_PRIVATE Exception* throwException(ExecState*, Exception*);
+    JS_EXPORT_PRIVATE Exception* throwException(ExecState*, JSValue);
+    JS_EXPORT_PRIVATE Exception* throwException(ExecState*, JSObject*);
 
 #if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
     void verifyExceptionCheckNeedIsSatisfied(unsigned depth, ExceptionEventLocation&);

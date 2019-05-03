@@ -37,10 +37,14 @@
 #include "GPUPipelineLayoutDescriptor.h"
 #include "GPURenderPipeline.h"
 #include "GPURenderPipelineDescriptor.h"
+#include "GPUSampler.h"
+#include "GPUSamplerDescriptor.h"
 #include "GPUShaderModule.h"
 #include "GPUShaderModuleDescriptor.h"
+#include "GPUSwapChain.h"
 #include "GPUTexture.h"
 #include "GPUTextureDescriptor.h"
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -54,9 +58,14 @@ RefPtr<GPUTexture> GPUDevice::tryCreateTexture(GPUTextureDescriptor&& descriptor
     return GPUTexture::tryCreate(*this, WTFMove(descriptor));
 }
 
-RefPtr<GPUBindGroupLayout> GPUDevice::tryCreateBindGroupLayout(GPUBindGroupLayoutDescriptor&& descriptor) const
+RefPtr<GPUSampler> GPUDevice::tryCreateSampler(const GPUSamplerDescriptor& descriptor) const
 {
-    return GPUBindGroupLayout::tryCreate(*this, WTFMove(descriptor));
+    return GPUSampler::tryCreate(*this, descriptor);
+}
+
+RefPtr<GPUBindGroupLayout> GPUDevice::tryCreateBindGroupLayout(const GPUBindGroupLayoutDescriptor& descriptor) const
+{
+    return GPUBindGroupLayout::tryCreate(*this, descriptor);
 }
 
 Ref<GPUPipelineLayout> GPUDevice::createPipelineLayout(GPUPipelineLayoutDescriptor&& descriptor) const
@@ -79,10 +88,16 @@ RefPtr<GPUCommandBuffer> GPUDevice::createCommandBuffer()
     return GPUCommandBuffer::create(*this);
 }
 
-RefPtr<GPUQueue> GPUDevice::getQueue()
+RefPtr<GPUSwapChain> GPUDevice::tryCreateSwapChain(const GPUSwapChainDescriptor& descriptor, int width, int height) const
+{
+    m_swapChain = GPUSwapChain::tryCreate(*this, descriptor, width, height);
+    return m_swapChain;
+}
+
+RefPtr<GPUQueue> GPUDevice::getQueue() const
 {
     if (!m_queue)
-        m_queue = GPUQueue::create(*this);
+        m_queue = GPUQueue::tryCreate(*this);
 
     return m_queue;
 }

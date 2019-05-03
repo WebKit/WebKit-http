@@ -1,3 +1,118 @@
+2019-03-12  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Win] Fix a slew of simple clang-cl warnings.
+        https://bugs.webkit.org/show_bug.cgi?id=195652
+
+        Reviewed by Don Olmstead.
+
+        * Interfaces/AccessibleComparable.idl: -Wmissing-braces
+        * Plugins/PluginDatabaseWin.cpp: -Wunused-function
+        (WebCore::addJavaPluginDirectory): Deleted.
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::AcceleratedCompositingContext): -Wreorder
+        * WebCoreSupport/WebEditorClient.cpp:
+        (WebEditorUndoCommand::WebEditorUndoCommand): -Wreorder
+        (undoNameForEditAction): -Wswitch
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::WebFrameLoaderClient): -Wswitch
+        (WebFrameLoaderClient::updateGlobalHistoryRedirectLinks): -Wunused-variable
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::WebInspectorFrontendClient): -Wreorder
+        * WebCoreSupport/WebInspectorClient.h: -Winconsistent-missing-override
+        * WebError.cpp:
+        (WebError::WebError): -Wreorder
+        * WebFrame.cpp:
+        (WebFrame::stringByEvaluatingJavaScriptInScriptWorld): -Wlogical-op-parentheses
+        * WebHistory.cpp: -Wunused-function (x5)
+        (areEqualOrClose): Deleted.
+        (addDayToSystemTime): Deleted.
+        (getDayBoundaries): Deleted.
+        (beginningOfDay): Deleted.
+        (dateKey): Deleted.
+        * WebNotificationCenter.cpp:
+        (WebNotificationCenter::removeObserver): -Wunused-variable
+        * WebView.cpp: -Wunused-function, -Wreorder
+        (WebView::addVisitedLinks): -Wunused-variable
+
+2019-03-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r242688, r242643, r242624.
+
+        Caused multiple layout test failures and crashes on iOS and macOS.
+
+        Reverted changeset:
+
+        "requestAnimationFrame should execute before the next frame"
+        https://bugs.webkit.org/show_bug.cgi?id=177484
+        https://trac.webkit.org/changeset/242624/webkit
+
+        * WebView.cpp:
+        (WebView::updateBackingStore):
+        (WebView::flushPendingGraphicsLayerChangesSoon):
+        (WebView::flushPendingGraphicsLayerChanges):
+
+2019-03-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        requestAnimationFrame should execute before the next frame
+        https://bugs.webkit.org/show_bug.cgi?id=177484
+
+        Reviewed by Simon Fraser.
+
+        * WebView.cpp:
+        (WebView::updateBackingStore):
+        (WebView::flushPendingGraphicsLayerChangesSoon):
+        (WebView::flushPendingGraphicsLayerChanges):
+        Call Page::renderingUpdate() which implements  "Update the rendering"
+        step of the HTML Event Loop specification.
+
+2019-03-06  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Win] Remove -DUCHAR_TYPE=wchar_t stopgap and learn to live with char16_t.
+        https://bugs.webkit.org/show_bug.cgi?id=195346
+
+        Reviewed by Fujii Hironori.
+
+        * COMPropertyBag.h:
+        (HashType>::GetPropertyInfo):
+        (HashType>::LoadObject):
+        * DOMCoreClasses.cpp:
+        (DOMNode::addEventListener):
+        (DOMNode::removeEventListener):
+        (DOMWindow::addEventListener):
+        (DOMWindow::removeEventListener):
+        (DOMElement::font):
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLInputElement::setValueForUser):
+        (DOMHTMLInputElement::replaceCharactersInRange):
+        * Plugins/PluginDatabaseWin.cpp:
+        (WebCore::addPluginPathsFromRegistry):
+        (WebCore::PluginDatabase::getPluginPathsInDirectories const):
+        (WebCore::addMozillaPluginDirectories):
+        (WebCore::addWindowsMediaPlayerPluginDirectory):
+        (WebCore::addAdobeAcrobatPluginDirectory):
+        (WebCore::addJavaPluginDirectory):
+        (WebCore::safariPluginsDirectory):
+        (WebCore::addMacromediaPluginDirectories):
+        * Plugins/PluginPackageWin.cpp:
+        (WebCore::getVersionInfo):
+        (WebCore::PluginPackage::fetchInfo):
+        (WebCore::PluginPackage::load):
+        * Plugins/PluginViewWin.cpp:
+        (WebCore::PluginView::handlePostReadFile):
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::runOpenPanel):
+        * WebCoreSupport/WebEditorClient.cpp:
+        (WebEditorClient::checkSpellingOfString):
+        (WebEditorClient::checkGrammarOfString):
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::updateWindowTitle):
+        * WebLocalizableStrings.cpp:
+        (LocalizedString::operator LPCTSTR const):
+        * WebView.cpp:
+        (createContextMenuFromItems):
+        (WebView::setToolTip):
+        Use wchar helpers as needed.
+
 2019-03-02  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [iOS] Programmatic paste access should be granted when copying and pasting within the same origin

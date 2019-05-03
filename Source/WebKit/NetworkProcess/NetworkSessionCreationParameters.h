@@ -26,6 +26,7 @@
 #pragma once
 
 #include "SandboxExtension.h"
+#include <WebCore/RegistrableDomain.h>
 #include <pal/SessionID.h>
 #include <wtf/Seconds.h>
 #include <wtf/URL.h>
@@ -81,6 +82,9 @@ struct NetworkSessionCreationParameters {
     String resourceLoadStatisticsDirectory;
     SandboxExtension::Handle resourceLoadStatisticsDirectoryExtensionHandle;
     bool enableResourceLoadStatistics { false };
+    bool shouldIncludeLocalhostInResourceLoadStatistics { true };
+    bool enableResourceLoadStatisticsDebugMode { false };
+    WebCore::RegistrableDomain resourceLoadStatisticsManualPrevalentResource { };
 };
 
 } // namespace WebKit

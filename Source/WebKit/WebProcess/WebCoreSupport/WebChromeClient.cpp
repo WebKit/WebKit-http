@@ -1320,4 +1320,13 @@ void WebChromeClient::requestStorageAccess(String&& subFrameHost, String&& topFr
 }
 #endif
 
+#if ENABLE(DEVICE_ORIENTATION)
+void WebChromeClient::shouldAllowDeviceOrientationAndMotionAccess(Frame& frame, CompletionHandler<void(bool)>&& callback)
+{
+    auto* webFrame = WebFrame::fromCoreFrame(frame);
+    ASSERT(webFrame);
+    m_page.shouldAllowDeviceOrientationAndMotionAccess(webFrame->frameID(), SecurityOriginData::fromFrame(&frame), WTFMove(callback));
+}
+#endif
+
 } // namespace WebKit

@@ -28,6 +28,7 @@
 #if ENABLE(APPLE_PAY)
 
 #include "MessageReceiver.h"
+#include "MessageSender.h"
 #include <WebCore/PaymentCoordinatorClient.h>
 #include <WebCore/PaymentHeaders.h>
 #include <wtf/Forward.h>
@@ -46,19 +47,23 @@ class PaymentContact;
 
 namespace WebKit {
 
+class NetworkProcessConnection;
 class WebPage;
 
-class WebPaymentCoordinator final : public WebCore::PaymentCoordinatorClient, private IPC::MessageReceiver {
+class WebPaymentCoordinator final : public WebCore::PaymentCoordinatorClient, private IPC::MessageReceiver, private IPC::MessageSender {
 public:
+    friend class NetworkProcessConnection;
     explicit WebPaymentCoordinator(WebPage&);
     ~WebPaymentCoordinator();
+
+    void networkProcessConnectionClosed();
 
 private:
     // WebCore::PaymentCoordinatorClient.
     Optional<String> validatedPaymentNetwork(const String&) override;
     bool canMakePayments() override;
-    void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler) override;
-    void openPaymentSetup(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler) override;
+    void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&&) override;
+    void openPaymentSetup(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&&) override;
     bool showPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest&) override;
     void completeMerchantValidation(const WebCore::PaymentMerchantSession&) override;
     void completeShippingMethodSelection(Optional<WebCore::ShippingMethodUpdate>&&) override;
@@ -71,8 +76,14 @@ private:
 
     void paymentCoordinatorDestroyed() override;
 
+    bool isWebPaymentCoordinator() const override { return true; }
+
     // IPC::MessageReceiver.
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    
+    // IPC::MessageSender.
+    IPC::Connection* messageSenderConnection() const final;
+    uint64_t messageSenderDestinationID() const final;
 
     // Message handlers.
     void validateMerchant(const String& validationURLString);
@@ -81,18 +92,17 @@ private:
     void didSelectShippingContact(const WebCore::PaymentContact&);
     void didSelectPaymentMethod(const WebCore::PaymentMethod&);
     void didCancelPaymentSession();
-    void canMakePaymentsWithActiveCardReply(uint64_t requestID, bool canMakePayments);
-    void openPaymentSetupReply(uint64_t requestID, bool result);
 
     WebCore::PaymentCoordinator& paymentCoordinator();
-    
+
+#if ENABLE(APPLE_PAY_REMOTE_UI)
+    bool remoteUIEnabled() const;
+#endif
+
     using AvailablePaymentNetworksSet = HashSet<String, ASCIICaseInsensitiveHash>;
     const AvailablePaymentNetworksSet& availablePaymentNetworks();
 
     WebPage& m_webPage;
-
-    HashMap<uint64_t, WTF::Function<void (bool)>> m_pendingCanMakePaymentsWithActiveCardCallbacks;
-    HashMap<uint64_t, WTF::Function<void (bool)>> m_pendingOpenPaymentSetupCallbacks;
 
     Optional<AvailablePaymentNetworksSet> m_availablePaymentNetworks;
 
@@ -101,5 +111,10 @@ private:
 #endif
 };
 
-}
+} // namespace WebKit
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebKit::WebPaymentCoordinator)
+static bool isType(const WebCore::PaymentCoordinatorClient& paymentCoordinatorClient) { return paymentCoordinatorClient.isWebPaymentCoordinator(); }
+SPECIALIZE_TYPE_TRAITS_END()
+
 #endif

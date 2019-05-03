@@ -34,10 +34,11 @@
 #include "WebGPURenderPassDescriptor.h"
 #include "WebGPURenderPassEncoder.h"
 #include "WebGPUTexture.h"
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
-Optional<GPUBufferCopyView> WebGPUBufferCopyView::asGPUBufferCopyView() const
+Optional<GPUBufferCopyView> WebGPUBufferCopyView::tryCreateGPUBufferCopyView() const
 {
     if (!buffer || !buffer->buffer()) {
         LOG(WebGPU, "GPUCommandEncoder: Invalid buffer for copy!");
@@ -49,7 +50,7 @@ Optional<GPUBufferCopyView> WebGPUBufferCopyView::asGPUBufferCopyView() const
     return GPUBufferCopyView { buffer->buffer().releaseNonNull(), *this };
 }
 
-Optional<GPUTextureCopyView> WebGPUTextureCopyView::asGPUTextureCopyView() const
+Optional<GPUTextureCopyView> WebGPUTextureCopyView::tryCreateGPUTextureCopyView() const
 {
     if (!texture || !texture->texture()) {
         LOG(WebGPU, "GPUCommandEncoder: Invalid texture for copy!");
@@ -73,7 +74,7 @@ WebGPUCommandBuffer::WebGPUCommandBuffer(Ref<GPUCommandBuffer>&& buffer)
 
 RefPtr<WebGPURenderPassEncoder> WebGPUCommandBuffer::beginRenderPass(WebGPURenderPassDescriptor&& descriptor)
 {
-    auto gpuDescriptor = descriptor.asGPURenderPassDescriptor();
+    auto gpuDescriptor = descriptor.tryCreateGPURenderPassDescriptor();
     if (!gpuDescriptor)
         return nullptr;
 
@@ -96,41 +97,41 @@ void WebGPUCommandBuffer::copyBufferToBuffer(const WebGPUBuffer& src, unsigned l
 
 void WebGPUCommandBuffer::copyBufferToTexture(const WebGPUBufferCopyView& srcBuffer, const WebGPUTextureCopyView& dstTexture, const GPUExtent3D& size)
 {
-    auto gpuBufferView = srcBuffer.asGPUBufferCopyView();
-    auto gpuTextureView = dstTexture.asGPUTextureCopyView();
+    auto gpuBufferView = srcBuffer.tryCreateGPUBufferCopyView();
+    auto gpuTextureView = dstTexture.tryCreateGPUTextureCopyView();
 
     if (!gpuBufferView || !gpuTextureView)
         return;
 
     // FIXME: Add Web GPU validation.
 
-    m_commandBuffer->copyBufferToTexture(*gpuBufferView, *gpuTextureView, size);
+    m_commandBuffer->copyBufferToTexture(WTFMove(*gpuBufferView), WTFMove(*gpuTextureView), size);
 }
 
 void WebGPUCommandBuffer::copyTextureToBuffer(const WebGPUTextureCopyView& srcTexture, const WebGPUBufferCopyView& dstBuffer, const GPUExtent3D& size)
 {
-    auto gpuTextureView = srcTexture.asGPUTextureCopyView();
-    auto gpuBufferView = dstBuffer.asGPUBufferCopyView();
+    auto gpuTextureView = srcTexture.tryCreateGPUTextureCopyView();
+    auto gpuBufferView = dstBuffer.tryCreateGPUBufferCopyView();
 
     if (!gpuTextureView || !gpuBufferView)
         return;
 
     // FIXME: Add Web GPU validation.
 
-    m_commandBuffer->copyTextureToBuffer(*gpuTextureView, *gpuBufferView, size);
+    m_commandBuffer->copyTextureToBuffer(WTFMove(*gpuTextureView), WTFMove(*gpuBufferView), size);
 }
 
 void WebGPUCommandBuffer::copyTextureToTexture(const WebGPUTextureCopyView& src, const WebGPUTextureCopyView& dst, const GPUExtent3D& size)
 {
-    auto gpuSrcView = src.asGPUTextureCopyView();
-    auto gpuDstView = dst.asGPUTextureCopyView();
+    auto gpuSrcView = src.tryCreateGPUTextureCopyView();
+    auto gpuDstView = dst.tryCreateGPUTextureCopyView();
 
     if (!gpuSrcView || !gpuDstView)
         return;
 
     // FIXME: Add Web GPU validation.
 
-    m_commandBuffer->copyTextureToTexture(*gpuSrcView, *gpuDstView, size);
+    m_commandBuffer->copyTextureToTexture(WTFMove(*gpuSrcView), WTFMove(*gpuDstView), size);
 }
 
 } // namespace WebCore

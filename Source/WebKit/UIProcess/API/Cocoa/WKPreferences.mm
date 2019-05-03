@@ -128,16 +128,6 @@
     _preferences->setJavaScriptCanOpenWindowsAutomatically(javaScriptCanOpenWindowsAutomatically);
 }
 
-- (BOOL)_storageAccessPromptsEnabled
-{
-    return _preferences->storageAccessPromptsEnabled();
-}
-
-- (void)_setStorageAccessPromptsEnabled:(BOOL)enabled
-{
-    _preferences->setStorageAccessPromptsEnabled(enabled);
-}
-
 #pragma mark OS X-specific methods
 
 #if PLATFORM(MAC)
@@ -333,6 +323,16 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 - (void)_setSimpleLineLayoutDebugBordersEnabled:(BOOL)simpleLineLayoutDebugBordersEnabled
 {
     _preferences->setSimpleLineLayoutDebugBordersEnabled(simpleLineLayoutDebugBordersEnabled);
+}
+
+- (BOOL)_contentChangeObserverEnabled
+{
+    return _preferences->contentChangeObserverEnabled();
+}
+
+- (void)_setContentChangeObserverEnabled:(BOOL)contentChangeObserverEnabled
+{
+    _preferences->setContentChangeObserverEnabled(contentChangeObserverEnabled);
 }
 
 - (BOOL)_acceleratedDrawingEnabled

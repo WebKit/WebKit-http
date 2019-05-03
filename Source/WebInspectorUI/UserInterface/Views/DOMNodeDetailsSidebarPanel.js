@@ -395,7 +395,9 @@ WI.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel extends WI.DOMD
 
                 eventListenersForNode.sort((a, b) => a.type.toLowerCase().extendedLocaleCompare(b.type.toLowerCase()));
 
-                rows.push(createEventListenerSection(currentNode.displayName, eventListenersForNode, {hideNode: true}));
+                let section = createEventListenerSection(currentNode.displayName, eventListenersForNode, {hideNode: true});
+                WI.bindInteractionsForNodeToElement(currentNode, section.titleElement, {ignoreClick: true});
+                rows.push(section);
             } while (currentNode = currentNode.parentNode);
 
             return rows;

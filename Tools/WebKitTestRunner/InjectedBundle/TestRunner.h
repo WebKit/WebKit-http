@@ -178,7 +178,7 @@ public:
     void clearDOMCaches();
     bool hasDOMCache(JSStringRef origin);
     uint64_t domCacheSize(JSStringRef origin);
-    void allowCacheStorageQuotaIncrease();
+    void setAllowStorageQuotaIncrease(bool);
 
     // IndexedDB
     void setIDBPerOriginQuota(uint64_t);
@@ -351,6 +351,7 @@ public:
     void setNavigationGesturesEnabled(bool);
     void setIgnoresViewportScaleLimits(bool);
     void setShouldDownloadUndisplayableMIMETypes(bool);
+    void setShouldAllowDeviceOrientationAndMotionAccess(bool);
 
     bool didCancelClientRedirect() const { return m_didCancelClientRedirect; }
     void setDidCancelClientRedirect(bool value) { m_didCancelClientRedirect = value; }
@@ -420,6 +421,7 @@ public:
     void setStatisticsTopFrameUniqueRedirectFrom(JSStringRef hostName, JSStringRef hostNameRedirectedFrom);
     void setStatisticsTimeToLiveUserInteraction(double seconds);
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool);
+    void setStatisticsIsRunningTest(bool);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
     void setStatisticsNotifyPagesWhenTelemetryWasCaptured(bool value);
     void setStatisticsMinimumTimeBetweenDataRecordsRemoval(double);
@@ -429,6 +431,7 @@ public:
     void statisticsClearInMemoryAndPersistentStore(JSValueRef callback);
     void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours, JSValueRef callback);
     void statisticsClearThroughWebsiteDataRemoval(JSValueRef callback);
+    void statisticsDeleteCookiesForHost(JSStringRef hostName, bool includeHttpOnlyCookies);
     void statisticsCallClearThroughWebsiteDataRemovalCallback();
     void setStatisticsCacheMaxAgeCap(double seconds);
     void statisticsResetToConsistentState(JSValueRef completionHandler);

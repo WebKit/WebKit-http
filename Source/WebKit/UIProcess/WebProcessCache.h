@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include <WebCore/RegistrableDomain.h>
 #include <pal/SessionID.h>
 #include <wtf/HashMap.h>
 #include <wtf/RunLoop.h>
@@ -42,8 +43,8 @@ class WebProcessCache {
 public:
     explicit WebProcessCache(WebProcessPool&);
 
-    bool addProcessIfPossible(const String& registrableDomain, Ref<WebProcessProxy>&&);
-    RefPtr<WebProcessProxy> takeProcess(const String& registrableDomain, WebsiteDataStore&);
+    bool addProcessIfPossible(Ref<WebProcessProxy>&&);
+    RefPtr<WebProcessProxy> takeProcess(const WebCore::RegistrableDomain&, WebsiteDataStore&);
 
     void updateCapacity(WebProcessPool&);
     unsigned capacity() const { return m_capacity; }
@@ -55,16 +56,12 @@ public:
 
     void clearAllProcessesForSession(PAL::SessionID);
 
+    enum class ShouldShutDownProcess { No, Yes };
+    void removeProcess(WebProcessProxy&, ShouldShutDownProcess);
+
 private:
     static Seconds cachedProcessLifetime;
     static Seconds clearingDelayAfterApplicationResignsActive;
-
-    bool canCacheProcess(WebProcessProxy&) const;
-    void evictProcess(WebProcessProxy&);
-    void platformInitialize();
-    bool addProcess(const String& registrableDomain, Ref<WebProcessProxy>&&);
-
-    unsigned m_capacity { 0 };
 
     class CachedProcess {
         WTF_MAKE_FAST_ALLOCATED;
@@ -82,7 +79,14 @@ private:
         RunLoop::Timer<CachedProcess> m_evictionTimer;
     };
 
-    HashMap<String, std::unique_ptr<CachedProcess>> m_processesPerRegistrableDomain;
+    bool canCacheProcess(WebProcessProxy&) const;
+    void platformInitialize();
+    bool addProcess(std::unique_ptr<CachedProcess>&&);
+
+    unsigned m_capacity { 0 };
+
+    HashMap<uint64_t, std::unique_ptr<CachedProcess>> m_pendingAddRequests;
+    HashMap<WebCore::RegistrableDomain, std::unique_ptr<CachedProcess>> m_processesPerRegistrableDomain;
     RunLoop::Timer<WebProcessCache> m_evictionTimer;
 };
 

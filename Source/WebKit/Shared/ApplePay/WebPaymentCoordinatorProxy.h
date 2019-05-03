@@ -29,6 +29,7 @@
 
 #include "MessageReceiver.h"
 #include "MessageSender.h"
+#include "PaymentAuthorizationPresenter.h"
 #include <WebCore/PaymentHeaders.h>
 #include <wtf/Forward.h>
 #include <wtf/RetainPtr.h>
@@ -40,7 +41,10 @@
 
 namespace IPC {
 class Connection;
-class MessageReceiverMap;
+}
+
+namespace PAL {
+class SessionID;
 }
 
 namespace WebCore {
@@ -56,42 +60,38 @@ OBJC_CLASS NSWindow;
 OBJC_CLASS PKPaymentAuthorizationViewController;
 OBJC_CLASS PKPaymentRequest;
 OBJC_CLASS UIViewController;
-OBJC_CLASS WKPaymentAuthorizationViewControllerDelegate;
 
 namespace WebKit {
 
 class WebPageProxy;
 
-class WebPaymentCoordinatorProxy : private IPC::MessageReceiver, private IPC::MessageSender, public CanMakeWeakPtr<WebPaymentCoordinatorProxy> {
+class WebPaymentCoordinatorProxy
+    : private IPC::MessageReceiver
+    , private IPC::MessageSender
+    , public CanMakeWeakPtr<WebPaymentCoordinatorProxy>
+    , public PaymentAuthorizationPresenter::Client {
 public:
     struct Client {
         virtual ~Client() = default;
 
         virtual IPC::Connection* paymentCoordinatorConnection(const WebPaymentCoordinatorProxy&) = 0;
-        virtual IPC::MessageReceiverMap& paymentCoordinatorMessageReceiver(const WebPaymentCoordinatorProxy&) = 0;
-        virtual const String& paymentCoordinatorSourceApplicationBundleIdentifier(const WebPaymentCoordinatorProxy&) = 0;
-        virtual const String& paymentCoordinatorSourceApplicationSecondaryIdentifier(const WebPaymentCoordinatorProxy&) = 0;
-        virtual uint64_t paymentCoordinatorDestinationID(const WebPaymentCoordinatorProxy&) = 0;
+        virtual const String& paymentCoordinatorSourceApplicationBundleIdentifier(const WebPaymentCoordinatorProxy&, PAL::SessionID) = 0;
+        virtual const String& paymentCoordinatorSourceApplicationSecondaryIdentifier(const WebPaymentCoordinatorProxy&, PAL::SessionID) = 0;
+        virtual void paymentCoordinatorAddMessageReceiver(WebPaymentCoordinatorProxy&, const IPC::StringReference&, IPC::MessageReceiver&) = 0;
+        virtual void paymentCoordinatorRemoveMessageReceiver(WebPaymentCoordinatorProxy&, const IPC::StringReference&) = 0;
 #if PLATFORM(IOS_FAMILY)
         virtual UIViewController *paymentCoordinatorPresentingViewController(const WebPaymentCoordinatorProxy&) = 0;
-        virtual const String& paymentCoordinatorCTDataConnectionServiceType(const WebPaymentCoordinatorProxy&) = 0;
+        virtual const String& paymentCoordinatorCTDataConnectionServiceType(const WebPaymentCoordinatorProxy&, PAL::SessionID) = 0;
+        virtual std::unique_ptr<PaymentAuthorizationPresenter> paymentCoordinatorAuthorizationPresenter(WebPaymentCoordinatorProxy&, PKPaymentRequest *) = 0;
 #endif
 #if PLATFORM(MAC)
         virtual NSWindow *paymentCoordinatorPresentingWindow(const WebPaymentCoordinatorProxy&) = 0;
 #endif
     };
 
+    friend class NetworkConnectionToWebProcess;
     explicit WebPaymentCoordinatorProxy(Client&);
     ~WebPaymentCoordinatorProxy();
-
-    void didCancelPaymentSession();
-    void validateMerchant(const URL&);
-    void didAuthorizePayment(const WebCore::Payment&);
-    void didSelectShippingMethod(const WebCore::ApplePaySessionPaymentRequest::ShippingMethod&);
-    void didSelectShippingContact(const WebCore::PaymentContact&);
-    void didSelectPaymentMethod(const WebCore::PaymentMethod&);
-
-    void hidePaymentUI();
 
 private:
     // IPC::MessageReceiver
@@ -101,13 +101,21 @@ private:
     // IPC::MessageSender
     IPC::Connection* messageSenderConnection() const final;
     uint64_t messageSenderDestinationID() const final;
+    
+    // PaymentAuthorizationPresenter::Client
+    void presenterDidAuthorizePayment(PaymentAuthorizationPresenter&, const WebCore::Payment&) final;
+    void presenterDidFinish(PaymentAuthorizationPresenter&, bool didReachFinalState) final;
+    void presenterDidSelectPaymentMethod(PaymentAuthorizationPresenter&, const WebCore::PaymentMethod&) final;
+    void presenterDidSelectShippingContact(PaymentAuthorizationPresenter&, const WebCore::PaymentContact&) final;
+    void presenterDidSelectShippingMethod(PaymentAuthorizationPresenter&, const WebCore::ApplePaySessionPaymentRequest::ShippingMethod&) final;
+    void presenterWillValidateMerchant(PaymentAuthorizationPresenter&, const URL&) final;
 
     // Message handlers
     void availablePaymentNetworks(CompletionHandler<void(Vector<String>&&)>&&);
     void canMakePayments(CompletionHandler<void(bool)>&&);
-    void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, uint64_t requestID);
-    void openPaymentSetup(const String& merchantIdentifier, const String& domainName, uint64_t requestID);
-    void showPaymentUI(const String& originatingURLString, const Vector<String>& linkIconURLStrings, const WebCore::ApplePaySessionPaymentRequest&, CompletionHandler<void(bool)>&&);
+    void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, PAL::SessionID, CompletionHandler<void(bool)>&&);
+    void openPaymentSetup(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&&);
+    void showPaymentUI(uint64_t destinationID, PAL::SessionID, const String& originatingURLString, const Vector<String>& linkIconURLStrings, const WebCore::ApplePaySessionPaymentRequest&, CompletionHandler<void(bool)>&&);
     void completeMerchantValidation(const WebCore::PaymentMerchantSession&);
     void completeShippingMethodSelection(const Optional<WebCore::ShippingMethodUpdate>&);
     void completeShippingContactSelection(const Optional<WebCore::ShippingContactUpdate>&);
@@ -121,23 +129,26 @@ private:
     bool canCompletePayment() const;
     bool canAbort() const;
 
+    void didCancelPaymentSession();
     void didReachFinalState();
+    void hidePaymentUI();
 
     Vector<String> platformAvailablePaymentNetworks();
     bool platformCanMakePayments();
-    void platformCanMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, WTF::Function<void(bool)>&& completionHandler);
+    void platformCanMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, PAL::SessionID, WTF::Function<void(bool)>&& completionHandler);
     void platformOpenPaymentSetup(const String& merchantIdentifier, const String& domainName, WTF::Function<void(bool)>&& completionHandler);
-    void platformShowPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest&, CompletionHandler<void(bool)>&&);
+    void platformShowPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, PAL::SessionID, const WebCore::ApplePaySessionPaymentRequest&, CompletionHandler<void(bool)>&&);
     void platformCompleteMerchantValidation(const WebCore::PaymentMerchantSession&);
     void platformCompleteShippingMethodSelection(const Optional<WebCore::ShippingMethodUpdate>&);
     void platformCompleteShippingContactSelection(const Optional<WebCore::ShippingContactUpdate>&);
     void platformCompletePaymentMethodSelection(const Optional<WebCore::PaymentMethodUpdate>&);
     void platformCompletePaymentSession(const Optional<WebCore::PaymentAuthorizationResult>&);
 #if PLATFORM(COCOA)
-    RetainPtr<PKPaymentRequest> platformPaymentRequest(const URL& originatingURL, const Vector<URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest&);
+    RetainPtr<PKPaymentRequest> platformPaymentRequest(const URL& originatingURL, const Vector<URL>& linkIconURLs, PAL::SessionID, const WebCore::ApplePaySessionPaymentRequest&);
 #endif
 
     Client& m_client;
+    Optional<uint64_t> m_destinationID;
 
     enum class State {
         // Idle - Nothing's happening.
@@ -173,8 +184,7 @@ private:
         ValidationComplete
     } m_merchantValidationState { MerchantValidationState::Idle };
 
-    RetainPtr<PKPaymentAuthorizationViewController> m_paymentAuthorizationViewController;
-    RetainPtr<WKPaymentAuthorizationViewControllerDelegate> m_paymentAuthorizationViewControllerDelegate;
+    std::unique_ptr<PaymentAuthorizationPresenter> m_authorizationPresenter;
 
 #if PLATFORM(MAC)
     uint64_t m_showPaymentUIRequestSeed { 0 };

@@ -27,11 +27,13 @@
 
 #if ENABLE(WEBGPU)
 
+#include "GPUCompareFunction.h"
 #include "GPUTextureFormat.h"
 
 namespace WebCore {
 
 PlatformTextureFormat platformTextureFormatForGPUTextureFormat(GPUTextureFormat);
+PlatformCompareFunction platformCompareFunctionForGPUCompareFunction(GPUCompareFunction);
 
 } // namespace WebCore
 

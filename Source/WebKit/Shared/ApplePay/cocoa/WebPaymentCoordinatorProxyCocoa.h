@@ -27,37 +27,18 @@
 
 #if ENABLE(APPLE_PAY)
 
-#import "WebPaymentCoordinatorProxy.h"
-#import <WebCore/PaymentHeaders.h>
 #import <pal/spi/cocoa/PassKitSPI.h>
-#import <wtf/BlockPtr.h>
 
-@interface WKPaymentAuthorizationViewControllerDelegate : NSObject <PKPaymentAuthorizationViewControllerDelegate, PKPaymentAuthorizationViewControllerPrivateDelegate> {
-@package
-    WebKit::WebPaymentCoordinatorProxy* _webPaymentCoordinatorProxy;
-    RetainPtr<NSArray> _paymentSummaryItems;
-    RetainPtr<NSArray> _shippingMethods;
+namespace WebKit {
 
-    BlockPtr<void(PKPaymentMerchantSession *, NSError *)> _sessionBlock;
+// FIXME: Rather than having these free functions scattered about, Apple Pay data types should know
+// how to convert themselves to and from their platform representations.
+NSArray *toPKPaymentSummaryItems(const WebCore::ApplePaySessionPaymentRequest::TotalAndLineItems&);
+NSDecimalNumber *toDecimalNumber(const String& amount);
+PKPaymentSummaryItem *toPKPaymentSummaryItem(const WebCore::ApplePaySessionPaymentRequest::LineItem&);
+PKPaymentSummaryItemType toPKPaymentSummaryItemType(WebCore::ApplePaySessionPaymentRequest::LineItem::Type);
+PKShippingMethod *toPKShippingMethod(const WebCore::ApplePaySessionPaymentRequest::ShippingMethod&);
 
-    BOOL _didReachFinalState;
-#if HAVE(PASSKIT_GRANULAR_ERRORS)
-    BlockPtr<void(PKPaymentAuthorizationResult *)> _paymentAuthorizedCompletion;
-    BlockPtr<void(PKPaymentRequestPaymentMethodUpdate *)> _didSelectPaymentMethodCompletion;
-    BlockPtr<void(PKPaymentRequestShippingMethodUpdate *)> _didSelectShippingMethodCompletion;
-    BlockPtr<void(PKPaymentRequestShippingContactUpdate *)> _didSelectShippingContactCompletion;
-#else
-    BlockPtr<void(PKPaymentAuthorizationStatus)> _paymentAuthorizedCompletion;
-    BlockPtr<void(NSArray *)> _didSelectPaymentMethodCompletion;
-    BlockPtr<void(PKPaymentAuthorizationStatus, NSArray *)> _didSelectShippingMethodCompletion;
-    BlockPtr<void(PKPaymentAuthorizationStatus, NSArray *, NSArray *)> _didSelectShippingContactCompletion;
-#endif
-}
+} // namespace WebKit
 
-- (instancetype)initWithPaymentCoordinatorProxy:(WebKit::WebPaymentCoordinatorProxy&)webPaymentCoordinatorProxy;
-
-- (void)invalidate;
-
-@end
-
-#endif
+#endif // ENABLE(APPLE_PAY)

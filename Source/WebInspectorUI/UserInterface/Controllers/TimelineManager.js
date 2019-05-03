@@ -107,6 +107,9 @@ WI.TimelineManager = class TimelineManager extends WI.Object
             WI.TimelineRecord.Type.Script,
         ];
 
+        if (WI.CPUInstrument.supported())
+            defaultTypes.push(WI.TimelineRecord.Type.CPU);
+
         if (WI.FPSInstrument.supported())
             defaultTypes.push(WI.TimelineRecord.Type.RenderingFrame);
 
@@ -118,9 +121,6 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         let types = WI.TimelineManager.defaultTimelineTypes();
         if (WI.sharedApp.debuggableType === WI.DebuggableType.JavaScript || WI.sharedApp.debuggableType === WI.DebuggableType.ServiceWorker)
             return types;
-
-        if (WI.CPUInstrument.supported())
-            types.push(WI.TimelineRecord.Type.CPU);
 
         if (WI.MemoryInstrument.supported())
             types.push(WI.TimelineRecord.Type.Memory);

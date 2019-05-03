@@ -22,62 +22,92 @@
 
 from __future__ import unicode_literals
 
+import re
+
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views import View
 from django.views.decorators.clickjacking import xframe_options_exempt
+from ews.common.buildbot import Buildbot
 from ews.models.patch import Patch
 import ews.config as config
 
 
 class StatusBubble(View):
-    def _build_bubble(self, build, patch):
-        builder_display_name = build.builder_display_name
-        builder_full_name = build.builder_name
+    # These queue names are from shortname in https://trac.webkit.org/browser/webkit/trunk/Tools/BuildSlaveSupport/ews-build/config.json
+    # FIXME: Auto-generate this list https://bugs.webkit.org/show_bug.cgi?id=195640
+    ALL_QUEUES = ['api-ios', 'api-mac', 'bindings', 'gtk', 'ios', 'ios-sim', 'ios-wk2', 'jsc', 'mac', 'mac-32bit', 'mac-32bit-wk2',
+                    'mac-debug', 'mac-debug-wk1', 'mac-wk1', 'mac-wk2', 'style', 'webkitperl', 'webkitpy', 'win', 'wincairo', 'wpe']
+    ENABLED_QUEUES = ['api-ios', 'api-mac']
 
+    def _build_bubble(self, patch, queue):
         bubble = {
-            "name": builder_display_name,
-            "url": 'https://{}/#/builders/{}/builds/{}'.format(config.BUILDBOT_SERVER_HOST, build.builder_id, build.number),
+            "name": queue,
         }
+        build = self.get_latest_build_for_queue(patch, queue)
+        if not self._should_show_bubble_for_build(build):
+            return None
 
+        if not build:
+            bubble["state"] = "none"
+            bubble["details_message"] = 'Waiting in queue, processing has not started yet.'
+            return bubble
+
+        bubble["url"] = 'https://{}/#/builders/{}/builds/{}'.format(config.BUILDBOT_SERVER_HOST, build.builder_id, build.number)
+        builder_full_name = build.builder_name
         bubble["details_message"] = '{}\n{}'.format(builder_full_name, build.state_string)
         if build.result is None:
             bubble["state"] = "started"
-        elif build.result == 0:  # SUCCESS
+        elif build.result == Buildbot.SUCCESS:
             bubble["state"] = "pass"
-        elif build.result == 1:  # WARNINGS
+        elif build.result == Buildbot.WARNINGS:
             bubble["state"] = "pass"
-        elif build.result == 2:  # FAILURE
+        elif build.result == Buildbot.FAILURE:
             bubble["state"] = "fail"
-        elif build.result == 3:  # SKIPPED
+        elif build.result == Buildbot.SKIPPED:
             bubble["state"] = "none"
-        elif build.result == 4:  # EXCEPTION
+        elif build.result == Buildbot.EXCEPTION:
             bubble["state"] = "error"
-        elif build.result == 5:  # RETRY
+        elif build.result == Buildbot.RETRY:
             bubble["state"] = "provisional-fail"
         else:
             bubble["state"] = "fail"
 
         return bubble
 
-    def _should_show_bubble_for(self, patch, build):
-        # TODO: https://bugs.webkit.org/show_bug.cgi?id=194597
+    def get_latest_build_for_queue(self, patch, queue):
+        builds = self.get_builds_for_queue(patch, queue)
+        if not builds:
+            return None
+        builds.sort(key=lambda build: build.started_at, reverse=True)
+        return builds[0]
+
+    def get_builds_for_queue(self, patch, queue):
+        return [build for build in patch.build_set.all() if build.builder_display_name == queue]
+
+    def _should_show_bubble_for_build(self, build):
+        if build and build.result == Buildbot.SKIPPED and re.search(r'Patch .* doesn\'t have relevant changes', build.state_string):
+            return False
         return True
+
+    def _should_show_bubble_for_queue(self, queue):
+        return queue in StatusBubble.ENABLED_QUEUES
 
     def _build_bubbles_for_patch(self, patch):
         show_submit_to_ews = True
         failed_to_apply = False  # TODO: https://bugs.webkit.org/show_bug.cgi?id=194598
         bubbles = []
 
-        if not patch:
+        if not (patch and patch.sent_to_buildbot):
             return (None, show_submit_to_ews, failed_to_apply)
 
-        for build in patch.build_set.all():
-            show_submit_to_ews = False
-            if not self._should_show_bubble_for(patch, build):
+        for queue in StatusBubble.ALL_QUEUES:
+            if not self._should_show_bubble_for_queue(queue):
                 continue
-            bubble = self._build_bubble(build, patch)
+
+            bubble = self._build_bubble(patch, queue)
             if bubble:
+                show_submit_to_ews = False
                 bubbles.append(bubble)
 
         return (bubbles, show_submit_to_ews, failed_to_apply)

@@ -23,18 +23,18 @@
 from django.conf.urls import url
 
 from ews.views.index import Index
-from ews.views.patch import Patch
 from ews.views.results import Results
 from ews.views.statusbubble import StatusBubble
+from ews.views.submittoews import SubmitToEWS
 
 app_name = 'ews'
 urlpatterns = [
     # ex: /
     url(r'^$', Index.as_view(), name='index'),
-    # ex: /patch/5
-    url(r'^patch/(?P<patch_id>[0-9]+)/$', Patch.as_view(), name='patch'),
     # ex: /results/
     url(r'^results/$', Results.as_view(), name='results'),
     # ex: /status-bubble/5
     url(r'^status-bubble/(?P<patch_id>[0-9]+)/$', StatusBubble.as_view(), name='statusbubble'),
+    # ex: /submit-to-ews/
+    url(r'^submit-to-ews/$', SubmitToEWS.as_view(), name='submittoews'),
 ]

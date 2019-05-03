@@ -66,6 +66,7 @@ class ClipRectsCache;
 class HitTestRequest;
 class HitTestResult;
 class HitTestingTransformState;
+class Region;
 class RenderFragmentedFlow;
 class RenderGeometryMap;
 class RenderLayerBacking;
@@ -857,6 +858,8 @@ public:
     void simulateFrequentPaint() { SinglePaintFrequencyTracking { m_paintFrequencyTracker }; }
     bool paintingFrequently() const { return m_paintFrequencyTracker.paintingFrequently(); }
 
+    WEBCORE_EXPORT bool isTransparentOrFullyClippedRespectingParentFrames() const;
+
 private:
 
     void setNextSibling(RenderLayer* next) { m_next = next; }
@@ -903,6 +906,7 @@ private:
         OptionSet<PaintBehavior> paintBehavior;
         bool requireSecurityOriginAccessForWidgets;
         bool clipToDirtyRect { true };
+        Region* eventRegion { nullptr };
     };
 
     // Compute, cache and return clip rects computed with the given layer as the root.

@@ -28,10 +28,10 @@
 #if ENABLE(WEBGPU)
 
 #include "GPUQueue.h"
-#include <wtf/Optional.h>
+#include "GPUSwapChainDescriptor.h"
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/WeakPtr.h>
 
 OBJC_PROTOCOL(MTLDevice);
 
@@ -45,7 +45,9 @@ class GPUBuffer;
 class GPUCommandBuffer;
 class GPUPipelineLayout;
 class GPURenderPipeline;
+class GPUSampler;
 class GPUShaderModule;
+class GPUSwapChain;
 class GPUTexture;
 
 struct GPUBindGroupLayoutDescriptor;
@@ -53,17 +55,19 @@ struct GPUBufferDescriptor;
 struct GPUPipelineLayoutDescriptor;
 struct GPURenderPipelineDescriptor;
 struct GPURequestAdapterOptions;
+struct GPUSamplerDescriptor;
 struct GPUShaderModuleDescriptor;
 struct GPUTextureDescriptor;
 
-class GPUDevice : public RefCounted<GPUDevice> {
+class GPUDevice : public RefCounted<GPUDevice>, public CanMakeWeakPtr<GPUDevice> {
 public:
     static RefPtr<GPUDevice> create(Optional<GPURequestAdapterOptions>&&);
 
     RefPtr<GPUBuffer> tryCreateBuffer(GPUBufferDescriptor&&);
     RefPtr<GPUTexture> tryCreateTexture(GPUTextureDescriptor&&) const;
+    RefPtr<GPUSampler> tryCreateSampler(const GPUSamplerDescriptor&) const;
 
-    RefPtr<GPUBindGroupLayout> tryCreateBindGroupLayout(GPUBindGroupLayoutDescriptor&&) const;
+    RefPtr<GPUBindGroupLayout> tryCreateBindGroupLayout(const GPUBindGroupLayoutDescriptor&) const;
     Ref<GPUPipelineLayout> createPipelineLayout(GPUPipelineLayoutDescriptor&&) const;
 
     RefPtr<GPUShaderModule> createShaderModule(GPUShaderModuleDescriptor&&) const;
@@ -71,14 +75,18 @@ public:
 
     RefPtr<GPUCommandBuffer> createCommandBuffer();
 
-    RefPtr<GPUQueue> getQueue();
+    RefPtr<GPUSwapChain> tryCreateSwapChain(const GPUSwapChainDescriptor&, int width, int height) const;
+
+    RefPtr<GPUQueue> getQueue() const;
     PlatformDevice* platformDevice() const { return m_platformDevice.get(); }
+    GPUSwapChain* swapChain() const { return m_swapChain.get(); }
 
 private:
     GPUDevice(PlatformDeviceSmartPtr&&);
 
     PlatformDeviceSmartPtr m_platformDevice;
-    RefPtr<GPUQueue> m_queue;
+    mutable RefPtr<GPUQueue> m_queue;
+    mutable RefPtr<GPUSwapChain> m_swapChain;
 };
 
 } // namespace WebCore

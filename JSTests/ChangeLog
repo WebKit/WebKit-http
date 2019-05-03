@@ -1,3 +1,128 @@
+2019-03-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] OSR entry should respect abstract values in addition to flush formats
+        https://bugs.webkit.org/show_bug.cgi?id=195653
+
+        Reviewed by Mark Lam.
+
+        * stress/osr-entry-locals-none.js: Added.
+
+2019-03-12  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (iOS 12.2): Webpage using CoffeeScript crashes
+        https://bugs.webkit.org/show_bug.cgi?id=195613
+
+        Reviewed by Mark Lam.
+
+        New regression test.
+
+        * stress/regexp-backref-inbounds.js: Added.
+        (testRegExp):
+
+2019-03-12  Mark Lam  <mark.lam@apple.com>
+
+        The HasIndexedProperty node does GC.
+        https://bugs.webkit.org/show_bug.cgi?id=195559
+        <rdar://problem/48767923>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/HasIndexedProperty-does-gc.js: Added.
+
+2019-03-11  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement "~" unary operation
+        https://bugs.webkit.org/show_bug.cgi?id=182216
+
+        Reviewed by Keith Miller.
+
+        * stress/big-int-bit-not-general.js: Added.
+        * stress/big-int-bitwise-not-jit.js: Added.
+        * stress/big-int-bitwise-not-wrapped-value.js: Added.
+        * stress/bit-op-with-object-returning-int32.js:
+        * stress/bitwise-not-fixup-rules.js: Added.
+        * stress/value-bit-not-ai-rule.js: Added.
+
+2019-03-10  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Invalid flags in a RegExp literal should be an early SyntaxError
+        https://bugs.webkit.org/show_bug.cgi?id=195514
+
+        Reviewed by Darin Adler.
+
+        * test262/expectations.yaml:
+        Mark 4 test cases as passing.
+
+        * stress/regexp-syntax-error-invalid-flags.js:
+        * stress/regress-161995.js: Removed.
+        Update existing test, merging in an older test for the same behavior.
+
+2019-03-08  Mark Lam  <mark.lam@apple.com>
+
+        Stack overflow crash in JSC::JSObject::hasInstance.
+        https://bugs.webkit.org/show_bug.cgi?id=195458
+        <rdar://problem/48710195>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/stack-overflow-in-custom-hasInstance.js: Added.
+
+2019-03-08  Tadeu Zagallo  <tzagallo@apple.com>
+
+        op_check_tdz does not def its argument
+        https://bugs.webkit.org/show_bug.cgi?id=192880
+        <rdar://problem/46221598>
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/let-for-in.js: Added.
+        (foo):
+
+2019-03-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] StringFromCharCode fast path should accept 0xff in DFG and FTL
+        https://bugs.webkit.org/show_bug.cgi?id=195429
+
+        Reviewed by Saam Barati.
+
+        * stress/must-handled-values-should-not-be-used-as-proven-constants-in-cfa.js: Added.
+        (foo):
+        * stress/string-from-char-code-255.js: Added.
+
+2019-03-06  Mark Lam  <mark.lam@apple.com>
+
+        Fix incorrect handling of try-finally completion values.
+        https://bugs.webkit.org/show_bug.cgi?id=195131
+        <rdar://problem/46222079>
+
+        Reviewed by Saam Barati and Yusuke Suzuki.
+
+        Added many permutations of new test case to test-finally.js.  test-finally.js has
+        been run on Chrome and Firefox as a sanity check, and we confirmed that all the
+        tests passes there as well.
+
+        * stress/test-finally.js:
+
+2019-03-06  Saam Barati  <sbarati@apple.com>
+
+        Air::reportUsedRegisters must padInterference
+        https://bugs.webkit.org/show_bug.cgi?id=195303
+        <rdar://problem/48270343>
+
+        Reviewed by Keith Miller.
+
+        * stress/optional-def-arg-width-should-be-both-early-and-late-use.js: Added.
+
+2019-03-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] AI should not propagate AbstractValue relying on constant folding phase
+        https://bugs.webkit.org/show_bug.cgi?id=195375
+
+        Reviewed by Saam Barati.
+
+        * stress/make-rope-should-not-propagate-constant-folded-value-in-ai.js: Added.
+        (let.array):
+
 2019-03-05  Saam barati  <sbarati@apple.com>
 
         op_switch_char broken for rope strings after JSRopeString layout rewrite

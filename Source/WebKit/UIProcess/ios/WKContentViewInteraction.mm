@@ -228,9 +228,10 @@ TextStream& operator<<(TextStream& stream, const WKSelectionDrawingInfo& info)
 
 } // namespace WebKit
 
-static const float highlightDelay = 0.12;
-static const float tapAndHoldDelay  = 0.75;
-const CGFloat minimumTapHighlightRadius = 2.0;
+constexpr float highlightDelay = 0.12;
+constexpr float tapAndHoldDelay = 0.75;
+constexpr CGFloat minimumTapHighlightRadius = 2.0;
+constexpr double fasterTapSignificantZoomThreshold = 0.8;
 
 @interface WKTextRange : UITextRange {
     CGRect _startRect;
@@ -645,7 +646,8 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
 - (void)_createAndConfigureDoubleTapGestureRecognizer
 {
-    _doubleTapGestureRecognizer = adoptNS([[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_doubleTapRecognized:)]);
+    _doubleTapGestureRecognizer = adoptNS([[WKSyntheticTapGestureRecognizer alloc] initWithTarget:self action:@selector(_doubleTapRecognized:)]);
+    [_doubleTapGestureRecognizer setGestureFailedTarget:self action:@selector(_doubleTapDidFail:)];
     [_doubleTapGestureRecognizer setNumberOfTapsRequired:2];
     [_doubleTapGestureRecognizer setDelegate:self];
     [self addGestureRecognizer:_doubleTapGestureRecognizer.get()];
@@ -694,9 +696,9 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     
 #endif
 
-    _singleTapGestureRecognizer = adoptNS([[WKSyntheticClickTapGestureRecognizer alloc] initWithTarget:self action:@selector(_singleTapCommited:)]);
+    _singleTapGestureRecognizer = adoptNS([[WKSyntheticTapGestureRecognizer alloc] initWithTarget:self action:@selector(_singleTapRecognized:)]);
     [_singleTapGestureRecognizer setDelegate:self];
-    [_singleTapGestureRecognizer setGestureRecognizedTarget:self action:@selector(_singleTapRecognized:)];
+    [_singleTapGestureRecognizer setGestureIdentifiedTarget:self action:@selector(_singleTapIdentified:)];
     [_singleTapGestureRecognizer setResetTarget:self action:@selector(_singleTapDidReset:)];
     [self addGestureRecognizer:_singleTapGestureRecognizer.get()];
 
@@ -813,7 +815,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 #endif
 
     [_singleTapGestureRecognizer setDelegate:nil];
-    [_singleTapGestureRecognizer setGestureRecognizedTarget:nil action:nil];
+    [_singleTapGestureRecognizer setGestureIdentifiedTarget:nil action:nil];
     [_singleTapGestureRecognizer setResetTarget:nil action:nil];
     [self removeGestureRecognizer:_singleTapGestureRecognizer.get()];
 
@@ -1218,6 +1220,10 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
     if (lastTouchEvent->type == UIWebTouchEventTouchBegin) {
         [self _handleDOMPasteRequestWithResult:WebCore::DOMPasteAccessResponse::DeniedForGesture];
         _layerTreeTransactionIdAtLastTouchStart = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).lastCommittedLayerTreeTransactionID();
+
+        [self doAfterPositionInformationUpdate:[assistant = WeakObjCPtr<WKActionSheetAssistant>(_actionSheetAssistant.get())] (WebKit::InteractionInformationAtPosition information) {
+            [assistant interactionDidStartWithPositionInformation:information];
+        } forRequest:WebKit::InteractionInformationRequest(WebCore::IntPoint(_lastInteractionLocation))];
     }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -1489,6 +1495,23 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         return;
 
     [self _setDoubleTapGesturesEnabled:NO];
+}
+
+- (void)_handleSmartMagnificationInformationForPotentialTap:(uint64_t)requestID renderRect:(const WebCore::FloatRect&)renderRect fitEntireRect:(BOOL)fitEntireRect viewportMinimumScale:(double)viewportMinimumScale viewportMaximumScale:(double)viewportMaximumScale
+{
+    ASSERT(_page->preferences().fasterClicksEnabled());
+    if (!_potentialTapInProgress)
+        return;
+
+    auto targetScale = _smartMagnificationController->zoomFactorForTargetRect(renderRect, fitEntireRect, viewportMinimumScale, viewportMaximumScale);
+
+    auto initialScale = [self _initialScaleFactor];
+    if (std::min(targetScale, initialScale) / std::max(targetScale, initialScale) > fasterTapSignificantZoomThreshold) {
+        RELEASE_LOG(ViewGestures, "Potential tap would not cause a significant zoom. Trigger click. (%p)", self);
+        [self _setDoubleTapGesturesEnabled:NO];
+        return;
+    }
+    RELEASE_LOG(ViewGestures, "Potential tap may cause significant zoom. Wait. (%p)", self);
 }
 
 - (void)_cancelLongPressGestureRecognizer
@@ -2156,6 +2179,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     ASSERT(gestureRecognizer == _longPressGestureRecognizer);
     [self _resetIsDoubleTapPending];
     [self _cancelTouchEventGestureRecognizer];
+    _page->didRecognizeLongPress();
 
     _lastInteractionLocation = gestureRecognizer.startPoint;
 
@@ -2176,13 +2200,17 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     _potentialTapInProgress = NO;
 }
 
-- (void)_singleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
+- (void)_singleTapIdentified:(UITapGestureRecognizer *)gestureRecognizer
 {
     ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
     ASSERT(!_potentialTapInProgress);
     [self _resetIsDoubleTapPending];
 
-    _page->potentialTapAtPosition(gestureRecognizer.location, ++_latestTapID);
+    bool shouldRequestMagnificationInformation = _page->preferences().fasterClicksEnabled();
+    if (shouldRequestMagnificationInformation)
+        RELEASE_LOG(ViewGestures, "Single tap identified. Request details on potential zoom. (%p)", self);
+
+    _page->potentialTapAtPosition(gestureRecognizer.location, shouldRequestMagnificationInformation, ++_latestTapID);
     _potentialTapInProgress = YES;
     _isTapHighlightIDValid = YES;
     _isExpectingFastSingleTapCommit = !_doubleTapGestureRecognizer.get().enabled;
@@ -2201,6 +2229,12 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
     cancelPotentialTapIfNecessary(self);
+}
+
+- (void)_doubleTapDidFail:(UITapGestureRecognizer *)gestureRecognizer
+{
+    RELEASE_LOG(ViewGestures, "Double tap was not recognized. (%p)", self);
+    ASSERT(gestureRecognizer == _doubleTapGestureRecognizer);
 }
 
 - (void)_commitPotentialTapFailed
@@ -2232,10 +2266,11 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)_didCompleteSyntheticClick
 {
+    RELEASE_LOG(ViewGestures, "Synthetic click completed. (%p)", self);
     [self _resetInputViewDeferral];
 }
 
-- (void)_singleTapCommited:(UITapGestureRecognizer *)gestureRecognizer
+- (void)_singleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
 {
     ASSERT(gestureRecognizer == _singleTapGestureRecognizer);
 
@@ -2260,6 +2295,9 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     }
 
     [_inputPeripheral endEditing];
+
+    RELEASE_LOG(ViewGestures, "Single tap recognized - commit potential tap (%p)", self);
+
     _page->commitPotentialTap(WebKit::webEventModifierFlags(gestureRecognizerModifierFlags(gestureRecognizer)), _layerTreeTransactionIdAtLastTouchStart);
 
     if (!_isExpectingFastSingleTapCommit)
@@ -2268,6 +2306,8 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)_doubleTapRecognized:(UITapGestureRecognizer *)gestureRecognizer
 {
+    RELEASE_LOG(ViewGestures, "Identified a double tap (%p)", self);
+
     [self _resetIsDoubleTapPending];
     _lastInteractionLocation = gestureRecognizer.location;
 
@@ -4432,13 +4472,19 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     return YES;
 }
 
-- (CGFloat)keyboardScrollViewAnimator:(WKKeyboardScrollViewAnimator *)animator distanceForIncrement:(WebKit::ScrollingIncrement)increment
+- (CGFloat)keyboardScrollViewAnimator:(WKKeyboardScrollViewAnimator *)animator distanceForIncrement:(WebKit::ScrollingIncrement)increment inDirection:(WebKit::ScrollingDirection)direction
 {
+    BOOL directionIsHorizontal = direction == WebKit::ScrollingDirection::Left || direction == WebKit::ScrollingDirection::Right;
+
     switch (increment) {
-    case WebKit::ScrollingIncrement::Document:
-        return [self convertRect:self.bounds toView:_webView].size.height;
-    case WebKit::ScrollingIncrement::Page:
-        return [self convertSize:CGSizeMake(0, WebCore::Scrollbar::pageStep(_page->unobscuredContentRect().height(), self.bounds.size.height)) toView:_webView].height;
+    case WebKit::ScrollingIncrement::Document: {
+        CGSize documentSize = [self convertRect:self.bounds toView:_webView].size;
+        return directionIsHorizontal ? documentSize.width : documentSize.height;
+    }
+    case WebKit::ScrollingIncrement::Page: {
+        CGSize pageSize = [self convertSize:CGSizeMake(0, WebCore::Scrollbar::pageStep(_page->unobscuredContentRect().height(), self.bounds.size.height)) toView:_webView];
+        return directionIsHorizontal ? pageSize.width : pageSize.height;
+    }
     case WebKit::ScrollingIncrement::Line:
         return [self convertSize:CGSizeMake(0, WebCore::Scrollbar::pixelsPerLineStep()) toView:_webView].height;
     }
@@ -4723,7 +4769,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     return _formAccessoryView.get();
 }
 
-static bool shouldZoomToRevealSelectionRect(WebKit::InputType type)
+static bool shouldDeferZoomingToSelectionWhenRevealingFocusedElement(WebKit::InputType type)
 {
     switch (type) {
     case WebKit::InputType::ContentEditable:
@@ -4748,7 +4794,7 @@ static WebCore::FloatRect rectToRevealWhenZoomingToFocusedElement(const WebKit::
     if (elementInfo.elementRect.contains(elementInfo.lastInteractionLocation))
         elementInteractionRect = { elementInfo.lastInteractionLocation, { 1, 1 } };
 
-    if (!shouldZoomToRevealSelectionRect(elementInfo.elementType))
+    if (!shouldDeferZoomingToSelectionWhenRevealingFocusedElement(elementInfo.elementType))
         return elementInteractionRect;
 
     if (editorState.isMissingPostLayoutData) {
@@ -4769,40 +4815,6 @@ static WebCore::FloatRect rectToRevealWhenZoomingToFocusedElement(const WebKit::
 
     selectionBoundingRect.intersect(elementInfo.elementRect);
     return selectionBoundingRect;
-}
-
-static bool isAssistableInputType(WebKit::InputType type)
-{
-    switch (type) {
-    case WebKit::InputType::ContentEditable:
-    case WebKit::InputType::Text:
-    case WebKit::InputType::Password:
-    case WebKit::InputType::TextArea:
-    case WebKit::InputType::Search:
-    case WebKit::InputType::Email:
-    case WebKit::InputType::URL:
-    case WebKit::InputType::Phone:
-    case WebKit::InputType::Number:
-    case WebKit::InputType::NumberPad:
-    case WebKit::InputType::Date:
-    case WebKit::InputType::DateTime:
-    case WebKit::InputType::DateTimeLocal:
-    case WebKit::InputType::Month:
-    case WebKit::InputType::Week:
-    case WebKit::InputType::Time:
-    case WebKit::InputType::Select:
-    case WebKit::InputType::Drawing:
-#if ENABLE(INPUT_TYPE_COLOR)
-    case WebKit::InputType::Color:
-#endif
-        return true;
-
-    case WebKit::InputType::None:
-        return false;
-    }
-
-    ASSERT_NOT_REACHED();
-    return false;
 }
 
 static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 4;
@@ -4840,7 +4852,7 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
     else
         [self _stopSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTooSmall];
 
-    BOOL shouldShowKeyboard = [&] {
+    BOOL shouldShowInputView = [&] {
         switch (startInputSessionPolicy) {
         case _WKFocusStartsInputSessionPolicyAuto:
             // The default behavior is to allow node assistance if the user is interacting.
@@ -4887,11 +4899,12 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
         [_drawingCoordinator installInkPickerForDrawing:information.embeddedViewID];
 #endif
 
-    if (!shouldShowKeyboard)
+    if (!shouldShowInputView || information.elementType == WebKit::InputType::None) {
+        _page->setIsShowingInputViewForFocusedElement(false);
         return;
+    }
 
-    if (!isAssistableInputType(information.elementType))
-        return;
+    _page->setIsShowingInputViewForFocusedElement(true);
 
     // FIXME: We should remove this check when we manage to send ElementDidFocus from the WebProcess
     // only when it is truly time to show the keyboard.
@@ -4951,7 +4964,7 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
     if (editableChanged)
         [_webView _scheduleVisibleContentRectUpdate];
     
-    if (!shouldZoomToRevealSelectionRect(_focusedElementInformation.elementType))
+    if (!shouldDeferZoomingToSelectionWhenRevealingFocusedElement(_focusedElementInformation.elementType))
         [self _zoomToRevealFocusedElement];
 
     [self _ensureFormAccessoryView];
@@ -5010,6 +5023,7 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
         [_webView _scheduleVisibleContentRectUpdate];
 
     [_webView didEndFormControlInteraction];
+    _page->setIsShowingInputViewForFocusedElement(false);
 
     if (!_isChangingFocus) {
         [self _stopSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTransparentOrFullyClipped];
@@ -5106,7 +5120,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 
     // FIXME: If the initial writing direction just changed, we should wait until we get the next post-layout editor state
     // before zooming to reveal the selection rect.
-    if (shouldZoomToRevealSelectionRect(_focusedElementInformation.elementType))
+    if (shouldDeferZoomingToSelectionWhenRevealingFocusedElement(_focusedElementInformation.elementType))
         [self _zoomToRevealFocusedElement];
 }
 

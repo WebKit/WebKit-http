@@ -35,6 +35,17 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
 
         this.element.classList.add("cpu");
 
+        this._sectionLimit = CPUTimelineView.defaultSectionLimit;
+
+        this._statisticsData = null;
+        this._secondsPerPixelInLayout = undefined;
+        this._visibleRecordsInLayout = [];
+        this._discontinuitiesInLayout = [];
+
+        this._stickingOverlay = false;
+        this._overlayRecord = null;
+        this._overlayTime = NaN;
+
         timeline.addEventListener(WI.Timeline.Event.RecordAdded, this._cpuTimelineRecordAdded, this);
     }
 
@@ -55,13 +66,15 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         console.error("Unknown sample type", type);
     }
 
-    static get cpuUsageViewHeight() { return 150; }
+    static get cpuUsageViewHeight() { return 135; }
     static get threadCPUUsageViewHeight() { return 65; }
     static get indicatorViewHeight() { return 15; }
 
     static get lowEnergyThreshold() { return 3; }
     static get mediumEnergyThreshold() { return 50; }
     static get highEnergyThreshold() { return 150; }
+
+    static get defaultSectionLimit() { return 5; }
 
     // Public
 
@@ -83,6 +96,8 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
     {
         super.reset();
 
+        this._resetSourcesFilters();
+
         this.clear();
     }
 
@@ -99,6 +114,9 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         this._energyChart.needsLayout();
         this._clearEnergyImpactText();
 
+        this._clearStatistics();
+        this._clearSources();
+
         function clearUsageView(view) {
             view.clear();
 
@@ -114,7 +132,15 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
 
         this._removeWorkerThreadViews();
 
-        this._mainThreadWorkIndicatorView.clear();
+        this._sectionLimit = CPUTimelineView.defaultSectionLimit;
+
+        this._statisticsData = null;
+        this._secondsPerPixelInLayout = undefined;
+        this._visibleRecordsInLayout = [];
+        this._discontinuitiesInLayout = [];
+
+        this._stickingOverlay = false;
+        this._hideGraphOverlay();
     }
 
     // Protected
@@ -128,7 +154,7 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
 
     initialLayout()
     {
-        this.element.style.setProperty("--cpu-usage-stacked-view-height", CPUTimelineView.cpuUsageViewHeight + "px");
+        this.element.style.setProperty("--cpu-usage-combined-view-height", CPUTimelineView.cpuUsageViewHeight + "px");
         this.element.style.setProperty("--cpu-usage-view-height", CPUTimelineView.threadCPUUsageViewHeight + "px");
         this.element.style.setProperty("--cpu-usage-indicator-view-height", CPUTimelineView.indicatorViewHeight + "px");
 
@@ -145,7 +171,8 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
             let chartSubtitleElement = chartElement.appendChild(document.createElement("div"));
             chartSubtitleElement.classList.add("subtitle");
             chartSubtitleElement.textContent = subtitle;
-            chartSubtitleElement.title = tooltip;
+            if (tooltip)
+                chartSubtitleElement.title = tooltip;
 
             let chartFlexContainerElement = chartElement.appendChild(document.createElement("div"));
             chartFlexContainerElement.classList.add("container");
@@ -160,7 +187,6 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
             swatchElement.classList.add("swatch", sampleType);
 
             let valueContainer = rowElement.appendChild(document.createElement("div"));
-            valueContainer.classList.add("value");
 
             let labelElement = valueContainer.appendChild(document.createElement("div"));
             labelElement.classList.add("label");
@@ -189,8 +215,7 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         let dividerElement = overviewElement.appendChild(document.createElement("div"));
         dividerElement.classList.add("divider");
 
-        let energyTooltip = WI.UIString("Estimated energy impact.")
-        let energyContainerElement = createChartContainer(overviewElement, WI.UIString("Energy Impact"), energyTooltip);
+        let energyContainerElement = createChartContainer(overviewElement, WI.UIString("Energy Impact"), WI.UIString("Estimated energy impact."));
         energyContainerElement.classList.add("energy");
 
         let energyChartElement = energyContainerElement.parentElement;
@@ -274,21 +299,18 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         detailsSubtitleElement.classList.add("subtitle");
         detailsSubtitleElement.textContent = WI.UIString("CPU Usage");
 
-        this._cpuUsageView = new WI.CPUUsageStackedView(WI.UIString("Total"));
+        this._cpuUsageView = new WI.CPUUsageCombinedView(WI.UIString("Total"));
         this.addSubview(this._cpuUsageView);
         detailsContainerElement.appendChild(this._cpuUsageView.element);
 
-        this._mainThreadWorkIndicatorView = new WI.CPUUsageIndicatorView;
-        this.addSubview(this._mainThreadWorkIndicatorView);
-        detailsContainerElement.appendChild(this._mainThreadWorkIndicatorView.element);
-
-        this._mainThreadWorkIndicatorView.chart.element.addEventListener("click", this._handleIndicatorClick.bind(this));
+        this._cpuUsageView.rangeChart.element.addEventListener("click", this._handleIndicatorClick.bind(this));
 
         this._threadsDetailsElement = detailsContainerElement.appendChild(document.createElement("details"));
         this._threadsDetailsElement.open = WI.settings.cpuTimelineThreadDetailsExpanded.value;
         this._threadsDetailsElement.addEventListener("toggle", (event) => {
             WI.settings.cpuTimelineThreadDetailsExpanded.value = this._threadsDetailsElement.open;
-            this.updateLayout();
+            if (this._threadsDetailsElement.open)
+                this.updateLayout(WI.CPUTimelineView.LayoutReason.Internal);
         });
 
         let threadsSubtitleElement = this._threadsDetailsElement.appendChild(document.createElement("summary"));
@@ -301,24 +323,101 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         this._threadsDetailsElement.appendChild(this._mainThreadUsageView.element);
 
         this._webkitThreadUsageView = new WI.CPUUsageView(WI.UIString("WebKit Threads"));
-        this._webkitThreadUsageView.element.classList.add("non-main-thread");
         this.addSubview(this._webkitThreadUsageView);
         this._threadsDetailsElement.appendChild(this._webkitThreadUsageView.element);
 
         this._unknownThreadUsageView = new WI.CPUUsageView(WI.UIString("Other Threads"));
-        this._unknownThreadUsageView.element.classList.add("non-main-thread");
         this.addSubview(this._unknownThreadUsageView);
         this._threadsDetailsElement.appendChild(this._unknownThreadUsageView.element);
 
         this._workerViews = [];
 
+        this._sourcesFilter = {
+            timer: new Set,
+            event: new Set,
+            observer: new Set,
+        };
+
+        let bottomOverviewElement = contentElement.appendChild(document.createElement("div"));
+        bottomOverviewElement.classList.add("overview");
+
+        let statisticsContainerElement = createChartContainer(bottomOverviewElement, WI.UIString("Statistics"));
+        statisticsContainerElement.classList.add("stats");
+
+        this._statisticsTable = statisticsContainerElement.appendChild(document.createElement("table"));
+        this._statisticsRows = [];
+
+        {
+            let {headerCell, numberCell} = this._createTableRow(this._statisticsTable);
+            headerCell.textContent = WI.UIString("Script Entries:");
+            this._scriptEntriesNumberElement = numberCell;
+        }
+
+        this._clearStatistics();
+
+        let bottomDividerElement = bottomOverviewElement.appendChild(document.createElement("div"));
+        bottomDividerElement.classList.add("divider");
+
+        let sourcesContainerElement = createChartContainer(bottomOverviewElement, WI.UIString("Sources"));
+        sourcesContainerElement.classList.add("stats");
+
+        this._sourcesTable = sourcesContainerElement.appendChild(document.createElement("table"));
+        this._sourcesRows = [];
+
+        {
+            let {row, headerCell, numberCell, labelCell} = this._createTableRow(this._sourcesTable);
+            headerCell.textContent = WI.UIString("Filter:");
+            this._sourcesFilterRow = row;
+            this._sourcesFilterRow.hidden = true;
+            this._sourcesFilterNumberElement = numberCell;
+            this._sourcesFilterLabelElement = labelCell;
+
+            let filterClearElement = numberCell.appendChild(document.createElement("span"));
+            filterClearElement.className = "filter-clear";
+            filterClearElement.textContent = multiplicationSign;
+            filterClearElement.addEventListener("click", (event) => {
+                this._resetSourcesFilters();
+                this._layoutStatisticsAndSources();
+            });
+        }
+        {
+            let {row, headerCell, numberCell, labelCell} = this._createTableRow(this._sourcesTable);
+            headerCell.textContent = WI.UIString("Timers:");
+            this._timerInstallationsRow = row;
+            this._timerInstallationsNumberElement = numberCell;
+            this._timerInstallationsLabelElement = labelCell;
+        }
+        {
+            let {row, headerCell, numberCell, labelCell} = this._createTableRow(this._sourcesTable);
+            headerCell.textContent = WI.UIString("Event Handlers:");
+            this._eventHandlersRow = row;
+            this._eventHandlersNumberElement = numberCell;
+            this._eventHandlersLabelElement = labelCell;
+        }
+        {
+            let {row, headerCell, numberCell, labelCell} = this._createTableRow(this._sourcesTable);
+            headerCell.textContent = WI.UIString("Observer Handlers:");
+            this._observerHandlersRow = row;
+            this._observerHandlersNumberElement = numberCell;
+            this._observerHandlersLabelElement = labelCell;
+        }
+
+        this._clearSources();
+
+        this.element.addEventListener("click", this._handleGraphClick.bind(this));
         this.element.addEventListener("mousemove", this._handleGraphMouseMove.bind(this));
+
+        this._overlayMarker = new WI.TimelineMarker(-1, WI.TimelineMarker.Type.TimeStamp);
+        this._timelineRuler.addMarker(this._overlayMarker);
     }
 
     layout()
     {
         if (this.layoutReason === WI.View.LayoutReason.Resize)
             return;
+
+        if (this.layoutReason !== WI.CPUTimelineView.LayoutReason.Internal)
+            this._sectionLimit = CPUTimelineView.defaultSectionLimit;
 
         // Always update timeline ruler.
         this._timelineRuler.zeroTime = this.zeroTime;
@@ -345,37 +444,13 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
             return;
         }
 
-        let samplingData = this._computeSamplingData(graphStartTime, visibleEndTime);
-        let nonIdleSamplesCount = samplingData.samples.length - samplingData.samplesIdle;
-        if (!nonIdleSamplesCount) {
-            this._breakdownChart.clear();
-            this._breakdownChart.needsLayout();
-            this._clearBreakdownLegend();
-        } else {
-            let percentScript = samplingData.samplesScript / nonIdleSamplesCount;
-            let percentLayout = samplingData.samplesLayout / nonIdleSamplesCount;
-            let percentPaint = samplingData.samplesPaint / nonIdleSamplesCount;
-            let percentStyle = samplingData.samplesStyle / nonIdleSamplesCount;
+        this._secondsPerPixelInLayout = secondsPerPixel;
+        this._visibleRecordsInLayout = visibleRecords;
+        this._discontinuitiesInLayout = discontinuities.slice();
 
-            this._breakdownLegendScriptElement.textContent = `${Number.percentageString(percentScript)} (${samplingData.samplesScript})`;
-            this._breakdownLegendLayoutElement.textContent = `${Number.percentageString(percentLayout)} (${samplingData.samplesLayout})`;
-            this._breakdownLegendPaintElement.textContent = `${Number.percentageString(percentPaint)} (${samplingData.samplesPaint})`;
-            this._breakdownLegendStyleElement.textContent = `${Number.percentageString(percentStyle)} (${samplingData.samplesStyle})`;
-
-            this._breakdownChart.values = [percentScript * 100, percentLayout * 100, percentPaint * 100, percentStyle * 100];
-            this._breakdownChart.needsLayout();
-
-            let centerElement = this._breakdownChart.centerElement;
-            let samplesElement = centerElement.firstChild;
-            if (!samplesElement) {
-                samplesElement = centerElement.appendChild(document.createElement("div"));
-                samplesElement.classList.add("samples");
-                samplesElement.title = WI.UIString("Time spent on the main thread");
-            }
-
-            let millisecondsStringNoDecimal = WI.UIString("%.0fms").format(nonIdleSamplesCount);
-            samplesElement.textContent = millisecondsStringNoDecimal;
-        }
+        this._statisticsData = this._computeStatisticsData(graphStartTime, visibleEndTime);
+        this._layoutBreakdownChart();
+        this._layoutStatisticsAndSources();
 
         let dataPoints = [];
         let workersDataMap = new Map;
@@ -385,6 +460,7 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         let mainThreadMax = -Infinity;
         let webkitThreadMax = -Infinity;
         let unknownThreadMax = -Infinity;
+        let workerMax = -Infinity;
 
         let min = Infinity;
         let mainThreadMin = Infinity;
@@ -502,13 +578,22 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         webkitThreadAverage /= visibleRecords.length;
         unknownThreadAverage /= visibleRecords.length;
 
-        for (let [workerId, workerData] of workersDataMap)
+        for (let [workerId, workerData] of workersDataMap) {
             workerData.average = workerData.average / workerData.recordsCount;
+            if (workerData.max > workerMax)
+                workerMax = workerData.max;
+        }
 
         // If the graph end time is inside a gap, the last data point should
         // only be extended to the start of the discontinuity.
         if (discontinuities.length)
             visibleEndTime = discontinuities[0].startTime;
+
+        function bestThreadLayoutMax(value) {
+            if (value > 100)
+                return Math.ceil(value);            
+            return (Math.floor(value / 25) + 1) * 25;
+        }
 
         function removeGreaterThan(arr, max) {
             return arr.filter((x) => x <= max);
@@ -546,11 +631,7 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
             }
         }
 
-        // Layout all graphs to the same time scale. The maximum value is
-        // the maximum total CPU usage across all threads.
-        let layoutMax = max;
-
-        function layoutView(view, property, graphHeight, {dataPoints, min, max, average}) {
+        function layoutView(view, property, graphHeight, layoutMax, {dataPoints, min, max, average}) {
             if (min === Infinity)
                 min = 0;
             if (max === -Infinity)
@@ -609,12 +690,17 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
             }
         }
 
-        layoutView(this._cpuUsageView, null, CPUTimelineView.cpuUsageViewHeight, {dataPoints, min, max, average});
+        // Layout the combined graph to the maximum total CPU usage.
+        // Layout all the thread graphs to the same time scale, the maximum across threads / thread groups.
+        this._layoutMax = max;
+        this._threadLayoutMax = bestThreadLayoutMax(Math.max(mainThreadMax, webkitThreadMax, unknownThreadMax, workerMax));
+
+        layoutView(this._cpuUsageView, null, CPUTimelineView.cpuUsageViewHeight, this._layoutMax, {dataPoints, min, max, average});
 
         if (this._threadsDetailsElement.open) {
-            layoutView(this._mainThreadUsageView, "mainThreadUsage", CPUTimelineView.threadCPUUsageViewHeight, {dataPoints, min: mainThreadMin, max: mainThreadMax, average: mainThreadAverage});
-            layoutView(this._webkitThreadUsageView, "webkitThreadUsage", CPUTimelineView.threadCPUUsageViewHeight, {dataPoints, min: webkitThreadMin, max: webkitThreadMax, average: webkitThreadAverage});
-            layoutView(this._unknownThreadUsageView, "unknownThreadUsage", CPUTimelineView.threadCPUUsageViewHeight, {dataPoints, min: unknownThreadMin, max: unknownThreadMax, average: unknownThreadAverage});
+            layoutView(this._mainThreadUsageView, "mainThreadUsage", CPUTimelineView.threadCPUUsageViewHeight, this._threadLayoutMax, {dataPoints, min: mainThreadMin, max: mainThreadMax, average: mainThreadAverage});
+            layoutView(this._webkitThreadUsageView, "webkitThreadUsage", CPUTimelineView.threadCPUUsageViewHeight, this._threadLayoutMax, {dataPoints, min: webkitThreadMin, max: webkitThreadMax, average: webkitThreadAverage});
+            layoutView(this._unknownThreadUsageView, "unknownThreadUsage", CPUTimelineView.threadCPUUsageViewHeight, this._threadLayoutMax, {dataPoints, min: unknownThreadMin, max: unknownThreadMax, average: unknownThreadAverage});
 
             this._removeWorkerThreadViews();
 
@@ -623,11 +709,12 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
                 let displayName = worker ? worker.displayName : WI.UIString("Worker Thread");
                 let workerView = new WI.CPUUsageView(displayName);
                 workerView.element.classList.add("worker-thread");
+                workerView.__workerId = workerId;
                 this.addSubview(workerView);
                 this._threadsDetailsElement.insertBefore(workerView.element, this._webkitThreadUsageView.element);
                 this._workerViews.push(workerView);
 
-                layoutView(workerView, "usage", CPUTimelineView.threadCPUUsageViewHeight, {dataPoints: workerData.dataPoints, min: workerData.min, max: workerData.max, average: workerData.average});
+                layoutView(workerView, "usage", CPUTimelineView.threadCPUUsageViewHeight, this._threadLayoutMax, {dataPoints: workerData.dataPoints, min: workerData.min, max: workerData.max, average: workerData.average});
             }
         }
 
@@ -637,12 +724,361 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
 
         let graphWidth = (graphEndTime - graphStartTime) / secondsPerPixel;
         let size = new WI.Size(graphWidth, CPUTimelineView.indicatorViewHeight);
-        this._mainThreadWorkIndicatorView.updateChart(samplingData.samples, size, visibleEndTime, xScaleIndicatorRange);
+        this._cpuUsageView.updateMainThreadIndicator(this._statisticsData.samples, size, visibleEndTime, xScaleIndicatorRange);
 
         this._layoutEnergyChart(average, visibleDuration);
+
+        this._updateGraphOverlay();
     }
 
     // Private
+
+    _layoutBreakdownChart()
+    {
+        let {samples, samplesScript, samplesLayout, samplesPaint, samplesStyle, samplesIdle} = this._statisticsData;
+
+        let nonIdleSamplesCount = samples.length - samplesIdle;
+        if (!nonIdleSamplesCount) {
+            this._breakdownChart.clear();
+            this._breakdownChart.needsLayout();
+            this._clearBreakdownLegend();
+            return;
+        }
+
+        let percentScript = samplesScript / nonIdleSamplesCount;
+        let percentLayout = samplesLayout / nonIdleSamplesCount;
+        let percentPaint = samplesPaint / nonIdleSamplesCount;
+        let percentStyle = samplesStyle / nonIdleSamplesCount;
+
+        this._breakdownLegendScriptElement.textContent = `${Number.percentageString(percentScript)} (${samplesScript})`;
+        this._breakdownLegendLayoutElement.textContent = `${Number.percentageString(percentLayout)} (${samplesLayout})`;
+        this._breakdownLegendPaintElement.textContent = `${Number.percentageString(percentPaint)} (${samplesPaint})`;
+        this._breakdownLegendStyleElement.textContent = `${Number.percentageString(percentStyle)} (${samplesStyle})`;
+
+        this._breakdownChart.values = [percentScript * 100, percentLayout * 100, percentPaint * 100, percentStyle * 100];
+        this._breakdownChart.needsLayout();
+
+        let centerElement = this._breakdownChart.centerElement;
+        let samplesElement = centerElement.firstChild;
+        if (!samplesElement) {
+            samplesElement = centerElement.appendChild(document.createElement("div"));
+            samplesElement.classList.add("samples");
+            samplesElement.title = WI.UIString("Time spent on the main thread");
+        }
+
+        let millisecondsStringNoDecimal = WI.UIString("%.0fms").format(nonIdleSamplesCount);
+        samplesElement.textContent = millisecondsStringNoDecimal;
+    }
+
+    _layoutStatisticsAndSources()
+    {
+        this._layoutStatisticsSection();
+        this._layoutSourcesSection();
+    }
+
+    _layoutStatisticsSection()
+    {
+        let statistics = this._statisticsData;
+
+        this._clearStatistics();
+
+        this._scriptEntriesNumberElement.textContent = statistics.scriptEntries;
+
+        let createFilterElement = (type, name) => {
+            let span = document.createElement("span");
+            span.className = "filter";
+            span.textContent = name;
+            span.addEventListener("mouseup", (event) => {
+                if (span.classList.contains("active"))
+                    this._removeSourcesFilter(type, name);
+                else
+                    this._addSourcesFilter(type, name);
+
+                this._layoutStatisticsAndSources();
+            });
+
+            span.classList.toggle("active", this._sourcesFilter[type].has(name));
+
+            return span;
+        };
+
+        let expandAllSections = () => {
+            this._sectionLimit = Infinity;
+            this._layoutStatisticsAndSources();
+        };
+
+        function createEllipsisElement() {
+            let span = document.createElement("span");
+            span.className = "show-more";
+            span.role = "button";
+            span.textContent = ellipsis;
+            span.addEventListener("click", (event) => {
+                expandAllSections();
+            });
+            return span;
+        }
+
+        // Sort a Map of key => count values in descending order.
+        function sortMapByEntryCount(map) {
+            let entries = Array.from(map);
+            entries.sort((entryA, entryB) => entryB[1] - entryA[1]);
+            return new Map(entries);
+        }
+
+        if (statistics.timerTypes.size) {
+            let i = 0;
+            let sorted = sortMapByEntryCount(statistics.timerTypes);
+            for (let [timerType, count] of sorted) {
+                let headerValue = i === 0 ? WI.UIString("Timers:") : "";
+                let timerTypeElement = createFilterElement("timer", timerType);
+                this._insertTableRow(this._statisticsTable, this._statisticsRows, {headerValue, numberValue: count, labelValue: timerTypeElement});
+
+                if (++i === this._sectionLimit && sorted.size > this._sectionLimit) {
+                    this._insertTableRow(this._statisticsTable, this._statisticsRows, {labelValue: createEllipsisElement()});
+                    break;
+                }
+            }
+        }
+
+        if (statistics.eventTypes.size) {
+            let i = 0;
+            let sorted = sortMapByEntryCount(statistics.eventTypes);
+            for (let [eventType, count] of sorted) {
+                let headerValue = i === 0 ? WI.UIString("Events:") : "";
+                let eventTypeElement = createFilterElement("event", eventType);
+                this._insertTableRow(this._statisticsTable, this._statisticsRows, {headerValue, numberValue: count, labelValue: eventTypeElement});
+
+                if (++i === this._sectionLimit && sorted.size > this._sectionLimit) {
+                    this._insertTableRow(this._statisticsTable, this._statisticsRows, {labelValue: createEllipsisElement()});
+                    break;
+                }
+            }
+        }
+
+        if (statistics.observerTypes.size) {
+            let i = 0;
+            let sorted = sortMapByEntryCount(statistics.observerTypes);
+            for (let [observerType, count] of sorted) {
+                let headerValue = i === 0 ? WI.UIString("Observers:") : "";
+                let observerTypeElement = createFilterElement("observer", observerType);
+                this._insertTableRow(this._statisticsTable, this._statisticsRows, {headerValue, numberValue: count, labelValue: observerTypeElement});
+
+                if (++i === this._sectionLimit && sorted.size > this._sectionLimit) {
+                    this._insertTableRow(this._statisticsTable, this._statisticsRows, {labelValue: createEllipsisElement()});
+                    break;
+                }
+            }
+        }
+    }
+
+    _layoutSourcesSection()
+    {
+        let statistics = this._statisticsData;
+
+        this._clearSources();
+
+        const unknownLocationKey = "unknown";
+
+        function keyForSourceCodeLocation(sourceCodeLocation) {
+            if (!sourceCodeLocation)
+                return unknownLocationKey;
+
+            return sourceCodeLocation.sourceCode.url + ":" + sourceCodeLocation.lineNumber + ":" + sourceCodeLocation.columnNumber;
+        }
+
+        function labelForLocation(key, sourceCodeLocation, functionName) {
+            if (key === unknownLocationKey) {
+                let span = document.createElement("span");
+                span.className = "unknown";
+                span.textContent = WI.UIString("Unknown Location");
+                return span;
+            }
+
+            const options = {
+                nameStyle: WI.SourceCodeLocation.NameStyle.Short,
+                columnStyle: WI.SourceCodeLocation.ColumnStyle.Shown,
+                dontFloat: true,
+                ignoreNetworkTab: true,
+                ignoreSearchTab: true,
+            };
+            return WI.createSourceCodeLocationLink(sourceCodeLocation, options);
+        }
+
+        let timerFilters = this._sourcesFilter.timer;
+        let eventFilters = this._sourcesFilter.event;
+        let observerFilters = this._sourcesFilter.observer;
+        let hasFilters = (timerFilters.size || eventFilters.size || observerFilters.size);
+
+        let sectionLimit = this._sectionLimit;
+        if (isFinite(sectionLimit) && hasFilters)
+            sectionLimit = CPUTimelineView.defaultSectionLimit * 2;
+
+        let expandAllSections = () => {
+            this._sectionLimit = Infinity;
+            this._layoutStatisticsAndSources();
+        };
+
+        function createEllipsisElement() {
+            let span = document.createElement("span");
+            span.className = "show-more";
+            span.role = "button";
+            span.textContent = ellipsis;
+            span.addEventListener("click", (event) => {
+                expandAllSections();
+            });
+            return span;
+        }
+
+        let timerMap = new Map;
+        let eventHandlerMap = new Map;
+        let observerCallbackMap = new Map;
+        let seenTimers = new Set;
+
+        if (!hasFilters || timerFilters.size) {
+            // Aggregate timers on the location where the timers were installed.
+            // For repeating timers, this includes the total counts the interval fired in the selected time range.
+            for (let record of statistics.timerInstallationRecords) {
+                if (timerFilters.size) {
+                    if (record.eventType === WI.ScriptTimelineRecord.EventType.AnimationFrameRequested && !timerFilters.has("requestAnimationFrame"))
+                        continue;
+                    if (record.eventType === WI.ScriptTimelineRecord.EventType.TimerInstalled && !timerFilters.has("setTimeout"))
+                        continue;
+                }
+
+                let callFrame = record.initiatorCallFrame;
+                let sourceCodeLocation = callFrame ? callFrame.sourceCodeLocation : record.sourceCodeLocation;
+                let functionName = callFrame ? callFrame.functionName : "";
+                let key = keyForSourceCodeLocation(sourceCodeLocation);
+                let entry = timerMap.getOrInitialize(key, {sourceCodeLocation, functionName, count: 0, repeating: false});
+                if (record.details) {
+                    let timerIdentifier = record.details.timerId;
+                    let repeatingEntry = statistics.repeatingTimers.get(timerIdentifier);
+                    let count = repeatingEntry ? repeatingEntry.count : 1;
+                    entry.count += count;
+                    if (record.details.repeating)
+                        entry.repeating = true;
+                    seenTimers.add(timerIdentifier);
+                } else
+                    entry.count += 1;
+            }
+
+            // Aggregate repeating timers where we did not see the installation in the selected time range.
+            // This will use the source code location of where the timer fired, which is better than nothing.
+            if (!hasFilters || timerFilters.has("setTimeout")) {
+                for (let [timerId, repeatingEntry] of statistics.repeatingTimers) {
+                    if (seenTimers.has(timerId))
+                        continue;
+                    // FIXME: <https://webkit.org/b/195351> Web Inspector: CPU Usage Timeline - better resolution of installation source for repeated timers
+                    // We could have a map of all repeating timer installations in the whole recording
+                    // so that we can provide a function name for these repeating timers lacking an installation point.
+                    let sourceCodeLocation = repeatingEntry.record.sourceCodeLocation;
+                    let key = keyForSourceCodeLocation(sourceCodeLocation);
+                    let entry = timerMap.getOrInitialize(key, {sourceCodeLocation, count: 0, repeating: false});
+                    entry.count += repeatingEntry.count;
+                    entry.repeating = true;
+                }
+            }
+        }
+
+        if (!hasFilters || eventFilters.size) {
+            for (let record of statistics.eventHandlerRecords) {
+                if (eventFilters.size && !eventFilters.has(record.details))
+                    continue;
+                let sourceCodeLocation = record.sourceCodeLocation;
+                let key = keyForSourceCodeLocation(sourceCodeLocation);
+                let entry = eventHandlerMap.getOrInitialize(key, {sourceCodeLocation, count: 0});
+                entry.count += 1;
+            }
+        }
+
+        if (!hasFilters || observerFilters.size) {
+            for (let record of statistics.observerCallbackRecords) {
+                if (observerFilters.size && !observerFilters.has(record.details))
+                    continue;
+                let sourceCodeLocation = record.sourceCodeLocation;
+                let key = keyForSourceCodeLocation(record.sourceCodeLocation);
+                let entry = observerCallbackMap.getOrInitialize(key, {sourceCodeLocation, count: 0});
+                entry.count += 1;
+            }
+        }
+
+        const headerValue = "";
+
+        // Sort a Map of key => {count} objects in descending order.
+        function sortMapByEntryCountProperty(map) {
+            let entries = Array.from(map);
+            entries.sort((entryA, entryB) => entryB[1].count - entryA[1].count);
+            return new Map(entries);
+        }
+
+        if (timerMap.size) {
+            let i = 0;
+            let sorted = sortMapByEntryCountProperty(timerMap);
+            for (let [key, entry] of sorted) {
+                let numberValue = entry.repeating ? WI.UIString("~%s", "Approximate Number", "Approximate count of events").format(entry.count) : entry.count;
+                let sourceCodeLocation = entry.callFrame ? entry.callFrame.sourceCodeLocation : entry.sourceCodeLocation;
+                let labelValue = labelForLocation(key, sourceCodeLocation);
+                let followingRow = this._eventHandlersRow;
+
+                let row;
+                if (i === 0) {
+                    row = this._timerInstallationsRow;
+                    this._timerInstallationsNumberElement.textContent = numberValue;
+                    this._timerInstallationsLabelElement.append(labelValue);
+                } else
+                    row = this._insertTableRow(this._sourcesTable, this._sourcesRows, {headerValue, numberValue, labelValue, followingRow});
+
+                if (entry.functionName)
+                    row.querySelector(".label").append(` ${enDash} ${entry.functionName}`);
+
+                if (++i === sectionLimit && sorted.size > sectionLimit) {
+                    this._insertTableRow(this._sourcesTable, this._sourcesRows, {labelValue: createEllipsisElement(), followingRow});
+                    break;
+                }
+            }
+        }
+
+        if (eventHandlerMap.size) {
+            let i = 0;
+            let sorted = sortMapByEntryCountProperty(eventHandlerMap);
+            for (let [key, entry] of sorted) {
+                let numberValue = entry.count;
+                let labelValue = labelForLocation(key, entry.sourceCodeLocation);
+                let followingRow = this._observerHandlersRow;
+
+                if (i === 0) {
+                    this._eventHandlersNumberElement.textContent = numberValue;
+                    this._eventHandlersLabelElement.append(labelValue);
+                } else
+                    this._insertTableRow(this._sourcesTable, this._sourcesRows, {headerValue, numberValue, labelValue, followingRow});
+
+                if (++i === sectionLimit && sorted.size > sectionLimit) {
+                    this._insertTableRow(this._sourcesTable, this._sourcesRows, {labelValue: createEllipsisElement(), followingRow});
+                    break;
+                }
+            }
+        }
+
+        if (observerCallbackMap.size) {
+            let i = 0;
+            let sorted = sortMapByEntryCountProperty(observerCallbackMap);
+            for (let [key, entry] of sorted) {
+                let numberValue = entry.count;
+                let labelValue = labelForLocation(key, entry.sourceCodeLocation);
+
+                if (i === 0) {
+                    this._observerHandlersNumberElement.textContent = numberValue;
+                    this._observerHandlersLabelElement.append(labelValue);
+                } else
+                    this._insertTableRow(this._sourcesTable, this._sourcesRows, {headerValue, numberValue, labelValue});
+
+                if (++i === sectionLimit && sorted.size > sectionLimit) {
+                    this._insertTableRow(this._sourcesTable, this._sourcesRows, {labelValue: createEllipsisElement()});
+                    break;
+                }
+            }
+        }
+    }
 
     _layoutEnergyChart(average, visibleDuration)
     {
@@ -696,7 +1132,7 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         }
     }
 
-    _computeSamplingData(startTime, endTime)
+    _computeStatisticsData(startTime, endTime)
     {
         // Compute per-millisecond samples of what the main thread was doing.
         // We construct an array for every millisecond between the start and end time
@@ -717,23 +1153,78 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
 
         const includeRecordBeforeStart = true;
 
+        function incrementTypeCount(map, key) {
+            let entry = map.get(key);
+            if (entry)
+                map.set(key, entry + 1);
+            else
+                map.set(key, 1);
+        }
+
+        let timerInstallationRecords = [];
+        let eventHandlerRecords = [];
+        let observerCallbackRecords = [];
+        let scriptEntries = 0;
+        let timerTypes = new Map;
+        let eventTypes = new Map;
+        let observerTypes = new Map;
+
+        let repeatingTimers = new Map;
+        let possibleRepeatingTimers = new Set;
+
         let scriptTimeline = this._recording.timelineForRecordType(WI.TimelineRecord.Type.Script);
         let scriptRecords = scriptTimeline ? scriptTimeline.recordsInTimeRange(startTime, endTime, includeRecordBeforeStart) : [];
         scriptRecords = scriptRecords.filter((record) => {
+            // Return true for event types that define script entries/exits.
+            // Return false for events with no time ranges or if they are contained in other events.
             switch (record.eventType) {
             case WI.ScriptTimelineRecord.EventType.ScriptEvaluated:
             case WI.ScriptTimelineRecord.EventType.APIScriptEvaluated:
+                scriptEntries++;
+                return true;
+
             case WI.ScriptTimelineRecord.EventType.ObserverCallback:
+                incrementTypeCount(observerTypes, record.details);
+                observerCallbackRecords.push(record);
+                scriptEntries++;
+                return true;
+
             case WI.ScriptTimelineRecord.EventType.EventDispatched:
+                incrementTypeCount(eventTypes, record.details);
+                eventHandlerRecords.push(record);
+                scriptEntries++;
+                return true;
+
             case WI.ScriptTimelineRecord.EventType.MicrotaskDispatched:
+                // Do not normally count this as a script entry, but they may have a time range
+                // that is not covered by script entry (queueMicrotask).
+                return true;
+
             case WI.ScriptTimelineRecord.EventType.TimerFired:
+                incrementTypeCount(timerTypes, "setTimeout");
+                if (possibleRepeatingTimers.has(record.details)) {
+                    let entry = repeatingTimers.get(record.details);
+                    if (entry)
+                        entry.count += 1;
+                    else
+                        repeatingTimers.set(record.details, {record, count: 1});
+                } else
+                    possibleRepeatingTimers.add(record.details);
+                scriptEntries++;
+                return true;
+
             case WI.ScriptTimelineRecord.EventType.AnimationFrameFired:
-                // These event types define script entry/exits.
+                incrementTypeCount(timerTypes, "requestAnimationFrame");
+                scriptEntries++;
                 return true;
 
             case WI.ScriptTimelineRecord.EventType.AnimationFrameRequested:
-            case WI.ScriptTimelineRecord.EventType.AnimationFrameCanceled:
             case WI.ScriptTimelineRecord.EventType.TimerInstalled:
+                // These event types have no time range, or are contained by the others.
+                timerInstallationRecords.push(record);
+                return false;
+
+            case WI.ScriptTimelineRecord.EventType.AnimationFrameCanceled:
             case WI.ScriptTimelineRecord.EventType.TimerRemoved:
             case WI.ScriptTimelineRecord.EventType.ProbeSampleRecorded:
             case WI.ScriptTimelineRecord.EventType.ConsoleProfileRecorded:
@@ -844,6 +1335,14 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
             samplesLayout,
             samplesPaint,
             samplesStyle,
+            scriptEntries,
+            timerTypes,
+            eventTypes,
+            observerTypes,
+            timerInstallationRecords,
+            eventHandlerRecords,
+            observerCallbackRecords,
+            repeatingTimers,
         };
     }
 
@@ -856,6 +1355,132 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
             this.removeSubview(view);
 
         this._workerViews = [];
+    }
+
+    _resetSourcesFilters()
+    {
+        if (!this._sourcesFilter)
+            return;
+
+        this._sourcesFilterRow.hidden = true;
+        this._sourcesFilterLabelElement.removeChildren();
+
+        this._timerInstallationsRow.hidden = false;
+        this._eventHandlersRow.hidden = false;
+        this._observerHandlersRow.hidden = false;
+
+        this._sourcesFilter.timer.clear();
+        this._sourcesFilter.event.clear();
+        this._sourcesFilter.observer.clear();
+    }
+
+    _addSourcesFilter(type, name)
+    {
+        this._sourcesFilter[type].add(name);
+        this._updateSourcesFilters();
+    }
+
+    _removeSourcesFilter(type, name)
+    {
+        this._sourcesFilter[type].delete(name);
+        this._updateSourcesFilters();
+    }
+
+    _updateSourcesFilters()
+    {
+        let timerFilters = this._sourcesFilter.timer;
+        let eventFilters = this._sourcesFilter.event;
+        let observerFilters = this._sourcesFilter.observer;
+
+        if (!timerFilters.size && !eventFilters.size && !observerFilters.size) {
+            this._resetSourcesFilters();
+            return;
+        }
+
+        let createActiveFilterElement = (type, name) => {
+            let span = document.createElement("span");
+            span.className = "filter active";
+            span.textContent = name;
+            span.addEventListener("mouseup", (event) => {
+                this._removeSourcesFilter(type, name);
+                this._layoutStatisticsAndSources();
+            });
+            return span;
+        }
+
+        this._sourcesFilterRow.hidden = false;
+        this._sourcesFilterLabelElement.removeChildren();
+
+        for (let name of timerFilters)
+            this._sourcesFilterLabelElement.appendChild(createActiveFilterElement("timer", name));
+        for (let name of eventFilters)
+            this._sourcesFilterLabelElement.appendChild(createActiveFilterElement("event", name));
+        for (let name of observerFilters)
+            this._sourcesFilterLabelElement.appendChild(createActiveFilterElement("observer", name));
+
+        this._timerInstallationsRow.hidden = !timerFilters.size;
+        this._eventHandlersRow.hidden = !eventFilters.size;
+        this._observerHandlersRow.hidden = !observerFilters.size;
+    }
+
+    _createTableRow(table)
+    {
+        let row = table.appendChild(document.createElement("tr"));
+
+        let headerCell = row.appendChild(document.createElement("th"));
+
+        let numberCell = row.appendChild(document.createElement("td"));
+        numberCell.className = "number";
+
+        let labelCell = row.appendChild(document.createElement("td"));
+        labelCell.className = "label";
+
+        return {row, headerCell, numberCell, labelCell};
+    }
+
+    _insertTableRow(table, rowList, {headerValue, numberValue, labelValue, followingRow})
+    {
+        let {row, headerCell, numberCell, labelCell} = this._createTableRow(table);
+        rowList.push(row);
+
+        if (followingRow)
+            table.insertBefore(row, followingRow);
+
+        if (headerValue)
+            headerCell.textContent = headerValue;
+
+        if (numberValue)
+            numberCell.textContent = numberValue;
+
+        if (labelValue)
+            labelCell.append(labelValue);
+
+        return row;
+    }
+
+    _clearStatistics()
+    {
+        this._scriptEntriesNumberElement.textContent = emDash;
+
+        for (let row of this._statisticsRows)
+            row.remove();
+        this._statisticsRows = [];
+    }
+
+    _clearSources()
+    {
+        this._timerInstallationsNumberElement.textContent = emDash;
+        this._timerInstallationsLabelElement.textContent = "";
+
+        this._eventHandlersNumberElement.textContent = emDash;
+        this._eventHandlersLabelElement.textContent = "";
+
+        this._observerHandlersNumberElement.textContent = emDash;
+        this._observerHandlersLabelElement.textContent = "";
+
+        for (let row of this._sourcesRows)
+            row.remove();
+        this._sourcesRows = [];
     }
 
     _clearEnergyImpactText()
@@ -891,11 +1516,11 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         if (!chartElement)
             return NaN;
 
-        let chartRect = chartElement.getBoundingClientRect();
-        let position = event.pageX - chartRect.left;
+        let rect = chartElement.getBoundingClientRect();
+        let position = event.pageX - rect.left;
 
         if (WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL)
-            return chartRect.width - position;
+            return rect.width - position;
         return position;
     }
 
@@ -994,10 +1619,23 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         this.dispatchEventToListeners(WI.TimelineView.Event.RecordWasSelected, {record});
     }
 
+    _handleGraphClick(event)
+    {
+        let mousePosition = this._graphPositionForMouseEvent(event);
+        if (isNaN(mousePosition))
+            return;
+
+        this._stickingOverlay = !this._stickingOverlay;
+
+        if (!this._stickingOverlay)
+            this._handleGraphMouseMove(event);
+    }
+
     _handleGraphMouseMove(event)
     {
         let mousePosition = this._graphPositionForMouseEvent(event);
         if (isNaN(mousePosition)) {
+            this._hideGraphOverlay();
             this.dispatchEventToListeners(WI.TimelineView.Event.ScannerHide);
             return;
         }
@@ -1005,8 +1643,166 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         let secondsPerPixel = this._timelineRuler.secondsPerPixel;
         let time = this.startTime + (mousePosition * secondsPerPixel);
 
+        if (!this._stickingOverlay)
+            this._showGraphOverlayNearTo(time);
+
         this.dispatchEventToListeners(WI.TimelineView.Event.ScannerShow, {time});
     }
+
+    _showGraphOverlayNearTo(time)
+    {
+        let nearestRecord = null;
+        let nearestDistance = Infinity;
+
+        // Find the nearest record to the time.
+        for (let record of this._visibleRecordsInLayout) {
+            let distance = Math.abs(time - record.timestamp);
+            if (distance < nearestDistance) {
+                nearestRecord = record;
+                nearestDistance = distance;
+            }
+        }
+
+        if (!nearestRecord) {
+            this._hideGraphOverlay();
+            return;
+        }
+
+        let bestTime = nearestRecord.timestamp;
+
+        // Snap to a discontinuity if closer.
+        for (let {startTime, endTime} of this._discontinuitiesInLayout) {
+            let distance = Math.abs(time - startTime);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                bestTime = startTime;
+            }
+            distance = Math.abs(time - endTime);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                bestTime = endTime;
+            }
+        }
+
+        // Snap to end time if closer.
+        let visibleEndTime = Math.min(this.endTime, this.currentTime);
+        let distance = Math.abs(time - visibleEndTime);
+        if (distance < nearestDistance) {
+            nearestDistance = distance;
+            bestTime = visibleEndTime;
+        }
+
+        let graphStartTime = this.startTime;
+        let adjustedTime = Number.constrain(bestTime, graphStartTime, visibleEndTime);
+        this._showGraphOverlay(nearestRecord, adjustedTime);
+    }
+
+    _updateGraphOverlay()
+    {
+        if (!this._overlayRecord)
+            return;
+
+        this._showGraphOverlay(this._overlayRecord, this._overlayTime, true);
+    }
+
+    _showGraphOverlay(record, time, force)
+    {
+        if (!force && record === this._overlayRecord && time === this._overlayTime)
+            return;
+
+        this._overlayRecord = record;
+        this._overlayTime = time;
+
+        let secondsPerPixel = this._secondsPerPixelInLayout;
+        let graphStartTime = this.startTime;
+
+        this._overlayMarker.time = time + (secondsPerPixel / 2);
+
+        function xScale(time) {
+            return (time - graphStartTime) / secondsPerPixel;
+        }
+
+        let x = xScale(time);
+
+        let {mainThreadUsage, workerThreadUsage, webkitThreadUsage, unknownThreadUsage, workersData} = record;
+
+        function addOverlayPoint(view, graphHeight, layoutMax, value) {
+            if (!value)
+                return;
+
+            let graphMax = layoutMax * 1.05;
+
+            function yScale(value) {
+                return graphHeight - ((value / graphMax) * graphHeight);
+            }
+
+            view.chart.addPointMarker(x, yScale(value));
+            view.chart.needsLayout();
+        }
+
+        this._clearOverlayMarkers();
+
+        this._cpuUsageView.updateLegend(record);
+        addOverlayPoint(this._cpuUsageView, CPUTimelineView.cpuUsageViewHeight, this._layoutMax, mainThreadUsage);
+        addOverlayPoint(this._cpuUsageView, CPUTimelineView.cpuUsageViewHeight, this._layoutMax, mainThreadUsage + workerThreadUsage);
+        addOverlayPoint(this._cpuUsageView, CPUTimelineView.cpuUsageViewHeight, this._layoutMax, mainThreadUsage + workerThreadUsage + webkitThreadUsage + unknownThreadUsage);
+
+        if (this._threadsDetailsElement.open) {
+            this._mainThreadUsageView.updateLegend(mainThreadUsage);
+            addOverlayPoint(this._mainThreadUsageView, CPUTimelineView.threadCPUUsageViewHeight, this._threadLayoutMax, mainThreadUsage);
+
+            this._webkitThreadUsageView.updateLegend(webkitThreadUsage);
+            addOverlayPoint(this._webkitThreadUsageView, CPUTimelineView.threadCPUUsageViewHeight, this._threadLayoutMax, webkitThreadUsage);
+
+            this._unknownThreadUsageView.updateLegend(unknownThreadUsage);
+            addOverlayPoint(this._unknownThreadUsageView, CPUTimelineView.threadCPUUsageViewHeight, this._threadLayoutMax, unknownThreadUsage);
+
+            for (let workerView of this._workerViews)
+                workerView.updateLegend(NaN);
+
+            if (workersData) {
+                for (let {targetId, usage} of workersData) {
+                    let workerView = this._workerViews.find((x) => x.__workerId === targetId);
+                    if (workerView) {
+                        workerView.updateLegend(usage);
+                        addOverlayPoint(workerView, CPUTimelineView.threadCPUUsageViewHeight, this._threadLayoutMax, usage);
+                    }
+                }
+            }
+        }
+    }
+
+    _clearOverlayMarkers()
+    {
+        function clearGraphOverlayElement(view) {
+            view.clearLegend();
+            view.chart.clearPointMarkers();
+            view.chart.needsLayout();
+        }
+
+        clearGraphOverlayElement(this._cpuUsageView);
+        clearGraphOverlayElement(this._mainThreadUsageView);
+        clearGraphOverlayElement(this._webkitThreadUsageView);
+        clearGraphOverlayElement(this._unknownThreadUsageView);
+
+        for (let workerView of this._workerViews)
+            clearGraphOverlayElement(workerView);
+    }
+
+    _hideGraphOverlay()
+    {
+        if (this._stickingOverlay)
+            return;
+
+        this._overlayRecord = null;
+        this._overlayTime = NaN;
+        this._overlayMarker.time = -1;
+        this._clearOverlayMarkers();
+    }
+};
+
+WI.CPUTimelineView.LayoutReason = {
+    Internal: Symbol("cpu-timeline-view-internal-layout"),
 };
 
 // NOTE: UI follows this order.

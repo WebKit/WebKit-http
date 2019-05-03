@@ -32,10 +32,8 @@
 #include "CDMSessionType.h"
 #include <utility>
 #include <wtf/Forward.h>
-#include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
 #include <wtf/TypeCasts.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 

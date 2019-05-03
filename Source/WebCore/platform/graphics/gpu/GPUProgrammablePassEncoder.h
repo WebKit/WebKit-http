@@ -30,12 +30,11 @@
 #include "GPUBindGroupBinding.h"
 #include <wtf/RefCounted.h>
 
-OBJC_PROTOCOL(MTLArgumentEncoder);
 #if USE(METAL)
 OBJC_PROTOCOL(MTLBuffer);
 OBJC_PROTOCOL(MTLCommandEncoder);
 OBJC_PROTOCOL(MTLResource);
-#endif // USE(METAL)
+#endif
 
 namespace WebCore {
 
@@ -49,28 +48,26 @@ class GPUProgrammablePassEncoder : public RefCounted<GPUProgrammablePassEncoder>
 public:
     virtual ~GPUProgrammablePassEncoder() = default;
 
-    void endPass();
-    void setBindGroup(unsigned long, GPUBindGroup&);
-    virtual void setPipeline(Ref<GPURenderPipeline>&&) = 0;
+    virtual void endPass();
+    void setBindGroup(unsigned, GPUBindGroup&);
+    virtual void setPipeline(Ref<const GPURenderPipeline>&&) = 0;
 
 protected:
     GPUProgrammablePassEncoder(Ref<GPUCommandBuffer>&&);
-    virtual PlatformProgrammablePassEncoder* platformPassEncoder() const = 0;
 
     GPUCommandBuffer& commandBuffer() const { return m_commandBuffer.get(); }
+    virtual PlatformProgrammablePassEncoder* platformPassEncoder() const = 0;
 
 private:
 #if USE(METAL)
-    void setResourceAsBufferOnEncoder(MTLArgumentEncoder *, const GPUBindingResource&, unsigned long, const char* const);
-    virtual void useResource(MTLResource *, unsigned long) = 0;
+    virtual void useResource(MTLResource *, unsigned) = 0;
 
     // Render command encoder methods.
-    virtual void setVertexBuffer(MTLBuffer *, unsigned long, unsigned long) { }
-    virtual void setFragmentBuffer(MTLBuffer *, unsigned long, unsigned long) { }
+    virtual void setVertexBuffer(MTLBuffer *, unsigned, unsigned) { }
+    virtual void setFragmentBuffer(MTLBuffer *, unsigned, unsigned) { }
 #endif // USE(METAL)
 
     Ref<GPUCommandBuffer> m_commandBuffer;
-    bool m_isEncoding { true };
 };
 
 } // namespace WebCore

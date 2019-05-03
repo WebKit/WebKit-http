@@ -26,11 +26,11 @@
 #include "WebKitDLL.h"
 #include "WebEditorClient.h"
 
+#include "DOMCoreClasses.h"
 #include "WebKit.h"
 #include "WebNotification.h"
 #include "WebNotificationCenter.h"
 #include "WebView.h"
-#include "DOMCoreClasses.h"
 #include <comutil.h>
 #include <WebCore/BString.h>
 #include <WebCore/Document.h>
@@ -48,6 +48,7 @@
 #include <WebCore/UserTypingGestureIndicator.h>
 #include <WebCore/VisibleSelection.h>
 #include <wtf/text/StringView.h>
+#include <wtf/text/win/WCharStringExtras.h>
 
 using namespace WebCore;
 using namespace HTMLNames;
@@ -520,9 +521,9 @@ private:
 };
 
 WebEditorUndoCommand::WebEditorUndoCommand(UndoStep& step, bool isUndo)
-    : m_step(step)
-    , m_isUndo(isUndo) 
-    , m_refCount(1)
+    : m_refCount(1)
+    , m_step(step)
+    , m_isUndo(isUndo)
 { 
 }
 
@@ -622,8 +623,8 @@ static String undoNameForEditAction(EditAction editAction)
     case EditAction::FormatBlock: return WEB_UI_STRING_KEY("Formatting", "Format Block (Undo action name)", "Undo action name");
     case EditAction::Indent: return WEB_UI_STRING_KEY("Indent", "Indent (Undo action name)", "Undo action name");
     case EditAction::Outdent: return WEB_UI_STRING_KEY("Outdent", "Outdent (Undo action name)", "Undo action name");
+    default: return String();
     }
-    return String();
 }
 
 void WebEditorClient::registerUndoStep(UndoStep& step)
@@ -758,7 +759,7 @@ void WebEditorClient::checkSpellingOfString(StringView text, int* misspellingLoc
         return;
 
     initViewSpecificSpelling(m_webView);
-    ed->checkSpellingOfString(m_webView, text.upconvertedCharacters(), text.length(), misspellingLocation, misspellingLength);
+    ed->checkSpellingOfString(m_webView, wcharFrom(text.upconvertedCharacters()), text.length(), misspellingLocation, misspellingLength);
 }
 
 String WebEditorClient::getAutoCorrectSuggestionForMisspelledWord(const String& inputWord)
@@ -780,7 +781,7 @@ void WebEditorClient::checkGrammarOfString(StringView text, Vector<GrammarDetail
 
     initViewSpecificSpelling(m_webView);
     COMPtr<IEnumWebGrammarDetails> enumDetailsObj;
-    if (FAILED(ed->checkGrammarOfString(m_webView, text.upconvertedCharacters(), text.length(), &enumDetailsObj, badGrammarLocation, badGrammarLength)))
+    if (FAILED(ed->checkGrammarOfString(m_webView, wcharFrom(text.upconvertedCharacters()), text.length(), &enumDetailsObj, badGrammarLocation, badGrammarLength)))
         return;
 
     while (true) {

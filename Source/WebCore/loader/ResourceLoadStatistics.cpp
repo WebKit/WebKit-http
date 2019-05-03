@@ -93,6 +93,8 @@ void ResourceLoadStatistics::encode(KeyedEncoder& encoder) const
     // Top frame stats
     encodeHashSet(encoder, "topFrameUniqueRedirectsTo"_s, "domain"_s, topFrameUniqueRedirectsTo);
     encodeHashSet(encoder, "topFrameUniqueRedirectsFrom"_s, "domain"_s, topFrameUniqueRedirectsFrom);
+    encodeHashSet(encoder, "topFrameLinkDecorationsFrom"_s, "domain", topFrameLinkDecorationsFrom);
+    encoder.encodeBool("gotLinkDecorationFromPrevalentResource"_s, gotLinkDecorationFromPrevalentResource);
 
     // Subframe stats
     encodeHashSet(encoder, "subframeUnderTopFrameDomains"_s, "domain"_s, subframeUnderTopFrameDomains);
@@ -215,6 +217,12 @@ bool ResourceLoadStatistics::decode(KeyedDecoder& decoder, unsigned modelVersion
         decodeHashCountedSet(decoder, "topFrameUniqueRedirectsFrom", topFrameUniqueRedirectsFromCounted);
         for (auto& domain : topFrameUniqueRedirectsFromCounted.values())
             topFrameUniqueRedirectsFrom.add(domain);
+    }
+
+    if (modelVersion >= 16) {
+        decodeHashSet(decoder, "topFrameLinkDecorationsFrom", "domain", topFrameLinkDecorationsFrom);
+        if (!decoder.decodeBool("gotLinkDecorationFromPrevalentResource", gotLinkDecorationFromPrevalentResource))
+            return false;
     }
 
     // Subframe stats
@@ -404,14 +412,14 @@ String ResourceLoadStatistics::toString() const
     builder.append(registrableDomain.string());
     builder.append('\n');
     builder.appendLiteral("    lastSeen: ");
-    builder.appendNumber(lastSeen.secondsSinceEpoch().value());
+    builder.appendFixedPrecisionNumber(lastSeen.secondsSinceEpoch().value());
     builder.append('\n');
     
     // User interaction
     appendBoolean(builder, "hadUserInteraction", hadUserInteraction);
     builder.append('\n');
     builder.appendLiteral("    mostRecentUserInteraction: ");
-    builder.appendNumber(mostRecentUserInteractionTime.secondsSinceEpoch().value());
+    builder.appendFixedPrecisionNumber(mostRecentUserInteractionTime.secondsSinceEpoch().value());
     builder.append('\n');
     appendBoolean(builder, "grandfathered", grandfathered);
     builder.append('\n');
@@ -422,6 +430,8 @@ String ResourceLoadStatistics::toString() const
     // Top frame stats
     appendHashSet(builder, "topFrameUniqueRedirectsTo", topFrameUniqueRedirectsTo);
     appendHashSet(builder, "topFrameUniqueRedirectsFrom", topFrameUniqueRedirectsFrom);
+    appendHashSet(builder, "topFrameLinkDecorationsFrom", topFrameLinkDecorationsFrom);
+    appendBoolean(builder, "gotLinkDecorationFromPrevalentResource", gotLinkDecorationFromPrevalentResource);
 
     // Subframe stats
     appendHashSet(builder, "subframeUnderTopFrameDomains", subframeUnderTopFrameDomains);
@@ -496,6 +506,8 @@ void ResourceLoadStatistics::merge(const ResourceLoadStatistics& other)
     // Top frame stats
     mergeHashSet(topFrameUniqueRedirectsTo, other.topFrameUniqueRedirectsTo);
     mergeHashSet(topFrameUniqueRedirectsFrom, other.topFrameUniqueRedirectsFrom);
+    mergeHashSet(topFrameLinkDecorationsFrom, other.topFrameLinkDecorationsFrom);
+    gotLinkDecorationFromPrevalentResource |= other.gotLinkDecorationFromPrevalentResource;
 
     // Subframe stats
     mergeHashSet(subframeUnderTopFrameDomains, other.subframeUnderTopFrameDomains);

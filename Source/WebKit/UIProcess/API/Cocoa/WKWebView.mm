@@ -49,6 +49,7 @@
 #import "RemoteObjectRegistry.h"
 #import "RemoteObjectRegistryMessages.h"
 #import "SafeBrowsingWarning.h"
+#import "TextInputContext.h"
 #import "UIDelegate.h"
 #import "UserMediaProcessManager.h"
 #import "VersionChecks.h"
@@ -96,6 +97,7 @@
 #import "_WKInspectorInternal.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
+#import "_WKTextInputContextInternal.h"
 #import "_WKVisitedLinkStoreInternal.h"
 #import "_WKWebsitePoliciesInternal.h"
 #import <WebCore/GraphicsContextCG.h>
@@ -2453,7 +2455,17 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     [_scrollView _zoomToCenter:newCenter scale:scale duration:formControlZoomAnimationDuration force:YES];
 }
 
-- (CGFloat)_targetContentZoomScaleForRect:(const WebCore::FloatRect&)targetRect currentScale:(double)currentScale fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale
+- (double)_initialScaleFactor
+{
+    return _initialScaleFactor;
+}
+
+- (double)_contentZoomScale
+{
+    return contentZoomScale(self);
+}
+
+- (double)_targetContentZoomScaleForRect:(const WebCore::FloatRect&)targetRect currentScale:(double)currentScale fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale
 {
     WebCore::FloatSize unobscuredContentSize([self _contentRectForUserInteraction].size);
     double horizontalScale = unobscuredContentSize.width() * currentScale / targetRect.width();
@@ -4824,6 +4836,72 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
         Ref<WebKit::WebProcessProxy> protectedProcessProxy(provisionalPageProxy->process());
         protectedProcessProxy->requestTermination(WebKit::ProcessTerminationReason::RequestedByClient);
     }
+}
+
+- (CGRect)_convertRectFromRootViewCoordinates:(CGRect)rectInRootViewCoordinates
+{
+    // FIXME: It should be easier to talk about WKWebView coordinates in a consistent and cross-platform way.
+    // Currently, neither "root view" nor "window" mean "WKWebView coordinates" on both platforms.
+    // See https://webkit.org/b/193649 and related bugs.
+#if PLATFORM(IOS_FAMILY)
+    return [self convertRect:rectInRootViewCoordinates fromView:_contentView.get()];
+#else
+    return rectInRootViewCoordinates;
+#endif
+}
+
+- (CGRect)_convertRectToRootViewCoordinates:(CGRect)rectInWebViewCoordinates
+{
+#if PLATFORM(IOS_FAMILY)
+    return [self convertRect:rectInWebViewCoordinates toView:_contentView.get()];
+#else
+    return rectInWebViewCoordinates;
+#endif
+}
+
+- (void)_requestTextInputContextsInRect:(CGRect)rectInWebViewCoordinates completionHandler:(void(^)(NSArray<_WKTextInputContext *> *))completionHandler
+{
+#if PLATFORM(IOS_FAMILY)
+    if (![self usesStandardContentView]) {
+        completionHandler(@[]);
+        return;
+    }
+#endif
+
+    CGRect rectInRootViewCoordinates = [self _convertRectToRootViewCoordinates:rectInWebViewCoordinates];
+    auto weakSelf = WeakObjCPtr<WKWebView>(self);
+    _page->textInputContextsInRect(rectInRootViewCoordinates, [weakSelf, capturedCompletionHandler = makeBlockPtr(completionHandler)] (const Vector<WebKit::TextInputContext>& contexts) {
+        RetainPtr<NSMutableArray> elements = adoptNS([[NSMutableArray alloc] initWithCapacity:contexts.size()]);
+
+        auto strongSelf = weakSelf.get();
+        for (const auto& context : contexts) {
+            WebKit::TextInputContext contextWithWebViewBoundingRect = context;
+            contextWithWebViewBoundingRect.boundingRect = [strongSelf _convertRectFromRootViewCoordinates:context.boundingRect];
+            [elements addObject:adoptNS([[_WKTextInputContext alloc] _initWithTextInputContext:contextWithWebViewBoundingRect]).get()];
+        }
+
+        capturedCompletionHandler(elements.get());
+    });
+}
+
+- (void)_focusTextInputContext:(_WKTextInputContext *)textInputContext completionHandler:(void(^)(BOOL))completionHandler
+{
+#if PLATFORM(IOS_FAMILY)
+    if (![self usesStandardContentView]) {
+        completionHandler(NO);
+        return;
+    }
+#endif
+
+    auto webContext = [textInputContext _textInputContext];
+    if (webContext.webPageIdentifier != _page->pageID())
+        [NSException raise:NSInvalidArgumentException format:@"The provided _WKTextInputContext was not created by this WKWebView."];
+
+    [self becomeFirstResponder];
+
+    _page->focusTextInputContext(webContext, [capturedCompletionHandler = makeBlockPtr(completionHandler)](bool success) {
+        capturedCompletionHandler(success);
+    });
 }
 
 #if PLATFORM(MAC)

@@ -27,6 +27,8 @@
 
 #if PLATFORM(IOS_FAMILY)
 
+#include "PlatformEvent.h"
+#include "Timer.h"
 #include "WKContentObservation.h"
 
 namespace WebCore {
@@ -38,11 +40,13 @@ class ContentChangeObserver {
 public:
     ContentChangeObserver(Document&);
 
+    WEBCORE_EXPORT void startContentObservationForDuration(Seconds duration);
     WEBCORE_EXPORT WKContentChange observedContentChange() const;
 
     void didInstallDOMTimer(const DOMTimer&, Seconds timeout, bool singleShot);
     void didRemoveDOMTimer(const DOMTimer&);
-    void contentVisibilityDidChange();
+    WEBCORE_EXPORT void willNotProceedWithClick();
+    WEBCORE_EXPORT static void didRecognizeLongPress(Frame& mainframe);
     void didSuspendActiveDOMObjects();
     void willDetachPage();
 
@@ -52,12 +56,21 @@ public:
         ~StyleChangeScope();
 
     private:
+        bool isConsideredHidden() const;
+        bool isConsideredClickable() const;
+
         ContentChangeObserver& m_contentChangeObserver;
         const Element& m_element;
-        bool m_needsObserving { false };
-        DisplayType m_previousDisplay;
-        Visibility m_previousVisibility;
-        Visibility m_previousImplicitVisibility;
+        bool m_wasHidden { false };
+        bool m_hadRenderer { false };
+    };
+
+    class TouchEventScope {
+    public:
+        WEBCORE_EXPORT TouchEventScope(Document&, PlatformEvent::Type);
+        WEBCORE_EXPORT ~TouchEventScope();
+    private:
+        ContentChangeObserver& m_contentChangeObserver;
     };
 
     class MouseMovedScope {
@@ -86,8 +99,15 @@ public:
     };
 
 private:
+    void touchEventDidStart(PlatformEvent::Type);
+    void touchEventDidFinish();
+
     void mouseMovedDidStart();
     void mouseMovedDidFinish();
+
+    void didRecognizeLongPress();
+
+    void contentVisibilityDidChange();
 
     void setShouldObserveDOMTimerScheduling(bool observe) { m_isObservingDOMTimerScheduling = observe; }
     bool isObservingDOMTimerScheduling() const { return m_isObservingDOMTimerScheduling; }
@@ -95,17 +115,17 @@ private:
     void domTimerExecuteDidFinish(const DOMTimer&);
     void registerDOMTimer(const DOMTimer& timer) { m_DOMTimerList.add(&timer); }
     void unregisterDOMTimer(const DOMTimer& timer) { m_DOMTimerList.remove(&timer); }
+    void clearObservedDOMTimers() { m_DOMTimerList.clear(); }
     bool containsObservedDOMTimer(const DOMTimer& timer) const { return m_DOMTimerList.contains(&timer); }
 
     void styleRecalcDidStart();
     void styleRecalcDidFinish();
     void setShouldObserveNextStyleRecalc(bool);
-    bool isObservingStyleRecalc() const { return m_isObservingStyleRecalc; }
+    bool isWaitingForStyleRecalc() const { return m_isWaitingForStyleRecalc; }
 
-    bool isObservingContentChanges() const { return m_domTimerIsBeingExecuted || m_styleRecalcIsBeingExecuted; }
+    bool isObservingContentChanges() const;
 
-    void clearObservedDOMTimers() { m_DOMTimerList.clear(); }
-    void clearTimersAndReportContentChange();
+    void cancelPendingActivities();
 
     void setHasIndeterminateState();
     void setHasVisibleChangeState();
@@ -115,30 +135,42 @@ private:
     bool hasObservedDOMTimer() const { return !m_DOMTimerList.isEmpty(); }
     bool hasDeterminateState() const;
 
-    bool hasPendingActivity() const { return hasObservedDOMTimer() || m_document.hasPendingStyleRecalc(); }
-#if !ASSERT_DISABLED
-    bool isNotifyContentChangeAllowed() const { return !m_mouseMovedIsBeingDispatched; }
-#endif
+    void setIsBetweenTouchEndAndMouseMoved(bool isBetween) { m_isBetweenTouchEndAndMouseMoved = isBetween; }
+    bool isBetweenTouchEndAndMouseMoved() const { return m_isBetweenTouchEndAndMouseMoved; }
+
+    bool hasPendingActivity() const { return hasObservedDOMTimer() || m_isWaitingForStyleRecalc || isObservationTimeWindowActive(); }
+    bool isObservationTimeWindowActive() const { return m_contentObservationTimer.isActive(); }
+
+    void completeDurationBasedContentObservation();
 
     enum class Event {
+        StartedTouchStartEventDispatching,
+        EndedTouchStartEventDispatching,
+        WillNotProceedWithClick,
         StartedMouseMovedEventDispatching,
+        EndedMouseMovedEventDispatching,
         InstalledDOMTimer,
         RemovedDOMTimer,
+        StartedDOMTimerExecution,
         EndedDOMTimerExecution,
-        StyleRecalcFinished,
+        StartedStyleRecalc,
+        EndedStyleRecalc,
+        StartedFixedObservationTimeWindow,
+        EndedFixedObservationTimeWindow,
         ContentVisibilityChanged
     };
     void adjustObservedState(Event);
 
     Document& m_document;
+    Timer m_contentObservationTimer;
     HashSet<const DOMTimer*> m_DOMTimerList;
-    bool m_isObservingStyleRecalc { false };
-    bool m_styleRecalcIsBeingExecuted { false };
+    bool m_touchEventIsBeingDispatched { false };
+    bool m_isWaitingForStyleRecalc { false };
+    bool m_isInObservedStyleRecalc { false };
     bool m_isObservingDOMTimerScheduling { false };
-    bool m_domTimerIsBeingExecuted { false };
-#if !ASSERT_DISABLED
-    bool m_mouseMovedIsBeingDispatched { false };
-#endif
+    bool m_observedDomTimerIsBeingExecuted { false };
+    bool m_mouseMovedEventIsBeingDispatched { false };
+    bool m_isBetweenTouchEndAndMouseMoved { false };
 };
 
 inline void ContentChangeObserver::setHasNoChangeState()
@@ -157,5 +189,15 @@ inline void ContentChangeObserver::setHasVisibleChangeState()
     WKSetObservedContentChange(WKContentVisibilityChange);
 }
 
+inline bool ContentChangeObserver::isObservingContentChanges() const
+{
+    return m_touchEventIsBeingDispatched
+        || m_isBetweenTouchEndAndMouseMoved
+        || m_mouseMovedEventIsBeingDispatched
+        || m_observedDomTimerIsBeingExecuted
+        || m_isInObservedStyleRecalc
+        || m_contentObservationTimer.isActive();
+    }
 }
+
 #endif

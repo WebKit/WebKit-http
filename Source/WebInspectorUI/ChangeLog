@@ -1,3 +1,862 @@
+2019-03-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: allow image collections to be filtered by type
+        https://bugs.webkit.org/show_bug.cgi?id=195630
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ResourceCollectionContentView.js:
+        (WI.ResourceCollectionContentView):
+        (WI.ResourceCollectionContentView.prototype.get navigationItems): Added.
+        (WI.ResourceCollectionContentView.prototype.contentViewAdded):
+        (WI.ResourceCollectionContentView.prototype.contentViewRemoved): Added.
+        (WI.ResourceCollectionContentView.prototype._updateImageTypeScopeBar): Added.
+        (WI.ResourceCollectionContentView.prototype._handleImageTypeSelectionChanged): Added.
+        * UserInterface/Views/ResourceCollectionContentView.css: Asdded.
+        (.resource-collection-image-type-scope-bar.default-item-selected):
+
+        * UserInterface/Views/CollectionContentView.css:
+        (.content-view.collection > .content-view[hidden]): Added.
+
+        * UserInterface/Views/ScopeBarItem.js:
+        (WI.ScopeBarItem.prototype.set hidden):
+        * UserInterface/Views/MultipleScopeBarItem.js:
+        (WI.MultipleScopeBarItem.prototype.set scopeBarItems):
+        (WI.MultipleScopeBarItem.prototype.set selectedScopeBarItem):
+        (WI.MultipleScopeBarItem.prototype.get _visibleScopeBarItems): Added.
+        (WI.MultipleScopeBarItem.prototype._selectElementSelectionChanged):
+        (WI.MultipleScopeBarItem.prototype._handleItemHiddenChanged): Added.
+        Dispatch an event when an item is hidden so that any owner `WI.MultipleScopeBarItem` can
+        rerender it's <select> without that item.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+
+2019-03-12  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Keyboard shortcut for settings tab too greedy on non-US keyboards
+        https://bugs.webkit.org/show_bug.cgi?id=192947
+        <rdar://problem/46886779>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Main.js:
+        (WI._showSettingsTab):
+
+2019-03-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: provide node context menu items for event listeners sorted by node
+        https://bugs.webkit.org/show_bug.cgi?id=195633
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/DOMUtilities.js:
+        (WI.linkifyNodeReferenceElement):
+        (WI.bindInteractionsForNodeToElement): Added.
+        Split logic for adding event listeners into a separate function so it can be used on
+        existing DOM without modifying it.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.generateGroupsByNode):
+
+2019-03-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM Debugger: remove left padding when the last DOM breakpoint is removed
+        https://bugs.webkit.org/show_bug.cgi?id=195522
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView.prototype._updateBreakpointStatus):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.get hasBreakpoint): Added.
+
+2019-03-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: export recording as HTML
+        https://bugs.webkit.org/show_bug.cgi?id=195311
+        <rdar://problem/48588673>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording.prototype.async swizzle):
+        (WI.Recording.prototype.toHTML): Added.
+        (WI.Recording.prototype.toHTML.escapeHTML): Added.
+        (WI.Recording.prototype.toHTML.processObject): Added.
+        (WI.Recording.prototype.toHTML.processValue): Added.
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView):
+        (WI.RecordingContentView.prototype._exportRecording):
+        (WI.RecordingContentView.prototype._exportReduction): Added.
+        (WI.RecordingContentView.prototype._updateExportButton): Added.
+        (WI.RecordingContentView.prototype._handleExportNavigationItemClicked): Added.
+        (WI.RecordingContentView.prototype._handleRecordingProcessedAction):
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView):
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WI.HeapAllocationsTimelineView):
+        * UserInterface/Views/HeapSnapshotContentView.js:
+        (WI.HeapSnapshotContentView):
+        Drive-by: s/`toolTip`/`tooltip`.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: there should be a centralized place for reusable code
+        https://bugs.webkit.org/show_bug.cgi?id=195265
+        <rdar://problem/47040673>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.async start):
+        (WI.AuditManager.prototype._topLevelTestForTest): Added.
+        (WI.AuditManager.prototype._topLevelTestForTest.walk): Added.
+
+        * UserInterface/Models/AuditTestBase.js:
+        (WI.AuditTestBase):
+        (WI.AuditTestBase.prototype.async setup): Added.
+        (WI.AuditTestBase.toJSON):
+
+        * UserInterface/Models/AuditTestCase.js:
+        (WI.AuditTestCase.async.fromPayload):
+        (WI.AuditTestCase.prototype.async run.async parseResponse):
+        Allow additional data to be passed back to the result's `data` for testing.
+
+        * UserInterface/Models/AuditTestGroup.js:
+        (WI.AuditTestGroup.async.fromPayload):
+
+2019-03-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timelines - Improve handling of past recordings (readonly)
+        https://bugs.webkit.org/show_bug.cgi?id=195594
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView.prototype._clearTimeline):
+        Don't allow clearing of a readonly recording.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView.prototype._toggleRecordingOnSpacebar):
+        Don't do anything when viewing a readonly recording.
+
+        (WI.TimelineTabContentView.prototype._recordButtonClicked):
+        Start a new recording if viewing a readonly recording.
+
+2019-03-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: REGRESSION: Network Cookies Table does not load
+        https://bugs.webkit.org/show_bug.cgi?id=195599
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ResourceCookiesContentView.js:
+        (WI.ResourceCookiesContentView.prototype.tableIndexForRepresentedObject):
+        (WI.ResourceCookiesContentView.prototype.tableRepresentedObjectForIndex):
+        Include needed delegate methods.
+
+2019-03-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: use -webkit-{margin,padding}-{start,end} instead of [dir={ltr/rtl}] rules
+        https://bugs.webkit.org/show_bug.cgi?id=195569
+        <rdar://problem/48778727>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Debug/UncaughtExceptionReporter.css:
+        * UserInterface/Views/BoxModelDetailsSectionRow.css:
+        * UserInterface/Views/BreakpointActionView.css:
+        * UserInterface/Views/BreakpointPopoverController.css:
+        * UserInterface/Views/CPUTimelineView.css:
+        * UserInterface/Views/CallFrameTreeElement.css:
+        * UserInterface/Views/CallFrameView.css:
+        * UserInterface/Views/DOMTreeContentView.css:
+        * UserInterface/Views/DOMTreeOutline.css:
+        * UserInterface/Views/DashboardContainerView.css:
+        * UserInterface/Views/DataGrid.css:
+        * UserInterface/Views/DebuggerDashboardView.css:
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        * UserInterface/Views/DefaultDashboardView.css:
+        * UserInterface/Views/DetailsSection.css:
+        * UserInterface/Views/FilterBar.css:
+        * UserInterface/Views/FindBanner.css:
+        * UserInterface/Views/FontResourceContentView.css:
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.css:
+        * UserInterface/Views/HierarchicalPathComponent.css:
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.css:
+        * UserInterface/Views/Main.css:
+        * UserInterface/Views/NetworkTableContentView.css:
+        * UserInterface/Views/OpenResourceDialog.css:
+        * UserInterface/Views/RecordingActionTreeElement.css:
+        * UserInterface/Views/ScopeRadioButtonNavigationItem.css:
+        * UserInterface/Views/SettingsTabContentView.css:
+        * UserInterface/Views/ThreadTreeElement.css:
+        * UserInterface/Views/Toolbar.css:
+        * UserInterface/Views/TreeOutline.css:
+        * UserInterface/Views/TypeTreeElement.css:
+        * UserInterface/Views/TypeTreeView.css:
+        * UserInterface/Views/URLBreakpointPopover.css:
+        * UserInterface/Views/WebSocketContentView.css:
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement.static _getClassNames):
+        Replace class `.action` with `.recording-action` for better uniqueness/clarity.
+
+2019-03-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOMDebugger: protocol error on first open
+        https://bugs.webkit.org/show_bug.cgi?id=195248
+        <rdar://problem/48538465>
+
+        Unreviewed followup of r242743 to fix test inspector/dom-debugger/dom-breakpoints.html.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager.prototype.addDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype._resolveDOMBreakpoint):
+        Still attempt to resolve the DOM breakpoint if it already has a `domNodeIdentifier` so that
+        it will get added to the node's frame's DOM breakpoint map. Without this, some breakpoints
+        might get "missed" when calling `WI.domDebuggerManager.removeDOMBreakpointsForNode`.
+
+2019-03-11  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Update GPUSwapChainDescriptor, GPUSwapChain and implement GPUCanvasContext
+        https://bugs.webkit.org/show_bug.cgi?id=194406
+        <rdar://problem/47892466>
+
+        Reviewed by Myles C. Maxfield.
+
+        Name updates for Web GPU renaming in inspector.
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.displayNameForContextType):
+
+2019-03-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Editing Timelines shows two CPU Timelines
+        https://bugs.webkit.org/show_bug.cgi?id=195578
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.availableTimelineTypes):
+        The CPU Instrument is already in the default list.
+
+2019-03-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOMDebugger: protocol error on first open
+        https://bugs.webkit.org/show_bug.cgi?id=195248
+        <rdar://problem/48538465>
+
+        Reviewed by Joseph Pecoraro.
+
+        Don't try to call `DOMDebugger` commands until a target has been initialized.
+        Still attempt to resolve DOM breakpoints whenever the main resource/frame changes.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager):
+        (WI.DOMDebuggerManager.prototype.initializeTarget): Added.
+        (WI.DOMDebuggerManager.supportsEventBreakpoints):
+        (WI.DOMDebuggerManager.prototype.get supported):
+        (WI.DOMDebuggerManager.prototype.addDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype.addEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype.addURLBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeURLBreakpoint):
+        (WI.DOMDebuggerManager.prototype._speculativelyResolveDOMBreakpointsForURL): Added.
+        (WI.DOMDebuggerManager.prototype._resolveDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype._updateDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype._updateEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype._updateURLBreakpoint):
+        (WI.DOMDebuggerManager.prototype._saveDOMBreakpoints):
+        (WI.DOMDebuggerManager.prototype._handleDOMBreakpointDisabledStateChanged):
+        (WI.DOMDebuggerManager.prototype._handleEventBreakpointDisabledStateChanged):
+        (WI.DOMDebuggerManager.prototype._handleURLBreakpointDisabledStateChanged):
+        (WI.DOMDebuggerManager.prototype._mainFrameDidChange):
+        (WI.DOMDebuggerManager.prototype._mainResourceDidChange):
+        (WI.DOMDebuggerManager.prototype.removeEventBreakpoint.breakpointRemoved): Deleted.
+        (WI.DOMDebuggerManager.prototype._speculativelyResolveBreakpoints): Deleted.
+        (WI.DOMDebuggerManager.prototype._updateDOMBreakpoint.breakpointUpdated): Deleted.
+        (WI.DOMDebuggerManager.prototype._resolveEventBreakpoint): Deleted.
+        (WI.DOMDebuggerManager.prototype._resolveURLBreakpoint): Deleted.
+
+        * UserInterface/Base/Multimap.js: Added.
+        (Multimap):
+        (Multimap.prototype.get):
+        (Multimap.prototype.add):
+        (Multimap.prototype.delete):
+        (Multimap.prototype.clear):
+        (Multimap.prototype.keys):
+        (Multimap.prototype.*values):
+        (Multimap.prototype.*[Symbol.iterator]):
+        (Multimap.prototype.toJSON):
+        * .eslintrc:
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        Helper data structure for managing Maps of Sets (e.g. all DOM breakpoints for a URL).
+
+2019-03-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Enable by default
+        https://bugs.webkit.org/show_bug.cgi?id=195471
+
+        Reviewed by Devin Rousso.
+
+        Remove experimental setting and include the CPU timeline in the
+        default set of timelines.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.defaultTimelineTypes):
+        * UserInterface/Main.html:
+        * UserInterface/Views/CPUTimelineOverviewGraph.css:
+        (.timeline-overview-graph.cpu > .stacked-column-chart > svg > rect.selected):
+        (.timeline-overview-graph.cpu > .column-chart > svg > rect): Deleted.
+        (body[dir=rtl] .timeline-overview-graph.cpu > .column-chart): Deleted.
+        * UserInterface/Views/CPUTimelineOverviewGraph.js:
+        (WI.CPUTimelineOverviewGraph):
+        (WI.CPUTimelineOverviewGraph.prototype.layout):
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.createFromRepresentedObject):
+        * UserInterface/Views/LegacyCPUTimelineView.css: Removed.
+        * UserInterface/Views/LegacyCPUTimelineView.js: Removed.
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+2019-03-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Better Thread chart layout values
+        https://bugs.webkit.org/show_bug.cgi?id=195547
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype.layout.bestThreadLayoutMax):
+        (WI.CPUTimelineView.prototype.layout.layoutView):
+        (WI.CPUTimelineView.prototype._showGraphOverlay):
+        Include a separate layoutMax for the combined view and a thread layoutMax
+        for the thread groups.
+
+2019-03-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Add legend and graph hover effects
+        https://bugs.webkit.org/show_bug.cgi?id=195390
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New strings for the legends.
+
+        * UserInterface/Main.html:
+        Combined files.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        (@media (prefers-color-scheme: dark)):
+        Tweaked colors, including individual stroke and fill colors for each CPU section.
+
+        * UserInterface/Views/CPUTimelineOverviewGraph.css:
+        (.timeline-overview-graph.cpu > .stacked-column-chart > svg > rect.total-usage):
+        (.timeline-overview-graph.cpu > .stacked-column-chart > svg > rect.main-thread-usage):
+        (.timeline-overview-graph.cpu > .stacked-column-chart > svg > rect.worker-thread-usage):
+        Updated colors.
+
+        * UserInterface/Views/CPUUsageCombinedView.css: Renamed from Source/WebInspectorUI/UserInterface/Views/CPUUsageStackedView.css.
+        (.cpu-usage-combined-view > .details > .legend-container):
+        (.cpu-usage-combined-view > .details > .legend-container > .row):
+        (.cpu-usage-combined-view > .details > .legend-container > .row + .row):
+        (.cpu-usage-combined-view > .details > .legend-container > .row > .swatch):
+        * UserInterface/Views/CPUUsageCombinedView.js: Renamed from Source/WebInspectorUI/UserInterface/Views/CPUUsageStackedView.js.
+        (WI.CPUUsageCombinedView.appendLegendRow):
+        (WI.CPUUsageCombinedView):
+        (WI.CPUUsageCombinedView.prototype.get graphElement):
+        (WI.CPUUsageCombinedView.prototype.get chart):
+        (WI.CPUUsageCombinedView.prototype.get rangeChart):
+        (WI.CPUUsageCombinedView.prototype.clear):
+        (WI.CPUUsageCombinedView.prototype.updateChart):
+        (WI.CPUUsageCombinedView.prototype.updateMainThreadIndicator):
+        (WI.CPUUsageCombinedView.prototype.clearLegend):
+        (WI.CPUUsageCombinedView.prototype.updateLegend):
+        (WI.CPUUsageCombinedView.prototype._updateDetails):
+        * UserInterface/Views/CPUUsageIndicatorView.css: Removed.
+        * UserInterface/Views/CPUUsageIndicatorView.js: Removed.
+        Combined the Indicator and StackedAreaChart into a single view
+        that share a left details section.
+
+        * UserInterface/Views/CPUUsageView.js:
+        (WI.CPUUsageView):
+        (WI.CPUUsageView.prototype.get graphElement):
+        (WI.CPUUsageView.prototype.clear):
+        (WI.CPUUsageView.prototype.updateChart):
+        (WI.CPUUsageView.prototype.clearLegend):
+        (WI.CPUUsageView.prototype.updateLegend):
+        (WI.CPUUsageView.prototype._updateDetails):
+        Include a legend in the left details section.
+
+        * UserInterface/Views/AreaChart.js:
+        (WI.AreaChart):
+        (WI.AreaChart.prototype.addPointMarker):
+        (WI.AreaChart.prototype.clearPointMarkers):
+        (WI.AreaChart.prototype.clear):
+        (WI.AreaChart.prototype.layout):
+        * UserInterface/Views/StackedAreaChart.js:
+        (WI.StackedAreaChart):
+        (WI.StackedAreaChart.prototype.addPointMarker):
+        (WI.StackedAreaChart.prototype.clearPointMarkers):
+        (WI.StackedAreaChart.prototype.clear):
+        (WI.StackedAreaChart.prototype.layout):
+        Add point markers for the area charts.
+
+        * UserInterface/Views/CPUTimelineView.css:
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView):
+        (WI.CPUTimelineView.prototype.get cpuUsageViewHeight):
+        (WI.CPUTimelineView.prototype.clear):
+        (WI.CPUTimelineView.prototype.initialLayout.appendLegendRow):
+        (WI.CPUTimelineView.prototype.initialLayout):
+        (WI.CPUTimelineView.prototype.layout):
+        (WI.CPUTimelineView.prototype._graphPositionForMouseEvent):
+        (WI.CPUTimelineView.prototype._handleMouseClick):
+        (WI.CPUTimelineView.prototype._handleGraphMouseMove):
+        (WI.CPUTimelineView.prototype._showGraphOverlayNearTo):
+        (WI.CPUTimelineView.prototype._updateGraphOverlay):
+        (WI.CPUTimelineView.prototype._showGraphOverlay.xScale):
+        (WI.CPUTimelineView.prototype._showGraphOverlay.yScale):
+        (WI.CPUTimelineView.prototype._showGraphOverlay.addOverlayPoint):
+        (WI.CPUTimelineView.prototype._showGraphOverlay):
+        (WI.CPUTimelineView.prototype._clearOverlayMarkers.clearGraphOverlayElement):
+        (WI.CPUTimelineView.prototype._clearOverlayMarkers):
+        (WI.CPUTimelineView.prototype._hideGraphOverlay):
+        Include graph overlay markers.
+
+2019-03-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: eliminate manual syncing of numeric constants used by JavaScript and CSS
+        https://bugs.webkit.org/show_bug.cgi?id=194883
+        <rdar://problem/48257785>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView):
+        (WI.CanvasOverviewContentView.static get recordingAutoCaptureInputMargin): Added.
+        (WI.CanvasOverviewContentView.prototype._updateRecordingAutoCaptureInputElementSize):
+        * UserInterface/Views/CanvasOverviewContentView.css:
+        (.navigation-bar > .item.canvas-recording-auto-capture > label > input):
+
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WI.MemoryTimelineView.static get memoryCategoryViewHeight): Added.
+        (WI.MemoryTimelineView.prototype.initialLayout): Added.
+        (WI.MemoryTimelineView.prototype.layout):
+        * UserInterface/Views/MemoryCategoryView.css:
+        (.memory-category-view):
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.static get nodeWaterfallDOMEventSize): Added.
+        (WI.NetworkTableContentView.prototype.initialLayout):
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.content-view.network .network-table): Deleted.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline._generateStyleRulesIfNeeded):
+        * UserInterface/Views/TreeOutline.css:
+        (.tree-outline, .tree-outline .children):
+        (.tree-outline .item):
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.supportsRecordingAutoCapture):
+        Drive-by: fix usage of InspectorBackend.domains.{CanvasAgent => Canvas}
+
+2019-03-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r242622): Web Inspector: Fix asserts "Overridden property is missing overridingProperty"
+        https://bugs.webkit.org/show_bug.cgi?id=195515
+        <rdar://problem/48737315>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.updateStatus):
+
+2019-03-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: overridden CSS property should have go-to button to jump to effective property
+        https://bugs.webkit.org/show_bug.cgi?id=185930
+        <rdar://problem/40506252>
+
+        Reviewed by Matt Baker.
+
+        Introduce a new experimental jump to effective property button. The button is a small arrow button
+        next to an overridden CSS property. Clicking the button scrolls to the effective CSS property and
+        selects it.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty):
+        (WI.CSSProperty.prototype.update):
+        (WI.CSSProperty.prototype.get overridingProperty):
+        (WI.CSSProperty.prototype.set overridingProperty):
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype._markOverriddenProperties):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property.overridden .select-effective-property):
+        (.spreadsheet-style-declaration-editor .property.overridden:hover .select-effective-property,):
+        (.spreadsheet-style-declaration-editor .property.overridden:hover .select-effective-property::after,):
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertySelectByProperty):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetCSSStyleDeclarationEditorSelectProperty):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.spreadsheetCSSStyleDeclarationSectionSelectProperty):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.updateStatus):
+
+2019-03-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Protocol: add type checking when commands are called via invoke
+        https://bugs.webkit.org/show_bug.cgi?id=195310
+        <rdar://problem/48588679>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackend.Command.prototype.invoke.deliverFailure): Added.
+        (InspectorBackend.Command.prototype.invoke):
+        (InspectorBackend.Command.prototype._invokeWithArguments):
+
+2019-03-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r242118): WI.ScopeBar missing background
+        https://bugs.webkit.org/show_bug.cgi?id=195299
+
+        Reviewed by Joseph Pecoraro.
+
+        Rework the way `color`, `background-color`, and `border-color` are set for `WI.ScopeBar` to
+        use CSS variables instead. Divides the variables into three categories:
+         - default: these are the values that the `WI.ScopeBar` would use normally
+         - override: these are values that take precidence over the default (e.g. set by other elements)
+            - falls back to default when no value is set
+         - actual: this is the resulting value that will be used when displaying
+            - this way, other elements can "mirror" the styling of the `WI.ScopeBar`
+
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar):
+        (.scope-bar > li):
+        (.scope-bar > li::before):
+        (.scope-bar > li:matches(.selected, :hover)):
+        (.scope-bar > li:not(.selected):hover::after):
+        (.scope-bar > li.selected:active::after):
+        (.scope-bar > li.multiple > select):
+        (body[dir=ltr] .scope-bar > li.multiple > select):
+        (body[dir=rtl] .scope-bar > li.multiple > select):
+        (.scope-bar > li.multiple:not(.selected) > select): Added.
+        (.scope-bar > li.multiple > .arrows):
+        (.scope-bar > li::before): Deleted.
+        (.scope-bar.default-item-selected > li.multiple.selected::before): Deleted.
+        (.scope-bar > li:matches(.selected, :hover)::before): Deleted.
+        (.scope-bar > li.selected:active::before): Deleted.
+        (.scope-bar > li.multiple.selected > select): Deleted.
+        (body[dir=ltr] .scope-bar > li.multiple > .arrows): Deleted.
+        (body[dir=rtl] .scope-bar > li.multiple > .arrows): Deleted.
+        (.scope-bar > li.multiple:matches(.selected, :hover, :active) > .arrows): Deleted.
+        (.scope-bar > li:matches(.selected, :active)): Deleted.
+        (@media (prefers-color-scheme: dark)): Deleted.
+        Switch to using `::after` since `::before` is more commonly used.
+
+        * UserInterface/Views/MultipleScopeBarItem.js:
+        (WI.MultipleScopeBarItem.prototype._handleMouseDown):
+        Drive-by: fix the <select> alignment by re-firing the "mousedown" event on it.
+
+        * UserInterface/Views/AuditTestGroupContentView.js:
+        (WI.AuditTestGroupContentView.prototype.layout):
+        * UserInterface/Views/AuditTestGroupContentView.css:
+        (.content-view.audit-test-group > header > nav > .scope-bar > li):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li:not(:hover, .selected)):
+        (.content-view.audit-test-group > header > nav > .scope-bar > li > img): Added.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.pass > img): Added.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.warn > img): Added.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.fail > img): Added.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.error > img): Added.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.unsupported > img): Added.
+        (.content-view.audit-test-group > section > .audit-test-case:first-child, .content-view.audit-test-group > section > .audit-test-case.filtered ~ .audit-test-case:not(.filtered), .content-view.audit-test-group > section > .audit-test-group + .audit-test-case, .content-view.audit-test-group > section > .audit-test-case + .audit-test-group): Added.
+        (.content-view.audit-test-group > section > .audit-test-case:not(.filtered) ~ .audit-test-case:not(.filtered)): Added.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li::before): Deleted.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.pass::before): Deleted.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.warn::before): Deleted.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.fail::before): Deleted.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.error::before): Deleted.
+        (.content-view.audit-test-group > header > nav > .scope-bar > li.unsupported::before): Deleted.
+        (.content-view.audit-test-group > section > .audit-test-case:first-child, .content-view.audit-test-group > section > .audit-test-group + .audit-test-case, .content-view.audit-test-group > section > .audit-test-case + .audit-test-group): Deleted.
+        Replace the `::before` image with an actual `<img>` now that the `WI.ScopeBar` itself uses
+        a pseudo-element for the background styling.
+
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView):
+        * UserInterface/Views/LogContentView.css:
+        (.log-scope-bar > li:not(.unread) > .indicator): Added.
+        (.log-scope-bar > li.unread > .indicator): Added.
+        (.log-scope-bar > li.unread:hover > .indicator): Added.
+        (.log-scope-bar > li.unread.errors > .indicator): Added.
+        (.log-scope-bar > li.unread.warnings > .indicator): Added.
+        (.log-scope-bar > li.unread.logs > .indicator): Added.
+        (.log-scope-bar > li.unread::before): Deleted.
+        (body[dir=ltr] .log-scope-bar > li.unread::before): Deleted.
+        (body[dir=rtl] .log-scope-bar > li.unread::before): Deleted.
+        (.log-scope-bar > li.unread:hover::before): Deleted.
+        (.log-scope-bar > li.unread.errors::before): Deleted.
+        (.log-scope-bar > li.unread.warnings::before): Deleted.
+        (.log-scope-bar > li.unread.logs::before): Deleted.
+        Replace the `::before` unread indicator with an actual `<div>` now that the `WI.ScopeBar`
+        itself uses a pseudo-element for the background styling.
+
+        * UserInterface/Views/TimelineRecordingContentView.css:
+        (.content-view.timeline-recording > .content-browser > .navigation-bar > .item.scope-bar.default-item-selected):
+        (.content-view.timeline-recording > .content-browser > .navigation-bar > .item.scope-bar.default-item-selected > .multiple): Deleted.
+        (.content-view.timeline-recording > .content-browser > .navigation-bar > .item.scope-bar.default-item-selected > .multiple .arrows): Deleted.
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype._updateRecordingScopeBar):
+        Drive-by: fix typo.
+
+2019-03-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: CSS: there should be a way to inline-replace a variable with it's value
+        https://bugs.webkit.org/show_bug.cgi?id=195335
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/InlineSwatch.js:
+        (WI.InlineSwatch):
+        (WI.InlineSwatch.prototype.didDismissPopover):
+        (WI.InlineSwatch.prototype._swatchElementClicked):
+        (WI.InlineSwatch.prototype._swatchElementClicked.optionsForType): Added.
+        Shift-clicking a variable swatch replaces the text with the variable's value.
+        Drive-by: try to create a readonly swatch for the variable's value (e.g. a color indicator).
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._createInlineSwatch):
+        If the value of a variable swatch changes, re-render the value.
+
+        * UserInterface/Views/CodeMirrorTextMarkers.js:
+        (createCodeMirrorTextMarkers):
+        (createCodeMirrorColorTextMarkers):
+        (createCodeMirrorGradientTextMarkers):
+        (createCodeMirrorBezierTextMarkers):
+        (createCodeMirrorSpringTextMarkers):
+        Refactor function parameters for more flexibility.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: highlight the node when hovering event listeners sorted by node
+        https://bugs.webkit.org/show_bug.cgi?id=195368
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.generateGroupsByNode):
+
+2019-03-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: system accent color follow-ups
+        https://bugs.webkit.org/show_bug.cgi?id=195190
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ButtonToolbarItem.css:
+        (.toolbar .item.button:not(.disabled):matches(:focus, .activate.activated)):
+        (@media (prefers-color-scheme: dark)):
+        (.toolbar .item.button:not(.disabled):active:matches(:focus, .activate.activated)): Deleted.
+        Drop pressed toolbar button style. It's extremely subtle and not worth the hassle.
+
+        * UserInterface/Views/LogContentView.css:
+        (.console-messages:focus .console-item.selected::after):
+        (@media (prefers-color-scheme: dark)):
+
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar > li.selected:active::before):
+
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar.selected > .segment):
+
+2019-03-06  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION: Elements tab: Uncaught Exception: No node with given id found
+        https://bugs.webkit.org/show_bug.cgi?id=194299
+        <rdar://problem/47828647>
+
+        Reviewed by Devin Rousso.
+
+        When removing the selection, TreeOutline subclasses should have more
+        control over which item becomes selected after the selection is removed.
+        DOMTreeOutline should track the items that are being removed, and prevent
+        them or their descendants from becoming selected.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline):
+        (WI.DOMTreeOutline.prototype.ondelete):
+        (WI.DOMTreeOutline.prototype.canSelectTreeElement):
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.selectionControllerLastSelectableItem):
+        (WI.TreeOutline.prototype.selectionControllerPreviousSelectableItem):
+        (WI.TreeOutline.prototype.selectionControllerNextSelectableItem):
+        (WI.TreeOutline.prototype.canSelectTreeElement):
+
+2019-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Allow clicking a bar in the overview to select a tight time range around it
+        https://bugs.webkit.org/show_bug.cgi?id=195321
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/Timeline.js:
+        (WI.Timeline.prototype.closestRecordTo):
+        Helper to get the closest record to a timestamp.
+
+        * UserInterface/Views/CPUTimelineOverviewGraph.css:
+        (.timeline-overview-graph.cpu > .stacked-column-chart):
+        (.timeline-overview-graph.cpu > .stacked-column-chart > svg > rect.selected):
+        Style a selected record with the active color.
+
+        * UserInterface/Views/CPUTimelineOverviewGraph.js:
+        (WI.CPUTimelineOverviewGraph):
+        (WI.CPUTimelineOverviewGraph.prototype.get samplingRatePerSecond):
+        (WI.CPUTimelineOverviewGraph.prototype.reset):
+        (WI.CPUTimelineOverviewGraph.prototype.layout):
+        (WI.CPUTimelineOverviewGraph.prototype.updateSelectedRecord):
+        (WI.CPUTimelineOverviewGraph.prototype._graphPositionForMouseEvent):
+        (WI.CPUTimelineOverviewGraph.prototype._handleGraphMouseClick):
+        A click in the overview which hits a rect triggers a selection of
+        the associated timeline record.
+
+        * UserInterface/Views/StackedColumnChart.js:
+        (WI.StackedColumnChart.prototype.addColumnSet):
+        (WI.StackedColumnChart.prototype.layout):
+        Allow setting an additional class name with a column set.
+        It will set the class name on each rect in that column.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview.prototype._recordSelected):
+        When selecting a CPU record, make a selection range of 2 neighboring
+        columns in each direction.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WI.TimelineRuler.prototype._handleClick):
+        When a sub-element has handled the click stop further event propagation.
+
+        * UserInterface/Views/TimelineOverviewGraph.js:
+        (WI.TimelineOverviewGraph.prototype.get selected):
+        Drive-by style fix.
+
+2019-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: TimelineOverview clicks do not always behave as expected
+        https://bugs.webkit.org/show_bug.cgi?id=195319
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/TimelineRuler.js:
+        (WI.TimelineRuler.prototype._shouldIgnoreMicroMovement):
+        (WI.TimelineRuler.prototype._handleMouseDown):
+        (WI.TimelineRuler.prototype._handleMouseMove):
+        Ignore moves that haven't gone more than 4px. Once the threshold is
+        passed allow all moves. This improves the click behavior since
+        previously click would never re-dispatch if there was any movement.
+
+2019-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Statistics and Sources sections
+        https://bugs.webkit.org/show_bug.cgi?id=195202
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New strings.
+
+        * UserInterface/Base/Utilities.js:
+        (Map.prototype.getOrInitialize):
+        Helper to get and if not found initialize with a value.
+
+        * UserInterface/Views/CPUTimelineView.css:
+        (.timeline-view.cpu > .content > .overview > .chart > .container.stats):
+        (.timeline-view.cpu > .content > .overview > .chart > .container.stats > table):
+        (.timeline-view.cpu > .content > .overview > .chart > .container.stats > table > tr > th):
+        (.timeline-view.cpu > .content > .overview > .chart > .container.stats > table > tr > td.number):
+        (.timeline-view.cpu > .content > .overview > .chart > .container.stats > table > tr > td.label):
+        (.timeline-view.cpu > .content > .overview > .chart > .container.stats > table .show-more):
+        (.timeline-view.cpu > .content > .overview > .chart > .container.stats > table .filter):
+        (.timeline-view.cpu > .content > .overview > .chart > .container.stats > table .filter:hover):
+        (.timeline-view.cpu > .content > .overview > .chart > .container.stats > table .active):
+        (.timeline-view.cpu > .content > .overview > .chart > .container.stats > table .active + .active):
+        (@media (prefers-color-scheme: dark)):
+        Colors for the statistics sections.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView):
+        (WI.CPUTimelineView.prototype.reset):
+        (WI.CPUTimelineView.prototype.clear):
+        (WI.CPUTimelineView.prototype._clearStatistics):
+        (WI.CPUTimelineView.prototype._clearSources):
+        Updates for additional sections.
+        Include a cache of the statisiticsData so we can relayout parts of the UI and
+        avoid an entire UI update.
+
+        (WI.CPUTimelineView.prototype.initialLayout):
+        (WI.CPUTimelineView.prototype._layoutBreakdownChart):
+        (WI.CPUTimelineView.prototype._layoutStatisticsAndSources):
+        (WI.CPUTimelineView.prototype._layoutStatisticsSection.createEllipsisElement):
+        (WI.CPUTimelineView.prototype._layoutStatisticsSection):
+        (WI.CPUTimelineView.prototype._layoutSourcesSection.firstNonNativeCallFrame):
+        (WI.CPUTimelineView.prototype._layoutSourcesSection.keyForSourceCodeLocation):
+        (WI.CPUTimelineView.prototype._layoutSourcesSection.labelForLocation):
+        (WI.CPUTimelineView.prototype._layoutSourcesSection.createEllipsisElement):
+        (WI.CPUTimelineView.prototype._layoutSourcesSection):
+        Extract layouts into helper methods to avoid an enormous layout method.
+
+        (WI.CPUTimelineView.prototype._computeSamplingData.incrementTypeCount):
+        (WI.CPUTimelineView.prototype._computeSamplingData):
+        Compute additional data when going through script events.
+
+        (WI.CPUTimelineView.prototype._resetSourcesFilters):
+        (WI.CPUTimelineView.prototype._addSourcesFilter):
+        (WI.CPUTimelineView.prototype._removeSourcesFilter):
+        (WI.CPUTimelineView.prototype._updateSourcesFilters):
+        Helpers for updating the source filters.
+
+        (WI.CPUTimelineView.prototype._createTableRow):
+        (WI.CPUTimelineView.prototype._insertTableRow):
+        Helpers for creating rows in the statistics / sources tables.
+
+2019-03-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Simplify chart <rect>s with x/y attributes instead of transform(x, y)
+        https://bugs.webkit.org/show_bug.cgi?id=195352
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ColumnChart.js:
+        (WI.ColumnChart.prototype.layout):
+        (WI.ColumnChart):
+        * UserInterface/Views/RangeChart.js:
+        (WI.RangeChart.prototype.layout):
+        (WI.RangeChart):
+        * UserInterface/Views/StackedColumnChart.js:
+        (WI.StackedColumnChart.prototype.layout):
+        (WI.StackedColumnChart):
+
 2019-03-06  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: CSS Changes: only show changes for the given node

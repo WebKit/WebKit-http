@@ -64,17 +64,17 @@ function createVertexBuffer(device) {
 
 function createInputStateDescriptor() {
     return {
-        indexFormat: WebGPUIndexFormat.UINT32,
+        indexFormat: "uint32",
         attributes: [{
             shaderLocation: 0,
             inputSlot: 0,
             offset: 0,
-            format: WebGPUVertexFormat.FLOAT_R32_G32_B32_A32
+            format: "float4"
         }],
         inputs: [{
             inputSlot: 0,
             stride: 4 * 4,
-            stepMode: WebGPUInputStepMode.VERTEX
+            stepMode: "vertex"
         }]
     }
 }
@@ -82,7 +82,7 @@ function createInputStateDescriptor() {
 async function test() {
     const device = await getBasicDevice();
     const canvas = document.querySelector("canvas");
-    const context = createBasicContext(canvas, device);
+    const swapChain = createBasicSwapChain(canvas, device);
     // FIXME: Replace with non-MSL shaders.
     const shaderModule = device.createShaderModule({ code: shaderCode });
     const vertexBuffer = createVertexBuffer(device);
@@ -92,7 +92,7 @@ async function test() {
     const commandBuffer = device.createCommandBuffer();
 
     const basicAttachment = {
-        attachment: context.getNextTexture().createDefaultTextureView(),
+        attachment: swapChain.getCurrentTexture().createDefaultTextureView(),
         loadOp: "clear",
         storeOp: "store",
         clearColor: { r: 1.0, g: 0, b: 0, a: 1.0 }
@@ -116,7 +116,6 @@ async function test() {
     encoder.endPass();
 
     device.getQueue().submit([commandBuffer]);
-    context.present();
 
     if (window.testRunner)
         testRunner.notifyDone();

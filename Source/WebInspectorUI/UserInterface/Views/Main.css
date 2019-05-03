@@ -238,7 +238,7 @@ body.docked:matches(.right, .left) #navigation-sidebar.collapsed > .resizer {
 
 .resource-link,
 .go-to-link {
-    color: hsl(0, 0%, 33%);
+    color: var(--link-text-color);
     text-decoration: underline;
     cursor: pointer;
     -webkit-user-select: none;
@@ -246,21 +246,18 @@ body.docked:matches(.right, .left) #navigation-sidebar.collapsed > .resizer {
 
 .go-to-link:not(.dont-float) {
     max-width: 100%;
+    -webkit-margin-start: 5px;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
-
-    --go-to-link-margin-start: 5px;
 }
 
 body[dir=ltr] .go-to-link:not(.dont-float) {
     float: right;
-    margin-left: var(--go-to-link-margin-start);
 }
 
 body[dir=rtl] .go-to-link:not(.dont-float) {
     float: left;
-    margin-right: var(--go-to-link-margin-start);
 }
 
 .go-to-arrow {
@@ -475,11 +472,6 @@ body[dir=rtl] .go-to-arrow {
 
     :focus .selected .go-to-arrow {
         filter: unset;
-    }
-
-    .resource-link,
-    .go-to-link {
-        color: var(--text-color-secondary);
     }
 
     .expand-list-button {

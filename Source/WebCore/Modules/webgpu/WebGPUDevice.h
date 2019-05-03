@@ -29,9 +29,8 @@
 
 #include "GPUDevice.h"
 #include "WebGPUAdapter.h"
-#include "WebGPUBindGroupLayoutDescriptor.h"
 #include "WebGPUQueue.h"
-
+#include "WebGPUSwapChainDescriptor.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -45,10 +44,14 @@ class WebGPUBuffer;
 class WebGPUCommandBuffer;
 class WebGPUPipelineLayout;
 class WebGPURenderPipeline;
+class WebGPUSampler;
 class WebGPUShaderModule;
+class WebGPUSwapChain;
 class WebGPUTexture;
 
+struct GPUBindGroupLayoutDescriptor;
 struct GPUBufferDescriptor;
+struct GPUSamplerDescriptor;
 struct GPUTextureDescriptor;
 struct WebGPUBindGroupDescriptor;
 struct WebGPUPipelineLayoutDescriptor;
@@ -64,23 +67,27 @@ public:
 
     Ref<WebGPUBuffer> createBuffer(GPUBufferDescriptor&&) const;
     Ref<WebGPUTexture> createTexture(GPUTextureDescriptor&&) const;
+    Ref<WebGPUSampler> createSampler(const GPUSamplerDescriptor&) const;
 
-    Ref<WebGPUBindGroupLayout> createBindGroupLayout(WebGPUBindGroupLayoutDescriptor&&) const;
+    Ref<WebGPUBindGroupLayout> createBindGroupLayout(const GPUBindGroupLayoutDescriptor&) const;
     Ref<WebGPUPipelineLayout> createPipelineLayout(WebGPUPipelineLayoutDescriptor&&) const;
     Ref<WebGPUBindGroup> createBindGroup(WebGPUBindGroupDescriptor&&) const;
 
     RefPtr<WebGPUShaderModule> createShaderModule(WebGPUShaderModuleDescriptor&&) const;
-    RefPtr<WebGPURenderPipeline> createRenderPipeline(WebGPURenderPipelineDescriptor&&) const;
+    Ref<WebGPURenderPipeline> createRenderPipeline(const WebGPURenderPipelineDescriptor&) const;
 
     RefPtr<WebGPUCommandBuffer> createCommandBuffer() const;
-    RefPtr<WebGPUQueue> getQueue();
+
+    Ref<WebGPUSwapChain> createSwapChain(const WebGPUSwapChainDescriptor&) const;
+
+    RefPtr<WebGPUQueue> getQueue() const;
 
 private:
     WebGPUDevice(Ref<WebGPUAdapter>&&, Ref<GPUDevice>&&);
 
     Ref<WebGPUAdapter> m_adapter;
     Ref<GPUDevice> m_device;
-    RefPtr<WebGPUQueue> m_queue;
+    mutable RefPtr<WebGPUQueue> m_queue;
 };
 
 } // namespace WebCore
