@@ -876,8 +876,10 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
     BRect bounds = m_webPage->viewBounds();
     IntSize size = IntSize(bounds.IntegerWidth() + 1, bounds.IntegerHeight() + 1);
 
-    bool transparent = m_webFrame->IsTransparent();
-    frame->createView(size, transparent, {}, {});
+    Optional<Color> backgroundColor;
+    if (m_webFrame->IsTransparent())
+        backgroundColor = Color(Color::transparent);
+    frame->createView(size, backgroundColor, {}, {});
 
     frame->view()->setTopLevelPlatformWidget(m_webPage->WebView());
 }

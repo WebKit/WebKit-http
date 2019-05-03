@@ -133,7 +133,6 @@ public:
     void getGuessesForWord(const String& word, const String& context, const WebCore::VisibleSelection&, Vector<String>& guesses) override;
     void requestCheckingOfString(TextCheckingRequest&, const VisibleSelection& currentSelection) override;
 
-    String replacementURLForResource(Ref<SharedBuffer>&& resourceData, const String& mimeType) override { return ""; }
 	bool requestDOMPasteAccess() final { return false;}
 
 private:

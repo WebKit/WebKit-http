@@ -44,8 +44,11 @@
 
 static WTF::String dumpPath(WebCore::Node* node)
 {
+    ASSERT(node);
+
+    WTF::String str(node->nodeName());
+
     WebCore::Node* parent = node->parentNode();
-    WTF::String str = WTF::String::format("%s", node->nodeName().utf8().data());
     if (parent) {
         str.append(" > ");
         str.append(dumpPath(parent));
@@ -53,13 +56,16 @@ static WTF::String dumpPath(WebCore::Node* node)
     return str;
 }
 
-static WTF::String dumpRange(WebCore::Range* range)
+static BString dumpRange(WebCore::Range* range)
 {
     if (!range)
-        return "(null)";
-    return WTF::String::format("range from %d of %s to %d of %s",
+        return BString();
+
+	BString string;
+    string.SetToFormat("range from %d of %s to %d of %s",
         range->startOffset(), dumpPath(&range->startContainer()).utf8().data(),
         range->endOffset(), dumpPath(&range->endContainer()).utf8().data());
+	return string;
 }
 
 static const char* insertActionString(WebCore::EditorInsertAction action)
@@ -91,14 +97,14 @@ static const char* selectionAffinityString(WebCore::EAffinity affinity)
 static void shouldBeginEditing(WebCore::Range* range)
 {
     if (!done && gTestRunner->dumpEditingCallbacks()) {
-        printf("EDITING DELEGATE: shouldBeginEditingInDOMRange:%s\n", dumpRange(range).utf8().data());
+        printf("EDITING DELEGATE: shouldBeginEditingInDOMRange:%s\n", dumpRange(range).String());
     }
 }
 
 static void shouldEndEditing(WebCore::Range* range)
 {
     if (!done && gTestRunner->dumpEditingCallbacks()) {
-        printf("EDITING DELEGATE: shouldEndEditingInDOMRange:%s\n", dumpRange(range).utf8().data());
+        printf("EDITING DELEGATE: shouldEndEditingInDOMRange:%s\n", dumpRange(range).String());
     }
 }
 
@@ -107,7 +113,7 @@ static void shouldInsertNode(WebCore::Node* node, WebCore::Range* range,
 {
     if (!done && gTestRunner->dumpEditingCallbacks()) {
         printf("EDITING DELEGATE: shouldInsertNode:%s replacingDOMRange:%s givenAction:%s\n",
-               dumpPath(node).utf8().data(), dumpRange(range).utf8().data(),
+               dumpPath(node).utf8().data(), dumpRange(range).String(),
                insertActionString(action));
     }
 }
@@ -117,14 +123,14 @@ static void shouldInsertText(BString text, WebCore::Range* range,
 {
     if (!done && gTestRunner->dumpEditingCallbacks()) {
         printf("EDITING DELEGATE: shouldInsertText:%s replacingDOMRange:%s givenAction:%s\n",
-            text.String(), dumpRange(range).utf8().data(), insertActionString(action));
+            text.String(), dumpRange(range).String(), insertActionString(action));
     }
 }
 
 static void shouldDeleteRange(WebCore::Range* range)
 {
     if (!done && gTestRunner->dumpEditingCallbacks()) {
-        printf("EDITING DELEGATE: shouldDeleteDOMRange:%s\n", dumpRange(range).utf8().data());
+        printf("EDITING DELEGATE: shouldDeleteDOMRange:%s\n", dumpRange(range).String());
     }
 }
 
@@ -133,7 +139,7 @@ static void shouldChangeSelectedRange(WebCore::Range* fromRange, WebCore::Range*
 {
     if (!done && gTestRunner->dumpEditingCallbacks()) {
         printf("EDITING DELEGATE: shouldChangeSelectedDOMRange:%s toDOMRange:%s affinity:%s stillSelecting:%s\n",
-               dumpRange(fromRange).utf8().data(), dumpRange(toRange).utf8().data(),
+               dumpRange(fromRange).String(), dumpRange(toRange).String(),
                selectionAffinityString(affinity), stillSelecting ? "TRUE" : "FALSE");
     }
 }
@@ -142,7 +148,7 @@ static void shouldApplyStyle(WebCore::StyleProperties* style, WebCore::Range* ra
 {
     if (!done && gTestRunner->dumpEditingCallbacks()) {
         printf("EDITING DELEGATE: shouldApplyStyle:%s toElementsInDOMRange:%s\n",
-                style->asText().utf8().data(), dumpRange(range).utf8().data());
+                style->asText().utf8().data(), dumpRange(range).String());
     }
 }
 

@@ -54,6 +54,7 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${LIBXSLT_INCLUDE_DIR}"
     "${SQLITE_INCLUDE_DIR}"
     "${CMAKE_BINARY_DIR}"
+	"${FORWARDING_HEADERS_DIR}"
 )
 
 # These folders have includes with the same name as Haiku system ones. So we
@@ -103,6 +104,7 @@ LIST(APPEND WebKitLegacy_SOURCES
     haiku/WebCoreSupport/PlatformStrategiesHaiku.cpp
     haiku/WebCoreSupport/ProgressTrackerHaiku.cpp
 	haiku/WebCoreSupport/WebApplicationCache.cpp
+	haiku/WebCoreSupport/WebDatabaseProvider.cpp
 	haiku/WebCoreSupport/WebDiagnosticLoggingClient.cpp
     haiku/WebCoreSupport/WebVisitedLinkStore.cpp
 
