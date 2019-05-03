@@ -28,14 +28,19 @@
  */
 
 #include "config.h"
+
+#include <String.h>
+#include <wtf/text/StringConcatenateNumbers.h>
+#include <wtf/HexNumber.h>
+#include <wtf/text/CString.h>
+#include <wtf/text/StringConcatenate.h>
+
 #include "PlatformKeyboardEvent.h"
 
 #include "NotImplemented.h"
 #include "WindowsKeyboardCodes.h"
 #include <InterfaceDefs.h>
 #include <Message.h>
-#include <String.h>
-#include <wtf/text/CString.h>
 
 
 namespace WebCore {
@@ -107,7 +112,8 @@ static String keyIdentifierForHaikuKeyCode(char singleByte, int keyCode)
         return "U+0009";
     }
 
-    return String::format("U+%04X", toASCIIUpper(singleByte));
+	// FIXME will not work for non-ASCII characters
+    return makeString("U+", hex(toASCIIUpper(singleByte)), 4);
 }
 
 static int windowsKeyCodeForKeyEvent(char singleByte, int keyCode)
@@ -327,7 +333,7 @@ static int windowsKeyCodeForKeyEvent(char singleByte, int keyCode)
 static String KeyValueForKeyEvent(BString bytes, int keyCode)
 {
     switch (bytes.ByteAt(0)) {
-        
+
         case B_FUNCTION_KEY:
             switch (keyCode) {
                 case B_F1_KEY:
@@ -360,14 +366,9 @@ static String KeyValueForKeyEvent(BString bytes, int keyCode)
                     return "Pause";
                 case B_SCROLL_KEY:
                     return "ScrollLock";
-                case B_SHIFT_KEY:
-                    return "Shift";
-                case B_LEFT_CONTROL_KEY: // B_CONTROL_KEY = B_F3_KEY..?
-                case B_RIGHT_CONTROL_KEY:
-                    return "Control";
             }
             break;
-    
+
         case B_BACKSPACE:
             return "Backspace";
         case B_LEFT_ARROW:
@@ -397,13 +398,6 @@ static String KeyValueForKeyEvent(BString bytes, int keyCode)
         case B_SPACE:
             return " "; // (20) SPACEBAR
             
-        case B_COMMAND_KEY:
-            return "Alt";
-            
-        case B_OPTION_KEY:
-            return "Compose"; // fx also said "Process"
-        case B_MENU_KEY:
-            return "ContextMenu";
         case B_ESCAPE:
             return "Escape";
             
@@ -657,6 +651,8 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(BMessage* message)
     m_keyIdentifier = keyIdentifierForHaikuKeyCode(bytes.ByteAt(0), nativeVirtualKeyCode);
 
     m_windowsVirtualKeyCode = windowsKeyCodeForKeyEvent(bytes.ByteAt(0), nativeVirtualKeyCode);
+	// TODO m_key should also do something for modifier keys, which cannot be
+	// extracted from "bytes"
     m_key = KeyValueForKeyEvent(bytes, nativeVirtualKeyCode);
     m_code = KeyCodeForKeyEvent(nativeVirtualKeyCode);
 
