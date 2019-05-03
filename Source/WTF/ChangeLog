@@ -1,3 +1,367 @@
+2019-02-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add WeakHashSet
+        https://bugs.webkit.org/show_bug.cgi?id=195152
+
+        Reviewed by Antti Koivisto.
+
+        Added WeakHashSet which is a HashSet of WeakPtr. When the object pointed by WeakPtr is deleted,
+        WeakHashSet treats the key to be no longer in the set. That is, WeakHashSet::contains returns false
+        and const_iterator skips such a WeakPtr in the set.
+
+        We decided not to make HashSet<WeahPtr<T>> work because it involves weird semantics such as making
+        find(X) delete the table entry as remove(find(X)) would be a no-op otherwise as find(X) would return
+        necessarily need to return HashSet<WeakPtr<T>>::end().
+
+        Furthermore, we cannot determine the true size of this set in O(1) because the objected pointed by
+        some of WeakPtr in the set may have already been deleted. This has implications that we can't have
+        size(), isEmpty(), random(), etc... as O(1) operation.
+
+        WeakHashSet is implemented as HashSet<WeakReference<T>>. HashTable::rehash has been updated to delete
+        WeakReference<T>'s whose m_ptr has become null, and HashTable::expand first deletes any such entry
+        before deciding an actual expansion is needed. This is accomplished via newly added hash trait,
+        hasIsReleasedWeakValueFunction, and HashTraits<Ref<WeakReference<T>>>::isReleasedWeakValue which
+        returns true for when WeakReference<T> pointed by Ref<WeakReference<T>> has null m_ptr, not to be
+        confused with Ref<WeakReference<T>> itself pointing to a null WeakReference<T>.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Forward.h:
+        * wtf/HashSet.h:
+        (WTF::HashSet<T, U, V>::checkConsistency const): Added.
+        * wtf/HashTable.h:
+        (WTF::HashTable::isReleasedWeakBucket): Added.
+        (WTF::HashTable::expand): Delete WeakReference<T> with null m_ptr first. This updates m_keyCount
+        and may make mustRehashInPlace() return true.
+        (WTF::HashTable::deleteReleasedWeakBuckets): Added.
+        (WTF::HashTable::rehash): Delete WeakReference<T> with null m_ptr. Also refactored the code a bit
+        to avoid keep repeating oldTable[i].
+        * wtf/HashTraits.h:
+        (WTF::HashTraits<T>::isHashTraitsReleasedWeakValue): Added.
+        (WTF::RefHashTraits<T>): Extracted from HashTraits<Ref<P>> to share code with
+        HashTraits<Ref<WeakReference<T>>>.
+        (WTF::HashTraitsReleasedWeakValueChecker<Traits, hasIsReleasedWeakValueFunction>): Added.
+        (WTF::isHashTraitsReleasedWeakValue<Traits, hasIsReleasedWeakValueFunction>): Added.
+        * wtf/WeakHashSet.h: Added.
+        (WTF::WeakHashSet): Added.
+        (WTF::WeakHashSet::WeakHashSetConstIterator::WeakHashSetConstIterator):
+        (WTF::WeakHashSet::WeakHashSetConstIterator::get const):
+        (WTF::WeakHashSet::WeakHashSetConstIterator::operator* const):
+        (WTF::WeakHashSet::WeakHashSetConstIterator::operator-> const):
+        (WTF::WeakHashSet::WeakHashSetConstIterator::operator++):
+        (WTF::WeakHashSet::WeakHashSetConstIterator::skipEmptyBuckets):
+        (WTF::WeakHashSet::WeakHashSetConstIterator::operator== const):
+        (WTF::WeakHashSet::WeakHashSetConstIterator::operator!= const):
+        (WTF::WeakHashSet::WeakHashSet):
+        (WTF::WeakHashSet::begin const):
+        (WTF::WeakHashSet::end const):
+        (WTF::WeakHashSet::add):
+        (WTF::WeakHashSet::remove):
+        (WTF::WeakHashSet::contains const):
+        (WTF::WeakHashSet::capacity const):
+        (WTF::WeakHashSet::computeSize const): Deletes any WeakReference<T> with null m_ptr first.
+        (WTF::WeakHashSet::checkConsistency const):
+        (WTF::HashTraits<Ref<WeakReference<T>>>): Added. This hash traits triggers the new code in HashTable's
+        expand and rehash methods to delete WeakReference<T> with null m_ptr.
+        (WTF::HashTraits<Ref<WeakReference<T>>>::isReleasedWeakValue):
+        * wtf/WeakPtr.h:
+        (WTF::WeakReference::~WeakReference): Added so that we can keep track the number of live WeakReference
+        in API tests by template specializations.
+
+2019-03-03  Darin Adler  <darin@apple.com>
+
+        Prepare to improve handling of conversion of float to strings
+        https://bugs.webkit.org/show_bug.cgi?id=195262
+
+        Reviewed by Daniel Bates.
+
+        * wtf/dtoa.cpp:
+        (WTF::truncateTrailingZeros): Renamed from
+        formatStringTruncatingTrailingZerosIfNeeded and removed the calls
+        to double_conversion::StringBuilder::Finalizer, since the caller
+        already does that.
+        (WTF::numberToFixedPrecisionString): Added an overload for float
+        and updated to use the new truncateTrailingZeros.
+        (WTF::numberToFixedWidthString): Added an overload for float.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::number): Added float overload. This is a
+        behavior change, but in all cases for the better. The old behavior
+        was to convert to double first and then do "shortest form"
+        conversion, and it's always better to just do that as float.
+        * wtf/text/AtomicString.h: Added float overload of AtomicString::number.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::appendFixedPrecisionNumber): Added float
+        overload.
+        (WTF::StringBuilder::appendShortestFormNumber): Renamed from
+        appendECMAScriptNumber and did the above.
+        (WTF::StringBuilder::appendFixedWidthNumber): Ditto.
+        * wtf/text/StringBuilder.h: Added overloads for float and
+        appendShortestFormNumber. The appendNumber and appendECMAScriptNumber
+        functions are now inlines in the header, since they are expressed
+        entirely in terms of the other functions.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::numberToStringFixedPrecision): Added float overload.
+        Removed unnecessary explicit conversion to String.
+        (WTF::String::numberToStringShortest): Renamed from
+        numberToStringECMAScript and did the above.
+        (WTF::String::numberToStringFixedWidth): Ditto.
+
+        * wtf/text/WTFString.h: Added overloads for float and
+        numberToStringShortest. The number and numberToStringECMAScript
+        functions are now inlines in the header, since they are expressed
+        entirely in terms of the other functions.
+
+2019-03-04  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Move WebPaymentCoordinatorProxy from Source/WebKit/UIProcess to Source/WebKit/Shared
+        https://bugs.webkit.org/show_bug.cgi?id=195080
+        <rdar://problem/48421558>
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/FeatureDefines.h:
+
+2019-03-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        URLHelpers should use unorm2_quickCheck before converting to NFC
+        https://bugs.webkit.org/show_bug.cgi?id=194272
+
+        Reviewed by Darin Adler.
+
+        If the string is already in normalization form C, don't try to normalize it.
+
+        * wtf/URLHelpers.cpp:
+        (WTF::URLHelpers::toNormalizationFormC):
+
+2019-03-02  Darin Adler  <darin@apple.com>
+
+        Retire legacy dtoa function and DecimalNumber class
+        https://bugs.webkit.org/show_bug.cgi?id=195253
+
+        Reviewed by Daniel Bates.
+
+        * WTF.xcodeproj/project.pbxproj: Removed DecimalNumber.cpp/h.
+        * wtf/CMakeLists.txt: Ditto.
+
+        * wtf/DecimalNumber.cpp: Removed.
+        * wtf/DecimalNumber.h: Removed.
+
+        * wtf/JSONValues.cpp:
+        (WTF::JSONImpl::Value::writeJSON const): Use
+        StringBuilder::appendECMAScriptNumber instead of custom logic
+        using the DecimalNumber class.
+
+        * wtf/dtoa.cpp:
+        (WTF::storeInc): Deleted.
+        (WTF::BigInt): Deleted.
+        (WTF::multadd): Deleted.
+        (WTF::hi0bits): Deleted.
+        (WTF::lo0bits): Deleted.
+        (WTF::i2b): Deleted.
+        (WTF::mult): Deleted.
+        (WTF::P5Node::P5Node): Deleted.
+        (WTF::pow5mult): Deleted.
+        (WTF::lshift): Deleted.
+        (WTF::cmp): Deleted.
+        (WTF::diff): Deleted.
+        (WTF::d2b): Deleted.
+        (WTF::quorem): Deleted.
+        (WTF::dtoa): Deleted.
+
+        * wtf/dtoa.h: Removed DtoaBuffer, dtoa, and NumberToStringBufferLength.
+
+2019-02-27  Darin Adler  <darin@apple.com>
+
+        Fixed makeString(float) to do shortest-form serialization without first converting to double
+        https://bugs.webkit.org/show_bug.cgi?id=195142
+
+        Reviewed by Daniel Bates.
+
+        * wtf/DecimalNumber.cpp: Removed unneeded includes.
+
+        * wtf/DecimalNumber.h: Removed unused constructors; over time we will be
+        deprecating DecimalNumber, so we should removed the unused parts. Also
+        marked the constructor explicit, removed types used only for arguments for
+        the constructors, and removed the sign, exponent, significand, and precision
+        member functions.
+
+        * wtf/JSONValues.cpp:
+        (WTF::JSONImpl::Value::writeJSON const): Updated for changes to DecimalNumber
+        switched from NumberToLStringBuffer to NumberToStringBuffer, and for use of
+        std::array instead of C arrays.
+
+        * wtf/dtoa.cpp: Removed unused dtoaRoundSF and dtoaRoundDP functions.
+        (WTF::dtoa): Updated to use std::array instead of C arrays.
+        (WTF::dtoaRoundSF): Removed.
+        (WTF::dtoaRoundDP): Removed.
+        (WTF::numberToString): Added an overload for float and updated to use std::array.
+        (WTF::formatStringTruncatingTrailingZerosIfNeeded): Updated to use std::array.
+        (WTF::numberToFixedPrecisionString): Ditto.
+        (WTF::numberToFixedWidthString): Ditto.
+
+        * wtf/dtoa.h: Changed arrays to be std::array instead of C arrays so the
+        array types will be checked. Removed dtoaRoundSF and dtoaRoundDP.
+        Added float overloads for numberToString, numberToFixedPrecisionString,
+        and numberToFixedWidthString. The only one of these that is called at this
+        time is numberToString, called by the floating point StringTypeAdapter in
+        StringConcatenateNummbers.h.
+
+        * wtf/text/StringConcatenateNumbers.h: Updated for std::array.
+
+2019-03-01  Darin Adler  <darin@apple.com>
+
+        Finish removing String::format
+        https://bugs.webkit.org/show_bug.cgi?id=194893
+
+        Reviewed by Daniel Bates.
+
+        * wtf/Assertions.cpp:
+        (WTF::createWithFormatAndArguments): Moved this here from WTFString.cpp.
+        (WTFLog): Use WTF::createWithFormatAndArguments instead of String::format.
+
+        * wtf/HexNumber.h: Deleted unneeded toString function.
+
+        * wtf/text/StringConcatenate.h: Got rid of unneeded forward declaration of
+        StringTypeAdapter, since that's now in Forward.h. Tweaked formatting of templates
+        a bit. Use function templates for writeTo functions rather than having two of each.
+        Removed unused toString functions. Optimized case where we use have a UChar* and
+        a length of zero to not force the result to be 16-bit. Also gets rid of a small
+        NO_RETURN_DUE_TO_CRASH mess that we don't need. Refactored constructors to use some
+        static member helper functions to compute string lengths. Added the pad function
+        and the PaddingSpecification struct template, so we can add padding to anything
+        we can turn into a string. Got rid of the special case overload for single
+        arguments, since it only worked for things that the String constructor can handle.
+        Instead we will now use StringTypeAdapter, which works for more types. Possibly
+        less optimal for some special cases, which we could specialize for later if we like.
+        * wtf/text/StringConcatenateNumbers.h: Ditto.
+        * wtf/text/StringOperators.h: Ditto.
+        * wtf/text/StringView.h: Ditto.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::createWithFormatAndArguments): Deleted.
+        (WTF::String::format): Deleted.
+        * wtf/text/WTFString.h: Deleted declaration of String::format.
+
+2019-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r241223, r241235, and r241287
+        https://bugs.webkit.org/show_bug.cgi?id=194427
+        <rdar://48045861>
+
+        * wtf/spi/darwin/XPCSPI.h:
+
+2019-03-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a system trace scope for event region building
+        https://bugs.webkit.org/show_bug.cgi?id=195226
+
+        Reviewed by Jon Lee.
+
+        This trace scope measures the time spend converting element rects into Region objects,
+        which can be large on some pages.
+
+        The value for "Display Refresh Dispatch to main thread" was wrong and I fixed it.
+
+        * wtf/SystemTracing.h:
+
+2019-02-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] sizeof(JSString) should be 16
+        https://bugs.webkit.org/show_bug.cgi?id=194375
+
+        Reviewed by Saam Barati.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::flagIs8Bit):
+        (WTF::StringImpl::flagIsAtomic):
+        (WTF::StringImpl::flagIsSymbol):
+        (WTF::StringImpl::maskStringKind):
+        * wtf/text/WTFString.cpp:
+        (WTF::nullString):
+        * wtf/text/WTFString.h:
+
+2019-02-28  Mark Lam  <mark.lam@apple.com>
+
+        Change CheckedArithmetic to not use std::enable_if_t.
+        https://bugs.webkit.org/show_bug.cgi?id=195187
+        <rdar://problem/48464665>
+
+        Reviewed by Keith Miller.
+
+        Because C++11 does not like std::enable_if_t and there's a need to use this file with C++11.
+
+        * wtf/CheckedArithmetic.h:
+
+2019-02-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Roll out r242014; it caused crashes in compositing logging (webkit.org/b/195141)
+
+        * wtf/Assertions.cpp:
+        (WTF::createWithFormatAndArguments): Deleted.
+        * wtf/HexNumber.h:
+        (WTF::StringTypeAdapter<HexNumberBuffer>::toString const):
+        * wtf/text/StringConcatenate.h:
+        (WTF::makeString):
+        (WTF::pad): Deleted.
+        (WTF::StringTypeAdapter<PaddingSpecification<UnderlyingAdapterType>>::StringTypeAdapter): Deleted.
+        (WTF::StringTypeAdapter<PaddingSpecification<UnderlyingAdapterType>>::length const): Deleted.
+        (WTF::StringTypeAdapter<PaddingSpecification<UnderlyingAdapterType>>::is8Bit const): Deleted.
+        (WTF::StringTypeAdapter<PaddingSpecification<UnderlyingAdapterType>>::writeTo const): Deleted.
+        * wtf/text/StringConcatenateNumbers.h:
+        (WTF::FormattedNumber::fixedPrecision):
+        (WTF::FormattedNumber::fixedWidth):
+        (WTF::StringTypeAdapter<FormattedNumber>::toString const):
+        * wtf/text/StringOperators.h:
+        (WTF::StringAppend::StringAppend):
+        * wtf/text/StringView.h:
+        (WTF::StringView::invalidate):
+        * wtf/text/WTFString.cpp:
+        (WTF::createWithFormatAndArguments):
+        (WTF::String::format):
+        * wtf/text/WTFString.h:
+
+2019-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Remove remaining poisoning code.
+        https://bugs.webkit.org/show_bug.cgi?id=194138
+
+        Reviewed by Saam Barati.
+
+        This patch removes the instantiation of Poisoned variants of the various containers
+        but retains the ability of those containers to work with pointer traits.  This
+        allows us to use them with smart pointers in the future (just like we used to with
+        Poisoned values).  At minimum, this ability will be useful when we want to insert
+        an observer into the container storage type for debugging purposes, or to collect
+        statistics for profiling.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Bag.h:
+        * wtf/CMakeLists.txt:
+        * wtf/Platform.h:
+        * wtf/Poisoned.cpp: Removed.
+        * wtf/Poisoned.h: Removed.
+        * wtf/PoisonedUniquePtr.h: Removed.
+        * wtf/Ref.h:
+        * wtf/RefCountedArray.h:
+        * wtf/RefPtr.h:
+        * wtf/WTFAssertions.cpp:
+
+2019-02-26  Keith Miller  <keith_miller@apple.com>
+
+        Code quality cleanup in NeverDestroyed
+        https://bugs.webkit.org/show_bug.cgi?id=194824
+
+        Reviewed by Yusuke Suzuki.
+
+        First, move data members to the end of the class per WebKit
+        style. Also, add forbid heap allocation since we expect the
+        NeverDestroyed classes to be static.
+
+        * wtf/NeverDestroyed.h:
+
 2019-02-25  Xabier Rodriguez Calvar  <calvaris@igalia.com>
 
         Fix WTFLogVerbose variadic parameters forwarding

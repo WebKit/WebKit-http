@@ -79,7 +79,7 @@ private:
     void restartWithCredential(const WebCore::ProtectionSpace&, const WebCore::Credential&);
 
     void appendCookieHeader(WebCore::ResourceRequest&);
-    void handleCookieHeaders(const WebCore::CurlResponse&);
+    void handleCookieHeaders(const WebCore::ResourceRequest&, const WebCore::CurlResponse&);
 
     State m_state { State::Suspended };
 
@@ -87,8 +87,6 @@ private:
     WebCore::ResourceResponse m_response;
     unsigned m_redirectCount { 0 };
     unsigned m_authFailureCount { 0 };
-    bool m_didChallengeEmptyCredentialForAuth { false };
-    bool m_didChallengeEmptyCredentialForProxyAuth { false };
     MonotonicTime m_startTime;
 };
 

@@ -86,6 +86,7 @@ enum class RouteSharingPolicy : uint8_t;
 enum class ScrollbarStyle : uint8_t;
 enum class TextIndicatorWindowLifetime : uint8_t;
 enum class TextIndicatorWindowDismissalAnimation : uint8_t;
+enum class DOMPasteAccessResponse : uint8_t;
 
 struct DictionaryPopupInfo;
 struct Highlight;
@@ -95,13 +96,11 @@ struct ShareDataWithParsedURL;
 
 template <typename> class RectEdges;
 using FloatBoxExtent = RectEdges<float>;
-}
 
 #if ENABLE(DRAG_SUPPORT)
-namespace WebCore {
 struct DragItem;
-}
 #endif
+}
 
 namespace WebKit {
 
@@ -131,6 +130,7 @@ enum class ContinueUnsafeLoad : bool { No, Yes };
 
 struct FocusedElementInformation;
 struct InteractionInformationAtPosition;
+struct WebAutocorrectionContext;
 struct WebHitTestResultData;
 
 #if ENABLE(TOUCH_EVENTS)
@@ -340,10 +340,8 @@ public:
     virtual NSWindow *platformWindow() = 0;
     virtual void setShouldSuppressFirstResponderChanges(bool) = 0;
 
-#if WK_API_ENABLED
     virtual NSView *inspectorAttachmentView() = 0;
     virtual _WKRemoteObjectRegistry *remoteObjectRegistry() = 0;
-#endif
 
 #if USE(APPKIT)
     virtual void intrinsicContentSizeDidChange(const WebCore::IntSize& intrinsicContentSize) = 0;
@@ -397,6 +395,8 @@ public:
 
     virtual void enableInspectorNodeSearch() = 0;
     virtual void disableInspectorNodeSearch() = 0;
+
+    virtual void handleAutocorrectionContext(const WebAutocorrectionContext&) = 0;
 #endif
 
     // Auxiliary Client Creation
@@ -465,7 +465,7 @@ public:
     virtual void didChangeDragCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) = 0;
 #endif
 
-    virtual void requestDOMPasteAccess(const WebCore::IntRect& elementRect, CompletionHandler<void(bool)>&&) = 0;
+    virtual void requestDOMPasteAccess(const WebCore::IntRect& elementRect, const String& originIdentifier, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&&) = 0;
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     virtual void didInsertAttachment(API::Attachment&, const String& source) { }

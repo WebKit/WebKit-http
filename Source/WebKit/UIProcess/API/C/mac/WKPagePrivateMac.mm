@@ -122,7 +122,7 @@ id <_WKObservablePageState> WKPageCreateObservableState(WKPageRef pageRef)
 
 _WKRemoteObjectRegistry *WKPageGetObjectRegistry(WKPageRef pageRef)
 {
-#if WK_API_ENABLED && !TARGET_OS_IPHONE
+#if PLATFORM(MAC)
     return WebKit::toImpl(pageRef)->remoteObjectRegistry();
 #else
     return nil;
@@ -137,7 +137,6 @@ bool WKPageIsURLKnownHSTSHost(WKPageRef page, WKURLRef url)
     return webPageProxy->process().processPool().isURLKnownHSTSHost(WebKit::toImpl(url)->string(), privateBrowsingEnabled);
 }
 
-#if !TARGET_OS_IPHONE && (defined(__clang__) && defined(__APPLE__) && !defined(__i386__))
 WKNavigation *WKPageLoadURLRequestReturningNavigation(WKPageRef pageRef, WKURLRequestRef urlRequestRef)
 {
     auto resourceRequest = WebKit::toImpl(urlRequestRef)->resourceRequest();
@@ -148,7 +147,6 @@ WKNavigation *WKPageLoadFileReturningNavigation(WKPageRef pageRef, WKURLRef file
 {
     return WebKit::wrapper(WebKit::toImpl(pageRef)->loadFile(WebKit::toWTFString(fileURL), WebKit::toWTFString(resourceDirectoryURL)));
 }
-#endif
 
 #if PLATFORM(MAC)
 bool WKPageIsPlayingVideoInEnhancedFullscreen(WKPageRef pageRef)
@@ -159,14 +157,14 @@ bool WKPageIsPlayingVideoInEnhancedFullscreen(WKPageRef pageRef)
 
 void WKPageSetFullscreenDelegate(WKPageRef page, id <_WKFullscreenDelegate> delegate)
 {
-#if WK_API_ENABLED && ENABLE(FULLSCREEN_API)
+#if ENABLE(FULLSCREEN_API)
     downcast<WebKit::FullscreenClient>(WebKit::toImpl(page)->fullscreenClient()).setDelegate(delegate);
 #endif
 }
 
 id <_WKFullscreenDelegate> WKPageGetFullscreenDelegate(WKPageRef page)
 {
-#if WK_API_ENABLED && ENABLE(FULLSCREEN_API)
+#if ENABLE(FULLSCREEN_API)
     return downcast<WebKit::FullscreenClient>(WebKit::toImpl(page)->fullscreenClient()).delegate().autorelease();
 #else
     return nil;

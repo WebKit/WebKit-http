@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ThreadedCompositor.h"
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS)
 
 #include "CompositingRunLoop.h"
 #include "ThreadedDisplayRefreshMonitor.h"
@@ -114,6 +114,28 @@ void ThreadedCompositor::invalidate()
         m_scene = nullptr;
     });
     m_compositingRunLoop = nullptr;
+}
+
+void ThreadedCompositor::suspend()
+{
+    if (++m_suspendedCount > 1)
+        return;
+
+    m_compositingRunLoop->stopUpdates();
+    m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
+        m_scene->setActive(false);
+    });
+}
+
+void ThreadedCompositor::resume()
+{
+    ASSERT(m_suspendedCount > 0);
+    if (--m_suspendedCount > 0)
+        return;
+
+    m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
+        m_scene->setActive(true);
+    });
 }
 
 void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
@@ -331,4 +353,4 @@ void ThreadedCompositor::frameComplete()
 }
 
 }
-#endif // USE(COORDINATED_GRAPHICS_THREADED)
+#endif // USE(COORDINATED_GRAPHICS)

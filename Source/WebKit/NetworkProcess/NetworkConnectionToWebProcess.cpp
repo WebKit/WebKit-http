@@ -45,6 +45,7 @@
 #include "NetworkSocketStreamMessages.h"
 #include "PingLoad.h"
 #include "PreconnectTask.h"
+#include "ServiceWorkerFetchTaskMessages.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
 #include "WebIDBConnectionToClient.h"
@@ -63,7 +64,6 @@
 
 namespace WebKit {
 using namespace WebCore;
-using RegistrableDomain = WebCore::RegistrableDomain;
 
 Ref<NetworkConnectionToWebProcess> NetworkConnectionToWebProcess::create(NetworkProcess& networkProcess, IPC::Connection::Identifier connectionIdentifier)
 {
@@ -181,10 +181,17 @@ void NetworkConnectionToWebProcess::didReceiveMessage(IPC::Connection& connectio
             swConnection->didReceiveMessage(connection, decoder);
         return;
     }
-    
+
     if (decoder.messageReceiverName() == Messages::WebSWServerToContextConnection::messageReceiverName()) {
         if (auto* contextConnection = m_networkProcess->connectionToContextProcessFromIPCConnection(connection)) {
             contextConnection->didReceiveMessage(connection, decoder);
+            return;
+        }
+    }
+
+    if (decoder.messageReceiverName() == Messages::ServiceWorkerFetchTask::messageReceiverName()) {
+        if (auto* contextConnection = m_networkProcess->connectionToContextProcessFromIPCConnection(connection)) {
+            contextConnection->didReceiveFetchTaskMessage(connection, decoder);
             return;
         }
     }
@@ -580,10 +587,10 @@ void NetworkConnectionToWebProcess::removeStorageAccessForFrame(PAL::SessionID s
         storageSession->removeStorageAccessForFrame(frameID, pageID);
 }
 
-void NetworkConnectionToWebProcess::removeStorageAccessForAllFramesOnPage(PAL::SessionID sessionID, uint64_t pageID)
+void NetworkConnectionToWebProcess::clearPageSpecificDataForResourceLoadStatistics(PAL::SessionID sessionID, uint64_t pageID)
 {
     if (auto* storageSession = networkProcess().storageSession(sessionID))
-        storageSession->removeStorageAccessForAllFramesOnPage(pageID);
+        storageSession->clearPageSpecificDataForResourceLoadStatistics(pageID);
 }
 
 void NetworkConnectionToWebProcess::logUserInteraction(PAL::SessionID sessionID, const RegistrableDomain& domain)

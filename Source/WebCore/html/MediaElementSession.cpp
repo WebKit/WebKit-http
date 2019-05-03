@@ -273,8 +273,10 @@ SuccessOr<MediaPlaybackDenialReason> MediaElementSession::playbackPermitted() co
 
     auto& document = m_element.document();
     auto* page = document.page();
-    if (!page || page->mediaPlaybackIsSuspended())
+    if (!page || page->mediaPlaybackIsSuspended()) {
+        ALWAYS_LOG(LOGIDENTIFIER, "Returning FALSE because media playback is suspended");
         return MediaPlaybackDenialReason::PageConsentRequired;
+    }
 
     if (document.isMediaDocument() && !document.ownerElement())
         return { };
@@ -377,6 +379,9 @@ bool MediaElementSession::dataLoadingPermitted() const
 bool MediaElementSession::dataBufferingPermitted() const
 {
     if (isSuspended())
+        return false;
+
+    if (bufferingSuspended())
         return false;
 
     if (state() == PlatformMediaSession::Playing)
@@ -783,6 +788,23 @@ void MediaElementSession::resetPlaybackSessionState()
 {
     m_mostRecentUserInteractionTime = MonotonicTime();
     addBehaviorRestriction(RequireUserGestureToControlControlsManager | RequirePlaybackToControlControlsManager);
+}
+
+void MediaElementSession::suspendBuffering()
+{
+    updateClientDataBuffering();
+}
+
+void MediaElementSession::resumeBuffering()
+{
+    updateClientDataBuffering();
+}
+
+bool MediaElementSession::bufferingSuspended() const
+{
+    if (auto* page = m_element.document().page())
+        return page->mediaBufferingIsSuspended();
+    return true;
 }
 
 bool MediaElementSession::allowsPictureInPicture() const

@@ -32,8 +32,6 @@
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED
-
 static NSString *loadableURL = @"data:text/html,no%20error%20A";
 
 TEST(WKProcessPool, WarmInitialProcess)
@@ -64,7 +62,6 @@ TEST(WKProcessPool, InitialWarmedProcessUsed)
 
     auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
     configuration.get().processPool = pool.get();
-    configuration.get().websiteDataStore = [WKWebsiteDataStore nonPersistentDataStore];
 
     auto webView = adoptNS([[WKWebView alloc] initWithFrame:CGRectMake(0, 0, 800, 600) configuration:configuration.get()]);
 
@@ -107,5 +104,3 @@ TEST(WKProcessPool, AutomaticProcessWarming)
     EXPECT_FALSE([pool _hasPrewarmedWebProcess]);
     EXPECT_EQ(2U, [pool _webPageContentProcessCount]);
 }
-
-#endif

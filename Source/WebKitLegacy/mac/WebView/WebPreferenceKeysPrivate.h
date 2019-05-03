@@ -53,6 +53,7 @@
 #define WebKitJavaScriptEnabledPreferenceKey @"WebKitJavaScriptEnabled"
 #define WebKitJavaScriptMarkupEnabledPreferenceKey @"WebKitJavaScriptMarkupEnabled"
 #define WebKitWebAnimationsEnabledPreferenceKey @"WebKitWebAnimationsEnabled"
+#define WebKitPointerEventsEnabledPreferenceKey @"WebKitPointerEventsEnabled"
 #define WebKitWebSecurityEnabledPreferenceKey @"WebKitWebSecurityEnabled"
 #define WebKitAllowUniversalAccessFromFileURLsPreferenceKey @"WebKitAllowUniversalAccessFromFileURLs"
 #define WebKitAllowFileAccessFromFileURLsPreferenceKey @"WebKitAllowFileAccessFromFileURLs"
@@ -265,3 +266,4 @@
 #define WebKitSelectionAcrossShadowBoundariesEnabledPreferenceKey @"WebKitSelectionAcrossShadowBoundariesEnabled"
 #define WebKitCSSLogicalEnabledPreferenceKey @"WebKitCSSLogicalEnabled"
 #define WebKitAdClickAttributionEnabledPreferenceKey @"WebKitAdClickAttributionEnabled"
+#define WebKitReferrerPolicyAttributeEnabledPreferenceKey @"WebKitReferrerPolicyAttributeEnabled"

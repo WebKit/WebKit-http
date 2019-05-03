@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKProcessPoolInternal.h"
 
-#if WK_API_ENABLED
-
 #import "AutomationClient.h"
 #import "CacheModel.h"
 #import "DownloadClient.h"
@@ -391,7 +389,7 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 
 - (void)_warmInitialProcess
 {
-    _processPool->prewarmProcess(WebKit::WebProcessPool::MayCreateDefaultDataStore::Yes);
+    _processPool->prewarmProcess(nullptr, WebKit::WebProcessPool::MayCreateDefaultDataStore::Yes);
 }
 
 - (void)_automationCapabilitiesDidChange
@@ -603,5 +601,3 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 }
 
 @end
-
-#endif // WK_API_ENABLED

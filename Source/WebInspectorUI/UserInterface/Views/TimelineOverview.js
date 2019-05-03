@@ -360,6 +360,8 @@ WI.TimelineOverview = class TimelineOverview extends WI.View
 
         for (let overviewGraph of this._overviewGraphsByTypeMap.values())
             overviewGraph.hidden();
+
+        this.hideScanner();
     }
 
     closed()
@@ -407,6 +409,16 @@ WI.TimelineOverview = class TimelineOverview extends WI.View
         console.assert(overviewGraph.visible, "Record selected in hidden overview graph", record);
 
         overviewGraph.selectedRecord = record;
+    }
+
+    showScanner(time)
+    {
+        this._timelineRuler.showScanner(time);
+    }
+
+    hideScanner()
+    {
+        this._timelineRuler.hideScanner();
     }
 
     updateLayoutIfNeeded(layoutReason)
@@ -525,6 +537,8 @@ WI.TimelineOverview = class TimelineOverview extends WI.View
         this.updateLayoutIfNeeded();
 
         this._dontUpdateScrollLeft = false;
+
+        this.element.classList.toggle("has-scrollbar", this._scrollContainerElement.clientHeight <= 1);
     }
 
     _handleWheelEvent(event)
@@ -570,6 +584,8 @@ WI.TimelineOverview = class TimelineOverview extends WI.View
         // Center the zoom around the mouse based on the remembered mouse position time.
         this.scrollStartTime = mousePositionTime - (mouseOffset * this.secondsPerPixel);
 
+        this.element.classList.toggle("has-scrollbar", this._scrollContainerElement.clientHeight <= 1);
+
         event.preventDefault();
         event.stopPropagation();
     }
@@ -587,6 +603,8 @@ WI.TimelineOverview = class TimelineOverview extends WI.View
         this._handlingGesture = true;
         this._gestureStartStartTime = mousePositionTime;
         this._gestureStartDurationPerPixel = this.secondsPerPixel;
+
+        this.element.classList.toggle("has-scrollbar", this._scrollContainerElement.clientHeight <= 1);
 
         event.preventDefault();
         event.stopPropagation();

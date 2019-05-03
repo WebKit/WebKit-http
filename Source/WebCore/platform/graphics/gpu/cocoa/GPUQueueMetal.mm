@@ -70,10 +70,26 @@ GPUQueue::GPUQueue(PlatformQueueSmartPtr&& queue)
 {
 }
 
-void GPUQueue::submit(Vector<Ref<const GPUCommandBuffer>>&& buffers)
+void GPUQueue::submit(Vector<Ref<const GPUCommandBuffer>>&& commandBuffers)
 {
-    for (auto& buffer : buffers)
-        [buffer->platformCommandBuffer() commit];
+    BEGIN_BLOCK_OBJC_EXCEPTIONS;
+
+    for (auto& commandBuffer : commandBuffers) {
+        if (commandBuffer->blitEncoder())
+            [commandBuffer->blitEncoder() endEncoding];
+        // Prevent any buffer mapping callbacks from executing until command buffer is complete.
+        for (auto& buffer : commandBuffer->usedBuffers()) {
+            if (buffer->state() != GPUBuffer::State::Unmapped) {
+                LOG(WebGPU, "GPUQueue::submit(): Invalid GPUBuffer set on a GPUCommandBuffer!");
+                return;
+            }
+            buffer->commandBufferCommitted(commandBuffer->platformCommandBuffer());
+        }
+
+        [commandBuffer->platformCommandBuffer() commit];
+    }
+
+    END_BLOCK_OBJC_EXCEPTIONS;
 }
 
 String GPUQueue::label() const

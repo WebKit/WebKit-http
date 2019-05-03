@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKNavigationActionInternal.h"
 
-#if WK_API_ENABLED
-
 #import "NavigationActionData.h"
 #import "WKFrameInfoInternal.h"
 #import "WKNavigationInternal.h"
@@ -187,6 +185,11 @@ static WKSyntheticClickType toWKSyntheticClickType(WebKit::WebMouseEvent::Synthe
     return _navigationAction->shouldOpenAppLinks();
 }
 
+- (BOOL)_shouldPerformDownload
+{
+    return _navigationAction->shouldPerformDownload();
+}
+
 - (BOOL)_shouldOpenExternalURLs
 {
     return [self _shouldOpenExternalSchemes];
@@ -208,5 +211,3 @@ static WKSyntheticClickType toWKSyntheticClickType(WebKit::WebMouseEvent::Synthe
 }
 
 @end
-
-#endif

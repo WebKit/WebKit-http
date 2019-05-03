@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -511,7 +511,6 @@ void AccessCase::generateWithGuard(
         jit.loadPtr(
             CCallHelpers::Address(baseGPR, ScopedArguments::offsetOfStorage()),
             scratchGPR);
-        jit.xorPtr(CCallHelpers::TrustedImmPtr(ScopedArgumentsPoison::key()), scratchGPR);
         fallThrough.append(
             jit.branchTest8(
                 CCallHelpers::NonZero,
@@ -1214,7 +1213,15 @@ void AccessCase::generateImpl(AccessGenerationState& state)
     }
         
     case StringLength: {
-        jit.load32(CCallHelpers::Address(baseGPR, JSString::offsetOfLength()), valueRegs.payloadGPR());
+        jit.loadPtr(CCallHelpers::Address(baseGPR, JSString::offsetOfValue()), scratchGPR);
+        auto isRope = jit.branchIfRopeStringImpl(scratchGPR);
+        jit.load32(CCallHelpers::Address(scratchGPR, StringImpl::lengthMemoryOffset()), valueRegs.payloadGPR());
+        auto done = jit.jump();
+
+        isRope.link(&jit);
+        jit.load32(CCallHelpers::Address(baseGPR, JSRopeString::offsetOfLength()), valueRegs.payloadGPR());
+
+        done.link(&jit);
         jit.boxInt32(valueRegs.payloadGPR(), valueRegs);
         state.succeed();
         return;

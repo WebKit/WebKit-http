@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,6 +49,7 @@
 #import "WKBrowsingContextControllerInternal.h"
 #import "WebAutocorrectionContext.h"
 #import "WebPageMessages.h"
+#import "WebProcessPool.h"
 #import "WebProcessProxy.h"
 #import <WebCore/FrameView.h>
 #import <WebCore/NotImplemented.h>
@@ -562,22 +563,14 @@ void WebPageProxy::requestDictationContext(WTF::Function<void (const String&, co
     m_process->send(Messages::WebPage::RequestDictationContext(callbackID), m_pageID);
 }
 
-void WebPageProxy::requestAutocorrectionContext(Function<void(const WebAutocorrectionContext&, CallbackBase::Error)>&& callback)
+void WebPageProxy::requestAutocorrectionContext()
 {
-    if (!isValid()) {
-        callback({ }, CallbackBase::Error::OwnerWasInvalidated);
-        return;
-    }
-
-    auto callbackID = m_callbacks.put(WTFMove(callback), m_process->throttler().backgroundActivityToken());
-    m_process->send(Messages::WebPage::RequestAutocorrectionContext(callbackID), m_pageID);
+    m_process->send(Messages::WebPage::RequestAutocorrectionContext(), m_pageID);
 }
 
-WebAutocorrectionContext WebPageProxy::autocorrectionContextSync()
+void WebPageProxy::handleAutocorrectionContext(const WebAutocorrectionContext& context)
 {
-    WebAutocorrectionContext context;
-    m_process->sendSync(Messages::WebPage::AutocorrectionContextSync(), Messages::WebPage::AutocorrectionContextSync::Reply(context), m_pageID);
-    return context;
+    pageClient().handleAutocorrectionContext(context);
 }
 
 void WebPageProxy::getSelectionContext(WTF::Function<void(const String&, const String&, const String&, CallbackBase::Error)>&& callbackFunction)
@@ -670,6 +663,8 @@ void WebPageProxy::applicationWillEnterForeground()
 {
     bool isSuspendedUnderLock = [UIApp isSuspendedUnderLock];
     m_process->send(Messages::WebPage::ApplicationWillEnterForeground(isSuspendedUnderLock), m_pageID);
+    m_process->setKeyboardIsAttached([UIKeyboard isInHardwareKeyboardMode]);
+    m_process->send(Messages::WebPage::HardwareKeyboardAvailabilityChanged(m_process->keyboardIsAttached()), m_pageID);
 }
 
 void WebPageProxy::applicationWillResignActive()
@@ -1107,10 +1102,10 @@ void WebPageProxy::setIsScrollingOrZooming(bool isScrollingOrZooming)
         m_validationBubble->show();
 }
 
-void WebPageProxy::hardwareKeyboardAvailabilityChanged()
+void WebPageProxy::hardwareKeyboardAvailabilityChanged(bool keyboardIsAttached)
 {
     updateCurrentModifierState();
-    m_process->send(Messages::WebPage::HardwareKeyboardAvailabilityChanged(), m_pageID);
+    m_process->send(Messages::WebPage::HardwareKeyboardAvailabilityChanged(keyboardIsAttached), m_pageID);
 }
 
 void WebPageProxy::requestEvasionRectsAboveSelection(CompletionHandler<void(const Vector<WebCore::FloatRect>&)>&& callback)
@@ -1178,6 +1173,20 @@ void WebPageProxy::didRequestPasswordForQuickLookDocumentInMainFrameShared(Ref<W
     pageClient().requestPasswordForQuickLookDocument(fileName, [process = WTFMove(process), pageID = m_pageID](const String& password) {
         process->send(Messages::WebPage::DidReceivePasswordForQuickLookDocument(password), pageID);
     });
+}
+
+#endif
+
+#if ENABLE(APPLE_PAY)
+
+UIViewController *WebPageProxy::paymentCoordinatorPresentingViewController(const WebPaymentCoordinatorProxy&)
+{
+    return uiClient().presentingViewController();
+}
+
+const String& WebPageProxy::paymentCoordinatorCTDataConnectionServiceType(const WebPaymentCoordinatorProxy&)
+{
+    return process().processPool().configuration().ctDataConnectionServiceType();
 }
 
 #endif

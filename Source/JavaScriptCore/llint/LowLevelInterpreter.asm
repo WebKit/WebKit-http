@@ -204,6 +204,11 @@ else
     const LowestTag = constexpr JSValue::LowestTag
 end
 
+if JSVALUE64
+    const NumberOfStructureIDEntropyBits = constexpr StructureIDTable::s_numberOfEntropyBits
+    const StructureEntropyBitsShift = constexpr StructureIDTable::s_entropyBitsShiftForStructurePointer
+end
+
 const CallOpCodeSize = constexpr op_call_length
 
 const maxFrameExtentForSlowPathCall = constexpr maxFrameExtentForSlowPathCall
@@ -477,6 +482,7 @@ const ModuleCode = constexpr ModuleCode
 const LLIntReturnPC = ArgumentCount + TagOffset
 
 # String flags.
+const isRopeInPointer = constexpr JSString::isRopeInPointer
 const HashFlags8BitBuffer = constexpr StringImpl::s_hashFlag8BitBuffer
 
 # Copied from PropertyOffset.h

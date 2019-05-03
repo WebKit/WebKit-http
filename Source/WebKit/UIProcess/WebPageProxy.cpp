@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -128,9 +128,11 @@
 #include "WebResourceLoadStatisticsStore.h"
 #include "WebURLSchemeHandler.h"
 #include "WebUserContentControllerProxy.h"
+#include "WebViewDidMoveToWindowObserver.h"
 #include "WebsiteDataStore.h"
 #include <WebCore/AdClickAttribution.h>
 #include <WebCore/BitmapImage.h>
+#include <WebCore/DOMPasteAccess.h>
 #include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/DiagnosticLoggingKeys.h>
@@ -188,6 +190,7 @@
 #include "RemoteLayerTreeScrollingPerformanceData.h"
 #include "TouchBarMenuData.h"
 #include "TouchBarMenuItemData.h"
+#include "VersionChecks.h"
 #include "VideoFullscreenManagerProxy.h"
 #include "VideoFullscreenManagerProxyMessages.h"
 #include <WebCore/RunLoopObserver.h>
@@ -560,13 +563,6 @@ DrawingAreaProxy* WebPageProxy::provisionalDrawingArea() const
     return drawingArea();
 }
 
-void WebPageProxy::changeWebsiteDataStore(WebsiteDataStore& websiteDataStore)
-{
-    m_process->processPool().pageEndUsingWebsiteDataStore(*this);
-    m_websiteDataStore = websiteDataStore;
-    m_process->processPool().pageBeginUsingWebsiteDataStore(*this);
-}
-
 const API::PageConfiguration& WebPageProxy::configuration() const
 {
     return m_configuration.get();
@@ -591,7 +587,7 @@ bool WebPageProxy::isValid() const
 
 void WebPageProxy::notifyProcessPoolToPrewarm()
 {
-    m_process->processPool().didReachGoodTimeToPrewarm();
+    m_process->processPool().didReachGoodTimeToPrewarm(m_websiteDataStore);
 }
 
 void WebPageProxy::setPreferences(WebPreferences& preferences)
@@ -744,23 +740,28 @@ void WebPageProxy::reattachToWebProcess()
 
     RELEASE_LOG_IF_ALLOWED(Loading, "reattachToWebProcess: webPID = %i, pageID = %" PRIu64, m_process->processIdentifier(), m_pageID);
 
-    m_process->removeWebPage(*this, m_pageID, WebProcessProxy::EndsUsingDataStore::Yes);
+    m_process->removeWebPage(*this, WebProcessProxy::EndsUsingDataStore::Yes);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
     auto& processPool = m_process->processPool();
     m_process = processPool.createNewWebProcessRespectingProcessCountLimit(m_websiteDataStore.get());
     m_isValid = true;
 
-    m_process->addExistingWebPage(*this, m_pageID, WebProcessProxy::BeginsUsingDataStore::Yes);
+    m_process->addExistingWebPage(*this, WebProcessProxy::BeginsUsingDataStore::Yes);
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
-    finishAttachingToWebProcess();
+    finishAttachingToWebProcess(IsProcessSwap::No);
 }
 
 bool WebPageProxy::suspendCurrentPageIfPossible(API::Navigation& navigation, Optional<uint64_t> mainFrameID, ProcessSwapRequestedByClient processSwapRequestedByClient)
 {
     if (!mainFrameID)
         return false;
+
+    if (!m_preferences->usesPageCache()) {
+        RELEASE_LOG_IF_ALLOWED(ProcessSwapping, "suspendCurrentPageIfPossible: Not suspending current page for process pid %i because page cache is disabled", m_process->processIdentifier());
+        return false;
+    }
 
     // If the client forced a swap then it may not be Web-compatible to suspend the previous page because other windows may have an opener link to the page.
     if (processSwapRequestedByClient == ProcessSwapRequestedByClient::Yes) {
@@ -807,25 +808,29 @@ void WebPageProxy::swapToWebProcess(Ref<WebProcessProxy>&& process, std::unique_
     RELEASE_LOG_IF_ALLOWED(Loading, "swapToWebProcess: webPID = %i, pageID = %" PRIu64, m_process->processIdentifier(), m_pageID);
 
     m_process = WTFMove(process);
+    m_websiteDataStore = m_process->websiteDataStore();
+
     ASSERT(!m_drawingArea);
     setDrawingArea(WTFMove(drawingArea));
     ASSERT(!m_mainFrame);
     m_mainFrame = WTFMove(mainFrame);
     m_isValid = true;
 
-    m_process->addExistingWebPage(*this, m_pageID, WebProcessProxy::BeginsUsingDataStore::No);
+    m_process->addExistingWebPage(*this, WebProcessProxy::BeginsUsingDataStore::No);
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
-    // No need to initialize the WebPage since it was created when we created the ProvisionalPageProxy.
-    finishAttachingToWebProcess(ShouldInitializeWebPage::No);
+    finishAttachingToWebProcess(IsProcessSwap::Yes);
 }
 
-void WebPageProxy::finishAttachingToWebProcess(ShouldInitializeWebPage shouldInitializePage)
+void WebPageProxy::finishAttachingToWebProcess(IsProcessSwap isProcessSwap)
 {
     ASSERT(m_process->state() != AuxiliaryProcessProxy::State::Terminated);
 
     if (m_process->state() == AuxiliaryProcessProxy::State::Running) {
-        m_webProcessLifetimeTracker.webPageEnteringWebProcess();
+        // In the process-swap case, the ProvisionalPageProxy constructor already took care of calling webPageEnteringWebProcess()
+        // when the process was provisional.
+        if (isProcessSwap != IsProcessSwap::Yes)
+            m_webProcessLifetimeTracker.webPageEnteringWebProcess(m_process);
         processDidFinishLaunching();
     }
 
@@ -856,7 +861,8 @@ void WebPageProxy::finishAttachingToWebProcess(ShouldInitializeWebPage shouldIni
     m_editableImageController = std::make_unique<EditableImageController>(*this);
 #endif
 
-    if (shouldInitializePage == ShouldInitializeWebPage::Yes)
+    // In the process-swap case, the ProvisionalPageProxy already took care of initializing the WebPage in the WebProcess.
+    if (isProcessSwap != IsProcessSwap::Yes)
         initializeWebPage();
 
     m_inspector->updateForNewPageProcess(this);
@@ -972,10 +978,6 @@ void WebPageProxy::close()
 
     m_isClosed = true;
 
-#if ENABLE(MEDIA_STREAM)
-    m_userMediaPermissionRequestManager = nullptr;
-#endif
-
     reportPageLoadResult(ResourceError { ResourceError::Type::Cancellation });
 
     if (m_activePopupMenu)
@@ -1026,7 +1028,7 @@ void WebPageProxy::close()
     m_process->processPool().removeAllSuspendedPagesForPage(*this);
 
     m_process->send(Messages::WebPage::Close(), m_pageID);
-    m_process->removeWebPage(*this, m_pageID, WebProcessProxy::EndsUsingDataStore::Yes);
+    m_process->removeWebPage(*this, WebProcessProxy::EndsUsingDataStore::Yes);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
     m_process->processPool().supplement<WebNotificationManagerProxy>()->clearNotifications(this);
 
@@ -2739,11 +2741,14 @@ private:
 
 void WebPageProxy::receivedNavigationPolicyDecision(PolicyAction policyAction, API::Navigation* navigation, ProcessSwapRequestedByClient processSwapRequestedByClient, WebFrameProxy& frame, API::WebsitePolicies* policies, Ref<PolicyDecisionSender>&& sender)
 {
+    Ref<WebsiteDataStore> websiteDataStore = m_websiteDataStore.copyRef();
     Optional<WebsitePoliciesData> data;
     if (policies) {
         data = policies->data();
-        if (policies->websiteDataStore())
-            changeWebsiteDataStore(policies->websiteDataStore()->websiteDataStore());
+        if (policies->websiteDataStore() && &policies->websiteDataStore()->websiteDataStore() != websiteDataStore.ptr()) {
+            websiteDataStore = policies->websiteDataStore()->websiteDataStore();
+            processSwapRequestedByClient = ProcessSwapRequestedByClient::Yes;
+        }
     }
 
     if (navigation && !navigation->userContentExtensionsEnabled()) {
@@ -2752,7 +2757,12 @@ void WebPageProxy::receivedNavigationPolicyDecision(PolicyAction policyAction, A
         data->contentBlockersEnabled = false;
     }
 
-    if (policyAction == PolicyAction::Use && navigation && (navigation->isSystemPreview() || navigation->shouldForceDownload()))
+#if PLATFORM(COCOA)
+    static const bool forceDownloadFromDownloadAttribute = !WebKit::linkedOnOrAfter(SDKVersion::FirstWhereDownloadAttributeDoesNotOverrideNavigationDelegate);
+#else
+    static const bool forceDownloadFromDownloadAttribute = true;
+#endif
+    if (policyAction == PolicyAction::Use && navigation && (navigation->isSystemPreview() || (forceDownloadFromDownloadAttribute && navigation->shouldPerformDownload())))
         policyAction = PolicyAction::Download;
 
     if (policyAction != PolicyAction::Use || !frame.isMainFrame() || !navigation) {
@@ -2770,7 +2780,7 @@ void WebPageProxy::receivedNavigationPolicyDecision(PolicyAction policyAction, A
         }
     }
 
-    process().processPool().processForNavigation(*this, *navigation, sourceProcess.copyRef(), sourceURL, processSwapRequestedByClient, [this, protectedThis = makeRef(*this), policyAction, navigation = makeRef(*navigation), sourceProcess = sourceProcess.copyRef(),
+    process().processPool().processForNavigation(*this, *navigation, sourceProcess.copyRef(), sourceURL, processSwapRequestedByClient, WTFMove(websiteDataStore), [this, protectedThis = makeRef(*this), policyAction, navigation = makeRef(*navigation), sourceProcess = sourceProcess.copyRef(),
         data = WTFMove(data), sender = WTFMove(sender), processSwapRequestedByClient] (Ref<WebProcessProxy>&& processForNavigation, SuspendedPageProxy* destinationSuspendedPage, const String& reason) mutable {
         // If the navigation has been destroyed, then no need to proceed.
         if (isClosed() || !navigationState().hasNavigation(navigation->navigationID())) {
@@ -2794,7 +2804,7 @@ void WebPageProxy::receivedNavigationPolicyDecision(PolicyAction policyAction, A
         // FIXME: Architecturally we do not currently support multiple WebPage's with the same ID in a given WebProcess.
         // In the case where the destination WebProcess has a SuspendedPageProxy for this WebPage, we should have thrown
         // it away to support WebProcess re-use.
-        ASSERT(destinationSuspendedPage || !process().processPool().hasSuspendedPageFor(processForNavigation, this));
+        ASSERT(destinationSuspendedPage || !process().processPool().hasSuspendedPageFor(processForNavigation, *this));
 
         auto suspendedPage = destinationSuspendedPage ? process().processPool().takeSuspendedPage(*destinationSuspendedPage) : nullptr;
         if (suspendedPage && suspendedPage->failedToSuspend())
@@ -2847,7 +2857,7 @@ void WebPageProxy::commitProvisionalPage(uint64_t frameID, uint64_t navigationID
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
     auto* navigation = navigationState().navigation(m_provisionalPage->navigationID());
     bool didSuspendPreviousPage = navigation ? suspendCurrentPageIfPossible(*navigation, mainFrameIDInPreviousProcess, m_provisionalPage->processSwapRequestedByClient()) : false;
-    m_process->removeWebPage(*this, m_pageID, WebProcessProxy::EndsUsingDataStore::No);
+    m_process->removeWebPage(*this, m_websiteDataStore.ptr() == &m_provisionalPage->process().websiteDataStore() ? WebProcessProxy::EndsUsingDataStore::No : WebProcessProxy::EndsUsingDataStore::Yes);
 
     // There is no way we'll be able to return to the page in the previous page so close it.
     if (!didSuspendPreviousPage)
@@ -4044,9 +4054,16 @@ void WebPageProxy::clearLoadDependentCallbacks()
     }
 }
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+static bool isNonUniqueNavigationWithLinkDecoration(const SecurityOriginData requesterOrigin, const URL& currentURL)
+{
+    return !requesterOrigin.securityOrigin()->isUnique() && (!currentURL.query().isEmpty() || !currentURL.fragmentIdentifier().isEmpty());
+}
+#endif
+
 void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t opaqueFrameLoadType, const WebCore::CertificateInfo& certificateInfo, bool containsPluginDocument, Optional<HasInsecureContent> hasInsecureContent, const UserData& userData)
 {
-    LOG(Loading, "(Loading) WebPageProxy %" PRIu64 " didCommitLoadForFrame in navigation %" PRIu64, m_pageID, m_navigationID);
+    LOG(Loading, "(Loading) WebPageProxy %" PRIu64 " didCommitLoadForFrame in navigation %" PRIu64, m_pageID, navigationID);
     LOG(BackForward, "(Back/Forward) After load commit, back/forward list is now:%s", m_backForwardList->loggingString());
     RELEASE_LOG_IF_ALLOWED(Loading, "didCommitLoadForFrame: webPID = %i, pageID = %" PRIu64 ", frameID = %" PRIu64, m_process->processIdentifier(), m_pageID, frameID);
 
@@ -4057,8 +4074,19 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
 
     // FIXME: We should message check that navigationID is not zero here, but it's currently zero for some navigations through the page cache.
     RefPtr<API::Navigation> navigation;
-    if (frame->isMainFrame() && navigationID)
+    if (frame->isMainFrame() && navigationID) {
         navigation = navigationState().navigation(navigationID);
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+        auto requesterOrigin = navigation->lastNavigationAction().requesterOrigin;
+        auto currentURL = navigation->currentRequest().url();
+        if (isNonUniqueNavigationWithLinkDecoration(requesterOrigin, currentURL)) {
+            RegistrableDomain currentDomain { currentURL };
+            URL requesterURL { URL(), requesterOrigin.toString() };
+            if (!currentDomain.matches(requesterURL))
+                m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::CommittedCrossSiteLoadWithLinkDecoration(m_websiteDataStore->sessionID(), RegistrableDomain { requesterURL }, currentDomain, m_pageID));
+        }
+#endif
+    }
 
     m_hasCommittedAnyProvisionalLoads = true;
     m_process->didCommitProvisionalLoad();
@@ -4293,7 +4321,8 @@ void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t 
 void WebPageProxy::didChangeMainDocument(uint64_t frameID)
 {
 #if ENABLE(MEDIA_STREAM)
-    userMediaPermissionRequestManager().resetAccess(frameID);
+    if (m_userMediaPermissionRequestManager)
+        m_userMediaPermissionRequestManager->resetAccess(frameID);
 #else
     UNUSED_PARAM(frameID);
 #endif
@@ -4302,7 +4331,8 @@ void WebPageProxy::didChangeMainDocument(uint64_t frameID)
 void WebPageProxy::viewIsBecomingVisible()
 {
 #if ENABLE(MEDIA_STREAM)
-    userMediaPermissionRequestManager().viewIsBecomingVisible();
+    if (m_userMediaPermissionRequestManager)
+        m_userMediaPermissionRequestManager->viewIsBecomingVisible();
 #endif
 }
 
@@ -4998,12 +5028,12 @@ void WebPageProxy::connectionWillOpen(IPC::Connection& connection)
 {
     ASSERT_UNUSED(connection, &connection == m_process->connection());
 
-    m_webProcessLifetimeTracker.webPageEnteringWebProcess();
+    m_webProcessLifetimeTracker.webPageEnteringWebProcess(m_process);
 }
 
 void WebPageProxy::webProcessWillShutDown()
 {
-    m_webProcessLifetimeTracker.webPageLeavingWebProcess();
+    m_webProcessLifetimeTracker.webPageLeavingWebProcess(m_process);
 }
 
 void WebPageProxy::processDidFinishLaunching()
@@ -5504,9 +5534,9 @@ void WebPageProxy::setNeedsPlainTextQuirk(bool needsPlainTextQuirk)
     m_needsPlainTextQuirk = needsPlainTextQuirk;
 }
 
-void WebPageProxy::requestDOMPasteAccess(const WebCore::IntRect& elementRect, CompletionHandler<void(bool)>&& completionHandler)
+void WebPageProxy::requestDOMPasteAccess(const WebCore::IntRect& elementRect, const String& originIdentifier, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&& completionHandler)
 {
-    m_pageClient->requestDOMPasteAccess(elementRect, WTFMove(completionHandler));
+    m_pageClient->requestDOMPasteAccess(elementRect, originIdentifier, WTFMove(completionHandler));
 }
 
 // BackForwardList
@@ -6562,7 +6592,7 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
     // If it does *during* process swapping, and the client triggers a reload, that causes bizarre WebKit re-entry.
     // FIXME: This might have to change
     if (reason == ProcessTerminationReason::NavigationSwap)
-        m_webProcessLifetimeTracker.webPageLeavingWebProcess();
+        m_webProcessLifetimeTracker.webPageLeavingWebProcess(m_process);
     else {
         navigationState().clearAllNavigations();
         dispatchProcessDidTerminate(reason);
@@ -6707,10 +6737,6 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_geolocationPermissionRequestManager.invalidateRequests();
 #endif
 
-#if ENABLE(MEDIA_STREAM)
-    m_userMediaPermissionRequestManager = nullptr;
-#endif
-
     m_notificationPermissionRequestManager.invalidateRequests();
 
     m_toolTip = String();
@@ -6783,7 +6809,11 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
         editCommand->invalidate();
 
     m_activePopupMenu = nullptr;
+
     updatePlayingMediaDidChange(MediaProducer::IsNotPlaying);
+#if ENABLE(MEDIA_STREAM)
+    m_userMediaPermissionRequestManager = nullptr;
+#endif
 
 #if ENABLE(POINTER_LOCK)
     requestPointerUnlock();
@@ -6878,10 +6908,10 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
     parameters.paginationLineGridEnabled = m_paginationLineGridEnabled;
     parameters.userAgent = userAgent();
     parameters.itemStates = m_backForwardList->itemStates();
-    parameters.sessionID = sessionID();
+    parameters.sessionID = process.websiteDataStore().sessionID();
     parameters.userContentControllerID = m_userContentController->identifier();
     parameters.visitedLinkTableID = m_visitedLinkStore->identifier();
-    parameters.websiteDataStoreID = m_websiteDataStore->identifier();
+    parameters.websiteDataStoreID = process.websiteDataStore().identifier();
     parameters.canRunBeforeUnloadConfirmPanel = m_uiClient->canRunBeforeUnloadConfirmPanel();
     parameters.canRunModal = m_canRunModal;
     parameters.deviceScaleFactor = deviceScaleFactor();
@@ -6963,7 +6993,7 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    parameters.hasRegisteredServiceWorkers = process.processPool().mayHaveRegisteredServiceWorkers(m_websiteDataStore);
+    parameters.hasRegisteredServiceWorkers = process.processPool().mayHaveRegisteredServiceWorkers(process.websiteDataStore());
 #endif
 
     parameters.needsFontAttributes = m_needsFontAttributes;
@@ -7139,7 +7169,8 @@ void WebPageProxy::beginMonitoringCaptureDevices()
 void WebPageProxy::clearUserMediaState()
 {
 #if ENABLE(MEDIA_STREAM)
-    userMediaPermissionRequestManager().clearCachedState();
+    if (m_userMediaPermissionRequestManager)
+        m_userMediaPermissionRequestManager->clearCachedState();
 #endif
 }
 
@@ -7869,7 +7900,7 @@ void WebPageProxy::updatePlayingMediaDidChange(MediaProducer::MediaStateFlags ne
 #if ENABLE(MEDIA_STREAM)
     if (oldMediaCaptureState != newMediaCaptureState) {
         m_uiClient->mediaCaptureStateDidChange(m_mediaState);
-        userMediaPermissionRequestManager().captureStateChanged(oldMediaCaptureState, newMediaCaptureState);
+        m_userMediaPermissionRequestManager->captureStateChanged(oldMediaCaptureState, newMediaCaptureState);
     }
 #endif
 
@@ -8353,11 +8384,9 @@ void WebPageProxy::loadSynchronousURLSchemeTask(URLSchemeTaskParameters&& parame
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-void WebPageProxy::requestStorageAccessConfirm(const String& subFrameHost, const String& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
+void WebPageProxy::requestStorageAccessConfirm(const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
 {
-    RegistrableDomain subFrameRegistrableDomain { subFrameHost };
-    RegistrableDomain topFrameRegistrableDomain { topFrameHost };
-    m_uiClient->requestStorageAccessConfirm(*this, m_process->webFrame(frameID), subFrameRegistrableDomain.string(), topFrameRegistrableDomain.string(), WTFMove(completionHandler));
+    m_uiClient->requestStorageAccessConfirm(*this, m_process->webFrame(frameID), subFrameDomain.string(), topFrameDomain.string(), WTFMove(completionHandler));
 }
 #endif
 
@@ -8727,6 +8756,57 @@ void WebPageProxy::dumpAdClickAttribution(CompletionHandler<void(const String&)>
 void WebPageProxy::clearAdClickAttribution(CompletionHandler<void()>&& completionHandler)
 {
     m_process->processPool().clearAdClickAttribution(m_websiteDataStore->sessionID(), WTFMove(completionHandler));
+}
+
+#if ENABLE(APPLE_PAY)
+
+IPC::Connection* WebPageProxy::paymentCoordinatorConnection(const WebPaymentCoordinatorProxy&)
+{
+    return messageSenderConnection();
+}
+
+IPC::MessageReceiverMap& WebPageProxy::paymentCoordinatorMessageReceiver(const WebPaymentCoordinatorProxy&)
+{
+    return process().messageReceiverMap();
+}
+
+const String& WebPageProxy::paymentCoordinatorSourceApplicationBundleIdentifier(const WebPaymentCoordinatorProxy&)
+{
+    return websiteDataStore().sourceApplicationBundleIdentifier();
+}
+
+const String& WebPageProxy::paymentCoordinatorSourceApplicationSecondaryIdentifier(const WebPaymentCoordinatorProxy&)
+{
+    return websiteDataStore().sourceApplicationSecondaryIdentifier();
+}
+
+uint64_t WebPageProxy::paymentCoordinatorDestinationID(const WebPaymentCoordinatorProxy&)
+{
+    return messageSenderDestinationID();
+}
+
+#endif
+
+void WebPageProxy::addObserver(WebViewDidMoveToWindowObserver& observer)
+{
+    auto result = m_webViewDidMoveToWindowObservers.add(&observer, makeWeakPtr(observer));
+    ASSERT_UNUSED(result, result.isNewEntry);
+}
+
+void WebPageProxy::removeObserver(WebViewDidMoveToWindowObserver& observer)
+{
+    auto result = m_webViewDidMoveToWindowObservers.remove(&observer);
+    ASSERT_UNUSED(result, result);
+}
+
+void WebPageProxy::webViewDidMoveToWindow()
+{
+    auto observersCopy = m_webViewDidMoveToWindowObservers;
+    for (const auto& observer : observersCopy) {
+        if (!observer.value)
+            continue;
+        observer.value->webViewDidMoveToWindow();
+    }
 }
 
 } // namespace WebKit

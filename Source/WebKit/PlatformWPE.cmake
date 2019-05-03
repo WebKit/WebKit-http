@@ -16,6 +16,7 @@ configure_file(wpe/wpe-web-extension.pc.in ${WPEWebExtension_PKGCONFIG_FILE} @ON
 
 add_definitions(-DWEBKIT2_COMPILATION)
 
+add_definitions(-DLIBDIR="${LIB_INSTALL_DIR}")
 add_definitions(-DPKGLIBDIR="${LIB_INSTALL_DIR}/wpe-webkit-${WPE_API_VERSION}")
 add_definitions(-DPKGLIBEXECDIR="${LIBEXEC_INSTALL_DIR}")
 add_definitions(-DDATADIR="${CMAKE_INSTALL_FULL_DATADIR}")
@@ -92,6 +93,7 @@ set(WPE_API_INSTALLED_HEADERS
     ${DERIVED_SOURCES_WPE_API_DIR}/WebKitVersion.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitApplicationInfo.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitAuthenticationRequest.h
+    ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitAutocleanups.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitAutomationSession.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitBackForwardList.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitBackForwardListItem.h
@@ -155,6 +157,7 @@ set(WPE_WEB_EXTENSION_API_INSTALLED_HEADERS
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/WebKitScriptWorld.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/WebKitWebEditor.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/WebKitWebExtension.h
+    ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/WebKitWebExtensionAutocleanups.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/WebKitWebHitTestResult.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/WebKitWebPage.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/webkit-web-extension.h
@@ -251,6 +254,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/UIProcess/API/C/wpe"
     "${WEBKIT_DIR}/UIProcess/API/glib"
     "${WEBKIT_DIR}/UIProcess/API/wpe"
+    "${WEBKIT_DIR}/UIProcess/CoordinatedGraphics"
     "${WEBKIT_DIR}/UIProcess/Network/CustomProtocols/soup"
     "${WEBKIT_DIR}/UIProcess/gstreamer"
     "${WEBKIT_DIR}/UIProcess/linux"
@@ -276,6 +280,7 @@ list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
+    ${LIBSECCOMP_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${WPE_INCLUDE_DIRS}
 )
@@ -288,6 +293,7 @@ list(APPEND WebKit_LIBRARIES
         ${GLIB_GMODULE_LIBRARIES}
         ${GSTREAMER_LIBRARIES}
         ${HARFBUZZ_LIBRARIES}
+        ${LIBSECCOMP_LIBRARIES}
         ${LIBSOUP_LIBRARIES}
         ${WPE_LIBRARIES}
 )

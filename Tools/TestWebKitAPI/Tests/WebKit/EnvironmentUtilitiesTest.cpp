@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2019 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,60 +28,57 @@
 #include "Test.h"
 
 #include <WebKit/EnvironmentUtilities.h>
-#include <stdlib.h>
 
 namespace TestWebKitAPI {
 
-const char* const environmentVariable = "DYLD_INSERT_LIBRARIES";
 #define PROCESS_DYLIB "Process.dylib"
 const char* const stripValue = "/" PROCESS_DYLIB;
 
-static const char* strip(const char* input)
+static void testStrip(const char* input, const char* expected)
 {
-    setenv(environmentVariable, input, 1);
-    WebKit::EnvironmentUtilities::stripValuesEndingWithString(environmentVariable, stripValue);
-    return getenv(environmentVariable);
+    auto actual = WebKit::EnvironmentUtilities::stripEntriesEndingWith(input, stripValue);
+    EXPECT_STREQ(actual.utf8().data(), expected);
 }
 
-TEST(WebKit, StripValuesEndingWithString)
+TEST(WebKit, StripEntriesEndingWith)
 {
-    EXPECT_STREQ(strip(""), "");
-    EXPECT_STREQ(strip(":"), ":");
-    EXPECT_STREQ(strip("::"), "::");
-    EXPECT_STREQ(strip(":::"), ":::");
-    EXPECT_STREQ(strip("::::"), "::::");
-    EXPECT_STREQ(strip(":::::"), ":::::");
+    testStrip("", "");
+    testStrip(":", ":");
+    testStrip("::", "::");
+    testStrip(":::", ":::");
+    testStrip("::::", "::::");
+    testStrip(":::::", ":::::");
 
-    EXPECT_STREQ(strip(PROCESS_DYLIB), PROCESS_DYLIB);
-    EXPECT_STREQ(strip(":" PROCESS_DYLIB), ":" PROCESS_DYLIB);
-    EXPECT_STREQ(strip(PROCESS_DYLIB ":"), PROCESS_DYLIB ":");
-    EXPECT_STREQ(strip(":" PROCESS_DYLIB ":"), ":" PROCESS_DYLIB ":");
+    testStrip(PROCESS_DYLIB, PROCESS_DYLIB);
+    testStrip(":" PROCESS_DYLIB, ":" PROCESS_DYLIB);
+    testStrip(PROCESS_DYLIB ":", PROCESS_DYLIB ":");
+    testStrip(":" PROCESS_DYLIB ":", ":" PROCESS_DYLIB ":");
 
-    EXPECT_STREQ(strip("/" PROCESS_DYLIB), nullptr);
-    EXPECT_STREQ(strip(":/" PROCESS_DYLIB), nullptr);
-    EXPECT_STREQ(strip("/" PROCESS_DYLIB ":"), nullptr);
-    EXPECT_STREQ(strip(":/" PROCESS_DYLIB ":"), ":");
+    testStrip("/" PROCESS_DYLIB, "");
+    testStrip(":/" PROCESS_DYLIB, "");
+    testStrip("/" PROCESS_DYLIB ":", "");
+    testStrip(":/" PROCESS_DYLIB ":", ":");
 
-    EXPECT_STREQ(strip(PROCESS_DYLIB "/"), PROCESS_DYLIB "/");
-    EXPECT_STREQ(strip(":" PROCESS_DYLIB "/"), ":" PROCESS_DYLIB "/");
-    EXPECT_STREQ(strip(PROCESS_DYLIB "/:"), PROCESS_DYLIB "/:");
-    EXPECT_STREQ(strip(":" PROCESS_DYLIB "/:"), ":" PROCESS_DYLIB "/:");
+    testStrip(PROCESS_DYLIB "/", PROCESS_DYLIB "/");
+    testStrip(":" PROCESS_DYLIB "/", ":" PROCESS_DYLIB "/");
+    testStrip(PROCESS_DYLIB "/:", PROCESS_DYLIB "/:");
+    testStrip(":" PROCESS_DYLIB "/:", ":" PROCESS_DYLIB "/:");
 
-    EXPECT_STREQ(strip("/" PROCESS_DYLIB "/"), "/" PROCESS_DYLIB "/");
-    EXPECT_STREQ(strip(":/" PROCESS_DYLIB "/"), ":/" PROCESS_DYLIB "/");
-    EXPECT_STREQ(strip("/" PROCESS_DYLIB "/:"), "/" PROCESS_DYLIB "/:");
-    EXPECT_STREQ(strip(":/" PROCESS_DYLIB "/:"), ":/" PROCESS_DYLIB "/:");
+    testStrip("/" PROCESS_DYLIB "/", "/" PROCESS_DYLIB "/");
+    testStrip(":/" PROCESS_DYLIB "/", ":/" PROCESS_DYLIB "/");
+    testStrip("/" PROCESS_DYLIB "/:", "/" PROCESS_DYLIB "/:");
+    testStrip(":/" PROCESS_DYLIB "/:", ":/" PROCESS_DYLIB "/:");
 
-    EXPECT_STREQ(strip("/Before.dylib:/" PROCESS_DYLIB), "/Before.dylib");
-    EXPECT_STREQ(strip("/" PROCESS_DYLIB ":/After.dylib"), "/After.dylib");
-    EXPECT_STREQ(strip("/Before.dylib:/" PROCESS_DYLIB ":/After.dylib"), "/Before.dylib:/After.dylib");
-    EXPECT_STREQ(strip("/Before.dylib:/" PROCESS_DYLIB ":/Middle.dylib:/" PROCESS_DYLIB ":/After.dylib"), "/Before.dylib:/Middle.dylib:/After.dylib");
+    testStrip("/Before.dylib:/" PROCESS_DYLIB, "/Before.dylib");
+    testStrip("/" PROCESS_DYLIB ":/After.dylib", "/After.dylib");
+    testStrip("/Before.dylib:/" PROCESS_DYLIB ":/After.dylib", "/Before.dylib:/After.dylib");
+    testStrip("/Before.dylib:/" PROCESS_DYLIB ":/Middle.dylib:/" PROCESS_DYLIB ":/After.dylib", "/Before.dylib:/Middle.dylib:/After.dylib");
 
-    EXPECT_STREQ(strip("/" PROCESS_DYLIB ":/" PROCESS_DYLIB), nullptr);
-    EXPECT_STREQ(strip("/" PROCESS_DYLIB ":/" PROCESS_DYLIB ":/" PROCESS_DYLIB), nullptr);
+    testStrip("/" PROCESS_DYLIB ":/" PROCESS_DYLIB, "");
+    testStrip("/" PROCESS_DYLIB ":/" PROCESS_DYLIB ":/" PROCESS_DYLIB, "");
 
-    EXPECT_STREQ(strip("/usr/lib/" PROCESS_DYLIB), nullptr);
-    EXPECT_STREQ(strip("/" PROCESS_DYLIB "/" PROCESS_DYLIB), nullptr);
+    testStrip("/usr/lib/" PROCESS_DYLIB, "");
+    testStrip("/" PROCESS_DYLIB "/" PROCESS_DYLIB, "");
 }
 
 }

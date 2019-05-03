@@ -86,9 +86,6 @@ class CacheStorageProvider;
 class Chrome;
 class ChromeClient;
 class Color;
-#if PLATFORM(IOS_FAMILY)
-class ContentChangeObserver;
-#endif
 class ContextMenuClient;
 class ContextMenuController;
 class CookieJar;
@@ -254,9 +251,6 @@ public:
 #endif
 #if ENABLE(POINTER_LOCK)
     PointerLockController& pointerLockController() const { return *m_pointerLockController; }
-#endif
-#if PLATFORM(IOS_FAMILY)
-    ContentChangeObserver& contentChangeObserver() { return *m_contentChangeObserver; }
 #endif
     LibWebRTCProvider& libWebRTCProvider() { return m_libWebRTCProvider.get(); }
     RTCController& rtcController() { return m_rtcController; }
@@ -619,7 +613,10 @@ public:
     WEBCORE_EXPORT void stopAllMediaPlayback();
     WEBCORE_EXPORT void suspendAllMediaPlayback();
     WEBCORE_EXPORT void resumeAllMediaPlayback();
-    bool mediaPlaybackIsSuspended() { return m_mediaPlaybackIsSuspended; }
+    bool mediaPlaybackIsSuspended() const { return m_mediaPlaybackIsSuspended; }
+    WEBCORE_EXPORT void suspendAllMediaBuffering();
+    WEBCORE_EXPORT void resumeAllMediaBuffering();
+    bool mediaBufferingIsSuspended() const { return m_mediaBufferingIsSuspended; }
 
 #if ENABLE(MEDIA_SESSION)
     WEBCORE_EXPORT void handleMediaEvent(MediaEventType);
@@ -815,7 +812,6 @@ private:
 
 #if PLATFORM(IOS_FAMILY)
     bool m_enclosedInScrollableAncestorView { false };
-    std::unique_ptr<ContentChangeObserver> m_contentChangeObserver;
 #endif
     
     bool m_useSystemAppearance { false };
@@ -973,6 +969,7 @@ private:
 
     bool m_shouldEnableICECandidateFilteringByDefault { true };
     bool m_mediaPlaybackIsSuspended { false };
+    bool m_mediaBufferingIsSuspended { false };
 };
 
 inline PageGroup& Page::group()

@@ -1225,7 +1225,7 @@ VisualViewportAPIEnabled:
 
 PointerEventsEnabled:
   type: bool
-  defaultValue: DEFAULT_POINTER_EVENTS_ENABLED
+  defaultValue: true
   humanReadableName: "Pointer Events"
   humanReadableDescription: "Enable Pointer Events"
   webcoreBinding: RuntimeEnabledFeatures
@@ -1248,7 +1248,7 @@ WebAnimationsEnabled:
 
 WebAnimationsCSSIntegrationEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  defaultValue: false
   humanReadableName: "CSS Animations via Web Animations"
   humanReadableDescription: "Expose CSS Animations and CSS Transitions through getAnimations()"
   category: experimental
@@ -1378,6 +1378,14 @@ ItpDebugModeEnabled:
   humanReadableName: "ITP Debug Mode"
   humanReadableDescription: "Intelligent Tracking Prevention Debug Mode"
   webcoreBinding: RuntimeEnabledFeatures
+
+IsITPDatabaseEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "ITP Database Backend"
+  humanReadableDescription: "Enable Intelligent Tracking Prevention Database Backend"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: internal
 
 ServiceWorkersEnabled:
   type: bool
@@ -1539,7 +1547,7 @@ DOMPasteAccessRequestsEnabled:
 
 MouseEventsSimulationEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "Mouse events simulation"
   humanReadableDescription: "Enable mouse events dispatch along with touch events on iOS"
   webcoreBinding: RuntimeEnabledFeatures
@@ -1554,6 +1562,14 @@ MousemoveEventHandlingPreventsDefaultEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   category: internal
   condition: ENABLE(TOUCH_EVENTS)
+
+ReferrerPolicyAttributeEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Referrer Policy attribute"
+  humanReadableDescription: "Enable Referrer Policy attribute"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
 
 # Deprecated
 

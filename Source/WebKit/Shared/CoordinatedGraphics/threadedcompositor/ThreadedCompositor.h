@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS)
 
 #include "CompositingRunLoop.h"
 #include "CoordinatedGraphicsScene.h"
@@ -84,6 +84,9 @@ public:
 
     void frameComplete();
 
+    void suspend();
+    void resume();
+
 private:
     ThreadedCompositor(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, ShouldDoFrameSync, WebCore::TextureMapper::PaintFlags);
 
@@ -103,6 +106,7 @@ private:
     ShouldDoFrameSync m_doFrameSync;
     WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
     bool m_inForceRepaint { false };
+    unsigned m_suspendedCount { 0 };
 
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 
@@ -125,5 +129,5 @@ private:
 
 } // namespace WebKit
 
-#endif // USE(COORDINATED_GRAPHICS_THREADED)
+#endif // USE(COORDINATED_GRAPHICS)
 

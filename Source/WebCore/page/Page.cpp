@@ -149,10 +149,6 @@
 #include "SelectionRect.h"
 #endif
 
-#if PLATFORM(IOS_FAMILY)
-#include "ContentChangeObserver.h"
-#endif
-
 namespace WebCore {
 
 static HashSet<Page*>& allPages()
@@ -235,9 +231,6 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_performanceLoggingClient(WTFMove(pageConfiguration.performanceLoggingClient))
     , m_webGLStateTracker(WTFMove(pageConfiguration.webGLStateTracker))
     , m_libWebRTCProvider(WTFMove(pageConfiguration.libWebRTCProvider))
-#if PLATFORM(IOS_FAMILY)
-    , m_contentChangeObserver(std::make_unique<ContentChangeObserver>(*this))
-#endif
     , m_verticalScrollElasticity(ScrollElasticityAllowed)
     , m_horizontalScrollElasticity(ScrollElasticityAllowed)
     , m_domTimerAlignmentInterval(DOMTimer::defaultAlignmentInterval())
@@ -1766,6 +1759,36 @@ void Page::resumeAllMediaPlayback()
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (auto* document = frame->document())
             document->resumeAllMediaPlayback();
+    }
+#endif
+}
+
+void Page::suspendAllMediaBuffering()
+{
+#if ENABLE(VIDEO)
+    ASSERT(!m_mediaBufferingIsSuspended);
+    if (m_mediaBufferingIsSuspended)
+        return;
+    m_mediaBufferingIsSuspended = true;
+
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (auto* document = frame->document())
+            document->suspendAllMediaBuffering();
+    }
+#endif
+}
+
+void Page::resumeAllMediaBuffering()
+{
+#if ENABLE(VIDEO)
+    ASSERT(m_mediaBufferingIsSuspended);
+    if (!m_mediaBufferingIsSuspended)
+        return;
+    m_mediaBufferingIsSuspended = false;
+
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (auto* document = frame->document())
+            document->resumeAllMediaBuffering();
     }
 #endif
 }

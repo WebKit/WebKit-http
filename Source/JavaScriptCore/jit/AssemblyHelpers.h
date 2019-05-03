@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1075,6 +1075,16 @@ public:
         return branchDouble(DoubleEqual, fpr, fpr);
     }
 
+    Jump branchIfRopeStringImpl(GPRReg stringImplGPR)
+    {
+        return branchTestPtr(NonZero, stringImplGPR, TrustedImm32(JSString::isRopeInPointer));
+    }
+
+    Jump branchIfNotRopeStringImpl(GPRReg stringImplGPR)
+    {
+        return branchTestPtr(Zero, stringImplGPR, TrustedImm32(JSString::isRopeInPointer));
+    }
+
     static Address addressForByteOffset(ptrdiff_t byteOffset)
     {
         return Address(GPRInfo::callFrameRegister, byteOffset);
@@ -1782,7 +1792,7 @@ public:
         storePtr(TrustedImmPtr(nullptr), Address(resultGPR, JSObject::butterflyOffset()));
     }
 
-    JumpList branchIfValue(VM&, JSValueRegs value, GPRReg scratch, GPRReg scratchIfShouldCheckMasqueradesAsUndefined, FPRReg, FPRReg, bool shouldCheckMasqueradesAsUndefined, JSGlobalObject*, bool negateResult);
+    JumpList branchIfValue(VM&, JSValueRegs, GPRReg scratch, GPRReg scratchIfShouldCheckMasqueradesAsUndefined, FPRReg, FPRReg, bool shouldCheckMasqueradesAsUndefined, JSGlobalObject*, bool negateResult);
     JumpList branchIfTruthy(VM& vm, JSValueRegs value, GPRReg scratch, GPRReg scratchIfShouldCheckMasqueradesAsUndefined, FPRReg scratchFPR0, FPRReg scratchFPR1, bool shouldCheckMasqueradesAsUndefined, JSGlobalObject* globalObject)
     {
         return branchIfValue(vm, value, scratch, scratchIfShouldCheckMasqueradesAsUndefined, scratchFPR0, scratchFPR1, shouldCheckMasqueradesAsUndefined, globalObject, false);
@@ -1791,14 +1801,14 @@ public:
     {
         return branchIfValue(vm, value, scratch, scratchIfShouldCheckMasqueradesAsUndefined, scratchFPR0, scratchFPR1, shouldCheckMasqueradesAsUndefined, globalObject, true);
     }
-    void emitConvertValueToBoolean(VM&, JSValueRegs value, GPRReg result, GPRReg scratchIfShouldCheckMasqueradesAsUndefined, FPRReg, FPRReg, bool shouldCheckMasqueradesAsUndefined, JSGlobalObject*, bool negateResult = false);
+    void emitConvertValueToBoolean(VM&, JSValueRegs, GPRReg result, GPRReg scratchIfShouldCheckMasqueradesAsUndefined, FPRReg, FPRReg, bool shouldCheckMasqueradesAsUndefined, JSGlobalObject*, bool negateResult = false);
     
     template<typename ClassType>
     void emitAllocateDestructibleObject(VM& vm, GPRReg resultGPR, Structure* structure, GPRReg scratchGPR1, GPRReg scratchGPR2, JumpList& slowPath)
     {
         auto butterfly = TrustedImmPtr(nullptr);
         emitAllocateJSObject<ClassType>(vm, resultGPR, TrustedImmPtr(structure), butterfly, scratchGPR1, scratchGPR2, slowPath);
-        storePtr(TrustedImmPtr(PoisonedClassInfoPtr(structure->classInfo()).bits()), Address(resultGPR, JSDestructibleObject::classInfoOffset()));
+        storePtr(TrustedImmPtr(structure->classInfo()), Address(resultGPR, JSDestructibleObject::classInfoOffset()));
     }
     
     void emitInitializeInlineStorage(GPRReg baseGPR, unsigned inlineCapacity)
@@ -1831,10 +1841,6 @@ public:
     // zero-extended. Also this does not clobber index, which is useful in the baseline JIT. This
     // permits length and result to be in the same register.
     void emitPreparePreciseIndexMask32(GPRReg index, GPRReg length, GPRReg result);
-    
-    void emitDynamicPoison(GPRReg base, GPRReg poisonValue);
-    void emitDynamicPoisonOnLoadedType(GPRReg base, GPRReg actualType, JSType expectedType);
-    void emitDynamicPoisonOnType(GPRReg base, GPRReg scratch, JSType expectedType);
 
 #if ENABLE(WEBASSEMBLY)
     void loadWasmContextInstance(GPRReg dst);

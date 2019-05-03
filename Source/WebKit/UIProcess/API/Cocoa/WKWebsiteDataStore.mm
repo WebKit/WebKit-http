@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKWebsiteDataStoreInternal.h"
 
-#if WK_API_ENABLED
-
 #import "APIString.h"
 #import "CompletionHandlerCallChecker.h"
 #import "WKHTTPCookieStoreInternal.h"
@@ -49,19 +47,19 @@ class WebsiteDataStoreClient : public WebKit::WebsiteDataStoreClient {
 public:
     explicit WebsiteDataStoreClient(id <_WKWebsiteDataStoreDelegate> delegate)
         : m_delegate(delegate)
-        , m_hasRequestCacheStorageSpaceSelector([m_delegate.get() respondsToSelector:@selector(requestCacheStorageSpace: frameOrigin: quota: currentSize: spaceRequired: decisionHandler:)])
+        , m_hasRequestStorageSpaceSelector([m_delegate.get() respondsToSelector:@selector(requestStorageSpace: frameOrigin: quota: currentSize: spaceRequired: decisionHandler:)])
     {
     }
 
 private:
-    void requestCacheStorageSpace(const WebCore::SecurityOriginData& topOrigin, const WebCore::SecurityOriginData& frameOrigin, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t>)>&& completionHandler) final
+    void requestStorageSpace(const WebCore::SecurityOriginData& topOrigin, const WebCore::SecurityOriginData& frameOrigin, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t>)>&& completionHandler) final
     {
-        if (!m_hasRequestCacheStorageSpaceSelector || !m_delegate) {
+        if (!m_hasRequestStorageSpaceSelector || !m_delegate) {
             completionHandler({ });
             return;
         }
 
-        auto checker = WebKit::CompletionHandlerCallChecker::create(m_delegate.getAutoreleased(), @selector(requestCacheStorageSpace: frameOrigin: quota: currentSize: spaceRequired: decisionHandler:));
+        auto checker = WebKit::CompletionHandlerCallChecker::create(m_delegate.getAutoreleased(), @selector(requestStorageSpace: frameOrigin: quota: currentSize: spaceRequired: decisionHandler:));
         auto decisionHandler = makeBlockPtr([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](unsigned long long quota) mutable {
             if (checker->completionHandlerHasBeenCalled())
                 return;
@@ -72,11 +70,11 @@ private:
         URL mainFrameURL { URL(), topOrigin.toString() };
         URL frameURL { URL(), frameOrigin.toString() };
 
-        [m_delegate.getAutoreleased() requestCacheStorageSpace:mainFrameURL frameOrigin:frameURL quota:quota currentSize:currentSize spaceRequired:spaceRequired decisionHandler:decisionHandler.get()];
+        [m_delegate.getAutoreleased() requestStorageSpace:mainFrameURL frameOrigin:frameURL quota:quota currentSize:currentSize spaceRequired:spaceRequired decisionHandler:decisionHandler.get()];
     }
 
     WeakObjCPtr<id <_WKWebsiteDataStoreDelegate> > m_delegate;
-    bool m_hasRequestCacheStorageSpaceSelector { false };
+    bool m_hasRequestStorageSpaceSelector { false };
 };
 
 @implementation WKWebsiteDataStore
@@ -363,9 +361,36 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     _websiteDataStore->websiteDataStore().setProxyConfiguration((__bridge CFDictionaryRef)configuration);
 }
 
+- (NSString *)_sourceApplicationBundleIdentifier
+{
+    return _websiteDataStore->websiteDataStore().sourceApplicationBundleIdentifier();
+}
+
+- (void)_setSourceApplicationBundleIdentifier:(NSString *)identifier
+{
+    if (!_websiteDataStore->websiteDataStore().setSourceApplicationBundleIdentifier(identifier))
+        [NSException raise:NSGenericException format:@"_setSourceApplicationBundleIdentifier cannot be called after networking has begun"];
+}
+
+- (NSString *)_sourceApplicationSecondaryIdentifier
+{
+    return _websiteDataStore->websiteDataStore().sourceApplicationSecondaryIdentifier();
+}
+
+- (void)_setSourceApplicationSecondaryIdentifier:(NSString *)identifier
+{
+    if (!_websiteDataStore->websiteDataStore().setSourceApplicationSecondaryIdentifier(identifier))
+        [NSException raise:NSGenericException format:@"_setSourceApplicationSecondaryIdentifier cannot be called after networking has begun"];
+}
+
 - (NSDictionary *)_proxyConfiguration
 {
     return (__bridge NSDictionary *)_websiteDataStore->websiteDataStore().proxyConfiguration();
+}
+
+- (NSURL *)_indexedDBDatabaseDirectory
+{
+    return [NSURL fileURLWithPath:_websiteDataStore->indexedDBDatabaseDirectory() isDirectory:YES];
 }
 
 - (void)_resourceLoadStatisticsSetShouldSubmitTelemetry:(BOOL)value
@@ -444,5 +469,3 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 }
 
 @end
-
-#endif // WK_API_ENABLED

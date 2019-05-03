@@ -49,6 +49,10 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
 
+#if PLATFORM(IOS_FAMILY)
+#include "WebSQLiteDatabaseTracker.h"
+#endif
+
 #if PLATFORM(COCOA)
 typedef struct OpaqueCFHTTPCookieStorage*  CFHTTPCookieStorageRef;
 #endif
@@ -198,7 +202,7 @@ public:
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void clearPrevalentResource(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void()>&&);
     void clearUserInteraction(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void()>&&);
-    void deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(PAL::SessionID, OptionSet<WebsiteDataType>, Vector<RegistrableDomain>&&, bool shouldNotifyPage, CompletionHandler<void(const HashSet<String>&)>&&);
+    void deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(PAL::SessionID, OptionSet<WebsiteDataType>, Vector<RegistrableDomain>&&, bool shouldNotifyPage, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&&);
     void dumpResourceLoadStatistics(PAL::SessionID, CompletionHandler<void(String)>&&);
     void updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID, const Vector<RegistrableDomain>& domainsToBlock, CompletionHandler<void()>&&);
     void isGrandfathered(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void(bool)>&&);
@@ -240,14 +244,16 @@ public:
     void setResourceLoadStatisticsEnabled(bool);
     void setResourceLoadStatisticsDebugMode(PAL::SessionID, bool debugMode, CompletionHandler<void()>&&d);
     void setShouldClassifyResourcesBeforeDataRecordsRemoval(PAL::SessionID, bool value, CompletionHandler<void()>&&);
-    void setSubframeUnderTopFrameOrigin(PAL::SessionID, const SubFrameDomain&, const TopFrameDomain&, CompletionHandler<void()>&&);
-    void setSubresourceUnderTopFrameOrigin(PAL::SessionID, const SubResourceDomain&, const TopFrameDomain&, CompletionHandler<void()>&&);
+    void setSubframeUnderTopFrameDomain(PAL::SessionID, const SubFrameDomain&, const TopFrameDomain&, CompletionHandler<void()>&&);
+    void setSubresourceUnderTopFrameDomain(PAL::SessionID, const SubResourceDomain&, const TopFrameDomain&, CompletionHandler<void()>&&);
     void setSubresourceUniqueRedirectTo(PAL::SessionID, const SubResourceDomain&, const RedirectedToDomain&, CompletionHandler<void()>&&);
     void setSubresourceUniqueRedirectFrom(PAL::SessionID, const SubResourceDomain&, const RedirectedFromDomain&, CompletionHandler<void()>&&);
     void setTimeToLiveUserInteraction(PAL::SessionID, Seconds, CompletionHandler<void()>&&);
     void setTopFrameUniqueRedirectTo(PAL::SessionID, const TopFrameDomain&, const RedirectedToDomain&, CompletionHandler<void()>&&);
     void setTopFrameUniqueRedirectFrom(PAL::SessionID, const TopFrameDomain&, const RedirectedFromDomain&, CompletionHandler<void()>&&);
     void registrableDomainsWithWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, bool shouldNotifyPage, CompletionHandler<void(HashSet<RegistrableDomain>&&)>&&);
+    void committedCrossSiteLoadWithLinkDecoration(PAL::SessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, uint64_t pageID);
+    void resetCrossSiteLoadsWithLinkDecorationForTesting(PAL::SessionID, CompletionHandler<void()>&&);
 #endif
 
     using CacheStorageParametersCallback = CompletionHandler<void(const String&, uint64_t quota)>;
@@ -307,7 +313,7 @@ public:
     CacheStorage::Engine* findCacheEngine(const PAL::SessionID&);
     CacheStorage::Engine& ensureCacheEngine(const PAL::SessionID&, Function<Ref<CacheStorage::Engine>()>&&);
     void removeCacheEngine(const PAL::SessionID&);
-    void requestCacheStorageSpace(PAL::SessionID, const WebCore::ClientOrigin&, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t>)>&&);
+    void requestStorageSpace(PAL::SessionID, const WebCore::ClientOrigin&, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t>)>&&);
 
     NetworkBlobRegistry& networkBlobRegistry() override { return m_networkBlobRegistry; }
 
@@ -389,6 +395,7 @@ private:
     void syncAllCookies();
     void didSyncAllCookies();
 
+    void notifyHoldingLockedFiles(bool isIDBDatabaseHoldingLockedFiles);
 #if USE(SOUP)
     void setIgnoreTLSErrors(bool);
     void userPreferredLanguagesChanged(const Vector<String>&);
@@ -419,14 +426,6 @@ private:
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    void didReceiveFetchRedirectResponse(WebCore::SWServerConnectionIdentifier, WebCore::FetchIdentifier, const WebCore::ResourceResponse&);
-    void didReceiveFetchResponse(WebCore::SWServerConnectionIdentifier, WebCore::FetchIdentifier, const WebCore::ResourceResponse&, bool needsContinueDidReceiveResponseMessage);
-    void didReceiveFetchData(WebCore::SWServerConnectionIdentifier, WebCore::FetchIdentifier, const IPC::DataReference&, int64_t encodedDataLength);
-    void didReceiveFetchFormData(WebCore::SWServerConnectionIdentifier, WebCore::FetchIdentifier, const IPC::FormDataReference&);
-    void didFinishFetch(WebCore::SWServerConnectionIdentifier, WebCore::FetchIdentifier);
-    void didFailFetch(WebCore::SWServerConnectionIdentifier, WebCore::FetchIdentifier, const WebCore::ResourceError&);
-    void didNotHandleFetch(WebCore::SWServerConnectionIdentifier, WebCore::FetchIdentifier);
-
     void didCreateWorkerContextProcessConnection(const IPC::Attachment&);
     
     void postMessageToServiceWorkerClient(const WebCore::ServiceWorkerClientIdentifier& destinationIdentifier, WebCore::MessageWithMessagePorts&&, WebCore::ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin);
@@ -486,6 +485,10 @@ private:
 
 #if ENABLE(CONTENT_EXTENSIONS)
     NetworkContentRuleListManager m_networkContentRuleListManager;
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+    WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
 #endif
 
     Ref<WorkQueue> m_storageTaskQueue { WorkQueue::create("com.apple.WebKit.StorageTask") };

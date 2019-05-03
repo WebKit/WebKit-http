@@ -99,6 +99,7 @@ class CanvasRenderingContext2D;
 class CharacterData;
 class Comment;
 class ConstantPropertyMap;
+class ContentChangeObserver;
 class DOMImplementation;
 class DOMSelection;
 class DOMWindow;
@@ -871,6 +872,8 @@ public:
 
     // Called when <meta name="apple-mobile-web-app-orientations"> changes.
     void processWebAppOrientations();
+
+    WEBCORE_EXPORT ContentChangeObserver& contentChangeObserver();
 #endif
     
     void processViewport(const String& features, ViewportArguments::Type origin);
@@ -1101,6 +1104,8 @@ public:
     void stopAllMediaPlayback();
     void suspendAllMediaPlayback();
     void resumeAllMediaPlayback();
+    void suspendAllMediaBuffering();
+    void resumeAllMediaBuffering();
 #endif
 
     WEBCORE_EXPORT void setShouldCreateRenderers(bool);
@@ -1252,7 +1257,7 @@ public:
     bool hasTouchEventHandlers() const { return false; }
     bool touchEventTargetsContain(Node&) const { return false; }
 #endif
-#if ENABLE(POINTER_EVENTS)
+#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
     void updateTouchActionElements(Element&, const RenderStyle&);
     const HashSet<RefPtr<Element>>* touchActionElements() const { return m_touchActionElements.get(); }
 #endif
@@ -1848,7 +1853,7 @@ private:
 #if ENABLE(TOUCH_EVENTS)
     std::unique_ptr<EventTargetSet> m_touchEventTargets;
 #endif
-#if ENABLE(POINTER_EVENTS)
+#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
     std::unique_ptr<HashSet<RefPtr<Element>>> m_touchActionElements;
 #endif
     std::unique_ptr<EventTargetSet> m_wheelEventTargets;
@@ -2075,6 +2080,9 @@ private:
     bool m_isRunningUserScripts { false };
 
     Ref<UndoManager> m_undoManager;
+#if PLATFORM(IOS_FAMILY)
+    std::unique_ptr<ContentChangeObserver> m_contentChangeObserver;
+#endif
 };
 
 Element* eventTargetElementForDocument(Document*);

@@ -123,7 +123,7 @@ endif ()
 if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT EXISTS "/.flatpak-info")
     WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_BUBBLEWRAP_SANDBOX PUBLIC ON)
 else ()
-    WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_BUBBLEWRAP_SANDBOX PRIVATE OFF)
+    WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_BUBBLEWRAP_SANDBOX PUBLIC OFF)
 endif ()
 
 # Enable variation fonts when cairo >= 1.16, fontconfig >= 2.13.0, freetype >= 2.9.0 and harfbuzz >= 1.4.2.
@@ -215,38 +215,6 @@ if (ENABLE_ACCELERATED_2D_CANVAS)
     endif ()
 endif ()
 
-if (ENABLE_BUBBLEWRAP_SANDBOX)
-    find_program(BWRAP_EXECUTABLE bwrap)
-    if (NOT BWRAP_EXECUTABLE)
-        message(FATAL_ERROR "bwrap executable is needed for ENABLE_BUBBLEWRAP_SANDBOX")
-    endif ()
-    add_definitions(-DBWRAP_EXECUTABLE="${BWRAP_EXECUTABLE}")
-
-    execute_process(
-        COMMAND "${BWRAP_EXECUTABLE}" --version
-        RESULT_VARIABLE BWRAP_RET
-        OUTPUT_VARIABLE BWRAP_OUTPUT
-    )
-    if (BWRAP_RET)
-        message(FATAL_ERROR "Failed to run ${BWRAP_EXECUTABLE}")
-    endif ()
-    string(REGEX MATCH "([0-9]+.[0-9]+.[0-9]+)" BWRAP_VERSION "${BWRAP_OUTPUT}")
-    if (NOT "${BWRAP_VERSION}" VERSION_GREATER_EQUAL "0.3.1")
-        message(FATAL_ERROR "bwrap must be >= 0.3.1 but ${BWRAP_VERSION} found")
-    endif ()
-
-    find_package(Libseccomp)
-    if (NOT LIBSECCOMP_FOUND)
-        message(FATAL_ERROR "libseccomp is needed for ENABLE_BUBBLEWRAP_SANDBOX")
-    endif ()
-
-    find_program(DBUS_PROXY_EXECUTABLE xdg-dbus-proxy)
-    if (NOT DBUS_PROXY_EXECUTABLE)
-        message(FATAL_ERROR "xdg-dbus-proxy not found and is needed for ENABLE_BUBBLEWRAP_SANDBOX")
-    endif ()
-    add_definitions(-DDBUS_PROXY_EXECUTABLE="${DBUS_PROXY_EXECUTABLE}")
-endif ()
-
 if (USE_LIBSECRET)
     find_package(Libsecret)
     if (NOT LIBSECRET_FOUND)
@@ -322,7 +290,6 @@ if (ENABLE_OPENGL)
     endif ()
 
     SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS TRUE)
-    SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS_THREADED TRUE)
     SET_AND_EXPOSE_TO_BUILD(USE_NICOSIA TRUE)
 endif ()
 
@@ -471,4 +438,5 @@ macro(ADD_WHOLE_ARCHIVE_TO_LIBRARIES _list_name)
     endif ()
 endmacro()
 
+include(BubblewrapSandboxChecks)
 include(GStreamerChecks)

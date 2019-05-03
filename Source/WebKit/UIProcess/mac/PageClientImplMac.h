@@ -30,6 +30,7 @@
 #include "CorrectionPanel.h"
 #include "PageClientImplCocoa.h"
 #include "WebFullScreenManagerProxy.h"
+#include <WebCore/DOMPasteAccess.h>
 #include <wtf/CompletionHandler.h>
 #include <wtf/RetainPtr.h>
 
@@ -110,9 +111,7 @@ private:
     void clearSafeBrowsingWarningIfForMainFrameNavigation() override;
     bool hasSafeBrowsingWarning() const override;
     
-#if WK_API_ENABLED
     bool showShareSheet(const WebCore::ShareDataWithParsedURL&, WTF::CompletionHandler<void(bool)>&&) override;
-#endif
         
     WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&) override;
     WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) override;
@@ -214,7 +213,7 @@ private:
     void willRecordNavigationSnapshot(WebBackForwardListItem&) override;
     void didRemoveNavigationGestureSnapshot() override;
 
-    void requestDOMPasteAccess(const WebCore::IntRect&, CompletionHandler<void(bool)>&& completion) final { completion(false); }
+    void requestDOMPasteAccess(const WebCore::IntRect&, const String& originIdentifier, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&& completion) final { completion(WebCore::DOMPasteAccessResponse::DeniedForGesture); }
 
     NSView *activeView() const;
     NSWindow *activeWindow() const;
@@ -247,10 +246,8 @@ private:
     void didPerformDragOperation(bool handled) final;
 #endif
 
-#if WK_API_ENABLED
     NSView *inspectorAttachmentView() override;
     _WKRemoteObjectRegistry *remoteObjectRegistry() override;
-#endif
 
     void didFinishProcessingAllPendingMouseEvents() final;
 

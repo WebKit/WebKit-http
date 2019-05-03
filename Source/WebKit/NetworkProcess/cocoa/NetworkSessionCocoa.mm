@@ -383,6 +383,7 @@ static String stringForSSLCipher(SSLCipherSuite cipher)
         return;
     }
 
+    networkDataTask->setShouldExtendTaskLifetime(true);
     completionHandler(WebCore::createHTTPBodyNSInputStream(*body).get());
 }
 
@@ -948,6 +949,10 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     m_resourceLoadStatisticsDirectory = parameters.resourceLoadStatisticsDirectory;
     setResourceLoadStatisticsEnabled(parameters.enableResourceLoadStatistics);
+#endif
+
+#if HAVE(SESSION_CLEANUP)
+    activateSessionCleanup(*this);
 #endif
 }
 

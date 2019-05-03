@@ -3152,6 +3152,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled([preferences webAnimationsEnabled]);
 
+#if ENABLE(POINTER_EVENTS)
+    RuntimeEnabledFeatures::sharedFeatures().setPointerEventsEnabled([preferences pointerEventsEnabled]);
+#endif
+
 #if ENABLE(INTERSECTION_OBSERVER)
     RuntimeEnabledFeatures::sharedFeatures().setIntersectionObserverEnabled(preferences.intersectionObserverEnabled);
 #endif
@@ -3167,6 +3171,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setAccessibilityObjectModelEnabled([preferences accessibilityObjectModelEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setAriaReflectionEnabled([preferences ariaReflectionEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setFetchAPIKeepAliveEnabled([preferences fetchAPIKeepAliveEnabled]);
+    RuntimeEnabledFeatures::sharedFeatures().setReferrerPolicyAttributeEnabled([preferences referrerPolicyAttributeEnabled]);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RuntimeEnabledFeatures::sharedFeatures().setLegacyEncryptedMediaAPIEnabled(preferences.legacyEncryptedMediaAPIEnabled);

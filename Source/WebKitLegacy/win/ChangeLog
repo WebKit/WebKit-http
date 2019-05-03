@@ -1,3 +1,30 @@
+2019-03-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Programmatic paste access should be granted when copying and pasting within the same origin
+        https://bugs.webkit.org/show_bug.cgi?id=195053
+        <rdar://problem/48134710>
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2019-02-20  Darin Adler  <darin@apple.com>
+
+        Finish removing String::format
+        https://bugs.webkit.org/show_bug.cgi?id=194893
+
+        Reviewed by Daniel Bates.
+
+        * FullscreenVideoController.cpp:
+        (timeToString): Use makeString and pad.
+
+2019-02-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Roll out r242014; it caused crashes in compositing logging (webkit.org/b/195141)
+
+        * FullscreenVideoController.cpp:
+        (timeToString):
+
 2019-02-26  Philippe Normand  <pnormand@igalia.com>
 
         [WPE] Add API for webview background color configuration

@@ -182,6 +182,9 @@ WebProcess::WebProcess()
     , m_pluginProcessConnectionManager(PluginProcessConnectionManager::create())
 #endif
     , m_nonVisibleProcessCleanupTimer(*this, &WebProcess::nonVisibleProcessCleanupTimerFired)
+#if PLATFORM(IOS_FAMILY)
+    , m_webSQLiteDatabaseTracker(*this)
+#endif
 {
     // Initialize our platform strategies.
     WebPlatformStrategies::initialize();
@@ -209,7 +212,7 @@ WebProcess::WebProcess()
     ResourceLoadObserver::shared().setNotificationCallback([this] (Vector<ResourceLoadStatistics>&& statistics) {
         parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::ResourceLoadStatisticsUpdated(WTFMove(statistics)), 0);
 
-        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::RequestResourceLoadStatisticsUpdate(), 0);
+        ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RequestResourceLoadStatisticsUpdate(), 0);
     });
 
     ResourceLoadObserver::shared().setRequestStorageAccessUnderOpenerCallback([this] (const RegistrableDomain& domainInNeedOfStorageAccess, uint64_t openerPageID, const RegistrableDomain& openerDomain) {
@@ -301,7 +304,8 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #endif
 
             auto maintainPageCache = m_isSuspending && hasPageRequiringPageCacheWhileSuspended() ? WebCore::MaintainPageCache::Yes : WebCore::MaintainPageCache::No;
-            WebCore::releaseMemory(critical, synchronous, maintainPageCache);
+            auto maintainMemoryCache = m_isSuspending && m_hasSuspendedPageProxy ? WebCore::MaintainMemoryCache::Yes : WebCore::MaintainMemoryCache::No;
+            WebCore::releaseMemory(critical, synchronous, maintainPageCache, maintainMemoryCache);
         });
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101200) || PLATFORM(GTK) || PLATFORM(WPE)
         memoryPressureHandler.setShouldUsePeriodicMemoryMonitor(true);
@@ -403,19 +407,19 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     ResourceLoadObserver::shared().setLogUserInteractionNotificationCallback([this] (PAL::SessionID sessionID, const RegistrableDomain& domain) {
-        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::LogUserInteraction(sessionID, domain), 0);
+        ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::LogUserInteraction(sessionID, domain), 0);
     });
 
     ResourceLoadObserver::shared().setLogWebSocketLoadingNotificationCallback([this] (PAL::SessionID sessionID, const RegistrableDomain& targetDomain, const RegistrableDomain& topFrameDomain, WallTime lastSeen) {
-        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::LogWebSocketLoading(sessionID, targetDomain, topFrameDomain, lastSeen), 0);
+        ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::LogWebSocketLoading(sessionID, targetDomain, topFrameDomain, lastSeen), 0);
     });
     
     ResourceLoadObserver::shared().setLogSubresourceLoadingNotificationCallback([this] (PAL::SessionID sessionID, const RegistrableDomain& targetDomain, const RegistrableDomain& topFrameDomain, WallTime lastSeen) {
-        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::LogSubresourceLoading(sessionID, targetDomain, topFrameDomain, lastSeen), 0);
+        ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::LogSubresourceLoading(sessionID, targetDomain, topFrameDomain, lastSeen), 0);
     });
 
     ResourceLoadObserver::shared().setLogSubresourceRedirectNotificationCallback([this] (PAL::SessionID sessionID, const RegistrableDomain& sourceDomain, const RegistrableDomain& targetDomain) {
-        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::LogSubresourceRedirect(sessionID, sourceDomain, targetDomain), 0);
+        ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::LogSubresourceRedirect(sessionID, sourceDomain, targetDomain), 0);
     });
 #endif
 
@@ -479,6 +483,12 @@ bool WebProcess::areAllPagesSuspended() const
             return false;
     }
     return true;
+}
+
+void WebProcess::setHasSuspendedPageProxy(bool hasSuspendedPageProxy)
+{
+    ASSERT(m_hasSuspendedPageProxy != hasSuspendedPageProxy);
+    m_hasSuspendedPageProxy = hasSuspendedPageProxy;
 }
 
 void WebProcess::setIsInProcessCache(bool isInProcessCache)
@@ -1420,6 +1430,10 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
 {
     SetForScope<bool> suspensionScope(m_isSuspending, true);
 
+#if ENABLE(VIDEO)
+    suspendAllMediaBuffering();
+#endif
+
     if (!m_suppressMemoryPressureHandler)
         MemoryPressureHandler::singleton().releaseMemory(Critical::Yes, Synchronous::Yes);
 
@@ -1476,7 +1490,11 @@ void WebProcess::cancelPrepareToSuspend()
 #if PLATFORM(IOS_FAMILY)
     accessibilityProcessSuspendedNotification(false);
 #endif
-    
+
+#if ENABLE(VIDEO)
+    resumeAllMediaBuffering();
+#endif
+
     // If we've already finished cleaning up and sent ProcessReadyToSuspend, we
     // shouldn't send DidCancelProcessSuspension; the UI process strictly expects one or the other.
     if (!m_pageMarkingLayersAsVolatileCounter)
@@ -1521,12 +1539,14 @@ void WebProcess::cancelMarkAllLayersVolatile()
 
 void WebProcess::freezeAllLayerTrees()
 {
+    RELEASE_LOG(ProcessSuspension, "WebProcess %i is freezing all layer trees", getpid());
     for (auto& page : m_pageMap.values())
         page->freezeLayerTree(WebPage::LayerTreeFreezeReason::ProcessSuspended);
 }
 
 void WebProcess::unfreezeAllLayerTrees()
 {
+    RELEASE_LOG(ProcessSuspension, "WebProcess %i is unfreezing all layer trees", getpid());
     for (auto& page : m_pageMap.values())
         page->unfreezeLayerTree(WebPage::LayerTreeFreezeReason::ProcessSuspended);
 }
@@ -1540,6 +1560,10 @@ void WebProcess::processDidResume()
     
 #if PLATFORM(IOS_FAMILY)
     accessibilityProcessSuspendedNotification(false);
+#endif
+
+#if ENABLE(VIDEO)
+    resumeAllMediaBuffering();
 #endif
 }
 
@@ -1790,6 +1814,44 @@ void WebProcess::removeMockMediaDevice(const String& persistentId)
 void WebProcess::resetMockMediaDevices()
 {
     MockRealtimeMediaSourceCenter::resetDevices();
+}
+
+#if ENABLE(SANDBOX_EXTENSIONS)
+void WebProcess::grantUserMediaDeviceSandboxExtensions(MediaDeviceSandboxExtensions&& extensions)
+{
+    for (size_t i = 0; i < extensions.size(); i++) {
+        const auto& extension = extensions[i];
+        extension.second->consume();
+        RELEASE_LOG(WebRTC, "UserMediaPermissionRequestManager::grantUserMediaDeviceSandboxExtensions - granted extension %s", extension.first.utf8().data());
+        m_mediaCaptureSandboxExtensions.add(extension.first, extension.second.copyRef());
+    }
+}
+
+void WebProcess::revokeUserMediaDeviceSandboxExtensions(const Vector<String>& extensionIDs)
+{
+    for (const auto& extensionID : extensionIDs) {
+        auto extension = m_mediaCaptureSandboxExtensions.take(extensionID);
+        ASSERT(extension);
+        if (extension) {
+            extension->revoke();
+            RELEASE_LOG(WebRTC, "UserMediaPermissionRequestManager::revokeUserMediaDeviceSandboxExtensions - revoked extension %s", extensionID.utf8().data());
+        }
+    }
+}
+#endif
+#endif
+
+#if ENABLE(VIDEO)
+void WebProcess::suspendAllMediaBuffering()
+{
+    for (auto& page : m_pageMap.values())
+        page->suspendAllMediaBuffering();
+}
+
+void WebProcess::resumeAllMediaBuffering()
+{
+    for (auto& page : m_pageMap.values())
+        page->resumeAllMediaBuffering();
 }
 #endif
 

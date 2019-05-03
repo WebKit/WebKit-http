@@ -38,6 +38,8 @@
 #import <WebCore/GraphicsLayer.h>
 #import <wtf/RetainPtr.h>
 
+#define MESSAGE_CHECK_VIEWID(embeddedViewID) MESSAGE_CHECK_BASE(m_editableImages.isValidKey(embeddedViewID), m_webPageProxy->process().connection())
+
 namespace WebKit {
 
 EditableImageController::EditableImageController(WebPageProxy& webPageProxy)
@@ -73,11 +75,13 @@ EditableImage* EditableImageController::editableImage(WebCore::GraphicsLayer::Em
 
 void EditableImageController::didCreateEditableImage(WebCore::GraphicsLayer::EmbeddedViewID embeddedViewID)
 {
+    MESSAGE_CHECK_VIEWID(embeddedViewID);
     ensureEditableImage(embeddedViewID);
 }
 
 void EditableImageController::didDestroyEditableImage(WebCore::GraphicsLayer::EmbeddedViewID embeddedViewID)
 {
+    MESSAGE_CHECK_VIEWID(embeddedViewID);
     m_editableImages.remove(embeddedViewID);
 }
 
@@ -87,6 +91,7 @@ void EditableImageController::associateWithAttachment(WebCore::GraphicsLayer::Em
         return;
     auto& page = *m_webPageProxy;
 
+    MESSAGE_CHECK_VIEWID(embeddedViewID);
     page.registerAttachmentIdentifier(attachmentID);
     auto& attachment = *page.attachmentForIdentifier(attachmentID);
 
@@ -149,5 +154,7 @@ WebPageProxy::ShouldUpdateAttachmentAttributes EditableImageController::willUpda
 }
 
 } // namespace WebKit
+
+#undef MESSAGE_CHECK_VIEWID
 
 #endif // HAVE(PENCILKIT)

@@ -13,6 +13,7 @@ media/ios [ Pass ]
 quicklook [ Pass ]
 swipe [ Pass ]
 
+fast/forms/textarea/ios [ Pass ]
 fast/text-autosizing/ios [ Pass ]
 fast/zooming/ios [ Pass ]
 http/tests/preload/viewport [ Pass ]
@@ -1679,7 +1680,6 @@ fast/forms/input-baseline.html [ Failure ]
 fast/forms/input-live-pseudo-selectors.html [ Failure ]
 fast/forms/input-no-renderer.html [ Failure ]
 fast/forms/input-set-composition-scroll.html [ Failure ]
-fast/forms/input-textarea-padding-match.html [ ImageOnlyFailure ]
 fast/forms/listbox-clip.html [ Failure ]
 fast/forms/listbox-selection-2.html [ Failure ]
 fast/forms/listbox-selection-3.html [ Failure ]
@@ -1705,7 +1705,6 @@ fast/forms/select/option-selecting.html [ Failure ]
 fast/forms/textarea-input-event.html [ Failure ]
 fast/forms/textarea-live-pseudo-selectors.html [ Failure ]
 fast/forms/textarea-metrics.html [ Failure ]
-fast/forms/textarea-placeholder-wrapping.html [ ImageOnlyFailure ]
 fast/forms/textfield-overflow-by-value-update.html [ Failure ]
 fast/frames/calculate-fixed.html [ Failure ]
 fast/frames/calculate-order.html [ Failure ]
@@ -1961,8 +1960,6 @@ fast/parser/residual-style-hang.html
 
 # <rdar://problem/19226623> ASSERT(isIdentifierStart<CharacterType>()) fails in CSSParser::parseIdentifier()
 fast/css/css-selector-text.html
-
-webkit.org/b/190620 fast/forms/datalist/datalist-child-validation.html [ Skip ]
 
 # <rdar://problem/19227549> ASSERT(!m_webFrame->_private->provisionalURL) fails in WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
 fast/forms/validation-message-user-modify.html
@@ -3231,3 +3228,8 @@ fast/forms/ios/focus-search-field.html [ Skip ]
 fast/forms/ios/focus-submit-button.html [ Skip ]
 fast/forms/ios/focus-text-field.html [ Skip ]
 fast/forms/ios/focus-textarea.html [ Skip ]
+fast/events/ios/activating-button-should-not-scroll-page.html [ Skip ]
+fast/events/ios/activating-checkbox-should-not-scroll-page.html [ Skip ]
+fast/events/ios/activating-radio-button-should-not-scroll-page.html [ Skip ]
+fast/events/ios/activating-reset-button-should-not-scroll-page.html [ Skip ]
+fast/events/ios/activating-submit-button-should-not-scroll-page.html [ Skip ]

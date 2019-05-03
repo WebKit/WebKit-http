@@ -30,11 +30,16 @@
 #include "DeferrableTask.h"
 #include "GPUBufferUsage.h"
 #include <wtf/Function.h>
+#include <wtf/OptionSet.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/Vector.h>
 
+#if USE(METAL)
 OBJC_PROTOCOL(MTLBuffer);
+OBJC_PROTOCOL(MTLCommandBuffer);
+#endif
 
 namespace JSC {
 class ArrayBuffer;
@@ -46,21 +51,44 @@ class GPUDevice;
 
 struct GPUBufferDescriptor;
 
+#if USE(METAL)
 using PlatformBuffer = MTLBuffer;
-using PlatformBufferSmartPtr = RetainPtr<MTLBuffer>;
+#else
+using PlatformBuffer = void;
+#endif
+using PlatformBufferSmartPtr = RetainPtr<PlatformBuffer>;
 
 class GPUBuffer : public RefCounted<GPUBuffer> {
 public:
+    enum class State {
+        Mapped,
+        Unmapped,
+        Destroyed
+    };
+
     ~GPUBuffer();
 
-    static RefPtr<GPUBuffer> tryCreate(const GPUDevice&, GPUBufferDescriptor&&);
+    static RefPtr<GPUBuffer> tryCreate(Ref<GPUDevice>&&, GPUBufferDescriptor&&);
 
     PlatformBuffer *platformBuffer() const { return m_platformBuffer.get(); }
-    bool isVertex() const { return m_isVertex; }
-    bool isUniform() const { return m_isUniform; }
-    bool isStorage() const { return m_isStorage; }
-    bool isReadOnly() const { return m_isReadOnly; }
+    unsigned long byteLength() const { return m_byteLength; }
+    bool isTransferSource() const { return m_usage.contains(GPUBufferUsage::Flags::TransferSource); }
+    bool isTransferDestination() const { return m_usage.contains(GPUBufferUsage::Flags::TransferDestination); }
+    bool isVertex() const { return m_usage.contains(GPUBufferUsage::Flags::Vertex); }
+    bool isUniform() const { return m_usage.contains(GPUBufferUsage::Flags::Uniform); }
+    bool isStorage() const { return m_usage.contains(GPUBufferUsage::Flags::Storage); }
+    bool isReadOnly() const;
+    bool isMappable() const { return m_usage.containsAny({ GPUBufferUsage::Flags::MapWrite, GPUBufferUsage::Flags::MapRead }); }
+    State state() const;
 
+#if USE(METAL)
+    void commandBufferCommitted(MTLCommandBuffer *);
+    void commandBufferCompleted();
+
+    void reuseSubDataBuffer(RetainPtr<MTLBuffer>&&);
+#endif
+
+    void setSubData(unsigned long, const JSC::ArrayBuffer&);
     using MappingCallback = WTF::Function<void(JSC::ArrayBuffer*)>;
     void registerMappingCallback(MappingCallback&&, bool);
     void unmap();
@@ -79,31 +107,33 @@ private:
         PendingMappingCallback(MappingCallback&&);
     };
 
-    GPUBuffer(PlatformBufferSmartPtr&&, const GPUBufferDescriptor&);
+    static bool validateBufferUsage(const GPUDevice&, OptionSet<GPUBufferUsage::Flags>);
 
-    static RefPtr<GPUBuffer> tryCreateSharedBuffer(const GPUDevice&, const GPUBufferDescriptor&);
+    GPUBuffer(PlatformBufferSmartPtr&&, const GPUBufferDescriptor&, OptionSet<GPUBufferUsage::Flags>, Ref<GPUDevice>&&);
+
     JSC::ArrayBuffer* stagingBufferForRead();
     JSC::ArrayBuffer* stagingBufferForWrite();
+    void runMappingCallback();
 
-    bool isMappable() const { return m_isMapWrite || m_isMapRead; }
-    bool isMapWriteable() const { return m_isMapWrite && !m_pendingCallback; }
-    bool isMapReadable() const { return m_isMapRead && !m_pendingCallback; }
+    bool isMapWrite() const { return m_usage.contains(GPUBufferUsage::Flags::MapWrite); }
+    bool isMapRead() const { return m_usage.contains(GPUBufferUsage::Flags::MapRead); }
+    bool isMapWriteable() const { return isMapWrite() && state() == State::Unmapped; }
+    bool isMapReadable() const { return isMapRead() && state() == State::Unmapped; }
 
     PlatformBufferSmartPtr m_platformBuffer;
+    Ref<GPUDevice> m_device;
+
+#if USE(METAL)
+    Vector<RetainPtr<MTLBuffer>> m_subDataBuffers;
+#endif
 
     RefPtr<JSC::ArrayBuffer> m_stagingBuffer;
-    RefPtr<PendingMappingCallback> m_pendingCallback;
+    RefPtr<PendingMappingCallback> m_mappingCallback;
     DeferrableTask<Timer> m_mappingCallbackTask;
 
     unsigned long m_byteLength;
+    OptionSet<GPUBufferUsage::Flags> m_usage;
     unsigned m_numScheduledCommandBuffers = 0;
-    bool m_isMapWrite;
-    bool m_isMapRead;
-    bool m_isDestroyed = false;
-    bool m_isVertex;
-    bool m_isUniform;
-    bool m_isStorage;
-    bool m_isReadOnly;
 };
 
 } // namespace WebCore

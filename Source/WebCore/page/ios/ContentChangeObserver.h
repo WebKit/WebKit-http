@@ -32,46 +32,130 @@
 namespace WebCore {
 
 class DOMTimer;
-class Page;
+class Document;
 
 class ContentChangeObserver {
 public:
-    ContentChangeObserver(Page&);
+    ContentChangeObserver(Document&);
 
-    void registerDOMTimerForContentObservationIfNeeded(const DOMTimer&, Seconds timeout, bool singleShot);
-    void removeDOMTimer(const DOMTimer&);
-    void startObservingDOMTimerExecute(const DOMTimer&);
-    void stopObservingDOMTimerExecute(const DOMTimer&);
+    WEBCORE_EXPORT WKContentChange observedContentChange() const;
 
-    WEBCORE_EXPORT void startObservingContentChanges();
-    WEBCORE_EXPORT void stopObservingContentChanges();
-    bool isObservingContentChanges();
+    void didInstallDOMTimer(const DOMTimer&, Seconds timeout, bool singleShot);
+    void didRemoveDOMTimer(const DOMTimer&);
+    void contentVisibilityDidChange();
+    void didSuspendActiveDOMObjects();
+    void willDetachPage();
 
-    WEBCORE_EXPORT void startObservingDOMTimerScheduling();
-    WEBCORE_EXPORT void stopObservingDOMTimerScheduling();
+    class StyleChangeScope {
+    public:
+        StyleChangeScope(Document&, const Element&);
+        ~StyleChangeScope();
 
-    bool isObservingStyleRecalcScheduling();
+    private:
+        ContentChangeObserver& m_contentChangeObserver;
+        const Element& m_element;
+        bool m_needsObserving { false };
+        DisplayType m_previousDisplay;
+        Visibility m_previousVisibility;
+        Visibility m_previousImplicitVisibility;
+    };
 
-    void setShouldObserveNextStyleRecalc(bool);
-    bool shouldObserveNextStyleRecalc();
+    class MouseMovedScope {
+    public:
+        WEBCORE_EXPORT MouseMovedScope(Document&);
+        WEBCORE_EXPORT ~MouseMovedScope();
+    private:
+        ContentChangeObserver& m_contentChangeObserver;
+    };
 
-    void setObservedContentChange(WKContentChange);
-    WEBCORE_EXPORT WKContentChange observedContentChange();
+    class StyleRecalcScope {
+    public:
+        StyleRecalcScope(Document&);
+        ~StyleRecalcScope();
+    private:
+        ContentChangeObserver& m_contentChangeObserver;
+    };
 
-    WEBCORE_EXPORT unsigned countOfObservedDOMTimers();
-    WEBCORE_EXPORT void clearObservedDOMTimers();
+    class DOMTimerScope {
+    public:
+        DOMTimerScope(Document*, const DOMTimer&);
+        ~DOMTimerScope();
+    private:
+        ContentChangeObserver* m_contentChangeObserver { nullptr };
+        const DOMTimer& m_domTimer;
+    };
 
 private:
-    void addObservedDOMTimer(const DOMTimer&);
-    bool isObservingDOMTimerScheduling();
-    void removeObservedDOMTimer(const DOMTimer&);
-    bool containsObservedDOMTimer(const DOMTimer&);
+    void mouseMovedDidStart();
+    void mouseMovedDidFinish();
 
-    void startObservingStyleRecalcScheduling();
-    void stopObservingStyleRecalcScheduling();
+    void setShouldObserveDOMTimerScheduling(bool observe) { m_isObservingDOMTimerScheduling = observe; }
+    bool isObservingDOMTimerScheduling() const { return m_isObservingDOMTimerScheduling; }
+    void domTimerExecuteDidStart(const DOMTimer&);
+    void domTimerExecuteDidFinish(const DOMTimer&);
+    void registerDOMTimer(const DOMTimer& timer) { m_DOMTimerList.add(&timer); }
+    void unregisterDOMTimer(const DOMTimer& timer) { m_DOMTimerList.remove(&timer); }
+    bool containsObservedDOMTimer(const DOMTimer& timer) const { return m_DOMTimerList.contains(&timer); }
 
-    Page& m_page;
+    void styleRecalcDidStart();
+    void styleRecalcDidFinish();
+    void setShouldObserveNextStyleRecalc(bool);
+    bool isObservingStyleRecalc() const { return m_isObservingStyleRecalc; }
+
+    bool isObservingContentChanges() const { return m_domTimerIsBeingExecuted || m_styleRecalcIsBeingExecuted; }
+
+    void clearObservedDOMTimers() { m_DOMTimerList.clear(); }
+    void clearTimersAndReportContentChange();
+
+    void setHasIndeterminateState();
+    void setHasVisibleChangeState();
+    void setHasNoChangeState();
+
+    bool hasVisibleChangeState() const { return observedContentChange() == WKContentVisibilityChange; }
+    bool hasObservedDOMTimer() const { return !m_DOMTimerList.isEmpty(); }
+    bool hasDeterminateState() const;
+
+    bool hasPendingActivity() const { return hasObservedDOMTimer() || m_document.hasPendingStyleRecalc(); }
+#if !ASSERT_DISABLED
+    bool isNotifyContentChangeAllowed() const { return !m_mouseMovedIsBeingDispatched; }
+#endif
+
+    enum class Event {
+        StartedMouseMovedEventDispatching,
+        InstalledDOMTimer,
+        RemovedDOMTimer,
+        EndedDOMTimerExecution,
+        StyleRecalcFinished,
+        ContentVisibilityChanged
+    };
+    void adjustObservedState(Event);
+
+    Document& m_document;
+    HashSet<const DOMTimer*> m_DOMTimerList;
+    bool m_isObservingStyleRecalc { false };
+    bool m_styleRecalcIsBeingExecuted { false };
+    bool m_isObservingDOMTimerScheduling { false };
+    bool m_domTimerIsBeingExecuted { false };
+#if !ASSERT_DISABLED
+    bool m_mouseMovedIsBeingDispatched { false };
+#endif
 };
+
+inline void ContentChangeObserver::setHasNoChangeState()
+{
+    WKSetObservedContentChange(WKContentNoChange);
+}
+
+inline void ContentChangeObserver::setHasIndeterminateState()
+{
+    ASSERT(!hasVisibleChangeState());
+    WKSetObservedContentChange(WKContentIndeterminateChange);
+}
+
+inline void ContentChangeObserver::setHasVisibleChangeState()
+{
+    WKSetObservedContentChange(WKContentVisibilityChange);
+}
 
 }
 #endif

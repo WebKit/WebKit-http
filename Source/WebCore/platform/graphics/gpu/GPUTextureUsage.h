@@ -31,16 +31,18 @@
 
 namespace WebCore {
     
-using GPUTextureUsageFlags = unsigned long;
+using GPUTextureUsageFlags = unsigned;
     
 class GPUTextureUsage : public RefCounted<GPUTextureUsage> {
 public:
-    static const GPUTextureUsageFlags None = 0;
-    static const GPUTextureUsageFlags TransferSrc = 1;
-    static const GPUTextureUsageFlags TransferDst = 2;
-    static const GPUTextureUsageFlags Sampled = 4;
-    static const GPUTextureUsageFlags Storage = 8;
-    static const GPUTextureUsageFlags OutputAttachment = 16;
+    enum class Flags : GPUTextureUsageFlags {
+        None = 0,
+        TransferSource = 1 << 0,
+        TransferDestination = 1 << 1,
+        Sampled = 1 << 2,
+        Storage = 1 << 3,
+        OutputAttachment = 1 << 4,
+    };
 };
 
 } // namespace WebCore

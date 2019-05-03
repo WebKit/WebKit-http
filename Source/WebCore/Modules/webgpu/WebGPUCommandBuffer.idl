@@ -24,6 +24,31 @@
  */
 // https://github.com/gpuweb/gpuweb/blob/master/design/sketch.webidl
 
+typedef unsigned long u32;
+typedef unsigned long long u64;
+
+[
+    Conditional=WEBGPU,
+    EnabledAtRuntime=WebGPU,
+    ImplementedAs=WebGPUBufferCopyView
+] dictionary GPUBufferCopyView {
+    WebGPUBuffer buffer;
+    u64 offset;
+    u64 rowPitch;
+    u32 imageHeight;
+};
+
+[
+    Conditional=WEBGPU,
+    EnabledAtRuntime=WebGPU,
+    ImplementedAs=WebGPUTextureCopyView
+] dictionary GPUTextureCopyView {
+    WebGPUTexture texture;
+    u32 mipLevel;
+    u32 arrayLayer;
+    GPUOrigin3D origin;
+};
+
 [
     Conditional=WEBGPU,
     EnabledAtRuntime=WebGPU,
@@ -31,33 +56,28 @@
 ] interface WebGPUCommandBuffer {
     WebGPURenderPassEncoder beginRenderPass(WebGPURenderPassDescriptor descriptor);
 
-/* Not Yet Implemented
-    WebGPUComputePassEncoder beginComputePass();
-
-    // Commands allowed outside of "passes"
-        void copyBufferToBuffer(
+    void copyBufferToBuffer(
         WebGPUBuffer src,
-        u32 srcOffset,
+        u64 srcOffset,
         WebGPUBuffer dst,
-        u32 dstOffset,
-        u32 size);
+        u64 dstOffset,
+        u64 size);
 
     void copyBufferToTexture(
-        WebGPUBufferCopyView source,
-        WebGPUTextureCopyView destination,
-        WebGPUExtent3D copySize);
+        GPUBufferCopyView source,
+        GPUTextureCopyView destination,
+        GPUExtent3D copySize);
 
     void copyTextureToBuffer(
-        WebGPUTextureCopyView source,
-        WebGPUBufferCopyView destination,
-        WebGPUExtent3D copySize);
+        GPUTextureCopyView source,
+        GPUBufferCopyView destination,
+        GPUExtent3D copySize);
 
     void copyTextureToTexture(
-        WebGPUTextureCopyView source,
-        WebGPUTextureCopyView destination,
-        WebGPUExtent3D copySize);
+        GPUTextureCopyView source,
+        GPUTextureCopyView destination,
+        GPUExtent3D copySize);
 
-    // TODO figure which other commands are needed
-    void blit();
-*/
+    // Not Yet Implemented
+    // WebGPUComputePassEncoder beginComputePass();
 };

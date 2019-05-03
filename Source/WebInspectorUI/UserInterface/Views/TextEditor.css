@@ -57,27 +57,37 @@
 
     z-index: -2;
 
-    border-image-source: image-set(url(../Images/BreakpointInactive.png) 1x, url(../Images/BreakpointInactive@2x.png) 2x);
-    border-image-slice: 3 7 3 3 fill;
-    border-width: 3px 7px 3px 3px;
+    -webkit-clip-path: polygon(0% 50%, 5px 100%, 100% 100%, 100% 0, 5px 0);
+    transform: scaleX(-1);
+    background-color: var(--breakpoint-color);
+    filter: grayscale();
 }
 
 .text-editor > .CodeMirror .breakpoint-resolved .CodeMirror-linenumber::before {
-    border-image-source: image-set(url(../Images/Breakpoint.png) 1x, url(../Images/Breakpoint@2x.png) 2x);
+    filter: none;
 }
 
-.text-editor > .CodeMirror .breakpoint-auto-continue:not(.breakpoint-disabled) .CodeMirror-linenumber::before {
-    opacity: 0.6;
+.text-editor > .CodeMirror .breakpoint-auto-continue:not(.execution-line.primary) .CodeMirror-linenumber::after {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: -7px;
+    content: "";
+    z-index: -1;
+    -webkit-clip-path: polygon(5px 20%, 5px 80%, 2px 50%);
+    background-color: var(--selected-foreground-color);
+    transform: scaleX(-1);
 }
 
 .text-editor > .CodeMirror .breakpoint-disabled .CodeMirror-linenumber::before {
-    opacity: 0.35;
+    background-color: var(--breakpoint-color-disabled);
 }
 
 .text-editor > .CodeMirror .has-breakpoint.multiple-breakpoints .CodeMirror-linenumber::before {
     content: "\2022\2022\2022"; /* &middot;&middot;&middot; */
     color: white;
-    line-height: 6px;
+    line-height: 13px;
     text-align: center;
     text-indent: -1px;
 }
@@ -117,7 +127,7 @@
 }
 
 @keyframes text-editor-highlight-fadeout {
-    from { background-color: highlight; }
+    from { background-color: var(--selected-text-background-color); }
 }
 
 .text-editor > .CodeMirror .hovered-expression-highlight {
@@ -126,7 +136,7 @@
 }
 
 @keyframes text-editor-hovered-expression-highlight-fadeout {
-    from { background-color: highlight; }
+    from { background-color: var(--selected-text-background-color); }
     to { background-color: hsla(0, 0%, 0%, 0.1); }
 }
 

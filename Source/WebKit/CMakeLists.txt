@@ -21,6 +21,7 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/Shared"
     "${WEBKIT_DIR}/Shared/API"
     "${WEBKIT_DIR}/Shared/API/c"
+    "${WEBKIT_DIR}/Shared/ApplePay"
     "${WEBKIT_DIR}/Shared/Authentication"
     "${WEBKIT_DIR}/Shared/CoreIPCSupport"
     "${WEBKIT_DIR}/Shared/Databases"
@@ -36,7 +37,6 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/UIProcess/API"
     "${WEBKIT_DIR}/UIProcess/API/C"
     "${WEBKIT_DIR}/UIProcess/API/cpp"
-    "${WEBKIT_DIR}/UIProcess/ApplePay"
     "${WEBKIT_DIR}/UIProcess/Authentication"
     "${WEBKIT_DIR}/UIProcess/Automation"
     "${WEBKIT_DIR}/UIProcess/Downloads"
@@ -118,6 +118,7 @@ set(WebKit_MESSAGES_IN_FILES
     NetworkProcess/NetworkResourceLoader.messages.in
     NetworkProcess/NetworkSocketStream.messages.in
 
+    NetworkProcess/ServiceWorker/ServiceWorkerFetchTask.messages.in
     NetworkProcess/ServiceWorker/WebSWServerConnection.messages.in
     NetworkProcess/ServiceWorker/WebSWServerToContextConnection.messages.in
 

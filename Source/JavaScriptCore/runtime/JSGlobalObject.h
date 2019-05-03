@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
- *  Copyright (C) 2007-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2007-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -30,7 +30,6 @@
 #include "InternalFunction.h"
 #include "JSArray.h"
 #include "JSArrayBufferPrototype.h"
-#include "JSCPoison.h"
 #include "JSClassRef.h"
 #include "JSGlobalLexicalEnvironment.h"
 #include "JSPromiseDeferred.h"
@@ -49,7 +48,6 @@
 #include <JavaScriptCore/JSBase.h>
 #include <array>
 #include <wtf/HashSet.h>
-#include <wtf/PoisonedUniquePtr.h>
 #include <wtf/RetainPtr.h>
 
 struct OpaqueJSClass;
@@ -130,7 +128,6 @@ template<typename Watchpoint> class ObjectPropertyChangeAdaptiveWatchpoint;
 
 #define FOR_EACH_SIMPLE_BUILTIN_TYPE_WITH_CONSTRUCTOR(macro) \
     macro(String, string, stringObject, StringObject, String, object) \
-    macro(Error, error, error, ErrorInstance, Error, object) \
     macro(Map, map, map, JSMap, Map, object) \
     macro(Set, set, set, JSSet, Set, object) \
     macro(JSPromise, promise, promise, JSPromise, Promise, object)
@@ -148,6 +145,7 @@ template<typename Watchpoint> class ObjectPropertyChangeAdaptiveWatchpoint;
 #define FOR_EACH_LAZY_BUILTIN_TYPE(macro) \
     macro(Boolean, boolean, booleanObject, BooleanObject, Boolean, object) \
     macro(Date, date, date, DateInstance, Date, object) \
+    macro(Error, error, error, ErrorInstance, Error, object) \
     macro(Number, number, numberObject, NumberObject, Number, object) \
     macro(Symbol, symbol, symbolObject, SymbolObject, Symbol, object) \
     DEFINE_STANDARD_BUILTIN(macro, WeakMap, weakMap) \
@@ -276,7 +274,6 @@ public:
     WriteBarrier<JSInternalPromiseConstructor> m_internalPromiseConstructor;
 
 #if ENABLE(INTL)
-    WriteBarrier<IntlObject> m_intlObject;
     WriteBarrier<IntlCollator> m_defaultCollator;
     LazyProperty<JSGlobalObject, Structure> m_collatorStructure;
     LazyProperty<JSGlobalObject, Structure> m_numberFormatStructure;
@@ -430,11 +427,9 @@ public:
 
     VM& m_vm;
 
-    template<typename T> using PoisonedUniquePtr = WTF::PoisonedUniquePtr<JSGlobalObjectPoison, T>;
-
 #if ENABLE(REMOTE_INSPECTOR)
-    PoisonedUniquePtr<Inspector::JSGlobalObjectInspectorController> m_inspectorController;
-    PoisonedUniquePtr<JSGlobalObjectDebuggable> m_inspectorDebuggable;
+    std::unique_ptr<Inspector::JSGlobalObjectInspectorController> m_inspectorController;
+    std::unique_ptr<JSGlobalObjectDebuggable> m_inspectorDebuggable;
 #endif
 
 #if ENABLE(INTL)
@@ -477,17 +472,17 @@ public:
     InlineWatchpointSet m_setAddWatchpoint;
     InlineWatchpointSet m_arraySpeciesWatchpoint;
     InlineWatchpointSet m_numberToStringWatchpoint;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_arrayPrototypeSymbolIteratorWatchpoint;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_arrayIteratorPrototypeNext;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapPrototypeSymbolIteratorWatchpoint;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapIteratorPrototypeNextWatchpoint;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setPrototypeSymbolIteratorWatchpoint;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setIteratorPrototypeNextWatchpoint;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_stringPrototypeSymbolIteratorWatchpoint;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_stringIteratorPrototypeNextWatchpoint;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapPrototypeSetWatchpoint;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setPrototypeAddWatchpoint;
-    PoisonedUniquePtr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_numberPrototypeToStringWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_arrayPrototypeSymbolIteratorWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_arrayIteratorPrototypeNext;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapPrototypeSymbolIteratorWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapIteratorPrototypeNextWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setPrototypeSymbolIteratorWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setIteratorPrototypeNextWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_stringPrototypeSymbolIteratorWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_stringIteratorPrototypeNextWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapPrototypeSetWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setPrototypeAddWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_numberPrototypeToStringWatchpoint;
 
     bool isArrayPrototypeIteratorProtocolFastAndNonObservable();
     bool isMapPrototypeIteratorProtocolFastAndNonObservable();
@@ -635,7 +630,7 @@ public:
     JSObject* datePrototype() const { return m_dateStructure.prototype(this); }
     JSObject* symbolPrototype() const { return m_symbolObjectStructure.prototypeInitializedOnMainThread(this); }
     RegExpPrototype* regExpPrototype() const { return m_regExpPrototype.get(); }
-    ErrorPrototype* errorPrototype() const { return m_errorPrototype.get(); }
+    JSObject* errorPrototype() const { return m_errorStructure.prototype(this); }
     IteratorPrototype* iteratorPrototype() const { return m_iteratorPrototype.get(); }
     AsyncIteratorPrototype* asyncIteratorPrototype() const { return m_asyncIteratorPrototype.get(); }
     GeneratorFunctionPrototype* generatorFunctionPrototype() const { return m_generatorFunctionPrototype.get(); }
@@ -696,7 +691,7 @@ public:
     Structure* dateStructure() const { return m_dateStructure.get(this); }
     Structure* symbolObjectStructure() const { return m_symbolObjectStructure.get(this); }
     Structure* nullPrototypeObjectStructure() const { return m_nullPrototypeObjectStructure.get(); }
-    Structure* errorStructure() const { return m_errorStructure.get(); }
+    Structure* errorStructure() const { return m_errorStructure.get(this); }
     Structure* errorStructure(ErrorType errorType) const
     {
         switch (errorType) {

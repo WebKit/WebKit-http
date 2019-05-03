@@ -127,60 +127,25 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView& frameView)
         return;
 
     setEventTrackingRegionsDirty();
+
+#if PLATFORM(COCOA)
     if (!coordinatesScrollingForFrameView(frameView))
         return;
 
-    auto* node = m_scrollingStateTree->stateNodeForID(frameView.scrollingNodeID());
-    if (!node || !is<ScrollingStateFrameScrollingNode>(*node))
-        return;
-
-    auto& frameScrollingNode = downcast<ScrollingStateFrameScrollingNode>(*node);
-
-    auto* verticalScrollbar = frameView.verticalScrollbar();
-    auto* horizontalScrollbar = frameView.horizontalScrollbar();
-    frameScrollingNode.setScrollerImpsFromScrollbars(verticalScrollbar, horizontalScrollbar);
-
-    frameScrollingNode.setFrameScaleFactor(frameView.frame().frameScaleFactor());
-    frameScrollingNode.setHeaderHeight(frameView.headerHeight());
-    frameScrollingNode.setFooterHeight(frameView.footerHeight());
-    frameScrollingNode.setTopContentInset(frameView.topContentInset());
-
-    frameScrollingNode.setLayoutViewport(frameView.layoutViewportRect());
-    frameScrollingNode.setAsyncFrameOrOverflowScrollingEnabled(asyncFrameOrOverflowScrollingEnabled());
-
-    frameScrollingNode.setMinLayoutViewportOrigin(frameView.minStableLayoutViewportOrigin());
-    frameScrollingNode.setMaxLayoutViewportOrigin(frameView.maxStableLayoutViewportOrigin());
-
-    frameScrollingNode.setScrollOrigin(frameView.scrollOrigin());
-    frameScrollingNode.setScrollableAreaSize(frameView.visibleContentRect().size());
-    frameScrollingNode.setTotalContentsSize(frameView.totalContentsSize());
-    frameScrollingNode.setReachableContentsSize(frameView.totalContentsSize());
-    frameScrollingNode.setFixedElementsLayoutRelativeToFrame(frameView.fixedElementsLayoutRelativeToFrame());
-    frameScrollingNode.setScrollBehaviorForFixedElements(frameView.scrollBehaviorForFixedElements());
-
-#if ENABLE(CSS_SCROLL_SNAP)
-    frameView.updateSnapOffsets();
-    updateScrollSnapPropertiesWithFrameView(frameView);
-#endif
-
-#if PLATFORM(COCOA)
     auto* page = frameView.frame().page();
     if (page && page->expectsWheelEventTriggers()) {
         LOG(WheelEventTestTriggers, "    AsyncScrollingCoordinator::frameViewLayoutUpdated: Expects wheel event test trigger=%d", page->expectsWheelEventTriggers());
+
+        auto* node = m_scrollingStateTree->stateNodeForID(frameView.scrollingNodeID());
+        if (!is<ScrollingStateFrameScrollingNode>(node))
+            return;
+
+        auto& frameScrollingNode = downcast<ScrollingStateFrameScrollingNode>(*node);
         frameScrollingNode.setExpectsWheelEventTestTrigger(page->expectsWheelEventTriggers());
     }
+#else
+    UNUSED_PARAM(frameView);
 #endif
-
-    ScrollableAreaParameters scrollParameters;
-    scrollParameters.horizontalScrollElasticity = frameView.horizontalScrollElasticity();
-    scrollParameters.verticalScrollElasticity = frameView.verticalScrollElasticity();
-    scrollParameters.hasEnabledHorizontalScrollbar = horizontalScrollbar && horizontalScrollbar->enabled();
-    scrollParameters.hasEnabledVerticalScrollbar = verticalScrollbar && verticalScrollbar->enabled();
-    scrollParameters.horizontalScrollbarMode = frameView.horizontalScrollbarMode();
-    scrollParameters.verticalScrollbarMode = frameView.verticalScrollbarMode();
-    scrollParameters.useDarkAppearanceForScrollbars = frameView.useDarkAppearanceForScrollbars();
-
-    frameScrollingNode.setScrollableAreaParameters(scrollParameters);
 }
 
 void AsyncScrollingCoordinator::updateExpectsWheelEventTestTriggerWithFrameView(const FrameView& frameView)
@@ -493,20 +458,18 @@ void AsyncScrollingCoordinator::scrollableAreaScrollbarLayerDidChange(Scrollable
     ASSERT(m_page);
 
     auto* node = m_scrollingStateTree->stateNodeForID(scrollableArea.scrollingNodeID());
-    if (is<ScrollingStateFrameScrollingNode>(node)) {
-        auto& scrollingNode = downcast<ScrollingStateFrameScrollingNode>(*node);
+    if (is<ScrollingStateScrollingNode>(node)) {
+        auto& scrollingNode = downcast<ScrollingStateScrollingNode>(*node);
         if (orientation == VerticalScrollbar)
             scrollingNode.setVerticalScrollbarLayer(scrollableArea.layerForVerticalScrollbar());
         else
             scrollingNode.setHorizontalScrollbarLayer(scrollableArea.layerForHorizontalScrollbar());
     }
 
-    if (&scrollableArea == m_page->mainFrame().view()) {
-        if (orientation == VerticalScrollbar)
-            scrollableArea.verticalScrollbarLayerDidChange();
-        else
-            scrollableArea.horizontalScrollbarLayerDidChange();
-    }
+    if (orientation == VerticalScrollbar)
+        scrollableArea.verticalScrollbarLayerDidChange();
+    else
+        scrollableArea.horizontalScrollbarLayerDidChange();
 }
 
 ScrollingNodeID AsyncScrollingCoordinator::createNode(ScrollingNodeType nodeType, ScrollingNodeID newNodeID)
@@ -604,6 +567,8 @@ void AsyncScrollingCoordinator::setNodeLayers(ScrollingNodeID nodeID, const Node
         auto& scrollingNode = downcast<ScrollingStateScrollingNode>(*node);
         scrollingNode.setScrollContainerLayer(nodeLayers.scrollContainerLayer);
         scrollingNode.setScrolledContentsLayer(nodeLayers.scrolledContentsLayer);
+        scrollingNode.setHorizontalScrollbarLayer(nodeLayers.horizontalScrollbarLayer);
+        scrollingNode.setVerticalScrollbarLayer(nodeLayers.verticalScrollbarLayer);
 
         if (is<ScrollingStateFrameScrollingNode>(node)) {
             auto& frameScrollingNode = downcast<ScrollingStateFrameScrollingNode>(*node);
@@ -614,40 +579,88 @@ void AsyncScrollingCoordinator::setNodeLayers(ScrollingNodeID nodeID, const Node
     }
 }
 
-void AsyncScrollingCoordinator::setScrollingNodeGeometry(ScrollingNodeID nodeID, const ScrollingGeometry& scrollingGeometry)
+void AsyncScrollingCoordinator::setRectRelativeToParentNode(ScrollingNodeID nodeID, const LayoutRect& parentRelativeScrollableRect)
 {
     auto* stateNode = m_scrollingStateTree->stateNodeForID(nodeID);
     ASSERT(stateNode);
     if (!stateNode)
         return;
 
-    if (stateNode->nodeType() == ScrollingNodeType::FrameHosting) {
+    if (is<ScrollingStateFrameHostingNode>(*stateNode)) {
         auto& frameHostingStateNode = downcast<ScrollingStateFrameHostingNode>(*stateNode);
-        frameHostingStateNode.setParentRelativeScrollableRect(scrollingGeometry.parentRelativeScrollableRect);
+        frameHostingStateNode.setParentRelativeScrollableRect(parentRelativeScrollableRect);
         return;
     }
 
+    if (is<ScrollingStateScrollingNode>(stateNode)) {
+        auto& scrollingStateNode = downcast<ScrollingStateScrollingNode>(*stateNode);
+        scrollingStateNode.setParentRelativeScrollableRect(parentRelativeScrollableRect);
+    }
+}
+
+void AsyncScrollingCoordinator::setFrameScrollingNodeState(ScrollingNodeID nodeID, const FrameView& frameView)
+{
+    auto* stateNode = m_scrollingStateTree->stateNodeForID(nodeID);
+    ASSERT(stateNode);
+    if (!is<ScrollingStateFrameScrollingNode>(stateNode))
+        return;
+
+    auto& frameScrollingNode = downcast<ScrollingStateFrameScrollingNode>(*stateNode);
+
+    frameScrollingNode.setFrameScaleFactor(frameView.frame().frameScaleFactor());
+    frameScrollingNode.setHeaderHeight(frameView.headerHeight());
+    frameScrollingNode.setFooterHeight(frameView.footerHeight());
+    frameScrollingNode.setTopContentInset(frameView.topContentInset());
+    frameScrollingNode.setLayoutViewport(frameView.layoutViewportRect());
+    frameScrollingNode.setAsyncFrameOrOverflowScrollingEnabled(asyncFrameOrOverflowScrollingEnabled());
+
+    frameScrollingNode.setMinLayoutViewportOrigin(frameView.minStableLayoutViewportOrigin());
+    frameScrollingNode.setMaxLayoutViewportOrigin(frameView.maxStableLayoutViewportOrigin());
+
+    frameScrollingNode.setFixedElementsLayoutRelativeToFrame(frameView.fixedElementsLayoutRelativeToFrame());
+    frameScrollingNode.setScrollBehaviorForFixedElements(frameView.scrollBehaviorForFixedElements());
+}
+
+void AsyncScrollingCoordinator::setScrollingNodeScrollableAreaGeometry(ScrollingNodeID nodeID, ScrollableArea& scrollableArea)
+{
+    auto* stateNode = m_scrollingStateTree->stateNodeForID(nodeID);
+    ASSERT(stateNode);
+    if (!stateNode)
+        return;
+
     auto& scrollingNode = downcast<ScrollingStateScrollingNode>(*stateNode);
 
-    scrollingNode.setParentRelativeScrollableRect(scrollingGeometry.parentRelativeScrollableRect);
-    scrollingNode.setScrollOrigin(scrollingGeometry.scrollOrigin);
-    scrollingNode.setScrollPosition(scrollingGeometry.scrollPosition);
-    scrollingNode.setTotalContentsSize(scrollingGeometry.contentSize);
-    scrollingNode.setReachableContentsSize(scrollingGeometry.reachableContentSize);
-    scrollingNode.setScrollableAreaSize(scrollingGeometry.scrollableAreaSize);
+    auto* verticalScrollbar = scrollableArea.verticalScrollbar();
+    auto* horizontalScrollbar = scrollableArea.horizontalScrollbar();
+    scrollingNode.setScrollerImpsFromScrollbars(verticalScrollbar, horizontalScrollbar);
+
+    scrollingNode.setScrollOrigin(scrollableArea.scrollOrigin());
+    scrollingNode.setScrollPosition(scrollableArea.scrollPosition());
+    scrollingNode.setTotalContentsSize(scrollableArea.totalContentsSize());
+    scrollingNode.setReachableContentsSize(scrollableArea.reachableTotalContentsSize());
+    scrollingNode.setScrollableAreaSize(scrollableArea.visibleSize());
+
+    ScrollableAreaParameters scrollParameters;
+    scrollParameters.horizontalScrollElasticity = scrollableArea.horizontalScrollElasticity();
+    scrollParameters.verticalScrollElasticity = scrollableArea.verticalScrollElasticity();
+    scrollParameters.hasEnabledHorizontalScrollbar = horizontalScrollbar && horizontalScrollbar->enabled();
+    scrollParameters.hasEnabledVerticalScrollbar = verticalScrollbar && verticalScrollbar->enabled();
+    scrollParameters.horizontalScrollbarMode = scrollableArea.horizontalScrollbarMode();
+    scrollParameters.verticalScrollbarMode = scrollableArea.verticalScrollbarMode();
+    scrollParameters.useDarkAppearanceForScrollbars = scrollableArea.useDarkAppearanceForScrollbars();
+
+    scrollingNode.setScrollableAreaParameters(scrollParameters);
 
 #if ENABLE(CSS_SCROLL_SNAP)
-    // updateScrollSnapPropertiesWithFrameView() sets these for frame scrolling nodes. FIXME: Why the difference?
-    if (is<ScrollingStateOverflowScrollingNode>(scrollingNode)) {
-        setStateScrollingNodeSnapOffsetsAsFloat(scrollingNode, ScrollEventAxis::Horizontal, &scrollingGeometry.horizontalSnapOffsets, &scrollingGeometry.horizontalSnapOffsetRanges, m_page->deviceScaleFactor());
-        setStateScrollingNodeSnapOffsetsAsFloat(scrollingNode, ScrollEventAxis::Vertical, &scrollingGeometry.verticalSnapOffsets, &scrollingGeometry.verticalSnapOffsetRanges, m_page->deviceScaleFactor());
-        scrollingNode.setCurrentHorizontalSnapPointIndex(scrollingGeometry.currentHorizontalSnapPointIndex);
-        scrollingNode.setCurrentVerticalSnapPointIndex(scrollingGeometry.currentVerticalSnapPointIndex);
-    }
+    scrollableArea.updateSnapOffsets();
+    setStateScrollingNodeSnapOffsetsAsFloat(scrollingNode, ScrollEventAxis::Horizontal, scrollableArea.horizontalSnapOffsets(), scrollableArea.horizontalSnapOffsetRanges(), m_page->deviceScaleFactor());
+    setStateScrollingNodeSnapOffsetsAsFloat(scrollingNode, ScrollEventAxis::Vertical, scrollableArea.verticalSnapOffsets(), scrollableArea.verticalSnapOffsetRanges(), m_page->deviceScaleFactor());
+    scrollingNode.setCurrentHorizontalSnapPointIndex(scrollableArea.currentHorizontalSnapPointIndex());
+    scrollingNode.setCurrentVerticalSnapPointIndex(scrollableArea.currentVerticalSnapPointIndex());
 #endif
 }
 
-void AsyncScrollingCoordinator::setViewportConstraintedNodeGeometry(ScrollingNodeID nodeID, const ViewportConstraints& constraints)
+void AsyncScrollingCoordinator::setViewportConstraintedNodeConstraints(ScrollingNodeID nodeID, const ViewportConstraints& constraints)
 {
     auto* node = m_scrollingStateTree->stateNodeForID(nodeID);
     if (!node)

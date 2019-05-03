@@ -42,8 +42,10 @@ NetworkProcess/NetworkSocketStream.cpp
 NetworkProcess/PingLoad.cpp
 NetworkProcess/PreconnectTask.cpp
 
+NetworkProcess/Classifier/ResourceLoadStatisticsDatabaseStore.cpp
 NetworkProcess/Classifier/ResourceLoadStatisticsMemoryStore.cpp
 NetworkProcess/Classifier/ResourceLoadStatisticsPersistentStorage.cpp
+NetworkProcess/Classifier/ResourceLoadStatisticsStore.cpp
 
 NetworkProcess/Cookies/WebCookieManager.cpp
 
@@ -56,6 +58,7 @@ NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
 
 NetworkProcess/IndexedDB/WebIDBConnectionToClient.cpp
 
+NetworkProcess/ServiceWorker/ServiceWorkerFetchTask.cpp @no-unify
 NetworkProcess/ServiceWorker/WebSWOriginStore.cpp @no-unify
 NetworkProcess/ServiceWorker/WebSWServerConnection.cpp @no-unify
 NetworkProcess/ServiceWorker/WebSWServerToContextConnection.cpp @no-unify
@@ -106,6 +109,7 @@ Shared/AuxiliaryProcess.cpp @no-unify
 Shared/BlobDataFileReferenceWithSandboxExtension.cpp @no-unify
 Shared/CacheModel.cpp
 Shared/ContextMenuContextData.cpp
+Shared/EditingRange.cpp
 Shared/EditorState.cpp
 Shared/FontInfo.cpp
 Shared/FrameInfoData.cpp

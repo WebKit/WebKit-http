@@ -848,10 +848,7 @@ void RenderLayer::updateLayerPositionsAfterLayout(const RenderLayer* rootLayer, 
 
 void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, OptionSet<UpdateLayerPositionsFlag> flags)
 {
-    updateLayerPosition(); // For relpositioned layers or non-positioned layers,
-                           // we need to keep in sync, since we may have shifted relative
-                           // to our parent layer.
-
+    updateLayerPosition(&flags);
     applyPostLayoutScrollPositionIfNeeded();
 
     if (geometryMap)
@@ -952,7 +949,7 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, OptionSet
     }
 
     if (isComposited())
-        backing()->updateAfterLayout(flags.contains(NeedsFullRepaintInBacking));
+        backing()->updateAfterLayout(flags.contains(ContainingClippingLayerChangedSize), flags.contains(NeedsFullRepaintInBacking));
 
     if (geometryMap)
         geometryMap->popMappingsToAncestor(parent());
@@ -1498,7 +1495,7 @@ bool RenderLayer::update3DTransformedDescendantStatus()
     return has3DTransform();
 }
 
-bool RenderLayer::updateLayerPosition()
+bool RenderLayer::updateLayerPosition(OptionSet<UpdateLayerPositionsFlag>* flags)
 {
     LayoutPoint localPoint;
     LayoutSize inlineBoundingBoxOffset; // We don't put this into the RenderLayer x/y for inlines, so we need to subtract it out when done.
@@ -1516,6 +1513,10 @@ bool RenderLayer::updateLayerPosition()
                 // Trigger RenderLayerCompositor::requiresCompositingForFrame() which depends on the contentBoxRect size.
                 setNeedsPostLayoutCompositingUpdate();
             }
+
+            if (flags && renderer().hasOverflowClip())
+                flags->add(ContainingClippingLayerChangedSize);
+
             setSize(newSize);
         }
         
@@ -2812,15 +2813,16 @@ IntSize RenderLayer::overhangAmount() const
 
     // FIXME: use maximumScrollOffset(), or just move this to ScrollableArea.
     ScrollOffset scrollOffset = scrollOffsetFromPosition(scrollPosition());
+    auto reachableSize = reachableTotalContentsSize();
     if (scrollOffset.y() < 0)
         stretch.setHeight(scrollOffset.y());
-    else if (scrollableContentsSize().height() && scrollOffset.y() > scrollableContentsSize().height() - visibleHeight())
-        stretch.setHeight(scrollOffset.y() - (scrollableContentsSize().height() - visibleHeight()));
+    else if (reachableSize.height() && scrollOffset.y() > reachableSize.height() - visibleHeight())
+        stretch.setHeight(scrollOffset.y() - (reachableSize.height() - visibleHeight()));
 
     if (scrollOffset.x() < 0)
         stretch.setWidth(scrollOffset.x());
-    else if (scrollableContentsSize().width() && scrollOffset.x() > scrollableContentsSize().width() - visibleWidth())
-        stretch.setWidth(scrollOffset.x() - (scrollableContentsSize().width() - visibleWidth()));
+    else if (reachableSize.width() && scrollOffset.x() > reachableSize.width() - visibleWidth())
+        stretch.setWidth(scrollOffset.x() - (reachableSize.width() - visibleWidth()));
 
     return stretch;
 #else
@@ -2947,7 +2949,7 @@ IntSize RenderLayer::contentsSize() const
     return IntSize(scrollWidth(), scrollHeight());
 }
 
-IntSize RenderLayer::scrollableContentsSize() const
+IntSize RenderLayer::reachableTotalContentsSize() const
 {
     IntSize contentsSize = this->contentsSize();
 

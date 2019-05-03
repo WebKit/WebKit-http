@@ -73,7 +73,7 @@ class Events(service.BuildbotService):
 
     EVENT_SERVER_ENDPOINT = 'http://ews.webkit-uat.org/results/'
 
-    def __init__(self, type_prefix='', name='Events'):
+    def __init__(self, master_hostname, type_prefix='', name='Events'):
         """
         Initialize the Events Plugin. Sends data to event server on specific buildbot events.
         :param type_prefix: [optional] prefix we want to add to the 'type' field on the json we send
@@ -85,6 +85,7 @@ class Events(service.BuildbotService):
         if type_prefix and not type_prefix.endswith("-"):
             type_prefix += "-"
         self.type_prefix = type_prefix
+        self.master_hostname = master_hostname
 
     def sendData(self, data):
         agent = Agent(reactor)
@@ -109,9 +110,13 @@ class Events(service.BuildbotService):
         if not build.get('properties'):
             build['properties'] = yield self.master.db.builds.getBuildProperties(build.get('buildid'))
 
+        builder = yield self.master.db.builders.getBuilder(build.get('builderid'))
+        builder_display_name = builder.get('description')
+
         data = {
             "type": self.type_prefix + "build",
             "status": "started",
+            "hostname": self.master_hostname,
             "patch_id": self.getPatchID(build),
             "build_id": build.get('buildid'),
             "builder_id": build.get('builderid'),
@@ -120,7 +125,8 @@ class Events(service.BuildbotService):
             "started_at": build.get('started_at'),
             "complete_at": build.get('complete_at'),
             "state_string": build.get('state_string'),
-            "buildername": self.getBuilderName(build),
+            "builder_name": self.getBuilderName(build),
+            "builder_display_name": builder_display_name,
         }
 
         self.sendData(data)
@@ -132,9 +138,13 @@ class Events(service.BuildbotService):
         if not build.get('steps'):
             build['steps'] = yield self.master.db.steps.getSteps(build.get('buildid'))
 
+        builder = yield self.master.db.builders.getBuilder(build.get('builderid'))
+        builder_display_name = builder.get('description')
+
         data = {
             "type": self.type_prefix + "build",
             "status": "finished",
+            "hostname": self.master_hostname,
             "patch_id": self.getPatchID(build),
             "build_id": build.get('buildid'),
             "builder_id": build.get('builderid'),
@@ -143,7 +153,8 @@ class Events(service.BuildbotService):
             "started_at": build.get('started_at'),
             "complete_at": build.get('complete_at'),
             "state_string": build.get('state_string'),
-            "buildername": self.getBuilderName(build),
+            "builder_name": self.getBuilderName(build),
+            "builder_display_name": builder_display_name,
             "steps": build.get('steps'),
         }
 
@@ -153,6 +164,7 @@ class Events(service.BuildbotService):
         data = {
             "type": self.type_prefix + "step",
             "status": "started",
+            "hostname": self.master_hostname,
             "step_id": step.get('stepid'),
             "build_id": step.get('buildid'),
             "result": step.get('results'),
@@ -167,6 +179,7 @@ class Events(service.BuildbotService):
         data = {
             "type": self.type_prefix + "step",
             "status": "finished",
+            "hostname": self.master_hostname,
             "step_id": step.get('stepid'),
             "build_id": step.get('buildid'),
             "result": step.get('results'),

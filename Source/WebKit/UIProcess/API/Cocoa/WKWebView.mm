@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKWebViewInternal.h"
 
-#if WK_API_ENABLED
-
 #import "APIFormClient.h"
 #import "APIPageConfiguration.h"
 #import "APISerializedScriptValue.h"
@@ -2488,6 +2486,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (void)didMoveToWindow
 {
     _page->activityStateDidChange(WebCore::ActivityState::allFlags());
+    _page->webViewDidMoveToWindow();
 }
 
 - (void)setOpaque:(BOOL)opaque
@@ -3304,7 +3303,9 @@ static void hardwareKeyboardAvailabilityChangedCallback(CFNotificationCenterRef,
 {
     ASSERT(observer);
     WKWebView *webView = (__bridge WKWebView *)observer;
-    webView._page->hardwareKeyboardAvailabilityChanged();
+    auto keyboardIsAttached = GSEventIsHardwareKeyboardAttached();
+    webView._page->process().setKeyboardIsAttached(keyboardIsAttached);
+    webView._page->hardwareKeyboardAvailabilityChanged(keyboardIsAttached);
 }
 
 - (void)_windowDidRotate:(NSNotification *)notification
@@ -7150,6 +7151,18 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     return nil;
 }
 
+- (void)_processWillSuspendImminentlyForTesting
+{
+    if (_page)
+        _page->process().sendProcessWillSuspendImminently();
+}
+
+- (void)_processDidResumeForTesting
+{
+    if (_page)
+        _page->process().sendProcessDidResume();
+}
+
 - (void)_denyNextUserMediaRequest
 {
 #if ENABLE(MEDIA_STREAM)
@@ -7289,7 +7302,5 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 }
 
 @end
-
-#endif // WK_API_ENABLED
 
 #undef RELEASE_LOG_IF_ALLOWED

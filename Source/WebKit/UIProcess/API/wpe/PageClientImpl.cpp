@@ -26,7 +26,7 @@
 #include "config.h"
 #include "PageClientImpl.h"
 
-#include "AcceleratedDrawingAreaProxy.h"
+#include "DrawingAreaProxyCoordinatedGraphics.h"
 #include "NativeWebMouseEvent.h"
 #include "NativeWebWheelEvent.h"
 #include "ScrollGestureController.h"
@@ -34,6 +34,7 @@
 #include "WebContextMenuProxy.h"
 #include "WebContextMenuProxyWPE.h"
 #include <WebCore/ActivityState.h>
+#include <WebCore/DOMPasteAccess.h>
 #include <WebCore/NotImplemented.h>
 
 namespace WebKit {
@@ -58,7 +59,7 @@ IPC::Attachment PageClientImpl::hostFileDescriptor()
 
 std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy(WebProcessProxy& process)
 {
-    return std::make_unique<AcceleratedDrawingAreaProxy>(m_view.page(), process);
+    return std::make_unique<DrawingAreaProxyCoordinatedGraphics>(m_view.page(), process);
 }
 
 void PageClientImpl::setViewNeedsDisplay(const WebCore::Region&)
@@ -399,9 +400,9 @@ void PageClientImpl::beganExitFullScreen(const WebCore::IntRect& /* initialFrame
 
 #endif // ENABLE(FULLSCREEN_API)
 
-void PageClientImpl::requestDOMPasteAccess(const WebCore::IntRect&, CompletionHandler<void(bool)>&& completionHandler)
+void PageClientImpl::requestDOMPasteAccess(const WebCore::IntRect&, const String&, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&& completionHandler)
 {
-    completionHandler(false);
+    completionHandler(WebCore::DOMPasteAccessResponse::DeniedForGesture);
 }
 
 } // namespace WebKit

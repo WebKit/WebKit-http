@@ -26,8 +26,6 @@
 #import "config.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 
-#if WK_API_ENABLED
-
 #import <wtf/RetainPtr.h>
 
 @implementation _WKProcessPoolConfiguration
@@ -326,17 +324,6 @@
     _processPoolConfiguration->setJITEnabled(enabled);
 }
 
-- (BOOL)usesNetworkingDaemon
-{
-    return _processPoolConfiguration->usesNetworkingDaemon();
-}
-
-- (void)setUsesNetworkingDaemon:(BOOL)enabled
-{
-    _processPoolConfiguration->setUsesNetworkingDaemon(enabled);
-}
-
-
 - (void)setSuppressesConnectionTerminationOnSystemChange:(BOOL)suppressesConnectionTerminationOnSystemChange
 {
     _processPoolConfiguration->setSuppressesConnectionTerminationOnSystemChange(suppressesConnectionTerminationOnSystemChange);
@@ -407,5 +394,3 @@
 }
 
 @end
-
-#endif

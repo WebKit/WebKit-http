@@ -203,7 +203,7 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
     bool needsLayout = !frame.view() || frame.view()->needsLayout();
     bool requiresPostLayoutData = frame.editor().hasComposition();
 #if !PLATFORM(IOSMAC)
-    requiresPostLayoutData |= [UIKeyboard isInHardwareKeyboardMode];
+    requiresPostLayoutData |= m_keyboardIsAttached;
 #endif
     if (shouldIncludePostLayoutData == IncludePostLayoutDataHint::No && needsLayout && !requiresPostLayoutData) {
         result.isMissingPostLayoutData = true;
@@ -535,26 +535,22 @@ void WebPage::updateSelectionAppearance()
         didChangeSelection();
 }
 
-void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebEvent::Modifier> modifiers)
+void WebPage::handleSyntheticClick(Node& nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebEvent::Modifier> modifiers)
 {
     IntPoint roundedAdjustedPoint = roundedIntPoint(location);
-    auto& mainframe = m_page->mainFrame();
-    auto& contentChangeObserver = m_page->contentChangeObserver();
-
-    LOG_WITH_STREAM(ContentObservation, stream << "handleSyntheticClick: node(" << nodeRespondingToClick << ") " << location);
-    contentChangeObserver.startObservingContentChanges();
-    contentChangeObserver.startObservingDOMTimerScheduling();
-
+    auto& respondingDocument = nodeRespondingToClick.document();
     // FIXME: Pass caps lock state.
     bool shiftKey = modifiers.contains(WebEvent::Modifier::ShiftKey);
     bool ctrlKey = modifiers.contains(WebEvent::Modifier::ControlKey);
     bool altKey = modifiers.contains(WebEvent::Modifier::AltKey);
     bool metaKey = modifiers.contains(WebEvent::Modifier::MetaKey);
-    mainframe.eventHandler().mouseMoved(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), WebCore::ForceAtClick, WebCore::NoTap));
-    mainframe.document()->updateStyleIfNeeded();
-
-    contentChangeObserver.stopObservingDOMTimerScheduling();
-    contentChangeObserver.stopObservingContentChanges();
+    {
+        LOG_WITH_STREAM(ContentObservation, stream << "handleSyntheticClick: node(" << &nodeRespondingToClick << ") " << location);
+        ContentChangeObserver::MouseMovedScope observingScope(respondingDocument);
+        auto& mainframe = m_page->mainFrame();
+        mainframe.eventHandler().mouseMoved(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, NoButton, PlatformEvent::MouseMoved, 0, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), WebCore::ForceAtClick, WebCore::NoTap));
+        mainframe.document()->updateStyleIfNeeded();
+    }
 
     m_pendingSyntheticClickNode = nullptr;
     m_pendingSyntheticClickLocation = FloatPoint();
@@ -563,14 +559,14 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
     if (m_isClosed)
         return;
 
-    switch (contentChangeObserver.observedContentChange()) {
+    switch (respondingDocument.contentChangeObserver().observedContentChange()) {
     case WKContentVisibilityChange:
         // The move event caused new contents to appear. Don't send the click event.
         LOG(ContentObservation, "handleSyntheticClick: Observed meaningful visible change -> hover.");
         return;
     case WKContentIndeterminateChange: {
         // Wait for callback to completePendingSyntheticClickForContentChangeObserver() to decide whether to send the click event.
-        m_pendingSyntheticClickNode = nodeRespondingToClick;
+        m_pendingSyntheticClickNode = &nodeRespondingToClick;
         m_pendingSyntheticClickLocation = location;
         m_pendingSyntheticClickModifiers = modifiers;
         LOG(ContentObservation, "handleSyntheticClick: Observed some change, but can't decide it yet -> wait.");
@@ -588,10 +584,11 @@ void WebPage::completePendingSyntheticClickForContentChangeObserver()
     LOG_WITH_STREAM(ContentObservation, stream << "completePendingSyntheticClickForContentChangeObserver: pending target node(" << m_pendingSyntheticClickNode << ")");
     if (!m_pendingSyntheticClickNode)
         return;
+    auto observedContentChange = m_pendingSyntheticClickNode->document().contentChangeObserver().observedContentChange();
     // Only dispatch the click if the document didn't get changed by any timers started by the move event.
-    if (m_page->contentChangeObserver().observedContentChange() == WKContentNoChange) {
+    if (observedContentChange == WKContentNoChange) {
         LOG(ContentObservation, "No chage was observed -> click.");
-        completeSyntheticClick(m_pendingSyntheticClickNode.get(), m_pendingSyntheticClickLocation, m_pendingSyntheticClickModifiers, WebCore::OneFingerTap);
+        completeSyntheticClick(*m_pendingSyntheticClickNode, m_pendingSyntheticClickLocation, m_pendingSyntheticClickModifiers, WebCore::OneFingerTap);
     } else
         LOG(ContentObservation, "Observed meaningful visible change -> hover.");
 
@@ -600,7 +597,7 @@ void WebPage::completePendingSyntheticClickForContentChangeObserver()
     m_pendingSyntheticClickModifiers = { };
 }
 
-void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebEvent::Modifier> modifiers, SyntheticClickType syntheticClickType)
+void WebPage::completeSyntheticClick(Node& nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebEvent::Modifier> modifiers, SyntheticClickType syntheticClickType)
 {
     IntPoint roundedAdjustedPoint = roundedIntPoint(location);
     Frame& mainframe = m_page->mainFrame();
@@ -637,7 +634,7 @@ void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore:
     if (newFocusedElement && newFocusedElement == oldFocusedElement)
         elementDidRefocus(*newFocusedElement);
 
-    if (!tapWasHandled || !nodeRespondingToClick || !nodeRespondingToClick->isElementNode())
+    if (!tapWasHandled || !nodeRespondingToClick.isElementNode())
         send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(location)));
     
     send(Messages::WebPageProxy::DidCompleteSyntheticClick());
@@ -660,7 +657,7 @@ void WebPage::handleTap(const IntPoint& point, OptionSet<WebEvent::Modifier> mod
     }
 #endif
     else
-        handleSyntheticClick(nodeRespondingToClick, adjustedPoint, modifiers);
+        handleSyntheticClick(*nodeRespondingToClick, adjustedPoint, modifiers);
 }
 
 void WebPage::requestFocusedElementInformation(WebKit::CallbackID callbackID)
@@ -771,7 +768,7 @@ void WebPage::handleTwoFingerTapAtPoint(const WebCore::IntPoint& point, OptionSe
         send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(adjustedPoint)));
     } else
 #endif
-        completeSyntheticClick(nodeRespondingToClick, adjustedPoint, modifiers, WebCore::TwoFingerTap);
+        completeSyntheticClick(*nodeRespondingToClick, adjustedPoint, modifiers, WebCore::TwoFingerTap);
 }
 
 void WebPage::handleStylusSingleTapAtPoint(const WebCore::IntPoint& point, uint64_t requestID)
@@ -840,7 +837,7 @@ void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64
             commitPotentialTapFailed();
         } else
 #endif
-            handleSyntheticClick(nodeRespondingToClick, adjustedPoint, modifiers);
+            handleSyntheticClick(*nodeRespondingToClick, adjustedPoint, modifiers);
     } else
         commitPotentialTapFailed();
 
@@ -2160,14 +2157,9 @@ WebAutocorrectionContext WebPage::autocorrectionContext()
     return { WTFMove(contextBefore), WTFMove(markedText), WTFMove(selectedText), WTFMove(contextAfter), location, length };
 }
 
-void WebPage::requestAutocorrectionContext(CallbackID callbackID)
+void WebPage::requestAutocorrectionContext()
 {
-    send(Messages::WebPageProxy::AutocorrectionContextCallback(autocorrectionContext(), callbackID));
-}
-
-void WebPage::autocorrectionContextSync(CompletionHandler<void(WebAutocorrectionContext&&)>&& completionHandler)
-{
-    completionHandler(autocorrectionContext());
+    send(Messages::WebPageProxy::HandleAutocorrectionContext(autocorrectionContext()));
 }
 
 static HTMLAnchorElement* containingLinkElement(Element* element)
@@ -3010,6 +3002,9 @@ void WebPage::applicationWillEnterForeground(bool isSuspendedUnderLock)
 {
     m_isSuspendedUnderLock = false;
     cancelMarkLayersVolatile();
+
+    // FIXME: In iOS, we sometimes never unset ProcessSuspended. See <rdar://problem/48538837>.
+    unfreezeLayerTree(LayerTreeFreezeReason::ProcessSuspended);
     unfreezeLayerTree(LayerTreeFreezeReason::BackgroundApplication);
 
     [[NSNotificationCenter defaultCenter] postNotificationName:WebUIApplicationWillEnterForegroundNotification object:nil userInfo:@{@"isSuspendedUnderLock": @(isSuspendedUnderLock)}];
@@ -3236,8 +3231,10 @@ String WebPage::platformUserAgent(const URL&) const
     return String();
 }
 
-void WebPage::hardwareKeyboardAvailabilityChanged()
+void WebPage::hardwareKeyboardAvailabilityChanged(bool keyboardIsAttached)
 {
+    m_keyboardIsAttached = keyboardIsAttached;
+
     if (auto* focusedFrame = m_page->focusController().focusedFrame())
         focusedFrame->eventHandler().capsLockStateMayHaveChanged();
 }

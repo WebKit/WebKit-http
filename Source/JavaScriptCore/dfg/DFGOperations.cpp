@@ -71,6 +71,7 @@
 #include "Repatch.h"
 #include "ScopedArguments.h"
 #include "StringConstructor.h"
+#include "StringPrototypeInlines.h"
 #include "SuperSampler.h"
 #include "Symbol.h"
 #include "TypeProfilerLog.h"
@@ -688,7 +689,9 @@ EncodedJSValue JIT_OPERATION operationGetByVal(ExecState* exec, EncodedJSValue e
         } else if (property.isString()) {
             Structure& structure = *base->structure(vm);
             if (JSCell::canUseFastGetOwnProperty(structure)) {
-                if (RefPtr<AtomicStringImpl> existingAtomicString = asString(property)->toExistingAtomicString(exec)) {
+                RefPtr<AtomicStringImpl> existingAtomicString = asString(property)->toExistingAtomicString(exec);
+                RETURN_IF_EXCEPTION(scope, encodedJSValue());
+                if (existingAtomicString) {
                     if (JSValue result = base->fastGetOwnProperty(vm, structure, existingAtomicString.get()))
                         return JSValue::encode(result);
                 }
@@ -723,7 +726,9 @@ EncodedJSValue JIT_OPERATION operationGetByValCell(ExecState* exec, JSCell* base
     } else if (property.isString()) {
         Structure& structure = *base->structure(vm);
         if (JSCell::canUseFastGetOwnProperty(structure)) {
-            if (RefPtr<AtomicStringImpl> existingAtomicString = asString(property)->toExistingAtomicString(exec)) {
+            RefPtr<AtomicStringImpl> existingAtomicString = asString(property)->toExistingAtomicString(exec);
+            RETURN_IF_EXCEPTION(scope, encodedJSValue());
+            if (existingAtomicString) {
                 if (JSValue result = base->fastGetOwnProperty(vm, structure, existingAtomicString.get()))
                     return JSValue::encode(result);
             }
@@ -1444,7 +1449,9 @@ EncodedJSValue JIT_OPERATION operationGetByValWithThis(ExecState* exec, EncodedJ
     if (LIKELY(baseValue.isCell() && subscript.isString())) {
         Structure& structure = *baseValue.asCell()->structure(vm);
         if (JSCell::canUseFastGetOwnProperty(structure)) {
-            if (RefPtr<AtomicStringImpl> existingAtomicString = asString(subscript)->toExistingAtomicString(exec)) {
+            RefPtr<AtomicStringImpl> existingAtomicString = asString(subscript)->toExistingAtomicString(exec);
+            RETURN_IF_EXCEPTION(scope, encodedJSValue());
+            if (existingAtomicString) {
                 if (JSValue result = baseValue.asCell()->fastGetOwnProperty(vm, structure, existingAtomicString.get()))
                     return JSValue::encode(result);
             }
@@ -2155,6 +2162,20 @@ JSCell* JIT_OPERATION operationStringSubstr(ExecState* exec, JSCell* cell, int32
     auto string = jsCast<JSString*>(cell)->value(exec);
     RETURN_IF_EXCEPTION(scope, nullptr);
     return jsSubstring(exec, string, from, span);
+}
+
+JSCell* JIT_OPERATION operationStringSlice(ExecState* exec, JSCell* cell, int32_t start, int32_t end)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    auto string = jsCast<JSString*>(cell)->value(exec);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    static_assert(static_cast<uint64_t>(JSString::MaxLength) <= static_cast<uint64_t>(std::numeric_limits<int32_t>::max()), "");
+
+    scope.release();
+    return stringSlice(exec, WTFMove(string), start, end);
 }
 
 JSString* JIT_OPERATION operationToLowerCase(ExecState* exec, JSString* string, uint32_t failingIndex)
@@ -3108,7 +3129,7 @@ static void triggerFTLReplacementCompile(VM* vm, CodeBlock* codeBlock, JITCode* 
     // We need to compile the code.
     compile(
         *vm, codeBlock->newReplacement(), codeBlock, FTLMode, UINT_MAX,
-        Operands<JSValue>(), ToFTLDeferredCompilationCallback::create());
+        Operands<Optional<JSValue>>(), ToFTLDeferredCompilationCallback::create());
 
     // If we reached here, the counter has not be reset. Do that now.
     jitCode->setOptimizationThresholdBasedOnCompilationResult(
@@ -3346,7 +3367,7 @@ static char* tierUpCommon(ExecState* exec, unsigned originBytecodeIndex, bool ca
 
     JITCode::TriggerReason* triggerAddress = &(triggerIterator->value);
 
-    Operands<JSValue> mustHandleValues;
+    Operands<Optional<JSValue>> mustHandleValues;
     unsigned streamIndex = jitCode->bytecodeIndexToStreamIndex.get(originBytecodeIndex);
     jitCode->reconstruct(
         exec, codeBlock, CodeOrigin(originBytecodeIndex), streamIndex, mustHandleValues);

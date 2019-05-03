@@ -201,7 +201,7 @@ private:
     _page->setUseFixedLayout(true);
     _page->setDelegatesScrolling(true);
 
-#if ENABLE(FULLSCREEN_API) && WK_API_ENABLED
+#if ENABLE(FULLSCREEN_API)
     _page->setFullscreenClient(std::make_unique<WebKit::FullscreenClient>(_webView));
 #endif
 
@@ -436,7 +436,7 @@ static WebCore::FloatBoxExtent floatBoxExtent(UIEdgeInsets insets)
     _sizeChangedSinceLastVisibleContentRectUpdate = NO;
 
     WebCore::FloatRect layoutViewport = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->customFixedPositionRect(), zoomScale, WebCore::FrameView::LayoutViewportConstraint::Unconstrained);
-    scrollingCoordinator->viewportChangedViaDelegatedScrolling(layoutViewport, zoomScale);
+    scrollingCoordinator->viewportChangedViaDelegatedScrolling(_page->unobscuredContentRect().location(), layoutViewport, zoomScale);
 
     drawingArea->updateDebugIndicator();
     

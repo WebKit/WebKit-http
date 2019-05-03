@@ -64,10 +64,6 @@ public:
 
     template<typename FunctionType> FunctionType functionPointer(const char* functionName) const;
 
-#if USE(CF) && !defined(__LP64__)
-    CFBundleRefNum bundleResourceMap();
-#endif
-
 private:
     void* platformFunctionPointer(const char* functionName) const;
 
@@ -77,9 +73,6 @@ private:
 #endif
 #if USE(CF)
     RetainPtr<CFBundleRef> m_bundle;
-#if !defined(__LP64__)
-    CFBundleRefNum m_bundleResourceMap;
-#endif
 #elif USE(GLIB)
     GModule* m_handle;
 #elif PLATFORM(HAIKU)

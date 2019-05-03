@@ -139,6 +139,7 @@
 #include <WebCore/Chrome.h>
 #include <WebCore/CommonVM.h>
 #include <WebCore/ContextMenuController.h>
+#include <WebCore/DOMPasteAccess.h>
 #include <WebCore/DataTransfer.h>
 #include <WebCore/DatabaseManager.h>
 #include <WebCore/DeprecatedGlobalSettings.h>
@@ -267,6 +268,7 @@
 #include "InteractionInformationAtPosition.h"
 #include "InteractionInformationRequest.h"
 #include "RemoteLayerTreeDrawingArea.h"
+#include "WebAutocorrectionContext.h"
 #include <CoreGraphics/CoreGraphics.h>
 #include <WebCore/Icon.h>
 #include <pal/spi/cocoa/CoreTextSPI.h>
@@ -688,6 +690,17 @@ void WebPage::resumeAllMediaPlayback()
 {
     m_page->resumeAllMediaPlayback();
 }
+
+void WebPage::suspendAllMediaBuffering()
+{
+    m_page->suspendAllMediaBuffering();
+}
+
+void WebPage::resumeAllMediaBuffering()
+{
+    m_page->resumeAllMediaBuffering();
+}
+
 
 void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
 {
@@ -1225,7 +1238,7 @@ void WebPage::close()
         return;
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RemoveStorageAccessForAllFramesOnPage(sessionID(), m_pageID), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::ClearPageSpecificDataForResourceLoadStatistics(sessionID(), m_pageID), 0);
 #endif
 
     m_isClosed = true;
@@ -1243,10 +1256,6 @@ void WebPage::close()
     }
 
     m_page->inspectorController().disconnectAllFrontends();
-
-#if ENABLE(MEDIA_STREAM)
-    m_userMediaPermissionRequestManager->clear();
-#endif
 
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = nullptr;
@@ -1614,7 +1623,7 @@ void WebPage::sendViewportAttributesChanged(const ViewportArguments& viewportArg
     // This also takes care of the relayout.
     setFixedLayoutSize(roundedIntSize(attr.layoutSize));
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS)
     m_drawingArea->didChangeViewportAttributes(WTFMove(attr));
 #else
     send(Messages::WebPageProxy::DidChangeViewportProperties(attr));
@@ -2008,10 +2017,8 @@ void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArgum
     FrameView* view = m_page->mainFrame().view();
     if (view && view->useFixedLayout())
         sendViewportAttributesChanged(viewportArguments);
-#if USE(COORDINATED_GRAPHICS_THREADED)
     else
         m_drawingArea->didChangeViewportAttributes(ViewportAttributes());
-#endif
 #endif
 
 #if !PLATFORM(IOS_FAMILY) && !USE(COORDINATED_GRAPHICS)
@@ -2401,12 +2408,16 @@ const WebEvent* WebPage::currentEvent()
 
 void WebPage::freezeLayerTree(LayerTreeFreezeReason reason)
 {
+    RELEASE_LOG(ProcessSuspension, "%p - WebPage (PageID=%llu) - Adding a reason %d to freeze layer tree; current reasons are %d",
+        this, m_pageID, static_cast<unsigned>(reason), m_LayerTreeFreezeReasons.toRaw());
     m_LayerTreeFreezeReasons.add(reason);
     updateDrawingAreaLayerTreeFreezeState();
 }
 
 void WebPage::unfreezeLayerTree(LayerTreeFreezeReason reason)
 {
+    RELEASE_LOG(ProcessSuspension, "%p - WebPage (PageID=%llu) - Removing a reason %d to freeze layer tree; current reasons are %d",
+        this, m_pageID, static_cast<unsigned>(reason), m_LayerTreeFreezeReasons.toRaw());
     m_LayerTreeFreezeReasons.remove(reason);
     updateDrawingAreaLayerTreeFreezeState();
 }
@@ -3133,6 +3144,15 @@ void WebPage::didCompletePageTransition()
 {
     unfreezeLayerTree(LayerTreeFreezeReason::PageTransition);
 
+    if (m_LayerTreeFreezeReasons.contains(LayerTreeFreezeReason::ProcessSuspended)) {
+        RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebPage (PageID=%" PRIu64 ") - LayerTreeFreezeReason::ProcessSuspended was set when removing LayerTreeFreezeReason::PageTransition; current reasons are %d",
+            this, m_pageID, m_LayerTreeFreezeReasons.toRaw());
+    }
+
+    // FIXME: In iOS, we sometimes never unset ProcessSuspended. See <rdar://problem/48154508>.
+    unfreezeLayerTree(LayerTreeFreezeReason::ProcessSuspended);
+    RELEASE_LOG_IF_ALLOWED("%p - WebPage - Did complete page transition", this);
+
     bool isInitialEmptyDocument = !m_mainFrame;
     if (!isInitialEmptyDocument)
         unfreezeLayerTree(LayerTreeFreezeReason::ProcessSwap);
@@ -3145,23 +3165,12 @@ void WebPage::show()
 
 String WebPage::userAgent(const URL& webCoreURL) const
 {
-    return userAgent(nullptr, webCoreURL);
-}
-
-String WebPage::userAgent(WebFrame* frame, const URL& webcoreURL) const
-{
-    if (frame) {
-        String userAgent = m_loaderClient->userAgentForURL(*frame, webcoreURL);
-        if (!userAgent.isEmpty())
-            return userAgent;
-    }
-
-    String userAgent = platformUserAgent(webcoreURL);
+    String userAgent = platformUserAgent(webCoreURL);
     if (!userAgent.isEmpty())
         return userAgent;
     return m_userAgent;
 }
-    
+
 void WebPage::setUserAgent(const String& userAgent)
 {
     if (m_userAgent == userAgent)
@@ -4058,17 +4067,6 @@ void WebPage::captureDevicesChanged()
     m_userMediaPermissionRequestManager->captureDevicesChanged();
 }
 
-#if ENABLE(SANDBOX_EXTENSIONS)
-void WebPage::grantUserMediaDeviceSandboxExtensions(MediaDeviceSandboxExtensions&& extensions)
-{
-    m_userMediaPermissionRequestManager->grantUserMediaDeviceSandboxExtensions(WTFMove(extensions));
-}
-
-void WebPage::revokeUserMediaDeviceSandboxExtensions(const Vector<String>& extensionIDs)
-{
-    m_userMediaPermissionRequestManager->revokeUserMediaDeviceSandboxExtensions(extensionIDs);
-}
-#endif
 #endif
 
 #if !PLATFORM(IOS_FAMILY)
@@ -4399,7 +4397,7 @@ void WebPage::SandboxExtensionTracker::setPendingProvisionalSandboxExtension(Ref
     m_pendingProvisionalSandboxExtension = WTFMove(pendingProvisionalSandboxExtension);
 }
 
-static bool shouldReuseCommittedSandboxExtension(WebFrame* frame)
+bool WebPage::SandboxExtensionTracker::shouldReuseCommittedSandboxExtension(WebFrame* frame)
 {
     ASSERT(frame->isMainFrame());
 
@@ -4409,6 +4407,9 @@ static bool shouldReuseCommittedSandboxExtension(WebFrame* frame)
     // If the page is being reloaded, it should reuse whatever extension is committed.
     if (isReload(frameLoadType))
         return true;
+
+    if (m_pendingProvisionalSandboxExtension)
+        return false;
 
     DocumentLoader* documentLoader = frameLoader.documentLoader();
     DocumentLoader* provisionalDocumentLoader = frameLoader.provisionalDocumentLoader();
@@ -5037,7 +5038,7 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
 
     bool replacesText = false;
     if (replacementEditingRange.location != notFound) {
-        if (auto replacementRange = rangeFromEditingRange(frame, replacementEditingRange, static_cast<EditingRangeIsRelativeTo>(editingRangeIsRelativeTo))) {
+        if (auto replacementRange = EditingRange::toRange(frame, replacementEditingRange, static_cast<EditingRangeIsRelativeTo>(editingRangeIsRelativeTo))) {
             SetForScope<bool> isSelectingTextWhileInsertingAsynchronously(m_isSelectingTextWhileInsertingAsynchronously, suppressSelectionUpdate);
             frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
             replacesText = replacementEditingRange.length;
@@ -5058,49 +5059,25 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
 void WebPage::getMarkedRangeAsync(CallbackID callbackID)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
-
-    RefPtr<Range> range = frame.editor().compositionRange();
-    size_t location;
-    size_t length;
-    if (!range || !TextIterator::getLocationAndLengthFromRange(frame.selection().rootEditableElementOrDocumentElement(), range.get(), location, length)) {
-        location = notFound;
-        length = 0;
-    }
-
-    send(Messages::WebPageProxy::EditingRangeCallback(EditingRange(location, length), callbackID));
+    auto editingRange = EditingRange::fromRange(frame, frame.editor().compositionRange().get());
+    send(Messages::WebPageProxy::EditingRangeCallback(editingRange, callbackID));
 }
 
 void WebPage::getSelectedRangeAsync(CallbackID callbackID)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
-
-    size_t location;
-    size_t length;
-    RefPtr<Range> range = frame.selection().toNormalizedRange();
-    if (!range || !TextIterator::getLocationAndLengthFromRange(frame.selection().rootEditableElementOrDocumentElement(), range.get(), location, length)) {
-        location = notFound;
-        length = 0;
-    }
-
-    send(Messages::WebPageProxy::EditingRangeCallback(EditingRange(location, length), callbackID));
+    auto editingRange = EditingRange::fromRange(frame, frame.selection().toNormalizedRange().get());
+    send(Messages::WebPageProxy::EditingRangeCallback(editingRange, callbackID));
 }
 
 void WebPage::characterIndexForPointAsync(const WebCore::IntPoint& point, CallbackID callbackID)
 {
-    uint64_t index = notFound;
-
     HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(point);
     Frame* frame = result.innerNonSharedNode() ? result.innerNodeFrame() : &m_page->focusController().focusedOrMainFrame();
     
     RefPtr<Range> range = frame->rangeForPoint(result.roundedPointInInnerNodeFrame());
-    if (range) {
-        size_t location;
-        size_t length;
-        if (TextIterator::getLocationAndLengthFromRange(frame->selection().rootEditableElementOrDocumentElement(), range.get(), location, length))
-            index = static_cast<uint64_t>(location);
-    }
-
-    send(Messages::WebPageProxy::UnsignedCallback(index, callbackID));
+    auto editingRange = EditingRange::fromRange(*frame, range.get());
+    send(Messages::WebPageProxy::UnsignedCallback(static_cast<uint64_t>(editingRange.location), callbackID));
 }
 
 void WebPage::firstRectForCharacterRangeAsync(const EditingRange& editingRange, CallbackID callbackID)
@@ -5108,7 +5085,7 @@ void WebPage::firstRectForCharacterRangeAsync(const EditingRange& editingRange, 
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     IntRect result(IntPoint(0, 0), IntSize(0, 0));
     
-    RefPtr<Range> range = rangeFromEditingRange(frame, editingRange);
+    RefPtr<Range> range = EditingRange::toRange(frame, editingRange);
     if (!range) {
         send(Messages::WebPageProxy::RectForCharacterRangeCallback(result, EditingRange(notFound, 0), callbackID));
         return;
@@ -5127,7 +5104,7 @@ void WebPage::setCompositionAsync(const String& text, const Vector<CompositionUn
     if (frame.selection().selection().isContentEditable()) {
         RefPtr<Range> replacementRange;
         if (replacementEditingRange.location != notFound) {
-            replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
+            replacementRange = EditingRange::toRange(frame, replacementEditingRange);
             if (replacementRange)
                 frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
         }
@@ -6114,45 +6091,6 @@ void WebPage::getSamplingProfilerOutput(CallbackID callbackID)
 #endif
 }
 
-RefPtr<WebCore::Range> WebPage::rangeFromEditingRange(WebCore::Frame& frame, const EditingRange& range, EditingRangeIsRelativeTo editingRangeIsRelativeTo)
-{
-    ASSERT(range.location != notFound);
-
-    // Sanitize the input, because TextIterator::rangeFromLocationAndLength takes signed integers.
-    if (range.location > INT_MAX)
-        return 0;
-    int length;
-    if (range.length <= INT_MAX && range.location + range.length <= INT_MAX)
-        length = static_cast<int>(range.length);
-    else
-        length = INT_MAX - range.location;
-
-    if (editingRangeIsRelativeTo == EditingRangeIsRelativeTo::EditableRoot) {
-        // Our critical assumption is that this code path is called by input methods that
-        // concentrate on a given area containing the selection.
-        // We have to do this because of text fields and textareas. The DOM for those is not
-        // directly in the document DOM, so serialization is problematic. Our solution is
-        // to use the root editable element of the selection start as the positional base.
-        // That fits with AppKit's idea of an input context.
-        return TextIterator::rangeFromLocationAndLength(frame.selection().rootEditableElementOrDocumentElement(), static_cast<int>(range.location), length);
-    }
-
-    ASSERT(editingRangeIsRelativeTo == EditingRangeIsRelativeTo::Paragraph);
-
-    const VisibleSelection& selection = frame.selection().selection();
-    RefPtr<Range> selectedRange = selection.toNormalizedRange();
-    if (!selectedRange)
-        return 0;
-
-    RefPtr<Range> paragraphRange = makeRange(startOfParagraph(selection.visibleStart()), selection.visibleEnd());
-    if (!paragraphRange)
-        return 0;
-
-    ContainerNode& rootNode = paragraphRange.get()->startContainer().treeScope().rootNode();
-    int paragraphStartIndex = TextIterator::rangeLength(Range::create(rootNode.document(), &rootNode, 0, &paragraphRange->startContainer(), paragraphRange->startOffset()).ptr());
-    return TextIterator::rangeFromLocationAndLength(&rootNode, paragraphStartIndex + static_cast<int>(range.location), length);
-}
-    
 void WebPage::didChangeScrollOffsetForFrame(Frame* frame)
 {
     if (!frame->isMainFrame())
@@ -6400,13 +6338,13 @@ void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remote
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
 void WebPage::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
 {
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::HasStorageAccess(sessionID(), RegistrableDomain { subFrameHost }, RegistrableDomain { topFrameHost }, frameID, m_pageID), WTFMove(completionHandler));
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::HasStorageAccess(sessionID(), RegistrableDomain::uncheckedCreateFromHost(subFrameHost), RegistrableDomain::uncheckedCreateFromHost(topFrameHost), frameID, m_pageID), WTFMove(completionHandler));
 }
     
 void WebPage::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
 {
     bool promptEnabled = RuntimeEnabledFeatures::sharedFeatures().storageAccessPromptsEnabled();
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::RequestStorageAccess(sessionID(), RegistrableDomain { subFrameHost }, RegistrableDomain { topFrameHost }, frameID, m_pageID, promptEnabled), WTFMove(completionHandler));
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::RequestStorageAccess(sessionID(), RegistrableDomain::uncheckedCreateFromHost(subFrameHost), RegistrableDomain::uncheckedCreateFromHost(topFrameHost), frameID, m_pageID, promptEnabled), WTFMove(completionHandler));
 }
 #endif
     
@@ -6433,13 +6371,18 @@ void WebPage::didCompleteShareSheet(bool wasGranted, ShareSheetCallbackID callba
     callback(wasGranted);
 }
 
-bool WebPage::requestDOMPasteAccess()
+WebCore::DOMPasteAccessResponse WebPage::requestDOMPasteAccess(const String& originIdentifier)
 {
-    bool granted = false;
-    if (!sendSyncWithDelayedReply(Messages::WebPageProxy::RequestDOMPasteAccess(rectForElementAtInteractionLocation()), Messages::WebPageProxy::RequestDOMPasteAccess::Reply(granted)))
-        return false;
-
-    return granted;
+    auto response = WebCore::DOMPasteAccessResponse::DeniedForGesture;
+#if PLATFORM(IOS_FAMILY)
+    // FIXME: Computing and sending an autocorrection context is a workaround for the fact that autocorrection context
+    // requests on iOS are currently synchronous in the web process. This allows us to immediately fulfill pending
+    // autocorrection context requests in the UI process on iOS before handling the DOM paste request. This workaround
+    // should be removed once <rdar://problem/16207002> is resolved.
+    send(Messages::WebPageProxy::HandleAutocorrectionContext(autocorrectionContext()));
+#endif
+    sendSyncWithDelayedReply(Messages::WebPageProxy::RequestDOMPasteAccess(rectForElementAtInteractionLocation(), originIdentifier), Messages::WebPageProxy::RequestDOMPasteAccess::Reply(response));
+    return response;
 }
 
 void WebPage::simulateDeviceOrientationChange(double alpha, double beta, double gamma)

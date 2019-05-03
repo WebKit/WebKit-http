@@ -1811,6 +1811,7 @@ platform/graphics/filters/SpotLightSource.cpp
 platform/graphics/gpu/GPUBindGroup.cpp
 platform/graphics/gpu/GPUDevice.cpp
 platform/graphics/gpu/GPUPipelineLayout.cpp
+platform/graphics/gpu/GPUProgrammablePassEncoder.cpp
 platform/graphics/gpu/legacy/GPULegacyBuffer.cpp
 platform/graphics/gpu/legacy/GPULegacyCommandBuffer.cpp
 platform/graphics/gpu/legacy/GPULegacyCommandQueue.cpp
@@ -2774,6 +2775,7 @@ JSGPUCompareFunction.cpp
 JSGPUDepthStencilStateDescriptor.cpp
 JSGPUExtent3D.cpp
 JSGPULoadOp.cpp
+JSGPUOrigin3D.cpp
 JSGPURequestAdapterOptions.cpp
 JSGPUStoreOp.cpp
 JSGPUTextureDescriptor.cpp

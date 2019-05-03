@@ -261,6 +261,9 @@ void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)
 
     for (auto& page : m_pageMap.values())
         page->connectionWillOpen(connection);
+
+    for (auto* provisionalPage : m_provisionalPages)
+        provisionalPage->connectionWillOpen(connection);
 }
 
 void WebProcessProxy::processWillShutDown(IPC::Connection& connection)
@@ -346,22 +349,23 @@ Ref<WebPageProxy> WebProcessProxy::createWebPage(PageClient& pageClient, Ref<API
     uint64_t pageID = generatePageID();
     Ref<WebPageProxy> webPage = WebPageProxy::create(pageClient, *this, pageID, WTFMove(pageConfiguration));
 
-    addExistingWebPage(webPage.get(), pageID, BeginsUsingDataStore::Yes);
+    addExistingWebPage(webPage.get(), BeginsUsingDataStore::Yes);
 
     return webPage;
 }
 
-void WebProcessProxy::addExistingWebPage(WebPageProxy& webPage, uint64_t pageID, BeginsUsingDataStore beginsUsingDataStore)
+void WebProcessProxy::addExistingWebPage(WebPageProxy& webPage, BeginsUsingDataStore beginsUsingDataStore)
 {
-    ASSERT(!m_pageMap.contains(pageID));
-    ASSERT(!globalPageMap().contains(pageID));
+    ASSERT(!m_pageMap.contains(webPage.pageID()));
+    ASSERT(!globalPageMap().contains(webPage.pageID()));
     ASSERT(!m_isInProcessCache);
+    ASSERT(m_websiteDataStore.ptr() == &webPage.websiteDataStore());
 
     if (beginsUsingDataStore == BeginsUsingDataStore::Yes)
-        m_processPool->pageBeginUsingWebsiteDataStore(webPage);
+        m_processPool->pageBeginUsingWebsiteDataStore(webPage.pageID(), webPage.websiteDataStore());
 
-    m_pageMap.set(pageID, &webPage);
-    globalPageMap().set(pageID, &webPage);
+    m_pageMap.set(webPage.pageID(), &webPage);
+    globalPageMap().set(webPage.pageID(), &webPage);
 
     updateBackgroundResponsivenessTimer();
 }
@@ -377,15 +381,15 @@ void WebProcessProxy::markIsNoLongerInPrewarmedPool()
     send(Messages::WebProcess::MarkIsNoLongerPrewarmed(), 0);
 }
 
-void WebProcessProxy::removeWebPage(WebPageProxy& webPage, uint64_t pageID, EndsUsingDataStore endsUsingDataStore)
+void WebProcessProxy::removeWebPage(WebPageProxy& webPage, EndsUsingDataStore endsUsingDataStore)
 {
-    auto* removedPage = m_pageMap.take(pageID);
+    auto* removedPage = m_pageMap.take(webPage.pageID());
     ASSERT_UNUSED(removedPage, removedPage == &webPage);
-    removedPage = globalPageMap().take(pageID);
+    removedPage = globalPageMap().take(webPage.pageID());
     ASSERT_UNUSED(removedPage, removedPage == &webPage);
 
     if (endsUsingDataStore == EndsUsingDataStore::Yes)
-        m_processPool->pageEndUsingWebsiteDataStore(webPage);
+        m_processPool->pageEndUsingWebsiteDataStore(webPage.pageID(), webPage.websiteDataStore());
 
     updateBackgroundResponsivenessTimer();
 
@@ -842,12 +846,12 @@ bool WebProcessProxy::canBeAddedToWebProcessCache() const
     return true;
 }
 
-void WebProcessProxy::maybeShutDown()
+void WebProcessProxy::maybeShutDown(AllowProcessCaching allowProcessCaching)
 {
     if (state() == State::Terminated || !canTerminateAuxiliaryProcess())
         return;
 
-    if (canBeAddedToWebProcessCache() && processPool().webProcessCache().addProcessIfPossible(registrableDomain(), *this))
+    if (allowProcessCaching == AllowProcessCaching::Yes && canBeAddedToWebProcessCache() && processPool().webProcessCache().addProcessIfPossible(registrableDomain(), *this))
         return;
 
     shutDown();
@@ -855,7 +859,7 @@ void WebProcessProxy::maybeShutDown()
 
 bool WebProcessProxy::canTerminateAuxiliaryProcess()
 {
-    if (!m_pageMap.isEmpty() || m_processPool->hasSuspendedPageFor(*this) || !m_provisionalPages.isEmpty() || m_isInProcessCache)
+    if (!m_pageMap.isEmpty() || m_suspendedPageCount || !m_provisionalPages.isEmpty() || m_isInProcessCache)
         return false;
 
     if (!m_processPool->shouldTerminate(this))
@@ -1436,6 +1440,21 @@ void WebProcessProxy::didStartProvisionalLoadForMainFrame(const URL& url)
 
     // Associate the process with this registrable domain.
     m_registrableDomain = WTFMove(registrableDomain);
+}
+
+void WebProcessProxy::incrementSuspendedPageCount()
+{
+    ++m_suspendedPageCount;
+    if (m_suspendedPageCount == 1)
+        send(Messages::WebProcess::SetHasSuspendedPageProxy(true), 0);
+}
+
+void WebProcessProxy::decrementSuspendedPageCount()
+{
+    ASSERT(m_suspendedPageCount);
+    --m_suspendedPageCount;
+    if (!m_suspendedPageCount)
+        send(Messages::WebProcess::SetHasSuspendedPageProxy(false), 0);
 }
 
 #if PLATFORM(WATCHOS)

@@ -544,19 +544,11 @@ void RenderLayerCompositor::didChangePlatformLayerForLayer(RenderLayer& layer, c
         return;
 
     auto* backing = layer.backing();
+    if (auto nodeID = backing->scrollingNodeIDForRole(ScrollCoordinationRole::Scrolling))
+        updateScrollingNodeLayers(nodeID, layer, *scrollingCoordinator);
+
     if (auto nodeID = backing->scrollingNodeIDForRole(ScrollCoordinationRole::ViewportConstrained))
         scrollingCoordinator->setNodeLayers(nodeID, { backing->graphicsLayer() });
-
-    if (auto nodeID = backing->scrollingNodeIDForRole(ScrollCoordinationRole::Scrolling)) {
-        // FIXME: would be nice to not have to special-case the root.
-        ScrollingCoordinator::NodeLayers nodeLayers;
-        if (layer.isRenderViewLayer())
-            nodeLayers = { nullptr, scrollContainerLayer(), scrolledContentsLayer(), fixedRootBackgroundLayer(), clipLayer(), rootContentsLayer() };
-        else
-            nodeLayers = { layer.backing()->graphicsLayer(), backing->scrollContainerLayer(), backing->scrolledContentsLayer() };
-
-        scrollingCoordinator->setNodeLayers(nodeID, nodeLayers);
-    }
 
     if (auto nodeID = backing->scrollingNodeIDForRole(ScrollCoordinationRole::FrameHosting))
         scrollingCoordinator->setNodeLayers(nodeID, { backing->graphicsLayer() });
@@ -698,6 +690,11 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
 
         // Scrolling can affect overlap. FIXME: avoid for page scrolling.
         updateRoot->setDescendantsNeedCompositingRequirementsTraversal();
+    }
+
+    if (updateType == CompositingUpdateType::AfterLayout) {
+        // Ensure that post-layout updates push new scroll position and viewport rects onto the root node.
+        rootRenderLayer().setNeedsScrollingTreeUpdate();
     }
 
     if (!updateRoot->hasDescendantNeedingCompositingRequirementsTraversal() && !m_compositing) {
@@ -1171,10 +1168,11 @@ void RenderLayerCompositor::updateBackingAndHierarchy(RenderLayer& layer, Vector
         }
         
         OptionSet<ScrollingNodeChangeFlags> scrollingNodeChanges = { ScrollingNodeChangeFlags::Layer };
-        if (layerNeedsUpdate || layer.needsCompositingGeometryUpdate() || layer.needsScrollingTreeUpdate()) {
+        if (layerNeedsUpdate || layer.needsCompositingGeometryUpdate()) {
             layerBacking->updateGeometry();
             scrollingNodeChanges.add(ScrollingNodeChangeFlags::LayerGeometry);
-        }
+        } else if (layer.needsScrollingTreeUpdate())
+            scrollingNodeChanges.add(ScrollingNodeChangeFlags::LayerGeometry);
 
         if (auto* reflection = layer.reflectionLayer()) {
             if (auto* reflectionBacking = reflection->backing()) {
@@ -3062,7 +3060,7 @@ bool RenderLayerCompositor::shouldCompositeOverflowControls() const
     if (m_overflowControlsHostLayer && isMainFrameCompositor())
         return true;
 
-#if !USE(COORDINATED_GRAPHICS_THREADED)
+#if !USE(COORDINATED_GRAPHICS)
     if (!frameView.hasOverlayScrollbars())
         return false;
 #endif
@@ -3922,10 +3920,10 @@ ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForViewportConstrained
     if (changes & ScrollingNodeChangeFlags::LayerGeometry) {
         switch (nodeType) {
         case ScrollingNodeType::Fixed:
-            scrollingCoordinator->setViewportConstraintedNodeGeometry(newNodeID, computeFixedViewportConstraints(layer));
+            scrollingCoordinator->setViewportConstraintedNodeConstraints(newNodeID, computeFixedViewportConstraints(layer));
             break;
         case ScrollingNodeType::Sticky:
-            scrollingCoordinator->setViewportConstraintedNodeGeometry(newNodeID, computeStickyViewportConstraints(layer));
+            scrollingCoordinator->setViewportConstraintedNodeConstraints(newNodeID, computeStickyViewportConstraints(layer));
             break;
         case ScrollingNodeType::MainFrame:
         case ScrollingNodeType::Subframe:
@@ -3938,69 +3936,45 @@ ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForViewportConstrained
     return newNodeID;
 }
 
-void RenderLayerCompositor::computeFrameScrollingGeometry(ScrollingCoordinator::ScrollingGeometry& scrollingGeometry) const
+LayoutRect RenderLayerCompositor::rootParentRelativeScrollableRect() const
 {
     auto& frameView = m_renderView.frameView();
 
     if (m_renderView.frame().isMainFrame())
-        scrollingGeometry.parentRelativeScrollableRect = frameView.frameRect();
-    else
-        scrollingGeometry.parentRelativeScrollableRect = LayoutRect({ }, LayoutSize(frameView.size()));
-
-    scrollingGeometry.scrollOrigin = frameView.scrollOrigin();
-    scrollingGeometry.scrollableAreaSize = frameView.visibleContentRect().size();
-    scrollingGeometry.contentSize = frameView.totalContentsSize();
-    scrollingGeometry.reachableContentSize = frameView.totalContentsSize();
-#if ENABLE(CSS_SCROLL_SNAP)
-    frameView.updateSnapOffsets();
-    updateScrollSnapPropertiesWithFrameView(frameView);
-#endif
+        return frameView.frameRect();
+    
+    return LayoutRect({ }, LayoutSize(frameView.size()));
 }
 
-void RenderLayerCompositor::computeFrameHostingGeometry(const RenderLayer& layer, const RenderLayer* ancestorLayer, ScrollingCoordinator::ScrollingGeometry& scrollingGeometry) const
+LayoutRect RenderLayerCompositor::parentRelativeScrollableRect(const RenderLayer& layer, const RenderLayer* ancestorLayer) const
 {
     // FIXME: ancestorLayer needs to be always non-null, so should become a reference.
-    if (ancestorLayer) {
-        LayoutRect scrollableRect;
-        if (is<RenderBox>(layer.renderer()))
-            scrollableRect = downcast<RenderBox>(layer.renderer()).paddingBoxRect();
+    if (!ancestorLayer)
+        return LayoutRect({ }, LayoutSize(layer.visibleSize()));
 
-        auto offset = layer.convertToLayerCoords(ancestorLayer, scrollableRect.location()); // FIXME: broken for columns.
-        scrollableRect.setLocation(offset);
-        scrollingGeometry.parentRelativeScrollableRect = scrollableRect;
-    }
+    LayoutRect scrollableRect;
+    if (is<RenderBox>(layer.renderer()))
+        scrollableRect = downcast<RenderBox>(layer.renderer()).paddingBoxRect();
+
+    auto offset = layer.convertToLayerCoords(ancestorLayer, scrollableRect.location()); // FIXME: broken for columns.
+    scrollableRect.setLocation(offset);
+    return scrollableRect;
 }
 
-void RenderLayerCompositor::computeOverflowScrollingGeometry(const RenderLayer& layer, const RenderLayer* ancestorLayer, ScrollingCoordinator::ScrollingGeometry& scrollingGeometry) const
+void RenderLayerCompositor::updateScrollingNodeLayers(ScrollingNodeID nodeID, RenderLayer& layer, ScrollingCoordinator& scrollingCoordinator)
 {
-    // FIXME: ancestorLayer needs to be always non-null, so should become a reference.
-    if (ancestorLayer) {
-        LayoutRect scrollableRect;
-        if (is<RenderBox>(layer.renderer()))
-            scrollableRect = downcast<RenderBox>(layer.renderer()).paddingBoxRect();
-
-        auto offset = layer.convertToLayerCoords(ancestorLayer, scrollableRect.location()); // FIXME: broken for columns.
-        scrollableRect.setLocation(offset);
-        scrollingGeometry.parentRelativeScrollableRect = scrollableRect;
+    if (layer.isRenderViewLayer()) {
+        FrameView& frameView = m_renderView.frameView();
+        scrollingCoordinator.setNodeLayers(nodeID, { nullptr,
+            scrollContainerLayer(), scrolledContentsLayer(),
+            fixedRootBackgroundLayer(), clipLayer(), rootContentsLayer(),
+            frameView.layerForHorizontalScrollbar(), frameView.layerForVerticalScrollbar() });
+    } else {
+        scrollingCoordinator.setNodeLayers(nodeID, { layer.backing()->graphicsLayer(),
+            layer.backing()->scrollContainerLayer(), layer.backing()->scrolledContentsLayer(),
+            nullptr, nullptr, nullptr,
+            layer.layerForHorizontalScrollbar(), layer.layerForVerticalScrollbar() });
     }
-
-    scrollingGeometry.scrollOrigin = layer.scrollOrigin();
-    scrollingGeometry.scrollPosition = layer.scrollPosition();
-    scrollingGeometry.scrollableAreaSize = layer.visibleSize();
-    scrollingGeometry.contentSize = layer.contentsSize();
-    scrollingGeometry.reachableContentSize = layer.scrollableContentsSize();
-#if ENABLE(CSS_SCROLL_SNAP)
-    if (auto* offsets = layer.horizontalSnapOffsets())
-        scrollingGeometry.horizontalSnapOffsets = *offsets;
-    if (auto* offsets = layer.verticalSnapOffsets())
-        scrollingGeometry.verticalSnapOffsets = *offsets;
-    if (auto* ranges = layer.horizontalSnapOffsetRanges())
-        scrollingGeometry.horizontalSnapOffsetRanges = *ranges;
-    if (auto* ranges = layer.verticalSnapOffsetRanges())
-        scrollingGeometry.verticalSnapOffsetRanges = *ranges;
-    scrollingGeometry.currentHorizontalSnapPointIndex = layer.currentHorizontalSnapPointIndex();
-    scrollingGeometry.currentVerticalSnapPointIndex = layer.currentVerticalSnapPointIndex();
-#endif
 }
 
 ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForScrollingRole(RenderLayer& layer, ScrollingTreeState& treeState, OptionSet<ScrollingNodeChangeFlags> changes)
@@ -4021,12 +3995,12 @@ ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForScrollingRole(Rende
         }
 
         if (changes & ScrollingNodeChangeFlags::Layer)
-            scrollingCoordinator->setNodeLayers(newNodeID, { nullptr, scrollContainerLayer(), scrolledContentsLayer(), fixedRootBackgroundLayer(), clipLayer(), rootContentsLayer() });
+            updateScrollingNodeLayers(newNodeID, layer, *scrollingCoordinator);
 
         if (changes & ScrollingNodeChangeFlags::LayerGeometry) {
-            ScrollingCoordinator::ScrollingGeometry scrollingGeometry;
-            computeFrameScrollingGeometry(scrollingGeometry);
-            scrollingCoordinator->setScrollingNodeGeometry(newNodeID, scrollingGeometry);
+            scrollingCoordinator->setRectRelativeToParentNode(newNodeID, rootParentRelativeScrollableRect());
+            scrollingCoordinator->setScrollingNodeScrollableAreaGeometry(newNodeID, frameView);
+            scrollingCoordinator->setFrameScrollingNodeState(newNodeID, frameView);
         }
     } else {
         newNodeID = attachScrollingNode(layer, ScrollingNodeType::Overflow, treeState);
@@ -4036,13 +4010,12 @@ ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForScrollingRole(Rende
         }
         
         if (changes & ScrollingNodeChangeFlags::Layer)
-            scrollingCoordinator->setNodeLayers(newNodeID, { layer.backing()->graphicsLayer(), layer.backing()->scrollContainerLayer(), layer.backing()->scrolledContentsLayer() });
+            updateScrollingNodeLayers(newNodeID, layer, *scrollingCoordinator);
 
         if (changes & ScrollingNodeChangeFlags::LayerGeometry && treeState.parentNodeID) {
             RenderLayer* scrollingAncestorLayer = m_scrollingNodeToLayerMap.get(treeState.parentNodeID.value());
-            ScrollingCoordinator::ScrollingGeometry scrollingGeometry;
-            computeOverflowScrollingGeometry(layer, scrollingAncestorLayer, scrollingGeometry);
-            scrollingCoordinator->setScrollingNodeGeometry(newNodeID, scrollingGeometry);
+            scrollingCoordinator->setRectRelativeToParentNode(newNodeID, parentRelativeScrollableRect(layer, scrollingAncestorLayer));
+            scrollingCoordinator->setScrollingNodeScrollableAreaGeometry(newNodeID, layer);
         }
     }
 
@@ -4064,9 +4037,7 @@ ScrollingNodeID RenderLayerCompositor::updateScrollingNodeForFrameHostingRole(Re
 
     if (changes & ScrollingNodeChangeFlags::LayerGeometry && treeState.parentNodeID) {
         RenderLayer* scrollingAncestorLayer = m_scrollingNodeToLayerMap.get(treeState.parentNodeID.value());
-        ScrollingCoordinator::ScrollingGeometry scrollingGeometry;
-        computeFrameHostingGeometry(layer, scrollingAncestorLayer, scrollingGeometry);
-        scrollingCoordinator->setScrollingNodeGeometry(newNodeID, scrollingGeometry);
+        scrollingCoordinator->setRectRelativeToParentNode(newNodeID, parentRelativeScrollableRect(layer, scrollingAncestorLayer));
     }
 
     return newNodeID;
@@ -4284,7 +4255,7 @@ void LegacyWebKitScrollingLayerCoordinator::updateScrollingLayer(RenderLayer& la
     bool allowHorizontalScrollbar = !scrollbarHasDisplayNone(layer.horizontalScrollbar());
     bool allowVerticalScrollbar = !scrollbarHasDisplayNone(layer.verticalScrollbar());
     m_chromeClient.addOrUpdateScrollingLayer(layer.renderer().element(), backing->scrollContainerLayer()->platformLayer(), backing->scrolledContentsLayer()->platformLayer(),
-        layer.scrollableContentsSize(), allowHorizontalScrollbar, allowVerticalScrollbar);
+        layer.reachableTotalContentsSize(), allowHorizontalScrollbar, allowVerticalScrollbar);
 }
 
 void LegacyWebKitScrollingLayerCoordinator::registerAllScrollingLayers()

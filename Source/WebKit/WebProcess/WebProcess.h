@@ -27,6 +27,9 @@
 
 #include "AuxiliaryProcess.h"
 #include "CacheModel.h"
+#if ENABLE(MEDIA_STREAM)
+#include "MediaDeviceSandboxExtensions.h"
+#endif
 #include "PluginProcessConnectionManager.h"
 #include "ResourceCachesToClear.h"
 #include "SandboxExtension.h"
@@ -50,6 +53,10 @@
 #if PLATFORM(COCOA)
 #include <dispatch/dispatch.h>
 #include <wtf/MachSendRight.h>
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+#include "WebSQLiteDatabaseTracker.h"
 #endif
 
 namespace API {
@@ -267,6 +274,7 @@ private:
 
     void platformTerminate();
 
+    void setHasSuspendedPageProxy(bool);
     void setIsInProcessCache(bool);
     void markIsNoLongerPrewarmed();
 
@@ -373,6 +381,11 @@ private:
     void clearMockMediaDevices();
     void removeMockMediaDevice(const String& persistentId);
     void resetMockMediaDevices();
+#if ENABLE(SANDBOX_EXTENSIONS)
+    void grantUserMediaDeviceSandboxExtensions(MediaDeviceSandboxExtensions&&);
+    void revokeUserMediaDeviceSandboxExtensions(const Vector<String>&);
+#endif
+
 #endif
 
     void platformInitializeProcess(const AuxiliaryProcessInitializationParameters&);
@@ -394,6 +407,11 @@ private:
     void displayConfigurationChanged(CGDirectDisplayID, CGDisplayChangeSummaryFlags);
     void displayWasRefreshed(CGDirectDisplayID);
 #endif
+#endif
+
+#if ENABLE(VIDEO)
+    void suspendAllMediaBuffering();
+    void resumeAllMediaBuffering();
 #endif
 
     void clearCurrentModifierStateForTesting();
@@ -457,6 +475,10 @@ private:
 
     RefPtr<WebCore::ApplicationCacheStorage> m_applicationCacheStorage;
 
+#if PLATFORM(IOS_FAMILY)
+    WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
+#endif
+
     enum PageMarkingLayersAsVolatileCounterType { };
     using PageMarkingLayersAsVolatileCounter = RefCounter<PageMarkingLayersAsVolatileCounterType>;
     std::unique_ptr<PageMarkingLayersAsVolatileCounter> m_pageMarkingLayersAsVolatileCounter;
@@ -478,7 +500,12 @@ private:
 #if PLATFORM(WAYLAND)
     std::unique_ptr<WaylandCompositorDisplay> m_waylandCompositorDisplay;
 #endif
+    bool m_hasSuspendedPageProxy { false };
     bool m_isSuspending { false };
+
+#if ENABLE(MEDIA_STREAM) && ENABLE(SANDBOX_EXTENSIONS)
+    HashMap<String, RefPtr<SandboxExtension>> m_mediaCaptureSandboxExtensions;
+#endif
 };
 
 } // namespace WebKit

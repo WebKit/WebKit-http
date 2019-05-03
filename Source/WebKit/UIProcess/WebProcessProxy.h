@@ -90,6 +90,8 @@ typedef RefCounter<BackgroundWebProcessCounterType> BackgroundWebProcessCounter;
 typedef BackgroundWebProcessCounter::Token BackgroundWebProcessToken;
 #endif
 
+enum class AllowProcessCaching { No, Yes };
+
 class WebProcessProxy : public AuxiliaryProcessProxy, public ResponsivenessTimer::Client, public ThreadSafeRefCounted<WebProcessProxy>, public CanMakeWeakPtr<WebProcessProxy>, private ProcessThrottlerClient {
 public:
     typedef HashMap<uint64_t, RefPtr<WebFrameProxy>> WebFrameProxyMap;
@@ -106,6 +108,10 @@ public:
 
     WebConnection* webConnection() const { return m_webConnection.get(); }
 
+    unsigned suspendedPageCount() const { return m_suspendedPageCount; }
+    void incrementSuspendedPageCount();
+    void decrementSuspendedPageCount();
+
     WebProcessPool& processPool() const { ASSERT(m_processPool); return *m_processPool.get(); }
 
     String registrableDomain() const { return m_registrableDomain.valueOr(String()); }
@@ -120,10 +126,10 @@ public:
     Ref<WebPageProxy> createWebPage(PageClient&, Ref<API::PageConfiguration>&&);
 
     enum class BeginsUsingDataStore : bool { No, Yes };
-    void addExistingWebPage(WebPageProxy&, uint64_t pageID, BeginsUsingDataStore);
+    void addExistingWebPage(WebPageProxy&, BeginsUsingDataStore);
 
     enum class EndsUsingDataStore : bool { No, Yes };
-    void removeWebPage(WebPageProxy&, uint64_t pageID, EndsUsingDataStore);
+    void removeWebPage(WebPageProxy&, EndsUsingDataStore);
 
     void addProvisionalPageProxy(ProvisionalPageProxy& provisionalPage) { ASSERT(!m_provisionalPages.contains(&provisionalPage)); m_provisionalPages.add(&provisionalPage); }
     void removeProvisionalPageProxy(ProvisionalPageProxy& provisionalPage) { ASSERT(m_provisionalPages.contains(&provisionalPage)); m_provisionalPages.remove(&provisionalPage); }
@@ -252,9 +258,39 @@ public:
     // Called when the web process has crashed or we know that it will terminate soon.
     // Will potentially cause the WebProcessProxy object to be freed.
     void shutDown();
-    void maybeShutDown();
+    void maybeShutDown(AllowProcessCaching = AllowProcessCaching::Yes);
 
     void didStartProvisionalLoadForMainFrame(const URL&);
+
+    // ProcessThrottlerClient
+    void sendProcessWillSuspendImminently() override;
+    void sendPrepareToSuspend() override;
+    void sendCancelPrepareToSuspend() override;
+    void sendProcessDidResume() override;
+    void didSetAssertionState(AssertionState) override;
+
+#if PLATFORM(IOS_FAMILY)
+    void setKeyboardIsAttached(bool keyboardIsAttached) { m_keyboardIsAttached = keyboardIsAttached; }
+    bool keyboardIsAttached() const { return m_keyboardIsAttached; }
+#endif
+
+#if PLATFORM(COCOA)
+    enum SandboxExtensionType : uint32_t {
+        None = 0,
+        Video = 1 << 0,
+        Audio = 1 << 1
+    };
+
+    typedef uint32_t MediaCaptureSandboxExtensions;
+
+    bool hasVideoCaptureExtension() const { return m_mediaCaptureSandboxExtensions & Video; }
+    void grantVideoCaptureExtension() { m_mediaCaptureSandboxExtensions |= Video; }
+    void revokeVideoCaptureExtension() { m_mediaCaptureSandboxExtensions &= ~Video; }
+
+    bool hasAudioCaptureExtension() const { return m_mediaCaptureSandboxExtensions & Audio; }
+    void grantAudioCaptureExtension() { m_mediaCaptureSandboxExtensions |= Audio; }
+    void revokeAudioCaptureExtension() { m_mediaCaptureSandboxExtensions &= ~Audio; }
+#endif
 
 protected:
     static uint64_t generatePageID();
@@ -328,13 +364,6 @@ private:
     void willChangeIsResponsive() override;
     void didChangeIsResponsive() override;
     bool mayBecomeUnresponsive() override;
-
-    // ProcessThrottlerClient
-    void sendProcessWillSuspendImminently() override;
-    void sendPrepareToSuspend() override;
-    void sendCancelPrepareToSuspend() override;
-    void sendProcessDidResume() override;
-    void didSetAssertionState(AssertionState) override;
 
     // Implemented in generated WebProcessProxyMessageReceiver.cpp
     void didReceiveWebProcessProxyMessage(IPC::Connection&, IPC::Decoder&);
@@ -426,11 +455,20 @@ private:
     HashMap<uint64_t, Function<void()>> m_messageBatchDeliveryCompletionHandlers;
     HashMap<uint64_t, CompletionHandler<void(WebCore::MessagePortChannelProvider::HasActivity)>> m_localPortActivityCompletionHandlers;
 
+    unsigned m_suspendedPageCount { 0 };
     bool m_hasCommittedAnyProvisionalLoads { false };
     bool m_isPrewarmed;
 
 #if PLATFORM(WATCHOS)
     ProcessThrottler::BackgroundActivityToken m_backgroundActivityTokenForFullscreenFormControls;
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+    bool m_keyboardIsAttached { false };
+#endif
+
+#if PLATFORM(COCOA)
+    MediaCaptureSandboxExtensions m_mediaCaptureSandboxExtensions { SandboxExtensionType::None };
 #endif
 };
 

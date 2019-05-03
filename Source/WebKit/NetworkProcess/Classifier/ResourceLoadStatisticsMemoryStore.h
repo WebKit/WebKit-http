@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,16 +27,12 @@
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
 
-#include "ResourceLoadStatisticsClassifier.h"
+#include "ResourceLoadStatisticsStore.h"
 #include "WebResourceLoadStatisticsStore.h"
 #include <wtf/CompletionHandler.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/WorkQueue.h>
-
-#if HAVE(CORE_PREDICTION)
-#include "ResourceLoadStatisticsClassifierCocoa.h"
-#endif
 
 namespace WebCore {
 class KeyedDecoder;
@@ -46,35 +42,19 @@ struct ResourceLoadStatistics;
 
 namespace WebKit {
 
-class OperatingDate;
 class ResourceLoadStatisticsPersistentStorage;
 
 // This is always constructed / used / destroyed on the WebResourceLoadStatisticsStore's statistics queue.
-class ResourceLoadStatisticsMemoryStore : public CanMakeWeakPtr<ResourceLoadStatisticsMemoryStore> {
+class ResourceLoadStatisticsMemoryStore final : public ResourceLoadStatisticsStore {
 public:
-    using ResourceLoadStatistics = WebCore::ResourceLoadStatistics;
-    using RegistrableDomain = WebCore::RegistrableDomain;
-    using TopFrameDomain = WebCore::RegistrableDomain;
-    using SubFrameDomain = WebCore::RegistrableDomain;
-    using SubResourceDomain = WebCore::RegistrableDomain;
-    using RedirectDomain = WebCore::RegistrableDomain;
-    using RedirectedFromDomain = WebCore::RegistrableDomain;
-    using RedirectedToDomain = WebCore::RegistrableDomain;
-    using NavigatedFromDomain = WebCore::RegistrableDomain;
-    using NavigatedToDomain = WebCore::RegistrableDomain;
-    using DomainInNeedOfStorageAccess = WebCore::RegistrableDomain;
-    using OpenerDomain = WebCore::RegistrableDomain;
-    using OpenerPageID = uint64_t;
-    using PageID = uint64_t;
-    using FrameID = uint64_t;
-
     ResourceLoadStatisticsMemoryStore(WebResourceLoadStatisticsStore&, WorkQueue&);
-    ~ResourceLoadStatisticsMemoryStore();
 
     void setPersistentStorage(ResourceLoadStatisticsPersistentStorage&);
 
-    void clear(CompletionHandler<void()>&&);
-    bool isEmpty() const { return m_resourceStatisticsMap.isEmpty(); }
+    void clear(CompletionHandler<void()>&&) override;
+    bool isEmpty() const override;
+
+    const HashMap<RegistrableDomain, WebCore::ResourceLoadStatistics>& data() const { return m_resourceStatisticsMap; }
 
     std::unique_ptr<WebCore::KeyedEncoder> createEncoderFromData() const;
     void mergeWithDataFromDecoder(WebCore::KeyedDecoder&);
@@ -82,147 +62,81 @@ public:
     void mergeStatistics(Vector<ResourceLoadStatistics>&&);
     void processStatistics(const Function<void(const ResourceLoadStatistics&)>&) const;
 
-    void updateCookieBlocking(CompletionHandler<void()>&&);
-    void updateCookieBlockingForDomains(const Vector<RegistrableDomain>&, CompletionHandler<void()>&&);
-    void clearBlockingStateForDomains(const Vector<RegistrableDomain>&, CompletionHandler<void()>&&);
+    void updateCookieBlocking(CompletionHandler<void()>&&) override;
 
-    void includeTodayAsOperatingDateIfNecessary();
-    void processStatisticsAndDataRecords();
+    void classifyPrevalentResources() override;
+    void syncStorageIfNeeded() override;
+    void syncStorageImmediately() override;
 
-    void requestStorageAccessUnderOpener(DomainInNeedOfStorageAccess&&, OpenerPageID, OpenerDomain&&);
-    void removeAllStorageAccess(CompletionHandler<void()>&&);
+    void requestStorageAccessUnderOpener(DomainInNeedOfStorageAccess&&, OpenerPageID, OpenerDomain&&) override;
 
-    void grandfatherExistingWebsiteData(CompletionHandler<void()>&&);
-    void cancelPendingStatisticsProcessingRequest();
+    void grandfatherDataForDomains(const HashSet<RegistrableDomain>&) override;
 
-    bool isRegisteredAsSubresourceUnder(const SubResourceDomain&, const TopFrameDomain&) const;
-    bool isRegisteredAsSubFrameUnder(const SubFrameDomain&, const TopFrameDomain&) const;
-    bool isRegisteredAsRedirectingTo(const RedirectedFromDomain&, const RedirectedToDomain&) const;
+    bool isRegisteredAsSubresourceUnder(const SubResourceDomain&, const TopFrameDomain&) const override;
+    bool isRegisteredAsSubFrameUnder(const SubFrameDomain&, const TopFrameDomain&) const override;
+    bool isRegisteredAsRedirectingTo(const RedirectedFromDomain&, const RedirectedToDomain&) const override;
 
-    void clearPrevalentResource(const RegistrableDomain&);
-    String dumpResourceLoadStatistics() const;
-    bool isPrevalentResource(const RegistrableDomain&) const;
-    bool isVeryPrevalentResource(const RegistrableDomain&) const;
-    void setPrevalentResource(const RegistrableDomain&);
-    void setVeryPrevalentResource(const RegistrableDomain&);
+    void clearPrevalentResource(const RegistrableDomain&) override;
+    String dumpResourceLoadStatistics() const override;
+    bool isPrevalentResource(const RegistrableDomain&) const override;
+    bool isVeryPrevalentResource(const RegistrableDomain&) const override;
+    void setPrevalentResource(const RegistrableDomain&) override;
+    void setVeryPrevalentResource(const RegistrableDomain&) override;
 
-    void setGrandfathered(const RegistrableDomain&, bool value);
-    bool isGrandfathered(const RegistrableDomain&) const;
+    void setGrandfathered(const RegistrableDomain&, bool value) override;
+    bool isGrandfathered(const RegistrableDomain&) const override;
 
-    void setSubframeUnderTopFrameOrigin(const SubFrameDomain&, const TopFrameDomain&);
-    void setSubresourceUnderTopFrameOrigin(const SubResourceDomain&, const TopFrameDomain&);
-    void setSubresourceUniqueRedirectTo(const SubResourceDomain&, const RedirectDomain&);
-    void setSubresourceUniqueRedirectFrom(const SubResourceDomain&, const RedirectDomain&);
-    void setTopFrameUniqueRedirectTo(const TopFrameDomain&, const RedirectDomain&);
-    void setTopFrameUniqueRedirectFrom(const TopFrameDomain&, const RedirectDomain&);
+    void setSubframeUnderTopFrameDomain(const SubFrameDomain&, const TopFrameDomain&) override;
+    void setSubresourceUnderTopFrameDomain(const SubResourceDomain&, const TopFrameDomain&) override;
+    void setSubresourceUniqueRedirectTo(const SubResourceDomain&, const RedirectDomain&) override;
+    void setSubresourceUniqueRedirectFrom(const SubResourceDomain&, const RedirectDomain&) override;
+    void setTopFrameUniqueRedirectTo(const TopFrameDomain&, const RedirectDomain&) override;
+    void setTopFrameUniqueRedirectFrom(const TopFrameDomain&, const RedirectDomain&) override;
 
-    void logTestingEvent(const String&);
+    void calculateAndSubmitTelemetry() const override;
 
-    void setMaxStatisticsEntries(size_t maximumEntryCount);
-    void setPruneEntriesDownTo(size_t pruneTargetCount);
-    void resetParametersToDefaultValues();
+    void hasStorageAccess(const SubFrameDomain&, const TopFrameDomain&, Optional<FrameID>, PageID, CompletionHandler<void(bool)>&&) override;
+    void requestStorageAccess(SubFrameDomain&&, TopFrameDomain&&, FrameID, PageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&&) override;
+    void grantStorageAccess(SubFrameDomain&&, TopFrameDomain&&, FrameID, PageID, bool userWasPromptedNow, CompletionHandler<void(bool)>&&) override;
 
-    void calculateAndSubmitTelemetry() const;
+    void logFrameNavigation(const NavigatedToDomain&, const TopFrameDomain&, const NavigatedFromDomain&, bool isRedirect, bool isMainFrame) override;
+    void logUserInteraction(const TopFrameDomain&) override;
+    void logSubresourceLoading(const SubResourceDomain&, const TopFrameDomain&, WallTime lastSeen) override;
+    void logSubresourceRedirect(const RedirectedFromDomain&, const RedirectedToDomain&) override;
 
-    void setNotifyPagesWhenDataRecordsWereScanned(bool);
-    void setShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
-    void setShouldSubmitTelemetry(bool);
-    void setTimeToLiveUserInteraction(Seconds);
-    void setMinimumTimeBetweenDataRecordsRemoval(Seconds);
-    void setGrandfatheringTime(Seconds);
-    void setResourceLoadStatisticsDebugMode(bool);
-    bool isDebugModeEnabled() const { return m_debugModeEnabled; };
-    void setPrevalentResourceForDebugMode(const RegistrableDomain&);
+    void clearUserInteraction(const RegistrableDomain&) override;
+    bool hasHadUserInteraction(const RegistrableDomain&) override;
 
-    void hasStorageAccess(const SubFrameDomain&, const TopFrameDomain&, Optional<FrameID>, PageID, CompletionHandler<void(bool)>&&);
-    void requestStorageAccess(SubFrameDomain&&, TopFrameDomain&&, FrameID, PageID, bool promptEnabled, CompletionHandler<void(StorageAccessStatus)>&&);
-    void grantStorageAccess(SubFrameDomain&&, TopFrameDomain&&, FrameID, PageID, bool userWasPromptedNow, CompletionHandler<void(bool)>&&);
-
-    void logFrameNavigation(const NavigatedToDomain&, const TopFrameDomain&, const NavigatedFromDomain&, bool isRedirect, bool isMainFrame);
-    void logUserInteraction(const TopFrameDomain&);
-    void logSubresourceLoading(const SubResourceDomain&, const TopFrameDomain&, WallTime lastSeen);
-    void logSubresourceRedirect(const RedirectedFromDomain&, const RedirectedToDomain&);
-
-    void clearUserInteraction(const RegistrableDomain&);
-    bool hasHadUserInteraction(const RegistrableDomain&);
-
-    void setLastSeen(const RegistrableDomain&, Seconds);
-
-    void didCreateNetworkProcess();
-
-    const WebResourceLoadStatisticsStore& store() const { return m_store; }
+    void setLastSeen(const RegistrableDomain&, Seconds) override;
 
 private:
     static bool shouldBlockAndKeepCookies(const ResourceLoadStatistics&);
     static bool shouldBlockAndPurgeCookies(const ResourceLoadStatistics&);
     static bool hasUserGrantedStorageAccessThroughPrompt(const ResourceLoadStatistics&, const RegistrableDomain&);
     bool hasHadUnexpiredRecentUserInteraction(ResourceLoadStatistics&) const;
-    bool hasStatisticsExpired(const ResourceLoadStatistics&) const;
     bool wasAccessedAsFirstPartyDueToUserInteraction(const ResourceLoadStatistics& current, const ResourceLoadStatistics& updated) const;
+    void incrementRecordsDeletedCountForDomains(HashSet<RegistrableDomain>&&) override;
     void setPrevalentResource(ResourceLoadStatistics&, ResourceLoadPrevalence);
     unsigned recursivelyGetAllDomainsThatHaveRedirectedToThisDomain(const ResourceLoadStatistics&, HashSet<RedirectedToDomain>&, unsigned numberOfRecursiveCalls) const;
-    void setStorageAccessPromptsEnabled(bool enabled) { m_storageAccessPromptsEnabled  = enabled; }
-    bool shouldRemoveDataRecords() const;
-    void setDebugLogggingEnabled(bool enabled) { m_debugLoggingEnabled  = enabled; }
-    void setDataRecordsBeingRemoved(bool);
-    void scheduleStatisticsProcessingRequestIfNecessary();
     void grantStorageAccessInternal(SubFrameDomain&&, TopFrameDomain&&, Optional<FrameID>, PageID, bool userWasPromptedNowOrEarlier, CompletionHandler<void(bool)>&&);
     void markAsPrevalentIfHasRedirectedToPrevalent(ResourceLoadStatistics&);
     bool isPrevalentDueToDebugMode(ResourceLoadStatistics&);
-    Vector<RegistrableDomain> ensurePrevalentResourcesForDebugMode();
+    Vector<RegistrableDomain> ensurePrevalentResourcesForDebugMode() override;
     void removeDataRecords(CompletionHandler<void()>&&);
-    void pruneStatisticsIfNeeded();
+    void pruneStatisticsIfNeeded() override;
     ResourceLoadStatistics& ensureResourceStatisticsForRegistrableDomain(const RegistrableDomain&);
-    Vector<RegistrableDomain> registrableDomainsToRemoveWebsiteDataFor();
-    void setCacheMaxAgeCap(Seconds);
-    void updateCacheMaxAgeCap();
-    void setAgeCapForClientSideCookies(Seconds);
-    void updateClientSideCookiesAgeCap();
+    Vector<RegistrableDomain> registrableDomainsToRemoveWebsiteDataFor() override;
+    bool isMemoryStore() const final { return true; }
 
-#if PLATFORM(COCOA)
-    void registerUserDefaultsIfNeeded();
-#endif
 
-    struct Parameters {
-        size_t pruneEntriesDownTo { 800 };
-        size_t maxStatisticsEntries { 1000 };
-        Optional<Seconds> timeToLiveUserInteraction;
-        Seconds minimumTimeBetweenDataRecordsRemoval { 1_h };
-        Seconds grandfatheringTime { 24_h * 7 };
-        Seconds cacheMaxAgeCapTime { 24_h * 7 };
-        Seconds clientSideCookiesAgeCapTime { 24_h * 7 };
-        bool shouldNotifyPagesWhenDataRecordsWereScanned { false };
-        bool shouldClassifyResourcesBeforeDataRecordsRemoval { true };
-        bool shouldSubmitTelemetry { true };
-    };
-
-    WebResourceLoadStatisticsStore& m_store;
-    Ref<WorkQueue> m_workQueue;
     WeakPtr<ResourceLoadStatisticsPersistentStorage> m_persistentStorage;
     HashMap<RegistrableDomain, ResourceLoadStatistics> m_resourceStatisticsMap;
-#if HAVE(CORE_PREDICTION)
-    ResourceLoadStatisticsClassifierCocoa m_resourceLoadStatisticsClassifier;
-#else
-    ResourceLoadStatisticsClassifier m_resourceLoadStatisticsClassifier;
-#endif
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    HashSet<uint64_t> m_activePluginTokens;
-#endif
-    Parameters m_parameters;
-    Vector<OperatingDate> m_operatingDates;
-    WallTime m_endOfGrandfatheringTimestamp;
-    bool m_debugLoggingEnabled { false };
-    bool m_debugModeEnabled { false };
-    const RegistrableDomain m_debugStaticPrevalentResource { "3rdpartytestwebkit.org"_s };
-    RegistrableDomain m_debugManualPrevalentResource;
-    bool m_storageAccessPromptsEnabled { false };
-    bool m_dataRecordsBeingRemoved { false };
-    MonotonicTime m_lastTimeDataRecordsWereRemoved;
-
-    uint64_t m_lastStatisticsProcessingRequestIdentifier { 0 };
-    Optional<uint64_t> m_pendingStatisticsProcessingRequestIdentifier;
 };
 
 } // namespace WebKit
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebKit::ResourceLoadStatisticsMemoryStore)
+    static bool isType(const WebKit::ResourceLoadStatisticsStore& store) { return store.isMemoryStore(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif

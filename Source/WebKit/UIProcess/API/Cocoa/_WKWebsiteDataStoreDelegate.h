@@ -25,8 +25,6 @@
 
 #include <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA))
@@ -34,8 +32,6 @@ WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA))
 
 @optional
 
-- (void)requestCacheStorageSpace:(NSURL *)mainFrameURL frameOrigin:(NSURL *)frameURL quota:(NSUInteger)quota currentSize:(NSUInteger)currentSize spaceRequired:(NSUInteger)spaceRequired decisionHandler:(void (^)(unsigned long long quota))decisionHandler;
+- (void)requestStorageSpace:(NSURL *)mainFrameURL frameOrigin:(NSURL *)frameURL quota:(NSUInteger)quota currentSize:(NSUInteger)currentSize spaceRequired:(NSUInteger)spaceRequired decisionHandler:(void (^)(unsigned long long quota))decisionHandler;
 
 @end
-
-#endif

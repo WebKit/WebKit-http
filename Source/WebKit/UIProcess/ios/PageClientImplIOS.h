@@ -35,6 +35,7 @@ OBJC_CLASS WKContentView;
 OBJC_CLASS WKEditorUndoTarget;
 
 namespace WebCore {
+enum class DOMPasteAccessResponse : uint8_t;
 struct PromisedAttachmentInfo;
 }
 
@@ -224,7 +225,7 @@ private:
     void requestPasswordForQuickLookDocument(const String& fileName, WTF::Function<void(const String&)>&&) override;
 #endif
 
-    void requestDOMPasteAccess(const WebCore::IntRect& elementRect, CompletionHandler<void(bool)>&&) final;
+    void requestDOMPasteAccess(const WebCore::IntRect& elementRect, const String&, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&&) final;
 
 #if ENABLE(DATA_INTERACTION)
     void didPerformDragOperation(bool handled) override;
@@ -234,6 +235,8 @@ private:
     void didConcludeEditDrag(Optional<WebCore::TextIndicatorData>) override;
     void didChangeDragCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) override;
 #endif
+
+    void handleAutocorrectionContext(const WebAutocorrectionContext&) final;
 
     void didFinishProcessingAllPendingMouseEvents() final { }
 

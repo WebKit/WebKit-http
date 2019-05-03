@@ -3880,7 +3880,7 @@ void SpeculativeJIT::compile(Node* node)
         case StringUse: {
             speculateString(node->child2(), keyRegs.payloadGPR());
             m_jit.loadPtr(MacroAssembler::Address(keyRegs.payloadGPR(), JSString::offsetOfValue()), implGPR);
-            slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, implGPR));
+            slowPath.append(m_jit.branchIfRopeStringImpl(implGPR));
             slowPath.append(m_jit.branchTest32(
                 MacroAssembler::Zero, MacroAssembler::Address(implGPR, StringImpl::flagsOffset()),
                 MacroAssembler::TrustedImm32(StringImpl::flagIsAtomic())));
@@ -3890,7 +3890,7 @@ void SpeculativeJIT::compile(Node* node)
             slowPath.append(m_jit.branchIfNotCell(keyRegs));
             auto isNotString = m_jit.branchIfNotString(keyRegs.payloadGPR());
             m_jit.loadPtr(MacroAssembler::Address(keyRegs.payloadGPR(), JSString::offsetOfValue()), implGPR);
-            slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, implGPR));
+            slowPath.append(m_jit.branchIfRopeStringImpl(implGPR));
             slowPath.append(m_jit.branchTest32(
                 MacroAssembler::Zero, MacroAssembler::Address(implGPR, StringImpl::flagsOffset()),
                 MacroAssembler::TrustedImm32(StringImpl::flagIsAtomic())));

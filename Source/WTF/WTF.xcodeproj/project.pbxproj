@@ -115,7 +115,6 @@
 		A8A4739C151A825B004123FF /* CurrentTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A47275151A825A004123FF /* CurrentTime.cpp */; };
 		A8A4739E151A825B004123FF /* DataLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A47277151A825A004123FF /* DataLog.cpp */; };
 		A8A473A0151A825B004123FF /* DateMath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A47279151A825A004123FF /* DateMath.cpp */; };
-		A8A473A2151A825B004123FF /* DecimalNumber.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A8A4727B151A825A004123FF /* DecimalNumber.cpp */; };
 		A8A473A8151A825B004123FF /* bignum-dtoa.cc in Sources */ = {isa = PBXBuildFile; fileRef = A8A47282151A825A004123FF /* bignum-dtoa.cc */; };
 		A8A473AA151A825B004123FF /* bignum.cc in Sources */ = {isa = PBXBuildFile; fileRef = A8A47284151A825A004123FF /* bignum.cc */; };
 		A8A473AC151A825B004123FF /* cached-powers.cc in Sources */ = {isa = PBXBuildFile; fileRef = A8A47286151A825A004123FF /* cached-powers.cc */; };
@@ -168,7 +167,6 @@
 		E4A0AD391A96245500536DF6 /* WorkQueue.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4A0AD371A96245500536DF6 /* WorkQueue.cpp */; };
 		E4A0AD3D1A96253C00536DF6 /* WorkQueueCocoa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4A0AD3C1A96253C00536DF6 /* WorkQueueCocoa.cpp */; };
 		FE05FAFF1FE5007500093230 /* WTFAssertions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE05FAFE1FE5007500093230 /* WTFAssertions.cpp */; };
-		FE85416E1FBE285D008DA5DA /* Poisoned.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE85416C1FBE285B008DA5DA /* Poisoned.cpp */; };
 		FEDACD3D1630F83F00C69634 /* StackStats.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEDACD3B1630F83F00C69634 /* StackStats.cpp */; };
 		FEEA4DF9216D7BE400AC0602 /* StackPointer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEEA4DF8216D7BE400AC0602 /* StackPointer.cpp */; };
 /* End PBXBuildFile section */
@@ -441,6 +439,7 @@
 		93F1993D19D7958D00C2390B /* StringView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StringView.cpp; sourceTree = "<group>"; };
 		974CFC8D16A4F327006D5404 /* WeakPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WeakPtr.h; sourceTree = "<group>"; };
 		996B17841EBA441C007E10EB /* DebugUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DebugUtilities.h; sourceTree = "<group>"; };
+		9B67F3F12228D5310030DE9C /* WeakHashSet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WeakHashSet.h; sourceTree = "<group>"; };
 		9BC70F04176C379D00101DEC /* AtomicStringTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AtomicStringTable.cpp; sourceTree = "<group>"; };
 		9BD8F40A176C2AD80002D865 /* AtomicStringTable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AtomicStringTable.h; sourceTree = "<group>"; };
 		9C67C542589348E285B49699 /* IndexedContainerIterator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IndexedContainerIterator.h; sourceTree = "<group>"; };
@@ -497,8 +496,6 @@
 		A8A47278151A825A004123FF /* DataLog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DataLog.h; sourceTree = "<group>"; };
 		A8A47279151A825A004123FF /* DateMath.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DateMath.cpp; sourceTree = "<group>"; };
 		A8A4727A151A825A004123FF /* DateMath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DateMath.h; sourceTree = "<group>"; };
-		A8A4727B151A825A004123FF /* DecimalNumber.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DecimalNumber.cpp; sourceTree = "<group>"; };
-		A8A4727C151A825A004123FF /* DecimalNumber.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DecimalNumber.h; sourceTree = "<group>"; };
 		A8A4727E151A825A004123FF /* Deque.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Deque.h; sourceTree = "<group>"; };
 		A8A47280151A825A004123FF /* DoublyLinkedList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DoublyLinkedList.h; sourceTree = "<group>"; };
 		A8A47282151A825A004123FF /* bignum-dtoa.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "bignum-dtoa.cc"; sourceTree = "<group>"; };
@@ -678,12 +675,9 @@
 		F72BBDB107FA424886178B9E /* SymbolImpl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SymbolImpl.cpp; sourceTree = "<group>"; };
 		FE05FAE61FDB214300093230 /* DumbPtrTraits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DumbPtrTraits.h; sourceTree = "<group>"; };
 		FE05FAFE1FE5007500093230 /* WTFAssertions.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WTFAssertions.cpp; sourceTree = "<group>"; };
-		FE05FB041FE8453200093230 /* PoisonedUniquePtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PoisonedUniquePtr.h; sourceTree = "<group>"; };
 		FE7497E4208FFCAA0003565B /* PtrTag.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PtrTag.h; sourceTree = "<group>"; };
 		FE7497ED209163060003565B /* MetaAllocatorPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MetaAllocatorPtr.h; sourceTree = "<group>"; };
 		FE8225301B2A1E5B00BA68FD /* NakedPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NakedPtr.h; sourceTree = "<group>"; };
-		FE85416C1FBE285B008DA5DA /* Poisoned.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Poisoned.cpp; sourceTree = "<group>"; };
-		FE85416D1FBE285C008DA5DA /* Poisoned.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Poisoned.h; sourceTree = "<group>"; };
 		FE86A8741E59440200111BBF /* ForbidHeapAllocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ForbidHeapAllocation.h; sourceTree = "<group>"; };
 		FE8925AF1D00DAEC0046907E /* Indenter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Indenter.h; sourceTree = "<group>"; };
 		FEB6B035201BE0B600B958C1 /* PointerPreparations.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PointerPreparations.h; sourceTree = "<group>"; };
@@ -923,8 +917,6 @@
 				A8A47279151A825A004123FF /* DateMath.cpp */,
 				A8A4727A151A825A004123FF /* DateMath.h */,
 				996B17841EBA441C007E10EB /* DebugUtilities.h */,
-				A8A4727B151A825A004123FF /* DecimalNumber.cpp */,
-				A8A4727C151A825A004123FF /* DecimalNumber.h */,
 				0F2B66A417B6B4F700A7AE3F /* DeferrableRefCounted.h */,
 				A561F30F1DF2642100FF675D /* DeprecatedOptional.h */,
 				A8A4727E151A825A004123FF /* Deque.h */,
@@ -1072,9 +1064,6 @@
 				E3200AB41E9A536D003B59D2 /* PlatformRegisters.h */,
 				0FF860941BCCBD740045127F /* PointerComparison.h */,
 				FEB6B035201BE0B600B958C1 /* PointerPreparations.h */,
-				FE85416C1FBE285B008DA5DA /* Poisoned.cpp */,
-				FE85416D1FBE285C008DA5DA /* Poisoned.h */,
-				FE05FB041FE8453200093230 /* PoisonedUniquePtr.h */,
 				0F9D335D165DBA73005AD387 /* PrintStream.cpp */,
 				0F9D335E165DBA73005AD387 /* PrintStream.h */,
 				53EC253C1E95AD30000831B9 /* PriorityQueue.h */,
@@ -1195,6 +1184,7 @@
 				A8A47372151A825B004123FF /* VMTags.h */,
 				0F66B2881DC97BAB004A1D3F /* WallTime.cpp */,
 				0F66B2891DC97BAB004A1D3F /* WallTime.h */,
+				9B67F3F12228D5310030DE9C /* WeakHashSet.h */,
 				83ABB3C020B3823200BA3306 /* WeakObjCPtr.h */,
 				974CFC8D16A4F327006D5404 /* WeakPtr.h */,
 				0F3501631BB258C800F0A2A3 /* WeakRandom.h */,
@@ -1216,7 +1206,6 @@
 				7C137941222326C700D7A824 /* AUTHORS */,
 				A8A47288151A825A004123FF /* COPYING */,
 				A8A47292151A825A004123FF /* LICENSE */,
-				7C137943222326D500D7A824 /* README.md */,
 				A8A47282151A825A004123FF /* bignum-dtoa.cc */,
 				A8A47283151A825A004123FF /* bignum-dtoa.h */,
 				A8A47284151A825A004123FF /* bignum.cc */,
@@ -1232,6 +1221,7 @@
 				A8A47290151A825A004123FF /* fixed-dtoa.cc */,
 				A8A47291151A825A004123FF /* fixed-dtoa.h */,
 				7C137942222326D500D7A824 /* ieee.h */,
+				7C137943222326D500D7A824 /* README.md */,
 				A8A47294151A825A004123FF /* strtod.cc */,
 				A8A47295151A825A004123FF /* strtod.h */,
 				A8A47296151A825A004123FF /* utils.h */,
@@ -1524,7 +1514,6 @@
 				A8A4739C151A825B004123FF /* CurrentTime.cpp in Sources */,
 				A8A4739E151A825B004123FF /* DataLog.cpp in Sources */,
 				A8A473A0151A825B004123FF /* DateMath.cpp in Sources */,
-				A8A473A2151A825B004123FF /* DecimalNumber.cpp in Sources */,
 				1ACADD841884480100D8B71D /* DeprecatedSymbolsUsedBySafari.mm in Sources */,
 				A8A473AE151A825B004123FF /* diy-fp.cc in Sources */,
 				A8A473B0151A825B004123FF /* double-conversion.cc in Sources */,
@@ -1577,7 +1566,6 @@
 				51F1752B1F3D486000C74950 /* PersistentCoders.cpp in Sources */,
 				51F1752C1F3D486000C74950 /* PersistentDecoder.cpp in Sources */,
 				51F1752D1F3D486000C74950 /* PersistentEncoder.cpp in Sources */,
-				FE85416E1FBE285D008DA5DA /* Poisoned.cpp in Sources */,
 				0F9D3362165DBA73005AD387 /* PrintStream.cpp in Sources */,
 				7AF023B52061E17000A8EFD6 /* ProcessPrivilege.cpp in Sources */,
 				143F611F1565F0F900DB514A /* RAMSize.cpp in Sources */,

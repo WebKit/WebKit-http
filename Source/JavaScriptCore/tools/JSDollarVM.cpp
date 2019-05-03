@@ -1461,7 +1461,7 @@ static CodeBlock* codeBlockFromArg(ExecState* exec)
             else
                 candidateCodeBlock = func->jsExecutable()->eitherCodeBlock();
         } else
-            candidateCodeBlock = reinterpret_cast<CodeBlock*>(value.asCell());
+            candidateCodeBlock = static_cast<CodeBlock*>(value.asCell());
     }
 
     if (candidateCodeBlock && VMInspector::isValidCodeBlock(exec, candidateCodeBlock))
@@ -1719,6 +1719,13 @@ static EncodedJSValue JSC_HOST_CALL functionCreateRuntimeArray(ExecState* exec)
     JSLockHolder lock(exec);
     RuntimeArray* array = RuntimeArray::create(exec);
     return JSValue::encode(array);
+}
+
+static EncodedJSValue JSC_HOST_CALL functionCreateNullRopeString(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    return JSValue::encode(JSRopeString::createNullForTesting(vm));
 }
 
 static EncodedJSValue JSC_HOST_CALL functionCreateImpureGetter(ExecState* exec)
@@ -2220,6 +2227,7 @@ void JSDollarVM::finishCreation(VM& vm)
     addFunction(vm, "createGlobalObject", functionCreateGlobalObject, 0);
     addFunction(vm, "createProxy", functionCreateProxy, 1);
     addFunction(vm, "createRuntimeArray", functionCreateRuntimeArray, 0);
+    addFunction(vm, "createNullRopeString", functionCreateNullRopeString, 0);
 
     addFunction(vm, "createImpureGetter", functionCreateImpureGetter, 1);
     addFunction(vm, "createCustomGetterObject", functionCreateCustomGetterObject, 0);

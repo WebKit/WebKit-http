@@ -72,6 +72,7 @@
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RuntimeApplicationChecks.h>
+#include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/SecurityOriginData.h>
 #include <wtf/Algorithms.h>
@@ -127,6 +128,9 @@ NetworkProcess::NetworkProcess(AuxiliaryProcessInitializationParameters&& parame
     : m_downloadManager(*this)
 #if ENABLE(CONTENT_EXTENSIONS)
     , m_networkContentRuleListManager(*this)
+#endif
+#if PLATFORM(IOS_FAMILY)
+    , m_webSQLiteDatabaseTracker(*this)
 #endif
 {
     NetworkProcessPlatformStrategies::initialize();
@@ -305,6 +309,8 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 
     if (parameters.shouldUseTestingNetworkSession)
         switchToNewTestingSession();
+
+    WebCore::RuntimeEnabledFeatures::sharedFeatures().setIsITPDatabaseEnabled(parameters.shouldEnableITPDatabase);
 
     SandboxExtension::consumePermanently(parameters.defaultDataStoreParameters.networkSessionParameters.resourceLoadStatisticsDirectoryExtensionHandle);
 
@@ -789,11 +795,11 @@ void NetworkProcess::setNotifyPagesWhenTelemetryWasCaptured(PAL::SessionID sessi
     }
 }
 
-void NetworkProcess::setSubframeUnderTopFrameOrigin(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, CompletionHandler<void()>&& completionHandler)
+void NetworkProcess::setSubframeUnderTopFrameDomain(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, CompletionHandler<void()>&& completionHandler)
 {
     if (auto* networkSession = this->networkSession(sessionID)) {
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
-            resourceLoadStatistics->setSubframeUnderTopFrameOrigin(subFrameDomain, topFrameDomain, WTFMove(completionHandler));
+            resourceLoadStatistics->setSubframeUnderTopFrameDomain(subFrameDomain, topFrameDomain, WTFMove(completionHandler));
         else
             completionHandler();
     } else {
@@ -828,11 +834,11 @@ void NetworkProcess::isRegisteredAsSubFrameUnder(PAL::SessionID sessionID, const
     }
 }
 
-void NetworkProcess::setSubresourceUnderTopFrameOrigin(PAL::SessionID sessionID, const RegistrableDomain& subresourceDomain, const RegistrableDomain& topFrameDomain, CompletionHandler<void()>&& completionHandler)
+void NetworkProcess::setSubresourceUnderTopFrameDomain(PAL::SessionID sessionID, const RegistrableDomain& subresourceDomain, const RegistrableDomain& topFrameDomain, CompletionHandler<void()>&& completionHandler)
 {
     if (auto* networkSession = this->networkSession(sessionID)) {
         if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
-            resourceLoadStatistics->setSubresourceUnderTopFrameOrigin(subresourceDomain, topFrameDomain, WTFMove(completionHandler));
+            resourceLoadStatistics->setSubresourceUnderTopFrameDomain(subresourceDomain, topFrameDomain, WTFMove(completionHandler));
         else
             completionHandler();
     } else {
@@ -1176,6 +1182,23 @@ void NetworkProcess::resetCacheMaxAgeCapForPrevalentResources(PAL::SessionID ses
         ASSERT_NOT_REACHED();
     completionHandler();
 }
+
+void NetworkProcess::committedCrossSiteLoadWithLinkDecoration(PAL::SessionID sessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, uint64_t pageID)
+{
+    if (auto* networkStorageSession = storageSession(sessionID))
+        networkStorageSession->committedCrossSiteLoadWithLinkDecoration(fromDomain, toDomain, pageID);
+    else
+        ASSERT_NOT_REACHED();
+}
+
+void NetworkProcess::resetCrossSiteLoadsWithLinkDecorationForTesting(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkStorageSession = storageSession(sessionID))
+        networkStorageSession->resetCrossSiteLoadsWithLinkDecorationForTesting();
+    else
+        ASSERT_NOT_REACHED();
+    completionHandler();
+}
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
 bool NetworkProcess::sessionIsControlledByAutomation(PAL::SessionID sessionID) const
@@ -1436,19 +1459,19 @@ static Vector<WebsiteData::Entry> filterForRegistrableDomains(const Vector<Regis
 {
     Vector<WebsiteData::Entry> result;
     for (const auto& value : foundValues) {
-        if (registrableDomains.contains(RegistrableDomain { value.origin.host }))
+        if (registrableDomains.contains(RegistrableDomain::uncheckedCreateFromHost(value.origin.host)))
             result.append(value);
     }
     
     return result;
 }
 
-void NetworkProcess::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, Vector<RegistrableDomain>&& domains, bool shouldNotifyPage, CompletionHandler<void(const HashSet<String>&)>&& completionHandler)
+void NetworkProcess::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, Vector<RegistrableDomain>&& domains, bool shouldNotifyPage, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&& completionHandler)
 {
     OptionSet<WebsiteDataFetchOption> fetchOptions = WebsiteDataFetchOption::DoNotCreateProcesses;
 
     struct CallbackAggregator final : public ThreadSafeRefCounted<CallbackAggregator> {
-        explicit CallbackAggregator(CompletionHandler<void(const HashSet<String>&)>&& completionHandler)
+        explicit CallbackAggregator(CompletionHandler<void(const HashSet<RegistrableDomain>&)>&& completionHandler)
             : m_completionHandler(WTFMove(completionHandler))
         {
         }
@@ -1456,25 +1479,25 @@ void NetworkProcess::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataSt
         ~CallbackAggregator()
         {
             RunLoop::main().dispatch([completionHandler = WTFMove(m_completionHandler), websiteData = WTFMove(m_websiteData)] () mutable {
-                HashSet<String> origins;
+                HashSet<RegistrableDomain> domains;
                 for (const auto& hostnameWithCookies : websiteData.hostNamesWithCookies)
-                    origins.add(hostnameWithCookies);
+                    domains.add(RegistrableDomain::uncheckedCreateFromHost(hostnameWithCookies));
 
                 for (const auto& hostnameWithHSTS : websiteData.hostNamesWithHSTSCache)
-                    origins.add(hostnameWithHSTS);
+                    domains.add(RegistrableDomain::uncheckedCreateFromHost(hostnameWithHSTS));
 
                 for (const auto& entry : websiteData.entries)
-                    origins.add(entry.origin.host);
+                    domains.add(RegistrableDomain::uncheckedCreateFromHost(entry.origin.host));
 
-                completionHandler(origins);
+                completionHandler(domains);
             });
         }
         
-        CompletionHandler<void(const HashSet<String>&)> m_completionHandler;
+        CompletionHandler<void(const HashSet<RegistrableDomain>&)> m_completionHandler;
         WebsiteData m_websiteData;
     };
     
-    auto callbackAggregator = adoptRef(*new CallbackAggregator([this, completionHandler = WTFMove(completionHandler), shouldNotifyPage] (const HashSet<String>& domainsWithData) mutable {
+    auto callbackAggregator = adoptRef(*new CallbackAggregator([this, completionHandler = WTFMove(completionHandler), shouldNotifyPage] (const HashSet<RegistrableDomain>& domainsWithData) mutable {
         if (shouldNotifyPage)
             parentProcessConnection()->send(Messages::NetworkProcessProxy::NotifyWebsiteDataDeletionForRegistrableDomainsFinished(), 0);
         
@@ -1533,7 +1556,7 @@ void NetworkProcess::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataSt
             RunLoop::main().dispatch([this, sessionID, domains = crossThreadCopy(domains), callbackAggregator = callbackAggregator.copyRef(), securityOrigins = indexedDatabaseOrigins(path)] {
                 Vector<SecurityOriginData> entriesToDelete;
                 for (const auto& securityOrigin : securityOrigins) {
-                    if (!domains.contains(RegistrableDomain { securityOrigin.host }))
+                    if (!domains.contains(RegistrableDomain::uncheckedCreateFromHost(securityOrigin.host)))
                         continue;
 
                     entriesToDelete.append(securityOrigin);
@@ -1551,7 +1574,7 @@ void NetworkProcess::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataSt
     if (!path.isEmpty() && websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)) {
         swServerForSession(sessionID).getOriginsWithRegistrations([this, sessionID, domains, callbackAggregator = callbackAggregator.copyRef()](const HashSet<SecurityOriginData>& securityOrigins) mutable {
             for (auto& securityOrigin : securityOrigins) {
-                if (!domains.contains(RegistrableDomain { securityOrigin.host }))
+                if (!domains.contains(RegistrableDomain::uncheckedCreateFromHost(securityOrigin.host)))
                     continue;
                 callbackAggregator->m_websiteData.entries.append({ securityOrigin, WebsiteDataType::ServiceWorkerRegistrations, 0 });
                 swServerForSession(sessionID).clear(securityOrigin, [callbackAggregator = callbackAggregator.copyRef()] { });
@@ -1565,7 +1588,7 @@ void NetworkProcess::deleteWebsiteDataForRegistrableDomainsInAllPersistentDataSt
 
             Vector<SecurityOriginData> entriesToDelete;
             for (auto& entry : entries) {
-                if (!domains.contains(RegistrableDomain { entry.origin.host }))
+                if (!domains.contains(RegistrableDomain::uncheckedCreateFromHost(entry.origin.host)))
                     continue;
                 entriesToDelete.append(entry.origin);
                 callbackAggregator->m_websiteData.entries.append(entry);
@@ -1590,13 +1613,13 @@ void NetworkProcess::registrableDomainsWithWebsiteData(PAL::SessionID sessionID,
             RunLoop::main().dispatch([completionHandler = WTFMove(m_completionHandler), websiteData = WTFMove(m_websiteData)] () mutable {
                 HashSet<RegistrableDomain> domains;
                 for (const auto& hostnameWithCookies : websiteData.hostNamesWithCookies)
-                    domains.add(RegistrableDomain { hostnameWithCookies });
+                    domains.add(RegistrableDomain::uncheckedCreateFromHost(hostnameWithCookies));
 
                 for (const auto& hostnameWithHSTS : websiteData.hostNamesWithHSTSCache)
-                    domains.add(RegistrableDomain { hostnameWithHSTS });
+                    domains.add(RegistrableDomain::uncheckedCreateFromHost(hostnameWithHSTS));
 
                 for (const auto& entry : websiteData.entries)
-                    domains.add(RegistrableDomain { entry.origin.host });
+                    domains.add(RegistrableDomain::uncheckedCreateFromHost(entry.origin.host));
 
                 completionHandler(WTFMove(domains));
             });
@@ -1984,7 +2007,9 @@ IDBServer::IDBServer& NetworkProcess::idbServer(PAL::SessionID sessionID)
     // If there's not, then where did this PAL::SessionID come from?
     ASSERT(!path.isEmpty());
     
-    addResult.iterator->value = IDBServer::IDBServer::create(path, *this);
+    addResult.iterator->value = IDBServer::IDBServer::create(path, *this, [this](bool isHoldingLockedFiles) {
+        notifyHoldingLockedFiles(isHoldingLockedFiles);
+    });
     addResult.iterator->value->setPerOriginQuota(m_idbPerOriginQuota);
     return *addResult.iterator->value;
 }
@@ -2164,48 +2189,6 @@ void NetworkProcess::createServerToContextConnection(const SecurityOriginData& s
         parentProcessConnection()->send(Messages::NetworkProcessProxy::EstablishWorkerContextConnectionToNetworkProcess(securityOrigin), 0);
 }
 
-void NetworkProcess::didFailFetch(SWServerConnectionIdentifier serverConnectionIdentifier, FetchIdentifier fetchIdentifier, const ResourceError& error)
-{
-    if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
-        connection->didFailFetch(fetchIdentifier, error);
-}
-
-void NetworkProcess::didNotHandleFetch(SWServerConnectionIdentifier serverConnectionIdentifier, FetchIdentifier fetchIdentifier)
-{
-    if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
-        connection->didNotHandleFetch(fetchIdentifier);
-}
-
-void NetworkProcess::didReceiveFetchRedirectResponse(SWServerConnectionIdentifier serverConnectionIdentifier, FetchIdentifier fetchIdentifier, const WebCore::ResourceResponse& response)
-{
-    if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
-        connection->didReceiveFetchRedirectResponse(fetchIdentifier, response);
-}
-
-void NetworkProcess::didReceiveFetchResponse(SWServerConnectionIdentifier serverConnectionIdentifier, FetchIdentifier fetchIdentifier, const WebCore::ResourceResponse& response, bool needsContinueDidReceiveResponseMessage)
-{
-    if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
-        connection->didReceiveFetchResponse(fetchIdentifier, response, needsContinueDidReceiveResponseMessage);
-}
-
-void NetworkProcess::didReceiveFetchData(SWServerConnectionIdentifier serverConnectionIdentifier, FetchIdentifier fetchIdentifier, const IPC::DataReference& data, int64_t encodedDataLength)
-{
-    if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
-        connection->didReceiveFetchData(fetchIdentifier, data, encodedDataLength);
-}
-
-void NetworkProcess::didReceiveFetchFormData(SWServerConnectionIdentifier serverConnectionIdentifier, FetchIdentifier fetchIdentifier, const IPC::FormDataReference& formData)
-{
-    if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
-        connection->didReceiveFetchFormData(fetchIdentifier, formData);
-}
-
-void NetworkProcess::didFinishFetch(SWServerConnectionIdentifier serverConnectionIdentifier, FetchIdentifier fetchIdentifier)
-{
-    if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
-        connection->didFinishFetch(fetchIdentifier);
-}
-
 void NetworkProcess::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, MessageWithMessagePorts&& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
 {
     if (auto* connection = m_swServerConnections.get(destinationIdentifier.serverConnectionIdentifier))
@@ -2271,9 +2254,9 @@ void NetworkProcess::addServiceWorkerSession(PAL::SessionID sessionID, String& s
 }
 #endif // ENABLE(SERVICE_WORKER)
 
-void NetworkProcess::requestCacheStorageSpace(PAL::SessionID sessionID, const ClientOrigin& origin, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t>)>&& callback)
+void NetworkProcess::requestStorageSpace(PAL::SessionID sessionID, const ClientOrigin& origin, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t>)>&& callback)
 {
-    parentProcessConnection()->sendWithAsyncReply(Messages::NetworkProcessProxy::RequestCacheStorageSpace { sessionID, origin, quota, currentSize, spaceRequired }, WTFMove(callback), 0);
+    parentProcessConnection()->sendWithAsyncReply(Messages::NetworkProcessProxy::RequestStorageSpace { sessionID, origin, quota, currentSize, spaceRequired }, WTFMove(callback), 0);
 }
 
 #if !PLATFORM(COCOA)
@@ -2320,6 +2303,11 @@ void NetworkProcess::clearAdClickAttribution(PAL::SessionID sessionID, Completio
         return session->clearAdClickAttribution(WTFMove(completionHandler));
     
     completionHandler();
+}
+
+void NetworkProcess::notifyHoldingLockedFiles(bool isIDBDatabaseHoldingLockedFiles)
+{
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::SetIsIDBDatabaseHoldingLockedFiles(isIDBDatabaseHoldingLockedFiles), 0);
 }
 
 } // namespace WebKit

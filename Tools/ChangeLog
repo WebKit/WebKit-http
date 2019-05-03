@@ -1,3 +1,567 @@
+2019-03-06  Rob Buis  <rbuis@igalia.com>
+
+        Consider supporting the `referrerpolicy` attribute.
+        https://bugs.webkit.org/show_bug.cgi?id=179053
+
+        Reviewed by Darin Adler.
+
+        Add a runtime flag for referrerpolicy attribute.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+
+2019-03-05  Daniel Bates  <dabates@apple.com>
+
+        Update expected API test result following r242379
+        (https://bugs.webkit.org/show_bug.cgi?id=195125)
+
+        Update expected x-coordinate of selection rect now that the left padding of
+        a textarea is sized in ems (so dependent on the font size) just like the left
+        padding of a text field.
+
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+
+2019-03-05  David Quesada  <david_quesada@apple.com>
+
+        [WK2] It should be possible to follow links with 'download' attributes
+        https://bugs.webkit.org/show_bug.cgi?id=195145
+        rdar://problem/48462642
+
+        Reviewed by Alex Christensen.
+
+        Add a unit test to verify that activating links with 'download' attributes now
+        navigates to the linked resource, rather than starts downloading it. Add another
+        to verify that it is still possible to explicitly download the link via the
+        'Download' navigation action policy.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+        (-[DownloadAttributeTestDelegate init]):
+        (-[DownloadAttributeTestDelegate waitForDidFinishNavigation]):
+        (-[DownloadAttributeTestDelegate waitForDownloadDidStart]):
+        (-[DownloadAttributeTestDelegate webView:didFinishNavigation:]):
+        (-[DownloadAttributeTestDelegate webView:didStartProvisionalNavigation:]):
+        (-[DownloadAttributeTestDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[DownloadAttributeTestDelegate _downloadDidStart:]):
+        (TEST):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::decidePolicyForNavigationAction):
+        * WebKitTestRunner/TestController.h:
+
+2019-03-05  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Implement Cookie Accept Policy.
+        https://bugs.webkit.org/show_bug.cgi?id=191645
+
+        Reviewed by Fujii Hironori.
+
+        * TestWebKitAPI/Tests/WebCore/curl/Cookies.cpp:
+        (TestWebKitAPI::Curl::TEST_F):
+
+2019-03-05  Youenn Fablet  <youenn@apple.com>
+
+        Rename requestCacheStorageSpace to requestStorageSpace
+        https://bugs.webkit.org/show_bug.cgi?id=195282
+
+        Reviewed by Chris Dumez.
+
+        * WebKitTestRunner/cocoa/TestWebsiteDataStoreDelegate.mm:
+        (-[TestWebsiteDataStoreDelegate requestStorageSpace:frameOrigin:quota:currentSize:spaceRequired:decisionHandler:]):
+        (-[TestWebsiteDataStoreDelegate requestCacheStorageSpace:frameOrigin:quota:currentSize:spaceRequired:decisionHandler:]): Deleted.
+
+2019-03-05  Brady Eidson  <beidson@apple.com>
+
+        Correctly handle sandbox extensions when the same WKWebView loads multiple file:// URLs.
+        <rdar://problem/47820581> and https://bugs.webkit.org/show_bug.cgi?id=195291
+
+        Reviewed by Tim Horton.
+
+        Loading a file: URL into a WKWebView and then loading another file: url from a completely
+        different directory into that same WKWebView should work.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/LoadFileURL.mm: Added.
+
+2019-02-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add WeakHashSet
+        https://bugs.webkit.org/show_bug.cgi?id=195152
+
+        Reviewed by Antti Koivisto.
+
+        Added tests for WeakHashSet.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp:
+        (TestWebKitAPI::Base::Base): Moved.
+        (TestWebKitAPI::Derived::foo): Moved.
+        (WTF::WeakReference<TestWebKitAPI::Base>): Added to track the number of live WeakReference.
+        (WTF::WeakReference<TestWebKitAPI::Base>::WeakReference):
+        (WTF::WeakReference<TestWebKitAPI::Base>::~WeakReference):
+        (TestWebKitAPI::computeSizeOfWeakHashSet): Added.
+
+2019-03-04  Chris Dumez  <cdumez@apple.com>
+
+        Do not share WebProcesses between private and regular sessions
+        https://bugs.webkit.org/show_bug.cgi?id=195189
+        <rdar://problem/48421064>
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsitePolicies.mm:
+
+2019-03-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Enable web process sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=195169
+
+        Reviewed by Daniel Bates.
+
+        * wpe/install-dependencies:
+        * wpe/jhbuild.modules:
+
+2019-03-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLib] Returning G_TYPE_OBJECT from a constructor does not work
+        https://bugs.webkit.org/show_bug.cgi?id=195206
+
+        Reviewed by Žan Doberšek.
+
+        Add a new test case.
+
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (testJSCClass):
+
+2019-03-04  Charlie Turner  <cturner@igalia.com>
+
+        [WPE] Inline wl_array_for_each to workaround C++ compatibility issue
+        https://bugs.webkit.org/show_bug.cgi?id=194898
+
+        Reviewed by Žan Doberšek.
+
+        * wpe/backends/WindowViewBackend.cpp: wl_array_for_each relies on
+        a GCC extension that permits arithmetic on void* pointer. Inline
+        the macro until this issue is fixed upstream.
+
+2019-03-03  Tim Horton  <timothy_horton@apple.com>
+
+        Rid the world of WK_API_ENABLED
+        https://bugs.webkit.org/show_bug.cgi?id=195263
+
+        Reviewed by Dan Bernstein.
+
+        List of changed files elided because it's useless.
+
+2019-03-03  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed follow-up to r242292.
+
+        By Darin's suggestion, adopt an approach that uses EXPECT_STREQ without scattering utf8().data() everywhere.
+
+        * TestWebKitAPI/Tests/WebKit/EnvironmentUtilitiesTest.cpp:
+        (TestWebKitAPI::testStrip): Renamed from strip.
+        (TestWebKitAPI::TEST):
+
+2019-03-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, remove accidentally-committed URLHelpers.cpp test
+
+        This test isn't built by any port and was committed in r240962 by mistake. See bug #174816
+        and bug #194272 for details.
+
+        * TestWebKitAPI/Tests/WTF/URLHelpers.cpp: Removed.
+
+2019-03-03  Tim Horton  <timothy_horton@apple.com>
+
+        Remove some more unused 32-bit code
+        https://bugs.webkit.org/show_bug.cgi?id=195255
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/TestNetscapePlugIn/Tests/mac/SupportsCarbonEventModel.cpp: Removed.
+        * DumpRenderTree/TestNetscapePlugIn/main.cpp:
+        (NPP_New):
+        (NPP_HandleEvent):
+        (handleEventCarbon): Deleted.
+
+2019-03-02  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed follow-up to r242292. Keep EXPECT_STREQ in tests per Darin's request.
+
+        * TestWebKitAPI/Tests/WebKit/EnvironmentUtilitiesTest.cpp:
+        (TestWebKitAPI::TEST):
+
+2019-03-01  Darin Adler  <darin@apple.com>
+
+        Finish removing String::format
+        https://bugs.webkit.org/show_bug.cgi?id=194893
+
+        Reviewed by Daniel Bates.
+'
+        * Tools/TestWebKitAPI/Tests/WTF/StringConcatenate.cpp: Add tests for pad().
+
+2019-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Add setters on WKWebsiteDataStore for sourceApplicationBundleIdentifier and sourceApplicationSecondaryIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=195229
+        <rdar://problem/48520362>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2019-03-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a system trace scope for event region building
+        https://bugs.webkit.org/show_bug.cgi?id=195226
+
+        Reviewed by Jon Lee.
+
+        This trace scope measures the time spend converting element rects into Region objects,
+        which can be large on some pages.
+
+        The value for "Display Refresh Dispatch to main thread" was wrong and I fixed it.
+
+        * Tracing/SystemTracePoints.plist:
+
+2019-03-01  Ross Kirsling  <ross.kirsling@sony.com>
+
+        EnvironmentUtilities::stripValuesEndingWithString isn't thread-safe
+        https://bugs.webkit.org/show_bug.cgi?id=194612
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit/EnvironmentUtilitiesTest.cpp:
+        Just test the new string-processing function and don't touch the actual environment.
+        (Test cases are all as before, but based on operator== instead of strcmp.)
+
+2019-03-01  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Update primary keys for handling multiple Buildbot instances
+        https://bugs.webkit.org/show_bug.cgi?id=195120
+
+        Reviewed by Stephanie Lewis.
+
+        Use a new primary key uid for build and step tables. Previous primary keys build_id and step_id
+        were not enough to handle multiple buildbot instances. This new primary key uid would be generated
+        by a combination of buildbot_instance_id and current primary key. e.g.: buildbot_instance_id + build_id
+
+        * BuildSlaveSupport/ews-app/ews/models/build.py: Added new primary key uid.
+        * BuildSlaveSupport/ews-app/ews/models/step.py: Ditto.
+        * BuildSlaveSupport/ews-app/ews/models/buildbotinstance.py: Generate uid and instance_id.
+        * BuildSlaveSupport/ews-app/ews/views/results.py: Updated to receive hostname in events.
+        * BuildSlaveSupport/ews-build/events.py: Send hostname along-with events.
+        * BuildSlaveSupport/ews-build/master.cfg: Ditto.
+
+2019-03-01  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Enable service worker
+        https://bugs.webkit.org/show_bug.cgi?id=188318
+
+        Reviewed by Youenn Fablet.
+
+        * DumpRenderTree/DumpRenderTreePrefix.h:
+        * TestWebKitAPI/PlatformWin.cmake:
+        * TestWebKitAPI/win/TestWebKitAPIPrefix.h:
+        * WebKitTestRunner/InjectedBundle/win/TestRunnerInjectedBundlePrefix.h:
+        * WebKitTestRunner/WebKitTestRunnerPrefix.h:
+
+2019-03-01  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] 32-bit builds broken by attempt to disable WebGPU on 32-bit
+        https://bugs.webkit.org/show_bug.cgi?id=195191
+
+        Rubber-stamped by Dean Jackson.
+
+        Dropping support for 32-bit entirely, so I'm intentionally leaving 32-bit broken.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-03-01  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix lldb webkitpy tests
+        https://bugs.webkit.org/show_bug.cgi?id=194375
+
+        Since we changed the value of Is8Bit flag in StringImpl, we change lldb webkitpy tests accordingly.
+
+        * lldb/lldb_webkit.py:
+        (WTFStringImplProvider.is_8bit):
+
+2019-02-28  David Quesada  <david_quesada@apple.com>
+
+        Expose APINavigationAction.shouldPerformDownload() on WKNavigationAction
+        https://bugs.webkit.org/show_bug.cgi?id=195121
+        rdar://problem/48450302
+
+        Reviewed by Alex Christensen.
+
+        Add API tests for -WKNavigationAction._shouldPerformDownload in various
+        configurations where the 'download' attribute is absent, blank, or populated
+        with a filename, and where the anchor element is same-origin or cross-origin
+        (meaning the 'download' attribute shouldn't be honored).
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/NavigationAction.mm: Added.
+        (-[NavigationActionTestDelegate init]):
+        (-[NavigationActionTestDelegate navigationAction]):
+        (-[NavigationActionTestDelegate waitForNavigationActionCallback]):
+        (-[NavigationActionTestDelegate waitForDidFinishNavigation]):
+        (-[NavigationActionTestDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[NavigationActionTestDelegate webView:didFinishNavigation:]):
+        (TEST):
+
+2019-02-28  Antoine Quint  <graouts@apple.com>
+
+        Enable the Pointer Events runtime flag by default
+        https://bugs.webkit.org/show_bug.cgi?id=195156
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+
+2019-02-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Several PasteImage API tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=195160
+
+        Reviewed by Tim Horton.
+
+        Some of these tests, such as PasteTIFFImage, don't wait for the inserted image element to finish loading before
+        querying the image element's size; a few other tests, such as PastePNGFile, are racy since they may begin
+        listening for a "load" event after image load is already complete.
+
+        To address this, make these tests first register a "load" event handler, then run script to insert an image
+        element into the document, and finally wait until the load event is observed before checking image size.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PasteImage.mm:
+
+2019-02-28  Chris Dumez  <cdumez@apple.com>
+
+        Flaky API Test: TestWebKitAPI.ProcessSwap.PageZoomLevelAfterSwap
+        https://bugs.webkit.org/show_bug.cgi?id=195107
+
+        Reviewed by Alex Christensen.
+
+        Give some time for the zoom level to get restored.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-02-28  Sihui Liu  <sihui_liu@apple.com>
+
+        Stop using legacy IDB path by default when creating WebProcessPool from websiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=194958
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/IndexedDBUserDelete.mm:
+        (TEST):
+
+2019-02-28  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Update method to save build to handle builder_display_name
+        https://bugs.webkit.org/show_bug.cgi?id=195047
+
+        Reviewed by Dewei Zhu.
+
+        * BuildSlaveSupport/ews-app/ews/models/build.py: Updated to handle builder_name and builder_display_name.
+        * BuildSlaveSupport/ews-app/ews/views/results.py: Ditto.
+
+2019-02-28  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Enable Web GPU only on 64-bit
+        https://bugs.webkit.org/show_bug.cgi?id=195139
+
+        Because Metal is only supported on 64 bit apps.
+
+        Unreviewed build fix.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-02-27  Youenn Fablet  <youenn@apple.com>
+
+        Flaky API Test: TestWebKitAPI.ServiceWorkers.ServiceWorkerAndCacheStorageSpecificDirectories
+        https://bugs.webkit.org/show_bug.cgi?id=194959
+
+        Reviewed by Chris Dumez.
+
+        Spin loop until getting the condition to remove flakiness.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+
+2019-02-27  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Buildbot should include builder_display_name in the build events
+        https://bugs.webkit.org/show_bug.cgi?id=195045
+
+        Reviewed by Dewei Zhu.
+
+        * BuildSlaveSupport/ews-build/events.py:
+        (Events.buildStarted): Included builder_display_name in event data. Also renamed
+        buildername to builder_name to be consistent in naming style.
+        (Events.buildFinished): Ditto.
+
+2019-02-27  Chris Dumez  <cdumez@apple.com>
+
+        Flaky API Test: TestWebKitAPI.ProcessSwap.SessionStorage
+        https://bugs.webkit.org/show_bug.cgi?id=194480
+
+        Reviewed by Brady Eidson.
+
+        Update existing API test to make it more likely to reproduce the issue.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-02-27  Brady Eidson  <beidson@apple.com>
+
+        Universal links from Google search results pages don't open the app.
+        <rdar://problem/46887179> and https://bugs.webkit.org/show_bug.cgi?id=195126
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ShouldOpenExternalURLsInNewWindowActions.mm:
+        * TestWebKitAPI/cocoa/TestNavigationDelegate.h:
+        * TestWebKitAPI/cocoa/TestNavigationDelegate.mm:
+        (-[TestNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+
+2019-02-27  Chris Dumez  <cdumez@apple.com>
+
+        Flaky API Test: TestWebKitAPI.ProcessSwap.NumberOfCachedProcesses
+        https://bugs.webkit.org/show_bug.cgi?id=195102
+
+        Reviewed by Geoffrey Garen.
+
+        If the number of processes is not yet what we expect, wait a bit and check again to give
+        processes some time to exit.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-02-27  Chris Dumez  <cdumez@apple.com>
+
+        Flaky API Test: TestWebKitAPI.ProcessSwap.NavigateToDataURLThenBack
+        https://bugs.webkit.org/show_bug.cgi?id=194545
+
+        Reviewed by Brady Eidson.
+
+        Make sure the test navigates forward and then back only once. Previously, navigating
+        back would trigger a navigation again in a timer.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-02-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        High Sierra Debug JSC test queue should use faster hardware
+        https://bugs.webkit.org/show_bug.cgi?id=194603
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        Adjust queues to free up faster hardware for use on the High Sierra Debug JSC queue.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js:
+        (BubbleQueueServer):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py:
+        * QueueStatusServer/config/queues.py:
+        * Scripts/webkitpy/common/config/ews.json:
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        (test_ews_name):
+
+2019-02-27  John Wilander  <wilander@apple.com>
+
+        Adopt WebCore::RegistrableDomain in WebCore::ResourceLoadStatistics and WebKit::NetworkProcessProxy
+        https://bugs.webkit.org/show_bug.cgi?id=195071
+        <rdar://problem/48417690>
+
+        Reviewed by Alex Christensen and Brent Fulgham.
+
+        * TestWebKitAPI/Tests/WebCore/AdClickAttribution.cpp:
+        (TestWebKitAPI::createURL):
+            Convenience function.
+        (TestWebKitAPI::TEST):
+            WebCore::AdClickAttribution now takes a URL when creating Source and
+            Destination.
+        * TestWebKitAPI/Tests/WebCore/RegistrableDomain.cpp:
+        (TestWebKitAPI::TEST):
+            WebCore::AdClickAttribution now takes a URL when creating Source and
+            Destination.
+
+2019-02-27  Antoine Quint  <graouts@apple.com>
+
+        Support Pointer Events on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=195008
+        <rdar://problem/47454419>
+
+        Reviewed by Dean Jackson.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures): Enable the PointerEvents runtime feature in DumpRenderTree such that tests targeting WK1 may test the Pointer Events feature.
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Remove remaining poisoning code.
+        https://bugs.webkit.org/show_bug.cgi?id=194138
+
+        Reviewed by Saam Barati.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/Poisoned.cpp: Removed.
+        * TestWebKitAPI/Tests/WTF/PoisonedRef.cpp: Removed.
+        * TestWebKitAPI/Tests/WTF/PoisonedRefPtr.cpp: Removed.
+        * TestWebKitAPI/Tests/WTF/PoisonedUniquePtr.cpp: Removed.
+        * TestWebKitAPI/Tests/WTF/PoisonedUniquePtrForNonTriviallyDestructibleArrays.cpp: Removed.
+        * TestWebKitAPI/Tests/WTF/PoisonedUniquePtrForTriviallyDestructibleArrays.cpp: Removed.
+
+2019-02-26  Alex Christensen  <achristensen@webkit.org>
+
+        Move ephemeral local storage from WebProcess to UIProcess
+        https://bugs.webkit.org/show_bug.cgi?id=195074
+        <rdar://problem/47937975>
+
+        Reviewed by Geoff Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-02-20  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Media elements will restart network buffering just before suspending
+        https://bugs.webkit.org/show_bug.cgi?id=193691
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSuspendMediaBuffering.mm: Added.
+        (TEST):
+
+2019-02-26  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Load HTTP body of 401 response when AuthenticationChange is cancelled.
+        https://bugs.webkit.org/show_bug.cgi?id=191652
+
+        Reviewed by Alex Christensen.
+
+        Fix WinCairo MiniBrowser behavior of authentication dialog.
+
+        * MiniBrowser/win/WebKitBrowserWindow.cpp:
+        (WebKitBrowserWindow::didReceiveAuthenticationChallenge):
+
+2019-02-26  Youenn Fablet  <youenn@apple.com>
+
+        WebPageProxy should nullify m_userMediaPermissionRequestManager after resetting the media state
+        https://bugs.webkit.org/show_bug.cgi?id=195028
+        <rdar://problem/48243733>
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
 2019-02-26  Philippe Normand  <pnormand@igalia.com>
 
         [WPE] Add API for webview background color configuration

@@ -25,8 +25,6 @@
 
 #import <WebKit/WKWebView.h>
 
-#if WK_API_ENABLED
-
 #import <WebKit/WKDataDetectorTypes.h>
 #import <WebKit/_WKActivatedElementInfo.h>
 #import <WebKit/_WKAttachment.h>
@@ -548,6 +546,7 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 @property (nonatomic, readonly) _WKInspector *_inspector WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 @property (nonatomic, readonly) _WKFrameHandle *_mainFrame WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
-@end
+- (void)_processWillSuspendImminentlyForTesting;
+- (void)_processDidResumeForTesting;
 
-#endif
+@end

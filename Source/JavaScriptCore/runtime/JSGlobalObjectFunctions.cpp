@@ -698,6 +698,13 @@ EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeErrorArgumentsCalleeAndCaller(Ex
     return throwVMTypeError(exec, scope, "'arguments', 'callee', and 'caller' cannot be accessed in this context.");
 }
 
+EncodedJSValue JSC_HOST_CALL globalFuncMakeTypeError(ExecState* exec)
+{
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    Structure* errorStructure = globalObject->errorStructure(ErrorType::TypeError);
+    return JSValue::encode(ErrorInstance::create(exec, errorStructure, exec->argument(0), nullptr, TypeNothing, false));
+}
+
 EncodedJSValue JSC_HOST_CALL globalFuncProtoGetter(ExecState* exec)
 {
     VM& vm = exec->vm();
@@ -830,6 +837,15 @@ EncodedJSValue JSC_HOST_CALL globalFuncPropertyIsEnumerable(ExecState* exec)
     PropertyDescriptor descriptor;
     bool enumerable = object->getOwnPropertyDescriptor(exec, propertyName, descriptor) && descriptor.enumerable();
     return JSValue::encode(jsBoolean(enumerable));
+}
+
+EncodedJSValue JSC_HOST_CALL globalFuncOwnKeys(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSObject* object = exec->argument(0).toObject(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    RELEASE_AND_RETURN(scope, JSValue::encode(ownPropertyKeys(exec, object, PropertyNameMode::StringsAndSymbols, DontEnumPropertiesMode::Include)));
 }
 
 #if ENABLE(INTL)

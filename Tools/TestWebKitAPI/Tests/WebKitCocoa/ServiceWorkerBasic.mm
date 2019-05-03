@@ -45,8 +45,6 @@
 #import <wtf/text/StringHash.h>
 #import <wtf/text/WTFString.h>
 
-#if WK_API_ENABLED
-
 struct ResourceInfo {
     RetainPtr<NSString> mimeType;
     const char* data;
@@ -1372,7 +1370,8 @@ TEST(ServiceWorkers, ServiceWorkerAndCacheStorageSpecificDirectories)
     [webView loadRequest:request];
     TestWebKitAPI::Util::run(&done);
     done = false;
-    EXPECT_TRUE([websiteDataStore _hasRegisteredServiceWorker]);
+    while (![websiteDataStore _hasRegisteredServiceWorker])
+        TestWebKitAPI::Util::spinRunLoop(0.1);
 
     webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
     request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"sw://host/regularPageGrabbingCacheStorageDirectory.html"]];
@@ -1648,5 +1647,3 @@ TEST(ServiceWorkers, RestoreFromDiskNonDefaultStore)
         done = false;
     }
 }
-
-#endif // WK_API_ENABLED

@@ -45,7 +45,6 @@ set(WTF_PUBLIC_HEADERS
     DataLog.h
     DateMath.h
     DebugUtilities.h
-    DecimalNumber.h
     DeferrableRefCounted.h
     DeprecatedOptional.h
     Deque.h
@@ -165,8 +164,6 @@ set(WTF_PUBLIC_HEADERS
     PlatformRegisters.h
     PointerComparison.h
     PointerPreparations.h
-    Poisoned.h
-    PoisonedUniquePtr.h
     PrintStream.h
     PriorityQueue.h
     ProcessID.h
@@ -261,6 +258,7 @@ set(WTF_PUBLIC_HEADERS
     VectorTraits.h
     WTFSemaphore.h
     WallTime.h
+    WeakHashSet.h
     WeakPtr.h
     WeakRandom.h
     WindowsExtras.h
@@ -353,7 +351,6 @@ set(WTF_SOURCES
     CurrentTime.cpp
     DataLog.cpp
     DateMath.cpp
-    DecimalNumber.cpp
     FastBitVector.cpp
     FastMalloc.cpp
     FilePrintStream.cpp
@@ -383,7 +380,6 @@ set(WTF_SOURCES
     ParallelHelperPool.cpp
     ParallelJobsGeneric.cpp
     ParkingLot.cpp
-    Poisoned.cpp
     PrintStream.cpp
     ProcessPrivilege.cpp
     RAMSize.cpp

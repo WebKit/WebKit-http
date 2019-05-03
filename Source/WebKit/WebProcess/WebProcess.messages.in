@@ -119,6 +119,7 @@ messages -> WebProcess LegacyReceiver {
     CheckProcessLocalPortForActivity(struct WebCore::MessagePortIdentifier port, uint64_t callbackIdentifier)
     MessagesAvailableForPort(struct WebCore::MessagePortIdentifier port)
 
+    SetHasSuspendedPageProxy(bool hasSuspendedPageProxy);
     SetIsInProcessCache(bool isInProcessCache)
     MarkIsNoLongerPrewarmed()
     UpdateActivePages()
@@ -144,6 +145,11 @@ messages -> WebProcess LegacyReceiver {
     ClearMockMediaDevices();
     RemoveMockMediaDevice(String persistentId);
     ResetMockMediaDevices();
+
+#if ENABLE(SANDBOX_EXTENSIONS)
+    GrantUserMediaDeviceSandboxExtensions(WebKit::MediaDeviceSandboxExtensions sandboxExtensions)
+    RevokeUserMediaDeviceSandboxExtensions(Vector<String> sandboxExtensionIDs)
+#endif
 #endif
 
     ClearCurrentModifierStateForTesting()

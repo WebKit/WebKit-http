@@ -180,44 +180,6 @@ Object.defineProperty(Set.prototype, "isSubsetOf",
     }
 });
 
-Object.defineProperty(Node.prototype, "enclosingNodeOrSelfWithClass",
-{
-    value(className)
-    {
-        for (let node = this; node; node = node.parentElement) {
-            if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains(className))
-                return node;
-        }
-
-        return null;
-    }
-});
-
-Object.defineProperty(Node.prototype, "enclosingNodeOrSelfWithNodeNameInArray",
-{
-    value(nodeNames)
-    {
-        let upperCaseNodeNames = nodeNames.map((name) => name.toUpperCase());
-
-        for (let node = this; node; node = node.parentElement) {
-            for (let nodeName of upperCaseNodeNames) {
-                if (node.nodeName === nodeName)
-                    return node;
-            }
-        }
-
-        return null;
-    }
-});
-
-Object.defineProperty(Node.prototype, "enclosingNodeOrSelfWithNodeName",
-{
-    value(nodeName)
-    {
-        return this.enclosingNodeOrSelfWithNodeNameInArray([nodeName]);
-    }
-});
-
 Object.defineProperty(Node.prototype, "traverseNextNode",
 {
     value(stayWithin)

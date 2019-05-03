@@ -34,31 +34,26 @@ OBJC_CLASS CALayer;
 
 namespace WebCore {
 
-class ScrollingTreeOverflowScrollingNodeMac : public ScrollingTreeOverflowScrollingNode {
+class WEBCORE_EXPORT ScrollingTreeOverflowScrollingNodeMac : public ScrollingTreeOverflowScrollingNode {
 public:
     static Ref<ScrollingTreeOverflowScrollingNodeMac> create(ScrollingTree&, ScrollingNodeID);
     virtual ~ScrollingTreeOverflowScrollingNodeMac();
 
-private:
+protected:
     ScrollingTreeOverflowScrollingNodeMac(ScrollingTree&, ScrollingNodeID);
 
     void commitStateBeforeChildren(const ScrollingStateNode&) override;
     void commitStateAfterChildren(const ScrollingStateNode&) override;
     
-    FloatPoint scrollPosition() const override;
-    void setScrollPosition(const FloatPoint&, ScrollPositionClamp = ScrollPositionClamp::ToContentEdges) override;
+    FloatPoint adjustedScrollPosition(const FloatPoint&, ScrollPositionClamp) const override;
 
-    void setScrollLayerPosition(const FloatPoint&, const FloatRect& layoutViewport) override;
-
-    void updateLayersAfterViewportChange(const FloatRect&, double) override { }
-    void updateLayersAfterDelegatedScroll(const FloatPoint& scrollPosition) override;
-
-    void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& layoutViewport, const FloatSize& cumulativeDelta) override;
+    void repositionScrollingLayers() override;
+    void repositionRelatedLayers() override;
 
     ScrollingEventResult handleWheelEvent(const PlatformWheelEvent&) override;
 
+private:
     ScrollingTreeScrollingNodeDelegateMac m_delegate;
-
 };
 
 } // namespace WebKit

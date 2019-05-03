@@ -1,3 +1,85 @@
+2019-03-06  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Enable additional experimental features
+        https://bugs.webkit.org/show_bug.cgi?id=195363
+
+        Reviewed by Ross Kirsling.
+
+        Turn on ENABLE_APPLICATION_MANIFEST, ENABLE_FILTERS_LEVEL_2, ENABLE_CSS_PAINTING_API,
+        and ENABLE_VARIATION_FONTS. This will allow testing and development of these features
+        for Windows.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2019-03-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Enable CSS Typed OM
+        https://bugs.webkit.org/show_bug.cgi?id=195340
+
+        Reviewed by Myles C. Maxfield.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2019-03-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Enable web process sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=195169
+
+        Reviewed by Daniel Bates.
+
+        * Source/cmake/BubblewrapSandboxChecks.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2019-03-01  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Enable service worker
+        https://bugs.webkit.org/show_bug.cgi?id=188318
+
+        Reviewed by Youenn Fablet.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2019-02-28  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Turn ENABLE_RESOURCE_LOAD_STATISTICS on
+        https://bugs.webkit.org/show_bug.cgi?id=194267
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2019-02-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [CoordinatedGraphics] Remove COORDINATED_GRAPHICS_THREADED option
+        https://bugs.webkit.org/show_bug.cgi?id=195159
+
+        Reviewed by Don Olmstead.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsPlayStation.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2019-02-26  Gabe Giosia  <giosia@google.com>
+
+        Incorrect formatting around command in Readme.md
+        https://bugs.webkit.org/show_bug.cgi?id=195061
+
+        Reviewed by Fujii Hironori.
+
+        * ReadMe.md: removed stray period
+
+2019-02-26  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Fix warnings on ARM and MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=195049
+
+        Reviewed by Mark Lam.
+
+        Disable warnings for changes to the ABI with GCC 7.1.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
 2019-02-25  Adrian Perez de Castro  <aperez@igalia.com>
 
         [WPE] Bump WPEBackend-fdo requirement to API version 1.0

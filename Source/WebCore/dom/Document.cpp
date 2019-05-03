@@ -1737,6 +1737,18 @@ void Document::resumeAllMediaPlayback()
     if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
         platformMediaSessionManager->resumeAllMediaPlaybackForDocument(*this);
 }
+
+void Document::suspendAllMediaBuffering()
+{
+    if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
+        platformMediaSessionManager->suspendAllMediaBufferingForDocument(*this);
+}
+
+void Document::resumeAllMediaBuffering()
+{
+    if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
+        platformMediaSessionManager->resumeAllMediaBufferingForDocument(*this);
+}
 #endif
 
 String Document::nodeName() const
@@ -1809,17 +1821,6 @@ void Document::scheduleStyleRecalc()
         return;
 
     ASSERT(childNeedsStyleRecalc() || m_needsFullStyleRebuild);
-
-#if PLATFORM(IOS_FAMILY)
-    if (auto* page = this->page()) {
-        auto& contentChangeObserver = page->contentChangeObserver();
-        if (contentChangeObserver.isObservingStyleRecalcScheduling()) {
-            LOG_WITH_STREAM(ContentObservation, stream << "Document(" << this << ")::scheduleStyleRecalc: register this style recalc schedule and observe when it fires.");
-            contentChangeObserver.setObservedContentChange(WKContentIndeterminateChange);
-        }
-    }
-#endif
-
     auto shouldThrottleStyleRecalc = [&] {
         if (!view() || !view()->isVisuallyNonEmpty())
             return false;
@@ -2050,37 +2051,11 @@ bool Document::updateStyleIfNeeded()
     }
 
 #if PLATFORM(IOS_FAMILY)
-    auto observingContentChange = false;
-    if (auto* page = this->page()) {
-        auto& contentChangeObserver = page->contentChangeObserver();
-        observingContentChange = contentChangeObserver.shouldObserveNextStyleRecalc();
-        if (observingContentChange) {
-            LOG_WITH_STREAM(ContentObservation, stream << "Document(" << this << ")::scheduleStyleRecalc: start observing content change.");
-            contentChangeObserver.setShouldObserveNextStyleRecalc(false);
-            contentChangeObserver.startObservingContentChanges();
-        }
-    }
+    ContentChangeObserver::StyleRecalcScope observingScope(*this);
 #endif
     // The early exit above for !needsStyleRecalc() is needed when updateWidgetPositions() is called in runOrScheduleAsynchronousTasks().
     RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(isSafeToUpdateStyleOrLayout(*this));
-
     resolveStyle();
-
-#if PLATFORM(IOS_FAMILY)
-    if (observingContentChange && page()) {
-        LOG_WITH_STREAM(ContentObservation, stream << "Document(" << this << ")::scheduleStyleRecalc: stop observing content change.");
-        auto& contentChangeObserver = page()->contentChangeObserver();
-        contentChangeObserver.stopObservingContentChanges();
-
-        auto inDeterminedState = contentChangeObserver.observedContentChange() == WKContentVisibilityChange || !contentChangeObserver.countOfObservedDOMTimers();  
-        if (inDeterminedState) {
-            LOG_WITH_STREAM(ContentObservation, stream << "Document(" << this << ")::scheduleStyleRecalc: notify the pending synthetic click handler.");
-            page()->chrome().client().observedContentChange(*frame());
-        } else {
-            LOG_WITH_STREAM(ContentObservation, stream << "Document(" << this << ")::scheduleStyleRecalc: can't decided it yet.");
-        }
-    }
-#endif
     return true;
 }
 
@@ -2408,7 +2383,9 @@ void Document::frameDestroyed()
 void Document::willDetachPage()
 {
     FrameDestructionObserver::willDetachPage();
-
+#if PLATFORM(IOS_FAMILY)
+    contentChangeObserver().willDetachPage();
+#endif
     if (domWindow() && frame())
         InspectorInstrumentation::frameWindowDiscarded(*frame(), domWindow());
 }
@@ -2657,13 +2634,7 @@ bool Document::shouldBypassMainWorldContentSecurityPolicy() const
 void Document::platformSuspendOrStopActiveDOMObjects()
 {
 #if PLATFORM(IOS_FAMILY)
-    if (!page() || !frame())
-        return;
-    auto& page = *this->page();
-    if (!page.contentChangeObserver().countOfObservedDOMTimers())
-        return;
-    LOG_WITH_STREAM(ContentObservation, stream << "Document::platformSuspendOrStopActiveDOMObjects: remove registered timers.");
-    page.chrome().client().clearContentChangeObservers(*frame());
+    contentChangeObserver().didSuspendActiveDOMObjects();
 #endif
 }
 
@@ -4153,7 +4124,7 @@ void Document::invalidateRenderingDependentRegions(AnnotationsAction annotations
     setTouchEventRegionsNeedUpdate();
 #endif
 
-#if ENABLE(POINTER_EVENTS)
+#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
     if (auto* page = this->page()) {
         if (auto* frameView = view()) {
             if (auto* scrollingCoordinator = page->scrollingCoordinator())
@@ -4545,7 +4516,7 @@ void Document::nodeWillBeRemoved(Node& node)
     if (is<Text>(node))
         m_markers->removeMarkers(node);
 
-#if ENABLE(POINTER_EVENTS)
+#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
     if (m_touchActionElements && is<Element>(node))
         m_touchActionElements->remove(&downcast<Element>(node));
 #endif
@@ -8687,7 +8658,7 @@ void Document::setPaintWorkletGlobalScopeForName(const String& name, Ref<PaintWo
 }
 #endif
 
-#if ENABLE(POINTER_EVENTS)
+#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
 void Document::updateTouchActionElements(Element& element, const RenderStyle& style)
 {
     bool changed = false;
@@ -8699,7 +8670,6 @@ void Document::updateTouchActionElements(Element& element, const RenderStyle& st
     } else if (m_touchActionElements)
         changed |= m_touchActionElements->remove(&element);
 
-#if PLATFORM(IOS_FAMILY)
     if (!changed)
         return;
 
@@ -8711,7 +8681,15 @@ void Document::updateTouchActionElements(Element& element, const RenderStyle& st
         if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
             scrollingCoordinator->frameViewEventTrackingRegionsChanged(*frameView);
     }
+}
 #endif
+
+#if PLATFORM(IOS_FAMILY)
+ContentChangeObserver& Document::contentChangeObserver()
+{
+    if (!m_contentChangeObserver)
+        m_contentChangeObserver = std::make_unique<ContentChangeObserver>(*this);
+    return *m_contentChangeObserver; 
 }
 #endif
 

@@ -197,40 +197,42 @@ public:
     }
 };
 
-template<typename UnderlyingAdapterType> struct PaddingSpecification {
+template<typename UnderlyingElementType> struct PaddingSpecification {
     LChar character;
     unsigned length;
-    UnderlyingAdapterType underlyingAdapter;
+    UnderlyingElementType underlyingElement;
 };
 
-template<typename StringType> PaddingSpecification<StringTypeAdapter<StringType>> pad(char character, unsigned length, StringType adapter)
+template<typename UnderlyingElementType> PaddingSpecification<UnderlyingElementType> pad(char character, unsigned length, UnderlyingElementType element)
 {
-    return { static_cast<LChar>(character), length, StringTypeAdapter<StringType> { adapter } };
+    return { static_cast<LChar>(character), length, element };
 }
 
-template<typename UnderlyingAdapterType> class StringTypeAdapter<PaddingSpecification<UnderlyingAdapterType>> {
+template<typename UnderlyingElementType> class StringTypeAdapter<PaddingSpecification<UnderlyingElementType>> {
 public:
-    StringTypeAdapter(const PaddingSpecification<UnderlyingAdapterType>& padding)
+    StringTypeAdapter(const PaddingSpecification<UnderlyingElementType>& padding)
         : m_padding { padding }
+        , m_underlyingAdapter { m_padding.underlyingElement }
     {
     }
 
-    unsigned length() const { return std::max(m_padding.length, m_padding.underlyingAdapter.length()); }
-    bool is8Bit() const { return m_padding.underlyingAdapter.is8Bit(); }
+    unsigned length() const { return std::max(m_padding.length, m_underlyingAdapter.length()); }
+    bool is8Bit() const { return m_underlyingAdapter.is8Bit(); }
     template<typename CharacterType> void writeTo(CharacterType* destination) const
     {
-        unsigned underlyingLength = m_padding.underlyingAdapter.length();
+        unsigned underlyingLength = m_underlyingAdapter.length();
         unsigned count = 0;
         if (underlyingLength < m_padding.length) {
             count = m_padding.length - underlyingLength;
             for (unsigned i = 0; i < count; ++i)
                 destination[i] = m_padding.character;
         }
-        m_padding.underlyingAdapter.writeTo(destination + count);
+        m_underlyingAdapter.writeTo(destination + count);
     }
 
 private:
-    const PaddingSpecification<UnderlyingAdapterType>& m_padding;
+    const PaddingSpecification<UnderlyingElementType>& m_padding;
+    StringTypeAdapter<UnderlyingElementType> m_underlyingAdapter;
 };
 
 template<typename Adapter>

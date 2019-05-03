@@ -41,6 +41,7 @@
 #include "WebPageProxy.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcessMessages.h"
+#include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include <WebCore/ShouldTreatAsContinuingLoad.h>
 
@@ -63,6 +64,12 @@ ProvisionalPageProxy::ProvisionalPageProxy(WebPageProxy& page, Ref<WebProcessPro
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_page.pageID(), *this);
     m_process->addProvisionalPageProxy(*this);
 
+    if (m_process->state() == AuxiliaryProcessProxy::State::Running)
+        m_page.webProcessLifetimeTracker().webPageEnteringWebProcess(m_process);
+
+    if (&m_process->websiteDataStore() != &m_page.websiteDataStore())
+        m_process->processPool().pageBeginUsingWebsiteDataStore(m_page.pageID(), m_process->websiteDataStore());
+
     // If we are reattaching to a SuspendedPage, then the WebProcess' WebPage already exists and
     // WebPageProxy::didCreateMainFrame() will not be called to initialize m_mainFrame. In such
     // case, we need to initialize m_mainFrame to reflect the fact the the WebProcess' WebPage
@@ -84,12 +91,25 @@ ProvisionalPageProxy::~ProvisionalPageProxy()
     if (m_wasCommitted)
         return;
 
+    if (m_process->state() == AuxiliaryProcessProxy::State::Running)
+        m_page.webProcessLifetimeTracker().webPageLeavingWebProcess(m_process);
+
+    if (&m_process->websiteDataStore() != &m_page.websiteDataStore())
+        m_process->processPool().pageEndUsingWebsiteDataStore(m_page.pageID(), m_process->websiteDataStore());
+
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_page.pageID());
     m_process->send(Messages::WebPage::Close(), m_page.pageID());
 
     RunLoop::main().dispatch([process = m_process.copyRef()] {
         process->maybeShutDown();
     });
+}
+
+void ProvisionalPageProxy::connectionWillOpen(IPC::Connection& connection)
+{
+    ASSERT_UNUSED(connection, &connection == m_process->connection());
+
+    m_page.webProcessLifetimeTracker().webPageEnteringWebProcess(m_process);
 }
 
 void ProvisionalPageProxy::processDidTerminate()

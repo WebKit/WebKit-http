@@ -649,6 +649,7 @@ public:
 #endif
         [NSNumber numberWithBool:NO], WebKitDirectoryUploadEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitWebAnimationsEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitPointerEventsEnabledPreferenceKey,
 
 #if PLATFORM(IOS_FAMILY)
         @NO, WebKitVisualViewportAPIEnabledPreferenceKey,
@@ -692,6 +693,7 @@ public:
         @NO, WebKitMediaCapabilitiesEnabledPreferenceKey,
         @NO, WebKitFetchAPIKeepAliveEnabledPreferenceKey,
         @NO, WebKitServerTimingEnabledPreferenceKey,
+        @NO, WebKitReferrerPolicyAttributeEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS_FAMILY)
@@ -3148,6 +3150,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitWebAnimationsEnabledPreferenceKey];
 }
 
+- (BOOL)pointerEventsEnabled
+{
+    return [self _boolValueForKey:WebKitPointerEventsEnabledPreferenceKey];
+}
+
+- (void)setPointerEventsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitPointerEventsEnabledPreferenceKey];
+}
+
 - (BOOL)fetchAPIKeepAliveEnabled
 {
     return [self _boolValueForKey:WebKitFetchAPIEnabledPreferenceKey];
@@ -3428,6 +3440,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setAdClickAttributionEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitAdClickAttributionEnabledPreferenceKey];
+}
+
+- (BOOL)referrerPolicyAttributeEnabled
+{
+    return [self _boolValueForKey:WebKitReferrerPolicyAttributeEnabledPreferenceKey];
+}
+
+- (void)setReferrerPolicyAttributeEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitReferrerPolicyAttributeEnabledPreferenceKey];
 }
 
 @end

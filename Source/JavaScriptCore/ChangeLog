@@ -1,3 +1,1018 @@
+2019-03-05  Saam barati  <sbarati@apple.com>
+
+        op_switch_char broken for rope strings after JSRopeString layout rewrite
+        https://bugs.webkit.org/show_bug.cgi?id=195339
+        <rdar://problem/48592545>
+
+        Reviewed by Yusuke Suzuki.
+
+        When we did the JSString rewrite, we accidentally broke LLInt's switch_char
+        for rope strings. That change made it so that we always go to the slow path
+        for ropes. That's wrong. The slow path should only be taken when the rope
+        is of length 1. For lengths other than 1, we need to fall through to the
+        default case. This patch fixes this.
+
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/JSString.h:
+
+2019-03-05  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Should check exception for JSString::toExistingAtomicString
+        https://bugs.webkit.org/show_bug.cgi?id=195337
+
+        Reviewed by Keith Miller, Saam Barati, and Mark Lam.
+
+        We missed the exception check for JSString::toExistingAtomicString while it can resolve
+        a rope and throw an OOM exception. This patch adds necessary exception checks. This patch
+        fixes test failures in debug build, reported in https://bugs.webkit.org/show_bug.cgi?id=194375#c93.
+
+        * dfg/DFGOperations.cpp:
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::getByVal):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+
+2019-03-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, build fix for debug builds after r242397
+
+        * runtime/JSString.h:
+
+2019-03-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Store bits for JSRopeString in 3 stores
+        https://bugs.webkit.org/show_bug.cgi?id=195234
+
+        Reviewed by Saam Barati.
+
+        This patch cleans up the initialization of JSRopeString fields in DFG and FTL.
+        Previously, we store some part of data separately. Instead, this patch calculates
+        the data first by bit operations and store calculated data with fewer stores.
+
+        This patch also cleans up is8Bit and isSubstring flags. We put them in lower bits
+        of the first fiber instead of the upper 16 bits. Since we only have 3 bit flags, (isRope, is8Bit, isSubstring),
+        we can put them into the lower 3 bits, they are always empty due to alignment.
+
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl): A bit clean up of StringLength IC to give a chance of unnecessary mov removal.
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::canBeRope):
+        (JSC::DFG::SpeculativeJIT::compileGetArrayLength):
+        (JSC::DFG::SpeculativeJIT::compileMakeRope):
+        * dfg/DFGSpeculativeJIT.h:
+        * ftl/FTLAbstractHeapRepository.cpp:
+        (JSC::FTL::AbstractHeapRepository::AbstractHeapRepository):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileMakeRope):
+        (JSC::FTL::DFG::LowerDFGToB3::isRopeString):
+        (JSC::FTL::DFG::LowerDFGToB3::isNotRopeString):
+        * runtime/JSString.cpp:
+        (JSC::JSString::visitChildren):
+        * runtime/JSString.h:
+        (JSC::JSString::is8Bit const):
+        (JSC::JSString::isSubstring const):
+        * tools/JSDollarVM.cpp:
+        (JSC::functionCreateNullRopeString):
+        (JSC::JSDollarVM::finishCreation):
+
+2019-03-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ITMLKit Inspector: Data Bindings / Associated Data for nodes
+        https://bugs.webkit.org/show_bug.cgi?id=195290
+        <rdar://problem/48304019>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/protocol/DOM.json:
+
+2019-03-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Make Reflect lazily-allocated by dropping @Reflect references from builtin JS
+        https://bugs.webkit.org/show_bug.cgi?id=195250
+
+        Reviewed by Saam Barati.
+
+        By removing @Reflect from builtin JS, we can make Reflect object allocation lazy.
+        We move @ownKeys function from @Reflect to @Object to remove @Reflect reference.
+
+        We also remove m_intlObject field from JSGlobalObject since we no longer use it.
+
+        * builtins/BuiltinNames.h:
+        * builtins/GlobalOperations.js:
+        (globalPrivate.copyDataProperties):
+        (globalPrivate.copyDataPropertiesNoExclusions):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::createReflectProperty):
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation):
+        (JSC::objectConstructorOwnKeys):
+        * runtime/ReflectObject.cpp:
+        (JSC::ReflectObject::finishCreation):
+
+2019-03-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Offer @makeTypeError instead of exposing @TypeError
+        https://bugs.webkit.org/show_bug.cgi?id=193858
+
+        Reviewed by Mark Lam.
+
+        Instead of exposing @TypeError, we expose @makeTypeError function.
+        And we make TypeError and Error lazily-allocated objects in non JIT environment.
+        In JIT environment, only TypeError becomes lazily-allocated since WebAssembly errors
+        touch Error prototype anyway. But we can make them lazy in a subsequent patch.
+
+        * builtins/AsyncFromSyncIteratorPrototype.js:
+        * builtins/AsyncGeneratorPrototype.js:
+        (globalPrivate.asyncGeneratorEnqueue):
+        * builtins/BuiltinNames.h:
+        * builtins/PromiseOperations.js:
+        (globalPrivate.createResolvingFunctions.resolve):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::initializeErrorConstructor):
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::errorPrototype const):
+        (JSC::JSGlobalObject::errorStructure const):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncMakeTypeError):
+        * runtime/JSGlobalObjectFunctions.h:
+
+2019-03-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLib] Returning G_TYPE_OBJECT from a constructor does not work
+        https://bugs.webkit.org/show_bug.cgi?id=195206
+
+        Reviewed by Žan Doberšek.
+
+        We are freeing the newly created object before returning from the constructor.
+
+        * API/glib/JSCCallbackFunction.cpp:
+        (JSC::JSCCallbackFunction::construct):
+
+2019-03-02  Darin Adler  <darin@apple.com>
+
+        Retire legacy dtoa function and DecimalNumber class
+        https://bugs.webkit.org/show_bug.cgi?id=195253
+
+        Reviewed by Daniel Bates.
+
+        * runtime/NumberPrototype.cpp:
+        (JSC::numberProtoFuncToExponential): Removed dependency on NumberToStringBufferLength,
+        using NumberToStringBuffer instead. Also tweaked style of implementation a bit.
+
+2019-03-01  Darin Adler  <darin@apple.com>
+
+        Finish removing String::format
+        https://bugs.webkit.org/show_bug.cgi?id=194893
+
+        Reviewed by Daniel Bates.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::nameForRegister): Use makeString instead of String::format,
+        using the new "pad" function.
+
+2019-03-01  Christopher Reid  <chris.reid@sony.com>
+
+        [PlayStation] Upstream playstation's remote inspector server
+        https://bugs.webkit.org/show_bug.cgi?id=193806
+
+        Reviewed by Joseph Pecoraro.
+
+        Upstreaming PlayStation's Remote Inspector implementation.
+        It is using a JSON RPC protocol over TCP sockets.
+        This inspector implementation is planned to also support running on a WinCairo Client and Server.
+
+        * PlatformPlayStation.cmake:
+        * SourcesGTK.txt:
+        * SourcesWPE.txt:
+        * inspector/remote/RemoteConnectionToTarget.cpp: Renamed from Source/JavaScriptCore/inspector/remote/glib/RemoteConnectionToTargetGlib.cpp.
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/playstation/RemoteInspectorConnectionClient.h: Added.
+        * inspector/remote/playstation/RemoteInspectorConnectionClientPlayStation.cpp: Added.
+        * inspector/remote/playstation/RemoteInspectorMessageParser.h: Added.
+        * inspector/remote/playstation/RemoteInspectorMessageParserPlayStation.cpp: Added.
+        * inspector/remote/playstation/RemoteInspectorPlayStation.cpp: Added.
+        * inspector/remote/playstation/RemoteInspectorServer.h: Added.
+        * inspector/remote/playstation/RemoteInspectorServerPlayStation.cpp: Added.
+        * inspector/remote/playstation/RemoteInspectorSocket.h: Added.
+        * inspector/remote/playstation/RemoteInspectorSocketClient.h: Added.
+        * inspector/remote/playstation/RemoteInspectorSocketClientPlayStation.cpp: Added.
+        * inspector/remote/playstation/RemoteInspectorSocketPlayStation.cpp: Added.
+        * inspector/remote/playstation/RemoteInspectorSocketServer.h: Added.
+        * inspector/remote/playstation/RemoteInspectorSocketServerPlayStation.cpp: Added.
+
+2019-03-01  Saam Barati  <sbarati@apple.com>
+
+        Create SPI to crash if a JSC VM is created
+        https://bugs.webkit.org/show_bug.cgi?id=195231
+        <rdar://problem/47717990>
+
+        Reviewed by Mark Lam.
+
+        * API/JSVirtualMachine.mm:
+        (+[JSVirtualMachine setCrashOnVMCreation:]):
+        * API/JSVirtualMachinePrivate.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::setCrashOnVMCreation):
+        * runtime/VM.h:
+
+2019-03-01  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Fix FTL build on ARM32_64 by adding stubs for JSRopeString::offsetOfXXX
+        https://bugs.webkit.org/show_bug.cgi?id=195235
+
+        Reviewed by Saam Barati.
+
+        This is a workaround until https://bugs.webkit.org/show_bug.cgi?id=195234 is done.
+
+        * runtime/JSString.h:
+
+2019-03-01  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Use runtime calls for DFG MakeRope if !CPU(ADDRESS64)
+        https://bugs.webkit.org/show_bug.cgi?id=195221
+
+        Reviewed by Mark Lam.
+
+        ARM32_64 builds DFG 64bit, but the size of address is 32bit. Make DFG MakeRope a runtime call not only for DFG 32_64,
+        but also DFG 64 with !CPU(ADDRESS64). This patch unifies compileMakeRope again, and use a runtime call for !CPU(ADDRESS64).
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileMakeRope):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileMakeRope): Deleted.
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileMakeRope): Deleted.
+
+2019-03-01  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] 32-bit builds broken by attempt to disable WebGPU on 32-bit
+        https://bugs.webkit.org/show_bug.cgi?id=195191
+
+        Rubber-stamped by Dean Jackson.
+
+        Dropping support for 32-bit entirely, so I'm intentionally leaving 32-bit broken.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-03-01  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Fix debug builds with GCC
+        https://bugs.webkit.org/show_bug.cgi?id=195205
+
+        Unreviewed. Fix debug builds in GCC by removing
+        the constexpr-keyword for this function.
+
+        * runtime/CachedTypes.cpp:
+        (JSC::tagFromSourceCodeType):
+
+2019-03-01  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [ARM] Fix assembler warnings in ctiMasmProbeTrampoline
+        https://bugs.webkit.org/show_bug.cgi?id=195164
+
+        Reviewed by Mark Lam.
+
+        Short branches in IT blocks are deprecated in AArch32. In addition the
+        the conditional branch was the only instruction in the IT block. Short
+        branches are able to encode the condition code themselves, the additional
+        IT instruction is not needed.
+
+        The assembler was also warning that writing into APSR without a bitmask
+        was deprecated. Therefore use APSR_nzcvq instead, this generates the same
+        instruction encoding.
+
+        * assembler/MacroAssemblerARMv7.cpp:
+
+2019-02-28  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Remove CachedPtr::m_isEmpty and CachedOptional::m_isEmpty fields
+        https://bugs.webkit.org/show_bug.cgi?id=194999
+
+        Reviewed by Saam Barati.
+
+        These fields are unnecessary, since we can just check that m_offset
+        has not been initialized (I added VariableLengthObject::isEmpty for
+        that). They also add 7-byte padding to these classes, which is pretty
+        bad given how frequently CachedPtr is used.
+
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedObject::operator new[]):
+        (JSC::VariableLengthObject::allocate):
+        (JSC::VariableLengthObject::isEmpty const):
+        (JSC::CachedPtr::encode):
+        (JSC::CachedPtr::decode const):
+        (JSC::CachedPtr::get const):
+        (JSC::CachedOptional::encode):
+        (JSC::CachedOptional::decode const):
+        (JSC::CachedOptional::decodeAsPtr const):
+
+2019-02-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] sizeof(JSString) should be 16
+        https://bugs.webkit.org/show_bug.cgi?id=194375
+
+        Reviewed by Saam Barati.
+
+        This patch reduces sizeof(JSString) from 24 to 16 to fit it into GC heap cell atom. And it also reduces sizeof(JSRopeString) from 48 to 32.
+        Both classes cut 16 bytes per instance in GC allocation. This new layout is used in 64bit architectures which has little endianess.
+
+        JSString no longer has length and flags directly. JSString has String, and we query information to this String instead of holding duplicate
+        information in JSString. We embed isRope bit into this String's pointer so that we can convert JSRopeString to JSString in an atomic manner.
+        We emit store-store fence before we put String pointer. This should exist even before this patch, so this patch also fixes one concurrency issue.
+
+        The old JSRopeString separately had JSString* fibers along with String. In this patch, we merge the first JSString* fiber and String pointer
+        storage into one to reduce the size of JSRopeString. JSRopeString has three pointer width storage. We pick 48bit effective address of JSString*
+        fibers to compress three fibers + length + flags into three pointer width storage.
+
+        In 64bit architecture, JSString and JSRopeString have the following memory layout to make sizeof(JSString) == 16 and sizeof(JSRopeString) == 32.
+        JSString has only one pointer. We use it for String. length() and is8Bit() queries go to StringImpl. In JSRopeString, we reuse the above pointer
+        place for the 1st fiber. JSRopeString has three fibers so its size is 48. To keep length and is8Bit flag information in JSRopeString, JSRopeString
+        encodes these information into the fiber pointers. is8Bit flag is encoded in the 1st fiber pointer. length is embedded directly, and two fibers
+        are compressed into 12bytes. isRope information is encoded in the first fiber's LSB.
+
+        Since length of JSRopeString should be frequently accessed compared to each fiber, we put length in contiguous 32byte field, and compress 2nd
+        and 3rd fibers into the following 80byte fields. One problem is that now 2nd and 3rd fibers are split. Storing and loading 2nd and 3rd fibers
+        are not one pointer load operation. To make concurrent collector work correctly, we must initialize 2nd and 3rd fibers at JSRopeString creation
+        and we must not modify these part later.
+
+                     0                        8        10               16                       32                                     48
+        JSString     [   ID      ][  header  ][   String pointer      0]
+        JSRopeString [   ID      ][  header  ][ flags ][ 1st fiber    1][  length  ][2nd lower32][2nd upper16][3rd lower16][3rd upper32]
+                                                                      ^
+                                                                   isRope bit
+
+        Since fibers in JSRopeString are not initialized in atomic pointer store manner, we must initialize all the fiber fields at JSRopeString creation.
+        To achieve this, we modify our JSRopeString::RopeBuilder implementation not to create half-baked JSRopeString.
+
+        This patch also makes an empty JSString singleton per VM. This makes evaluation of JSString in boolean context one pointer comparison. This is
+        critical in this change since this patch enlarges the code necessary to get length from JSString in JIT. Without this guarantee, our code of boolean
+        context evaluation is bloated. This patch hides all the JSString::create and JSRopeString::create in the private permission. JSString and JSRopeString
+        creation is only allowed from jsString and related helper functions and they return a singleton empty JSString if the length is zero. We also change
+        JSRopeString::RopeBuilder not to construct an empty JSRopeString.
+
+        This patch is performance neutral in Speedometer2 and JetStream2. And it improves RAMification by 2.7%.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::storeZero16):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::storeZero16):
+        (JSC::MacroAssemblerX86Common::store16):
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl):
+        * bytecode/InlineAccess.cpp:
+        (JSC::InlineAccess::dumpCacheSizesAndCrash):
+        (JSC::linkCodeInline):
+        (JSC::InlineAccess::isCacheableStringLength):
+        (JSC::InlineAccess::generateStringLength):
+        * bytecode/InlineAccess.h:
+        (JSC::InlineAccess::sizeForPropertyAccess):
+        (JSC::InlineAccess::sizeForPropertyReplace):
+        (JSC::InlineAccess::sizeForLengthAccess):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileStringSlice):
+        (JSC::DFG::SpeculativeJIT::compileToLowerCase):
+        (JSC::DFG::SpeculativeJIT::compileGetCharCodeAt):
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnString):
+        (JSC::DFG::SpeculativeJIT::compileStringEquality):
+        (JSC::DFG::SpeculativeJIT::compileStringZeroLength):
+        (JSC::DFG::SpeculativeJIT::compileLogicalNotStringOrOther):
+        (JSC::DFG::SpeculativeJIT::emitStringBranch):
+        (JSC::DFG::SpeculativeJIT::emitStringOrOtherBranch):
+        (JSC::DFG::SpeculativeJIT::compileGetIndexedPropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileGetArrayLength):
+        (JSC::DFG::SpeculativeJIT::emitPopulateSliceIndex):
+        (JSC::DFG::SpeculativeJIT::compileArraySlice):
+        (JSC::DFG::SpeculativeJIT::compileArrayIndexOf):
+        (JSC::DFG::SpeculativeJIT::speculateStringIdentAndLoadStorage):
+        (JSC::DFG::SpeculativeJIT::emitSwitchCharStringJump):
+        (JSC::DFG::SpeculativeJIT::emitSwitchStringOnString):
+        (JSC::DFG::SpeculativeJIT::compileMakeRope): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::compileMakeRope):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::compileMakeRope):
+        * ftl/FTLAbstractHeapRepository.cpp:
+        (JSC::FTL::AbstractHeapRepository::AbstractHeapRepository):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetIndexedPropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetArrayLength):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMakeRope):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringCharAt):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringCharCodeAt):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCompareStrictEq):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringToUntypedStrictEquality):
+        (JSC::FTL::DFG::LowerDFGToB3::compileSwitch):
+        (JSC::FTL::DFG::LowerDFGToB3::mapHashString):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMapHash):
+        (JSC::FTL::DFG::LowerDFGToB3::compileHasOwnProperty):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringSlice):
+        (JSC::FTL::DFG::LowerDFGToB3::compileToLowerCase):
+        (JSC::FTL::DFG::LowerDFGToB3::stringsEqual):
+        (JSC::FTL::DFG::LowerDFGToB3::boolify):
+        (JSC::FTL::DFG::LowerDFGToB3::switchString):
+        (JSC::FTL::DFG::LowerDFGToB3::isRopeString):
+        (JSC::FTL::DFG::LowerDFGToB3::isNotRopeString):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateStringIdent):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitConvertValueToBoolean):
+        (JSC::AssemblyHelpers::branchIfValue):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::branchIfRopeStringImpl):
+        (JSC::AssemblyHelpers::branchIfNotRopeStringImpl):
+        * jit/JITInlines.h:
+        (JSC::JIT::emitLoadCharacterString):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        * jit/ThunkGenerators.cpp:
+        (JSC::stringGetByValGenerator):
+        (JSC::stringCharLoad):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/JSString.cpp:
+        (JSC::JSString::createEmptyString):
+        (JSC::JSRopeString::RopeBuilder<RecordOverflow>::expand):
+        (JSC::JSString::dumpToStream):
+        (JSC::JSString::estimatedSize):
+        (JSC::JSString::visitChildren):
+        (JSC::JSRopeString::resolveRopeInternal8 const):
+        (JSC::JSRopeString::resolveRopeInternal8NoSubstring const):
+        (JSC::JSRopeString::resolveRopeInternal16 const):
+        (JSC::JSRopeString::resolveRopeInternal16NoSubstring const):
+        (JSC::JSRopeString::resolveRopeToAtomicString const):
+        (JSC::JSRopeString::convertToNonRope const):
+        (JSC::JSRopeString::resolveRopeToExistingAtomicString const):
+        (JSC::JSRopeString::resolveRopeWithFunction const):
+        (JSC::JSRopeString::resolveRope const):
+        (JSC::JSRopeString::resolveRopeSlowCase8 const):
+        (JSC::JSRopeString::resolveRopeSlowCase const):
+        (JSC::JSRopeString::outOfMemory const):
+        (JSC::JSRopeString::visitFibers): Deleted.
+        (JSC::JSRopeString::clearFibers const): Deleted.
+        * runtime/JSString.h:
+        (JSC::JSString::uninitializedValueInternal const):
+        (JSC::JSString::valueInternal const):
+        (JSC::JSString::JSString):
+        (JSC::JSString::finishCreation):
+        (JSC::JSString::create):
+        (JSC::JSString::offsetOfValue):
+        (JSC::JSString::isRope const):
+        (JSC::JSString::is8Bit const):
+        (JSC::JSString::length const):
+        (JSC::JSString::tryGetValueImpl const):
+        (JSC::JSString::toAtomicString const):
+        (JSC::JSString::toExistingAtomicString const):
+        (JSC::JSString::value const):
+        (JSC::JSString::tryGetValue const):
+        (JSC::JSRopeString::unsafeView const):
+        (JSC::JSRopeString::viewWithUnderlyingString const):
+        (JSC::JSString::unsafeView const):
+        (JSC::JSString::viewWithUnderlyingString const):
+        (JSC::JSString::offsetOfLength): Deleted.
+        (JSC::JSString::offsetOfFlags): Deleted.
+        (JSC::JSString::setIs8Bit const): Deleted.
+        (JSC::JSString::setLength): Deleted.
+        (JSC::JSString::string): Deleted.
+        (JSC::jsStringBuilder): Deleted.
+        * runtime/JSStringInlines.h:
+        (JSC::JSString::~JSString):
+        (JSC::JSString::equal const):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncToString):
+        * runtime/RegExpMatchesArray.h:
+        (JSC::createRegExpMatchesArray):
+        * runtime/RegExpObjectInlines.h:
+        (JSC::collectMatches):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncSplitFast):
+        * runtime/SmallStrings.cpp:
+        (JSC::SmallStrings::initializeCommonStrings):
+        (JSC::SmallStrings::createEmptyString): Deleted.
+        * runtime/SmallStrings.h:
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncSlice):
+        * runtime/StringPrototypeInlines.h: Added.
+        (JSC::stringSlice):
+
+2019-02-28  Saam barati  <sbarati@apple.com>
+
+        Unreviewed. Attempt windows build fix after r242239.
+
+        * runtime/CachedTypes.cpp:
+        (JSC::tagFromSourceCodeType):
+
+2019-02-28  Mark Lam  <mark.lam@apple.com>
+
+        In cloop.rb, rename :int and :uint to :intptr and :uintptr.
+        https://bugs.webkit.org/show_bug.cgi?id=195183
+
+        Reviewed by Yusuke Suzuki.
+
+        Also changed intMemRef and uintMemRef to intptrMemRef and uintptrMemRef respectively.
+
+        * offlineasm/cloop.rb:
+
+2019-02-28  Saam barati  <sbarati@apple.com>
+
+        Make JSScript:cacheBytecodeWithError update the cache when the script changes
+        https://bugs.webkit.org/show_bug.cgi?id=194912
+
+        Reviewed by Mark Lam.
+
+        Prior to this patch, the JSScript SPI would never check if its cached
+        bytecode were still valid. This would lead the cacheBytecodeWithError
+        succeeding even if the underlying cache were stale. This patch fixes
+        that by making JSScript check if the cache is still valid. If it's not,
+        we will cache bytecode when cacheBytecodeWithError is invoked.
+
+        * API/JSScript.mm:
+        (-[JSScript readCache]):
+        (-[JSScript writeCache:]):
+        * API/tests/testapi.mm:
+        (testBytecodeCacheWithSameCacheFileAndDifferentScript):
+        (testObjectiveCAPI):
+        * runtime/CachedTypes.cpp:
+        (JSC::Decoder::Decoder):
+        (JSC::VariableLengthObject::buffer const):
+        (JSC::CachedPtr::decode const):
+        (JSC::tagFromSourceCodeType):
+        (JSC::GenericCacheEntry::isUpToDate const):
+        (JSC::CacheEntry::isStillValid const):
+        (JSC::GenericCacheEntry::decode const):
+        (JSC::GenericCacheEntry::isStillValid const):
+        (JSC::encodeCodeBlock):
+        (JSC::decodeCodeBlockImpl):
+        (JSC::isCachedBytecodeStillValid):
+        * runtime/CachedTypes.h:
+        * runtime/CodeCache.cpp:
+        (JSC::sourceCodeKeyForSerializedBytecode):
+        (JSC::sourceCodeKeyForSerializedProgram):
+        (JSC::sourceCodeKeyForSerializedModule):
+        (JSC::serializeBytecode):
+        * runtime/CodeCache.h:
+        (JSC::CodeCacheMap::fetchFromDiskImpl):
+        * runtime/Completion.cpp:
+        (JSC::generateProgramBytecode):
+        (JSC::generateBytecode): Deleted.
+        * runtime/Completion.h:
+
+2019-02-28  Mark Lam  <mark.lam@apple.com>
+
+        cloop.rb shift mask should depend on the word size being shifted.
+        https://bugs.webkit.org/show_bug.cgi?id=195181
+        <rdar://problem/48484164>
+
+        Reviewed by Yusuke Suzuki.
+
+        Previously, we're always masking the shift amount with 0x1f.  This is only correct
+        for 32-bit words.  For 64-bit words, the mask should be 0x3f.  For pointer sized
+        shifts, the mask depends on sizeof(uintptr_t).
+
+        * offlineasm/cloop.rb:
+
+2019-02-28  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Enable Web GPU only on 64-bit
+        https://bugs.webkit.org/show_bug.cgi?id=195139
+
+        Because Metal is only supported on 64 bit apps.
+
+        Unreviewed build fix.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-02-27  Mark Lam  <mark.lam@apple.com>
+
+        The parser is failing to record the token location of new in new.target.
+        https://bugs.webkit.org/show_bug.cgi?id=195127
+        <rdar://problem/39645578>
+
+        Reviewed by Yusuke Suzuki.
+
+        Also adjust the token location for the following to be as shown:
+
+            new.target
+            ^
+            super
+            ^
+            import.meta
+            ^
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseMemberExpression):
+
+2019-02-27  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] mustHandleValues for dead bytecode locals should be ignored in DFG phases
+        https://bugs.webkit.org/show_bug.cgi?id=195144
+        <rdar://problem/47595961>
+
+        Reviewed by Mark Lam.
+
+        DFGMaximalFlushInsertionPhase inserts Flush for all the locals at the end of basic blocks. This enlarges the live ranges of
+        locals in DFG, and it sometimes makes DFG value live while it is dead in bytecode. The issue happens when we use mustHandleValues
+        to widen AbstractValue in CFAPhase. At that time, DFG tells "this value is live in DFG", but it may be dead in the bytecode level.
+        At that time, we attempt to merge AbstractValue with dead mustHandleValue, which is cleared as jsUndefined() in
+        DFG::Plan::cleanMustHandleValuesIfNecessary before start compilation, and crash because jsUndefined() may be irrelevant to the FlushFormat
+        in VariableAccessData.
+
+        This patch makes the type of mustHandleValues Operands<Optional<JSValue>>. We clear dead JSValues in DFG::Plan::cleanMustHandleValuesIfNecessary.
+        And we skip handling dead mustHandleValue in DFG phases.
+
+        * bytecode/Operands.h:
+        (JSC::Operands::isLocal const):
+        (JSC::Operands::isVariable const): Deleted.
+        * dfg/DFGCFAPhase.cpp:
+        (JSC::DFG::CFAPhase::injectOSR):
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        (JSC::DFG::compile):
+        * dfg/DFGDriver.h:
+        * dfg/DFGJITCode.cpp:
+        (JSC::DFG::JITCode::reconstruct):
+        * dfg/DFGJITCode.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::Plan):
+        (JSC::DFG::Plan::checkLivenessAndVisitChildren):
+        (JSC::DFG::Plan::cleanMustHandleValuesIfNecessary):
+        * dfg/DFGPlan.h:
+        (JSC::DFG::Plan::mustHandleValues const):
+        * dfg/DFGPredictionInjectionPhase.cpp:
+        (JSC::DFG::PredictionInjectionPhase::run):
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::disableHoistingAcrossOSREntries):
+        * ftl/FTLOSREntry.cpp:
+        (JSC::FTL::prepareOSREntry):
+        * jit/JITOperations.cpp:
+
+2019-02-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Roll out r242014; it caused crashes in compositing logging (webkit.org/b/195141)
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::nameForRegister):
+
+2019-02-27  Robin Morisset  <rmorisset@apple.com>
+
+        DFG: Loop-invariant code motion (LICM) should not hoist dead code
+        https://bugs.webkit.org/show_bug.cgi?id=194945
+        <rdar://problem/48311657>
+
+        Reviewed by Saam Barati.
+
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::run):
+
+2019-02-27  Antoine Quint  <graouts@apple.com>
+
+        Support Pointer Events on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=195008
+        <rdar://problem/47454419>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Remove poisons in JSCPoison and uses of them.
+        https://bugs.webkit.org/show_bug.cgi?id=195082
+
+        Reviewed by Yusuke Suzuki.
+
+        Also removed unused poisoning code in WriteBarrier, AssemblyHelpers,
+        DFG::SpeculativeJIT, FTLLowerDFGToB3, and FTL::Output.
+
+        * API/JSAPIWrapperObject.h:
+        (JSC::JSAPIWrapperObject::wrappedObject):
+        * API/JSCallbackFunction.h:
+        * API/JSCallbackObject.h:
+        * API/glib/JSAPIWrapperGlobalObject.h:
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateWithGuard):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnScopedArguments):
+        (JSC::DFG::SpeculativeJIT::compileGetArrayLength):
+        (JSC::DFG::SpeculativeJIT::compileNewFunctionCommon):
+        (JSC::DFG::SpeculativeJIT::compileGetExecutable):
+        (JSC::DFG::SpeculativeJIT::compileCreateThis):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::TrustedImmPtr::weakPoisonedPointer): Deleted.
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetExecutable):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetArrayLength):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewFunction):
+        (JSC::FTL::DFG::LowerDFGToB3::weakPointer):
+        (JSC::FTL::DFG::LowerDFGToB3::dynamicPoison): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::dynamicPoisonOnLoadedType): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::dynamicPoisonOnType): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::weakPoisonedPointer): Deleted.
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::weakPoisonedPointer): Deleted.
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitDynamicPoison): Deleted.
+        (JSC::AssemblyHelpers::emitDynamicPoisonOnLoadedType): Deleted.
+        (JSC::AssemblyHelpers::emitDynamicPoisonOnType): Deleted.
+        * jit/AssemblyHelpers.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_create_this):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitScopedArgumentsGetByVal):
+        * jit/Repatch.cpp:
+        (JSC::linkPolymorphicCall):
+        * jit/ThunkGenerators.cpp:
+        (JSC::virtualThunkFor):
+        (JSC::nativeForGenerator):
+        (JSC::boundThisNoArgsFunctionCallGenerator):
+        * parser/UnlinkedSourceCode.h:
+        * runtime/ArrayPrototype.h:
+        * runtime/CustomGetterSetter.h:
+        (JSC::CustomGetterSetter::getter const):
+        (JSC::CustomGetterSetter::setter const):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::getCallData):
+        (JSC::InternalFunction::getConstructData):
+        * runtime/InternalFunction.h:
+        (JSC::InternalFunction::nativeFunctionFor):
+        * runtime/JSArrayBuffer.h:
+        * runtime/JSBoundFunction.h:
+        * runtime/JSCPoison.cpp: Removed.
+        * runtime/JSCPoison.h: Removed.
+        * runtime/JSFunction.h:
+        * runtime/JSGlobalObject.h:
+        * runtime/JSScriptFetchParameters.h:
+        * runtime/JSScriptFetcher.h:
+        * runtime/JSString.h:
+        * runtime/NativeExecutable.cpp:
+        (JSC::NativeExecutable::hashFor const):
+        * runtime/NativeExecutable.h:
+        * runtime/Options.h:
+        * runtime/ScopedArguments.h:
+        * runtime/Structure.cpp:
+        (JSC::StructureTransitionTable::setSingleTransition):
+        * runtime/StructureTransitionTable.h:
+        (JSC::StructureTransitionTable::map const):
+        (JSC::StructureTransitionTable::weakImpl const):
+        (JSC::StructureTransitionTable::setMap):
+        * runtime/WriteBarrier.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        * wasm/WasmInstance.h:
+        * wasm/js/JSToWasm.cpp:
+        (JSC::Wasm::createJSToWasmWrapper):
+        * wasm/js/JSWebAssemblyCodeBlock.h:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::JSWebAssemblyInstance):
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        * wasm/js/JSWebAssemblyInstance.h:
+        * wasm/js/JSWebAssemblyMemory.h:
+        * wasm/js/JSWebAssemblyModule.h:
+        * wasm/js/JSWebAssemblyTable.cpp:
+        (JSC::JSWebAssemblyTable::JSWebAssemblyTable):
+        (JSC::JSWebAssemblyTable::grow):
+        (JSC::JSWebAssemblyTable::clearFunction):
+        * wasm/js/JSWebAssemblyTable.h:
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::materializeImportJSCell):
+        (JSC::Wasm::handleBadI64Use):
+        (JSC::Wasm::wasmToJS):
+        * wasm/js/WebAssemblyFunctionBase.h:
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        (JSC::WebAssemblyModuleRecord::evaluate):
+        * wasm/js/WebAssemblyModuleRecord.h:
+        * wasm/js/WebAssemblyToJSCallee.h:
+        * wasm/js/WebAssemblyWrapperFunction.h:
+
+2019-02-26  Mark Lam  <mark.lam@apple.com>
+
+        wasmToJS() should purify incoming NaNs.
+        https://bugs.webkit.org/show_bug.cgi?id=194807
+        <rdar://problem/48189132>
+
+        Reviewed by Saam Barati.
+
+        * runtime/JSCJSValue.h:
+        (JSC::jsNumber):
+        * runtime/TypedArrayAdaptors.h:
+        (JSC::IntegralTypedArrayAdaptor::toJSValue):
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::wasmToJS):
+
+2019-02-26  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Fix warnings on ARM and MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=195049
+
+        Reviewed by Mark Lam.
+
+        Fix all warnings on ARM and MIPS.
+
+        * assembler/MacroAssemblerPrinter.cpp:
+        (JSC::Printer::printMemory):
+        * assembler/testmasm.cpp:
+        (JSC::testProbeModifiesStackValues):
+        * bytecode/InByIdStatus.cpp:
+        (JSC::InByIdStatus::computeFor):
+        * runtime/CachedTypes.cpp:
+        (JSC::VariableLengthObject::buffer const):
+        * runtime/JSBigInt.h:
+        * tools/JSDollarVM.cpp:
+        (JSC::codeBlockFromArg):
+
+2019-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Misc cleanup in StructureIDTable after r242096.
+        https://bugs.webkit.org/show_bug.cgi?id=195063
+
+        Reviewed by Saam Barati.
+
+        * runtime/StructureIDTable.cpp:
+        (JSC::StructureIDTable::allocateID):
+        - RELEASE_ASSERT that the StructureID allocation will succeed.
+
+        * runtime/StructureIDTable.h:
+        (JSC::StructureIDTable::decode):
+        (JSC::StructureIDTable::encode):
+        - Add back a comment that Yusuke requested but was lost when the patch was rolled
+          out and relanded.
+        - Applied bitwise_casts that Saam requested.
+
+2019-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: 32-bit build fix after r242096.
+        https://bugs.webkit.org/show_bug.cgi?id=194989
+
+        Not reviewed.
+
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitLoadStructure):
+
+2019-02-26  Mark Lam  <mark.lam@apple.com>
+
+        Unpoison MacroAssemblerCodePtr, ClassInfo pointers, and a few other things.
+        https://bugs.webkit.org/show_bug.cgi?id=195039
+
+        Reviewed by Saam Barati.
+
+        1. Unpoison MacroAssemblerCodePtrs, ReturnAddressPtr.
+        2. Replace PoisonedClassInfoPtr with ClassInfo*.
+        3. Replace PoisonedMasmPtr with const void*.
+        4. Remove all references to CodeBlockPoison, JITCodePoison, and GlobalDataPoison.
+
+        * API/JSCallbackObject.h:
+        * API/JSObjectRef.cpp:
+        (classInfoPrivate):
+        * assembler/MacroAssemblerCodeRef.h:
+        (JSC::FunctionPtr::FunctionPtr):
+        (JSC::FunctionPtr::executableAddress const):
+        (JSC::FunctionPtr::retaggedExecutableAddress const):
+        (JSC::ReturnAddressPtr::ReturnAddressPtr):
+        (JSC::ReturnAddressPtr::value const):
+        (JSC::MacroAssemblerCodePtr::MacroAssemblerCodePtr):
+        (JSC::MacroAssemblerCodePtr::createFromExecutableAddress):
+        (JSC::MacroAssemblerCodePtr:: const):
+        (JSC::MacroAssemblerCodePtr::operator! const):
+        (JSC::MacroAssemblerCodePtr::operator== const):
+        (JSC::MacroAssemblerCodePtr::hash const):
+        (JSC::MacroAssemblerCodePtr::emptyValue):
+        (JSC::MacroAssemblerCodePtr::deletedValue):
+        (JSC::FunctionPtr<tag>::FunctionPtr):
+        (JSC::MacroAssemblerCodePtr::poisonedPtr const): Deleted.
+        * b3/B3LowerMacros.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testInterpreter):
+        * dfg/DFGOSRExitCompilerCommon.h:
+        (JSC::DFG::adjustFrameAndStackInOSRExitCompilerThunk):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCheckSubClass):
+        (JSC::DFG::SpeculativeJIT::compileNewStringObject):
+        (JSC::DFG::SpeculativeJIT::emitSwitchIntJump):
+        (JSC::DFG::SpeculativeJIT::emitSwitchImm):
+        (JSC::DFG::SpeculativeJIT::emitSwitchCharStringJump):
+        (JSC::DFG::SpeculativeJIT::emitSwitchChar):
+        * dfg/DFGSpeculativeJIT.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewStringObject):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckSubClass):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitAllocateDestructibleObject):
+        * jit/ThunkGenerators.cpp:
+        (JSC::virtualThunkFor):
+        (JSC::boundThisNoArgsFunctionCallGenerator):
+        * runtime/JSCPoison.h:
+        * runtime/JSDestructibleObject.h:
+        (JSC::JSDestructibleObject::classInfo const):
+        * runtime/JSSegmentedVariableObject.h:
+        (JSC::JSSegmentedVariableObject::classInfo const):
+        * runtime/Structure.h:
+        * runtime/VM.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addCall):
+        (JSC::Wasm::B3IRGenerator::addCallIndirect):
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::wasmToWasm):
+
+2019-02-26  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing] Add some randomness into the StructureID.
+        https://bugs.webkit.org/show_bug.cgi?id=194989
+        <rdar://problem/47975563>
+
+        Reviewed by Yusuke Suzuki.
+
+        1. On 64-bit, the StructureID will now be encoded as:
+
+            ----------------------------------------------------------------
+            | 1 Nuke Bit | 24 StructureIDTable index bits | 7 entropy bits |
+            ----------------------------------------------------------------
+
+           The entropy bits are chosen at random and assigned when a StructureID is
+           allocated.
+
+        2. Instead of Structure pointers, the StructureIDTable will now contain
+           encodedStructureBits, which is encoded as such:
+
+            ----------------------------------------------------------------
+            | 7 entropy bits |                   57 structure pointer bits |
+            ----------------------------------------------------------------
+
+           The entropy bits here are the same 7 bits used in the encoding of the
+           StructureID for this structure entry in the StructureIDTable.
+
+        3. Retrieval of the structure pointer given a StructureID is now computed as
+           follows:
+
+                index = structureID >> 7; // with arithmetic shift.
+                encodedStructureBits = structureIDTable[index];
+                structure = encodedStructureBits ^ (structureID << 57);
+
+            We use an arithmetic shift for the right shift because that will preserve
+            the nuke bit in the high bit of the index if the StructureID was not
+            decontaminated before use as expected.
+
+        4. Remove unused function loadArgumentWithSpecificClass() in SpecializedThunkJIT.
+
+        5. Define StructureIDTable::m_size to be the number of allocated StructureIDs
+           instead of always being the same as m_capacity.
+
+        6. Change StructureIDTable::s_unusedID's value to 0.
+
+           Its previous value of unusedPointer i.e. 0xd1e7beef, does not make sense for
+           StructureID on 64-bit.  Also, there was never any code that initializes unused
+           IDs to the s_unusedID.  The only meaningful value for s_unusedID is 0, which
+           is the ID we'll get when the freelist is empty, prompting a resize of the
+           structureIDTable.
+
+        This patch appears to be perf neutral on JetStream 2 run via the cli on a
+        11" MacBook Air, 13" MacBook Pro, iPhone 6S, and iPhone XR.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::loadStructure):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendJSCellOrAuxiliary):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitLoadStructure):
+        * jit/AssemblyHelpers.h:
+        * jit/SpecializedThunkJIT.h:
+        (JSC::SpecializedThunkJIT::loadArgumentWithSpecificClass): Deleted.
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/StructureIDTable.cpp:
+        (JSC::StructureIDTable::StructureIDTable):
+        (JSC::StructureIDTable::makeFreeListFromRange):
+        (JSC::StructureIDTable::resize):
+        (JSC::StructureIDTable::allocateID):
+        (JSC::StructureIDTable::deallocateID):
+        * runtime/StructureIDTable.h:
+        (JSC::StructureIDTable::decode):
+        (JSC::StructureIDTable::encode):
+        (JSC::StructureIDTable::get):
+        (JSC::StructureIDTable::isValid):
+
 2019-02-26  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r242071.

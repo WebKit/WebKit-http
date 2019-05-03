@@ -546,7 +546,7 @@ public:
     std::unique_ptr<PromiseDeferredTimer> promiseDeferredTimer;
     
     JSCell* currentlyDestructingCallbackObject;
-    PoisonedClassInfoPtr currentlyDestructingCallbackObjectClassInfo;
+    const ClassInfo* currentlyDestructingCallbackObjectClassInfo { nullptr };
 
     AtomicStringTable* m_atomicStringTable;
     WTF::SymbolRegistry m_symbolRegistry;
@@ -884,6 +884,8 @@ public:
     CFRunLoopRef runLoop() const { return m_runLoop.get(); }
     JS_EXPORT_PRIVATE void setRunLoop(CFRunLoopRef);
 #endif // USE(CF)
+
+    static void setCrashOnVMCreation(bool);
 
     class DeferExceptionScope {
     public:

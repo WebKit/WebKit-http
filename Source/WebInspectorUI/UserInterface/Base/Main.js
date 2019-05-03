@@ -632,6 +632,11 @@ WI.initializeTarget = function(target)
     }
 };
 
+WI.targetsAvailable = function()
+{
+    return this._targetsAvailablePromise.settled;
+};
+
 WI.whenTargetsAvailable = function()
 {
     return this._targetsAvailablePromise.promise;
@@ -906,7 +911,7 @@ WI.updateVisibilityState = function(visible)
 
 WI.handlePossibleLinkClick = function(event, frame, options = {})
 {
-    let anchorElement = event.target.enclosingNodeOrSelfWithNodeName("a");
+    let anchorElement = event.target.closest("a");
     if (!anchorElement || !anchorElement.href)
         return false;
 
@@ -2115,7 +2120,7 @@ WI._handleDeviceSettingsToolbarButtonClicked = function(event)
         ],
         [
             { name: `Safari ${emDash} iOS 12.1.3 ${emDash} iPhone`, value: "Mozilla/5.0 (iPhone; CPU iPhone OS 12_1_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1" },
-            { name: `Safari ${emDash} iOS 12.1.3 ${emDash} iPod Touch`, value: "Mozilla/5.0 (iPod; CPU iPhone OS 12_1_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1" },
+            { name: `Safari ${emDash} iOS 12.1.3 ${emDash} iPod touch`, value: "Mozilla/5.0 (iPod; CPU iPhone OS 12_1_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1" },
             { name: `Safari ${emDash} iOS 12.1.3 ${emDash} iPad`, value: "Mozilla/5.0 (iPad; CPU iPhone OS 12_1_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Mobile/15E148 Safari/604.1" },
         ],
         [
@@ -2255,19 +2260,25 @@ WI._downloadWebArchive = function(event)
     this.archiveMainFrame();
 };
 
+WI._reloadInspectedInspector = function()
+{
+    const options = {};
+    WI.runtimeManager.evaluateInInspectedWindow(`InspectorFrontendHost.reopen()`, options, function(){});
+};
+
 WI._reloadPage = function(event)
 {
     if (!window.PageAgent)
         return;
 
-    PageAgent.reload();
     event.preventDefault();
-};
 
-WI._reloadToolbarButtonClicked = function(event)
-{
-    // Reload page from origin if the button is clicked while the shift key is pressed down.
-    PageAgent.reload.invoke({ignoreCache: this.modifierKeys.shiftKey});
+    if (InspectorFrontendHost.inspectionLevel() > 1) {
+        WI._reloadInspectedInspector();
+        return;
+    }
+
+    PageAgent.reload();
 };
 
 WI._reloadPageFromOrigin = function(event)
@@ -2275,8 +2286,25 @@ WI._reloadPageFromOrigin = function(event)
     if (!window.PageAgent)
         return;
 
-    PageAgent.reload.invoke({ignoreCache: true});
     event.preventDefault();
+
+    if (InspectorFrontendHost.inspectionLevel() > 1) {
+        WI._reloadInspectedInspector();
+        return;
+    }
+
+    PageAgent.reload.invoke({ignoreCache: true});
+};
+
+WI._reloadToolbarButtonClicked = function(event)
+{
+    if (InspectorFrontendHost.inspectionLevel() > 1) {
+        WI._reloadInspectedInspector();
+        return;
+    }
+
+    // Reload page from origin if the button is clicked while the shift key is pressed down.
+    PageAgent.reload.invoke({ignoreCache: this.modifierKeys.shiftKey});
 };
 
 WI._updateReloadToolbarButton = function()
@@ -2332,7 +2360,7 @@ WI._focusConsolePrompt = function(event)
 WI._focusedContentBrowser = function()
 {
     if (this.currentFocusElement) {
-        let contentBrowserElement = this.currentFocusElement.enclosingNodeOrSelfWithClass("content-browser");
+        let contentBrowserElement = this.currentFocusElement.closest(".content-browser");
         if (contentBrowserElement && contentBrowserElement.__view && contentBrowserElement.__view instanceof WI.ContentBrowser)
             return contentBrowserElement.__view;
     }

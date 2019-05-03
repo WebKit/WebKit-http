@@ -148,6 +148,9 @@ public:
     void setItpDebugModeEnabled(bool isEnabled) { m_itpDebugMode = isEnabled; }
     bool itpDebugModeEnabled() const { return m_itpDebugMode; }
 
+    void setIsITPDatabaseEnabled(bool isEnabled) { m_isITPDatabaseEnabled = isEnabled; }
+    bool isITPDatabaseEnabled() const { return m_isITPDatabaseEnabled; }
+
     void setRestrictedHTTPResponseAccess(bool isEnabled) { m_isRestrictedHTTPResponseAccess = isEnabled; }
     bool restrictedHTTPResponseAccess() const { return m_isRestrictedHTTPResponseAccess; }
 
@@ -352,6 +355,9 @@ public:
     void setMousemoveEventHandlingPreventsDefaultEnabled(bool isEnabled) { m_mousemoveEventHandlingPreventsDefaultEnabled = isEnabled; }
 #endif
     
+    bool referrerPolicyAttributeEnabled() const { return m_referrerPolicyAttributeEnabled; }
+    void setReferrerPolicyAttributeEnabled(bool isEnabled) { m_referrerPolicyAttributeEnabled = isEnabled; }
+
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
 private:
@@ -400,7 +406,7 @@ private:
     bool m_attrStyleEnabled { false };
     bool m_webAPIStatisticsEnabled { false };
     bool m_CSSCustomPropertiesAndValuesEnabled { false };
-    bool m_pointerEventsEnabled { false };
+    bool m_pointerEventsEnabled { true };
     bool m_webSQLEnabled { true };
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
@@ -530,9 +536,13 @@ private:
     bool m_adClickAttributionEnabled { false };
 
 #if ENABLE(TOUCH_EVENTS)
-    bool m_mouseEventsSimulationEnabled { false };
+    bool m_mouseEventsSimulationEnabled { true };
     bool m_mousemoveEventHandlingPreventsDefaultEnabled { false };
 #endif
+
+    bool m_isITPDatabaseEnabled { false };
+
+    bool m_referrerPolicyAttributeEnabled { false };
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,11 +27,9 @@
 #ifndef JSCallbackObject_h
 #define JSCallbackObject_h
 
-#include "JSCPoison.h"
 #include "JSObjectRef.h"
 #include "JSValueRef.h"
 #include "JSObject.h"
-#include <wtf/PoisonedUniquePtr.h>
 
 namespace JSC {
 
@@ -227,8 +225,8 @@ private:
     static EncodedJSValue staticFunctionGetter(ExecState*, EncodedJSValue, PropertyName);
     static EncodedJSValue callbackGetter(ExecState*, EncodedJSValue, PropertyName);
 
-    WTF::PoisonedUniquePtr<JSCallbackObjectPoison, JSCallbackObjectData> m_callbackObjectData;
-    PoisonedClassInfoPtr m_classInfo;
+    std::unique_ptr<JSCallbackObjectData> m_callbackObjectData;
+    const ClassInfo* m_classInfo { nullptr };
 };
 
 } // namespace JSC

@@ -4038,7 +4038,7 @@ void SpeculativeJIT::compile(Node* node)
             }
 
             m_jit.loadPtr(MacroAssembler::Address(inputGPR, JSString::offsetOfValue()), resultGPR);
-            slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, resultGPR));
+            slowPath.append(m_jit.branchIfRopeStringImpl(resultGPR));
             m_jit.load32(MacroAssembler::Address(resultGPR, StringImpl::flagsOffset()), resultGPR);
             m_jit.urshift32(MacroAssembler::TrustedImm32(StringImpl::s_flagCount), resultGPR);
             slowPath.append(m_jit.branchTest32(MacroAssembler::Zero, resultGPR));
@@ -4076,7 +4076,7 @@ void SpeculativeJIT::compile(Node* node)
         MacroAssembler::JumpList slowPath;
         straightHash.append(m_jit.branchIfNotString(inputGPR));
         m_jit.loadPtr(MacroAssembler::Address(inputGPR, JSString::offsetOfValue()), resultGPR);
-        slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, resultGPR));
+        slowPath.append(m_jit.branchIfRopeStringImpl(resultGPR));
         m_jit.load32(MacroAssembler::Address(resultGPR, StringImpl::flagsOffset()), resultGPR);
         m_jit.urshift32(MacroAssembler::TrustedImm32(StringImpl::s_flagCount), resultGPR);
         slowPath.append(m_jit.branchTest32(MacroAssembler::Zero, resultGPR));
@@ -4450,7 +4450,7 @@ void SpeculativeJIT::compile(Node* node)
         case StringUse: {
             speculateString(node->child2(), keyGPR);
             m_jit.loadPtr(MacroAssembler::Address(keyGPR, JSString::offsetOfValue()), implGPR);
-            slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, implGPR));
+            slowPath.append(m_jit.branchIfRopeStringImpl(implGPR));
             slowPath.append(m_jit.branchTest32(
                 MacroAssembler::Zero, MacroAssembler::Address(implGPR, StringImpl::flagsOffset()),
                 MacroAssembler::TrustedImm32(StringImpl::flagIsAtomic())));
@@ -4460,7 +4460,7 @@ void SpeculativeJIT::compile(Node* node)
             slowPath.append(m_jit.branchIfNotCell(JSValueRegs(keyGPR)));
             auto isNotString = m_jit.branchIfNotString(keyGPR);
             m_jit.loadPtr(MacroAssembler::Address(keyGPR, JSString::offsetOfValue()), implGPR);
-            slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, implGPR));
+            slowPath.append(m_jit.branchIfRopeStringImpl(implGPR));
             slowPath.append(m_jit.branchTest32(
                 MacroAssembler::Zero, MacroAssembler::Address(implGPR, StringImpl::flagsOffset()),
                 MacroAssembler::TrustedImm32(StringImpl::flagIsAtomic())));

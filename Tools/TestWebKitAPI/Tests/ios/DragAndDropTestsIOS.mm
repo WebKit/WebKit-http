@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(DRAG_SUPPORT) && PLATFORM(IOS_FAMILY) && WK_API_ENABLED
+#if ENABLE(DRAG_SUPPORT) && PLATFORM(IOS_FAMILY)
 
 #import "ClassMethodSwizzler.h"
 #import "DragAndDropSimulator.h"
@@ -414,7 +414,7 @@ TEST(DragAndDropTests, ContentEditableToTextarea)
     EXPECT_TRUE([observedEventNames containsObject:@"dragenter"]);
     EXPECT_TRUE([observedEventNames containsObject:@"dragover"]);
     EXPECT_TRUE([observedEventNames containsObject:@"drop"]);
-    checkSelectionRectsWithLogging(@[ makeCGRectValue(6, 203, 990, 232) ], [simulator finalSelectionRects]);
+    checkSelectionRectsWithLogging(@[ makeCGRectValue(101, 203, 990, 232) ], [simulator finalSelectionRects]);
     checkRichTextTypePrecedesPlainTextType(simulator.get());
     EXPECT_TRUE([simulator lastKnownDropProposal].precise);
 }
@@ -2084,4 +2084,4 @@ TEST(DragAndDropTests, DataTransferSanitizeHTML)
 
 } // namespace TestWebKitAPI
 
-#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(IOS_FAMILY) && WK_API_ENABLED
+#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(IOS_FAMILY)

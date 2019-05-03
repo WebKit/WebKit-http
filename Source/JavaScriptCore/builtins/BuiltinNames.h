@@ -64,17 +64,14 @@ namespace JSC {
     macro(ArrayBuffer) \
     macro(RegExp) \
     macro(Promise) \
-    macro(Reflect) \
     macro(InternalPromise) \
     macro(trunc) \
     macro(create) \
     macro(defineProperty) \
     macro(getPrototypeOf) \
-    macro(getOwnPropertyDescriptor) \
     macro(getOwnPropertyNames) \
     macro(ownKeys) \
     macro(Set) \
-    macro(TypeError) \
     macro(typedArrayLength) \
     macro(typedArraySort) \
     macro(typedArrayGetOriginalConstructor) \
@@ -82,7 +79,6 @@ namespace JSC {
     macro(BuiltinLog) \
     macro(BuiltinDescribe) \
     macro(homeObject) \
-    macro(templateRegistryKey) \
     macro(enqueueJob) \
     macro(hostPromiseRejectionTracker) \
     macro(promiseIsHandled) \
@@ -143,6 +139,7 @@ namespace JSC {
     macro(regExpCreate) \
     macro(replaceUsingRegExp) \
     macro(replaceUsingStringSearch) \
+    macro(makeTypeError) \
     macro(mapBucket) \
     macro(mapBucketHead) \
     macro(mapBucketNext) \

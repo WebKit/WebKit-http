@@ -171,6 +171,7 @@ class TextCheckingRequest;
 class VisiblePosition;
 
 enum SyntheticClickType : int8_t;
+enum class DOMPasteAccessResponse : uint8_t;
 enum class DragHandlingMethod : uint8_t;
 enum class ShouldTreatAsContinuingLoad : bool;
 enum class TextIndicatorPresentationTransition : uint8_t;
@@ -346,7 +347,6 @@ public:
     void didFinishLoad(WebFrame*);
     void show();
     String userAgent(const URL&) const;
-    String userAgent(WebFrame*, const URL&) const;
     String platformUserAgent(const URL&) const;
     WebCore::KeyboardUIMode keyboardUIMode();
 
@@ -641,8 +641,7 @@ public:
     void requestAutocorrectionData(const String& textForAutocorrection, CallbackID);
     void applyAutocorrection(const String& correction, const String& originalText, CallbackID);
     void syncApplyAutocorrection(const String& correction, const String& originalText, CompletionHandler<void(bool)>&&);
-    void requestAutocorrectionContext(CallbackID);
-    void autocorrectionContextSync(CompletionHandler<void(WebAutocorrectionContext&&)>&&);
+    void requestAutocorrectionContext();
     void getPositionInformation(const InteractionInformationRequest&, CompletionHandler<void(InteractionInformationAtPosition&&)>&&);
     void requestPositionInformation(const InteractionInformationRequest&);
     void startInteractionWithElementAtPosition(const WebCore::IntPoint&);
@@ -729,6 +728,7 @@ public:
 
     private:
         void setPendingProvisionalSandboxExtension(RefPtr<SandboxExtension>&&);
+        bool shouldReuseCommittedSandboxExtension(WebFrame*);
 
         RefPtr<SandboxExtension> m_pendingProvisionalSandboxExtension;
         RefPtr<SandboxExtension> m_provisionalSandboxExtension;
@@ -937,7 +937,7 @@ public:
     bool platformPrefersTextLegibilityBasedZoomScaling() const;
     const WebCore::ViewportConfiguration& viewportConfiguration() const { return m_viewportConfiguration; }
 
-    void hardwareKeyboardAvailabilityChanged();
+    void hardwareKeyboardAvailabilityChanged(bool keyboardIsAttached);
 
     void updateStringForFind(const String&);
 #endif
@@ -1144,10 +1144,13 @@ public:
         return sendSync(WTFMove(message), WTFMove(reply), m_pageID, Seconds::infinity(), IPC::SendSyncOption::InformPlatformProcessWillSuspend);
     }
 
-    bool requestDOMPasteAccess();
+    WebCore::DOMPasteAccessResponse requestDOMPasteAccess(const String& originIdentifier);
     WebCore::IntRect rectForElementAtInteractionLocation() const;
 
     const Optional<WebCore::Color>& backgroundColor() const { return m_backgroundColor; }
+
+    void suspendAllMediaBuffering();
+    void resumeAllMediaBuffering();
 
 private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);
@@ -1185,8 +1188,8 @@ private:
     RefPtr<WebCore::Range> rangeForWebSelectionAtPosition(const WebCore::IntPoint&, const WebCore::VisiblePosition&, SelectionFlags&);
     void getFocusedElementInformation(FocusedElementInformation&);
     void platformInitializeAccessibility();
-    void handleSyntheticClick(WebCore::Node* nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebKit::WebEvent::Modifier>);
-    void completeSyntheticClick(WebCore::Node* nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebKit::WebEvent::Modifier>, WebCore::SyntheticClickType);
+    void handleSyntheticClick(WebCore::Node& nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebKit::WebEvent::Modifier>);
+    void completeSyntheticClick(WebCore::Node& nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebKit::WebEvent::Modifier>, WebCore::SyntheticClickType);
     void sendTapHighlightForNodeIfNecessary(uint64_t requestID, WebCore::Node*);
     void resetTextAutosizing();
     WebCore::VisiblePosition visiblePositionInFocusedNodeForPoint(const WebCore::Frame&, const WebCore::IntPoint&, bool isInteractingWithFocusedElement);
@@ -1391,11 +1394,6 @@ private:
     void userMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String&& invalidConstraint);
 
     void didCompleteMediaDeviceEnumeration(uint64_t userMediaID, const Vector<WebCore::CaptureDevice>& devices, String&& deviceIdentifierHashSalt, bool originHasPersistentAccess);
-#endif
-
-#if ENABLE(MEDIA_STREAM) && ENABLE(SANDBOX_EXTENSIONS)
-    void grantUserMediaDeviceSandboxExtensions(MediaDeviceSandboxExtensions&&);
-    void revokeUserMediaDeviceSandboxExtensions(const Vector<String>&);
 #endif
 
 #if ENABLE(WEB_RTC)
@@ -1845,6 +1843,9 @@ private:
     OptionSet<LayerTreeFreezeReason> m_LayerTreeFreezeReasons;
     bool m_isSuspended { false };
     bool m_needsFontAttributes { false };
+#if PLATFORM(IOS_FAMILY)
+    bool m_keyboardIsAttached { false };
+#endif
 };
 
 } // namespace WebKit

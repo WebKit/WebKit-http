@@ -83,6 +83,7 @@
 #include <WebCore/PlatformEvent.h>
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/PointerID.h>
+#include <WebCore/RegistrableDomain.h>
 #include <WebCore/ScrollTypes.h>
 #include <WebCore/SearchPopupMenu.h>
 #include <WebCore/TextChecking.h>
@@ -159,7 +160,6 @@ class URLRequest;
 
 namespace IPC {
 class Decoder;
-class Connection;
 }
 
 namespace WebCore {
@@ -181,6 +181,7 @@ class ValidationBubble;
 enum SelectionDirection : uint8_t;
 
 enum class AutoplayEvent : uint8_t;
+enum class DOMPasteAccessResponse : uint8_t;
 enum class LockBackForwardList : bool;
 enum class HasInsecureContent : bool;
 enum class NotificationDirection : uint8_t;
@@ -227,6 +228,7 @@ typedef HWND PlatformWidget;
 namespace WebKit {
 class DrawingAreaProxy;
 class EditableImageController;
+class GamepadData;
 class NativeWebGestureEvent;
 class NativeWebKeyboardEvent;
 class NativeWebMouseEvent;
@@ -262,7 +264,7 @@ class WebProcessProxy;
 class WebUserContentControllerProxy;
 class WebWheelEvent;
 class WebsiteDataStore;
-class GamepadData;
+class WebViewDidMoveToWindowObserver;
 
 struct AttributedString;
 struct ColorSpaceData;
@@ -348,6 +350,9 @@ class WebPageProxy : public API::ObjectImpl<API::Object::Type::Page>
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
     , public WebCore::WebMediaSessionManagerClient
 #endif
+#if ENABLE(APPLE_PAY)
+    , public WebPaymentCoordinatorProxy::Client
+#endif
     , public WebPopupMenuProxy::Client
     , public IPC::MessageReceiver
     , public IPC::MessageSender
@@ -372,9 +377,10 @@ public:
     WebNavigationState& navigationState() { return *m_navigationState.get(); }
 
     WebsiteDataStore& websiteDataStore() { return m_websiteDataStore; }
-    void changeWebsiteDataStore(WebsiteDataStore&);
 
     void addPreviouslyVisitedPath(const String&);
+
+    WebProcessLifetimeTracker& webProcessLifetimeTracker() { return m_webProcessLifetimeTracker; }
 
 #if ENABLE(DATA_DETECTION)
     NSArray *dataDetectionResults() { return m_dataDetectionResults.get(); }
@@ -644,8 +650,8 @@ public:
     void requestAutocorrectionData(const String& textForAutocorrection, WTF::Function<void (const Vector<WebCore::FloatRect>&, const String&, double, uint64_t, CallbackBase::Error)>&&);
     void applyAutocorrection(const String& correction, const String& originalText, WTF::Function<void (const String&, CallbackBase::Error)>&&);
     bool applyAutocorrection(const String& correction, const String& originalText);
-    void requestAutocorrectionContext(Function<void(const WebAutocorrectionContext&, CallbackBase::Error)>&&);
-    WebAutocorrectionContext autocorrectionContextSync();
+    void requestAutocorrectionContext();
+    void handleAutocorrectionContext(const WebAutocorrectionContext&);
     void requestDictationContext(WTF::Function<void (const String&, const String&, const String&, CallbackBase::Error)>&&);
     void replaceDictatedText(const String& oldText, const String& newText);
     void replaceSelectedText(const String& oldText, const String& newText);
@@ -682,7 +688,7 @@ public:
     void storeSelectionForAccessibility(bool);
     void startAutoscrollAtPosition(const WebCore::FloatPoint& positionInWindow);
     void cancelAutoscroll();
-    void hardwareKeyboardAvailabilityChanged();
+    void hardwareKeyboardAvailabilityChanged(bool keyboardIsAttached);
     bool isScrollingOrZooming() const { return m_isScrollingOrZooming; }
     void requestEvasionRectsAboveSelection(CompletionHandler<void(const Vector<WebCore::FloatRect>&)>&&);
 #if ENABLE(DATA_INTERACTION)
@@ -752,10 +758,8 @@ public:
     NSWindow *platformWindow();
     void rootViewToWindow(const WebCore::IntRect& viewRect, WebCore::IntRect& windowRect);
 
-#if WK_API_ENABLED
     NSView *inspectorAttachmentView();
     _WKRemoteObjectRegistry *remoteObjectRegistry();
-#endif
 
     void intrinsicContentSizeDidChange(const WebCore::IntSize& intrinsicContentSize);
     CGRect boundsOfLayerInLayerBackedWindowCoordinates(CALayer *) const;
@@ -1394,7 +1398,7 @@ public:
 #endif
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    void requestStorageAccessConfirm(const String& subFrameHost, const String& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&&);
+    void requestStorageAccessConfirm(const WebCore::RegistrableDomain& subFrameDomain, const WebCore::RegistrableDomain& topFrameDomain, uint64_t frameID, CompletionHandler<void(bool)>&&);
 #endif
 
     static WebPageProxy* nonEphemeralWebPageProxy();
@@ -1463,6 +1467,10 @@ public:
 
     void dumpAdClickAttribution(CompletionHandler<void(const String&)>&&);
     void clearAdClickAttribution(CompletionHandler<void()>&&);
+
+    void addObserver(WebViewDidMoveToWindowObserver&);
+    void removeObserver(WebViewDidMoveToWindowObserver&);
+    void webViewDidMoveToWindow();
 
     // IPC::MessageReceiver
     // Implemented in generated WebPageProxyMessageReceiver.cpp
@@ -1633,8 +1641,8 @@ private:
     void didFailToSuspendAfterProcessSwap();
     void didSuspendAfterProcessSwap();
 
-    enum class ShouldInitializeWebPage { No, Yes };
-    void finishAttachingToWebProcess(ShouldInitializeWebPage = ShouldInitializeWebPage::Yes);
+    enum class IsProcessSwap { No, Yes };
+    void finishAttachingToWebProcess(IsProcessSwap);
 
     RefPtr<API::Navigation> reattachToWebProcessForReload();
     RefPtr<API::Navigation> reattachToWebProcessWithItem(WebBackForwardListItem&);
@@ -1666,7 +1674,7 @@ private:
     void setNeedsHiddenContentEditableQuirk(bool);
     void setNeedsPlainTextQuirk(bool);
 
-    void requestDOMPasteAccess(const WebCore::IntRect&, CompletionHandler<void(bool)>&&);
+    void requestDOMPasteAccess(const WebCore::IntRect&, const String&, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&&);
 
     // Back/Forward list management
     void backForwardAddItem(BackForwardListItemState&&);
@@ -1965,6 +1973,22 @@ private:
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void logFrameNavigation(const WebFrameProxy&, const URL& pageURL, const WebCore::ResourceRequest&, const URL& redirectURL);
+#endif
+
+    // WebPaymentCoordinatorProxy::Client
+#if ENABLE(APPLE_PAY)
+    IPC::Connection* paymentCoordinatorConnection(const WebPaymentCoordinatorProxy&) final;
+    IPC::MessageReceiverMap& paymentCoordinatorMessageReceiver(const WebPaymentCoordinatorProxy&) final;
+    const String& paymentCoordinatorSourceApplicationBundleIdentifier(const WebPaymentCoordinatorProxy&) final;
+    const String& paymentCoordinatorSourceApplicationSecondaryIdentifier(const WebPaymentCoordinatorProxy&) final;
+    uint64_t paymentCoordinatorDestinationID(const WebPaymentCoordinatorProxy&) final;
+#endif
+#if ENABLE(APPLE_PAY) && PLATFORM(IOS_FAMILY)
+    UIViewController *paymentCoordinatorPresentingViewController(const WebPaymentCoordinatorProxy&) final;
+    const String& paymentCoordinatorCTDataConnectionServiceType(const WebPaymentCoordinatorProxy&) final;
+#endif
+#if ENABLE(APPLE_PAY) && PLATFORM(MAC)
+    NSWindow *paymentCoordinatorPresentingWindow(const WebPaymentCoordinatorProxy&) final;
 #endif
 
     WeakPtr<PageClient> m_pageClient;
@@ -2309,7 +2333,6 @@ private:
     WebCore::ScrollPinningBehavior m_scrollPinningBehavior { WebCore::DoNotPin };
     Optional<WebCore::ScrollbarOverlayStyle> m_scrollbarOverlayStyle;
 
-    uint64_t m_navigationID { 0 };
     ActivityStateChangeID m_currentActivityStateChangeID { ActivityStateChangeAsynchronous };
 
     WebPreferencesStore::ValueMap m_configurationPreferenceValues;
@@ -2381,6 +2404,8 @@ private:
 #if HAVE(PENCILKIT)
     std::unique_ptr<EditableImageController> m_editableImageController;
 #endif
+
+    HashMap<WebViewDidMoveToWindowObserver*, WeakPtr<WebViewDidMoveToWindowObserver>> m_webViewDidMoveToWindowObservers;
 };
 
 } // namespace WebKit

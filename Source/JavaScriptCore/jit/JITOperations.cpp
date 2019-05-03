@@ -1542,7 +1542,7 @@ SlowPathReturnType JIT_OPERATION operationOptimize(ExecState* exec, uint32_t byt
             numVarsWithValues = codeBlock->numCalleeLocals();
         else
             numVarsWithValues = 0;
-        Operands<JSValue> mustHandleValues(codeBlock->numParameters(), numVarsWithValues);
+        Operands<Optional<JSValue>> mustHandleValues(codeBlock->numParameters(), numVarsWithValues);
         int localsUsedForCalleeSaves = static_cast<int>(CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters());
         for (size_t i = 0; i < mustHandleValues.size(); ++i) {
             int operand = mustHandleValues.operandForIndex(i);
@@ -1806,7 +1806,9 @@ static JSValue getByVal(ExecState* exec, JSValue baseValue, JSValue subscript, B
     if (LIKELY(baseValue.isCell() && subscript.isString())) {
         Structure& structure = *baseValue.asCell()->structure(vm);
         if (JSCell::canUseFastGetOwnProperty(structure)) {
-            if (RefPtr<AtomicStringImpl> existingAtomicString = asString(subscript)->toExistingAtomicString(exec)) {
+            RefPtr<AtomicStringImpl> existingAtomicString = asString(subscript)->toExistingAtomicString(exec);
+            RETURN_IF_EXCEPTION(scope, JSValue());
+            if (existingAtomicString) {
                 if (JSValue result = baseValue.asCell()->fastGetOwnProperty(vm, structure, existingAtomicString.get())) {
                     ASSERT(exec->bytecodeOffset());
                     if (byValInfo->stubInfo && byValInfo->cachedId.impl() != existingAtomicString)

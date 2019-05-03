@@ -52,7 +52,7 @@ enum class ShouldSample : bool;
 namespace WebKit {
 
 class NetworkSession;
-class ResourceLoadStatisticsMemoryStore;
+class ResourceLoadStatisticsStore;
 class ResourceLoadStatisticsPersistentStorage;
 class WebFrameProxy;
 class WebProcessProxy;
@@ -103,7 +103,7 @@ public:
     void logSubresourceLoading(const SubResourceDomain&, const TopFrameDomain&, WallTime lastSeen, CompletionHandler<void()>&&);
     void logSubresourceRedirect(const RedirectedFromDomain&, const RedirectedToDomain&, CompletionHandler<void()>&&);
     void clearUserInteraction(const TopFrameDomain&, CompletionHandler<void()>&&);
-    void deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType>, Vector<RegistrableDomain>&&, bool shouldNotifyPage, CompletionHandler<void(const HashSet<String>&)>&&);
+    void deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType>, Vector<RegistrableDomain>&&, bool shouldNotifyPage, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&&);
     void registrableDomainsWithWebsiteData(OptionSet<WebsiteDataType>, bool shouldNotifyPage, CompletionHandler<void(HashSet<RegistrableDomain>&&)>&&);
     bool grantStorageAccess(const SubFrameDomain&, const TopFrameDomain&, Optional<FrameID>, PageID);
     void hasHadUserInteraction(const RegistrableDomain&, CompletionHandler<void(bool)>&&);
@@ -126,8 +126,8 @@ public:
     void isGrandfathered(const RegistrableDomain&, CompletionHandler<void(bool)>&&);
     void removePrevalentDomains(const Vector<RegistrableDomain>&);
     void setNotifyPagesWhenDataRecordsWereScanned(bool, CompletionHandler<void()>&&);
-    void setSubframeUnderTopFrameOrigin(const SubFrameDomain&, const TopFrameDomain&, CompletionHandler<void()>&&);
-    void setSubresourceUnderTopFrameOrigin(const SubResourceDomain&, const TopFrameDomain&, CompletionHandler<void()>&&);
+    void setSubframeUnderTopFrameDomain(const SubFrameDomain&, const TopFrameDomain&, CompletionHandler<void()>&&);
+    void setSubresourceUnderTopFrameDomain(const SubResourceDomain&, const TopFrameDomain&, CompletionHandler<void()>&&);
     void setSubresourceUniqueRedirectTo(const SubResourceDomain&, const RedirectedToDomain&, CompletionHandler<void()>&&);
     void setSubresourceUniqueRedirectFrom(const SubResourceDomain&, const RedirectedFromDomain&, CompletionHandler<void()>&&);
     void setTopFrameUniqueRedirectTo(const TopFrameDomain&, const RedirectedToDomain&, CompletionHandler<void()>&&);
@@ -189,7 +189,7 @@ private:
 
     WeakPtr<NetworkSession> m_networkSession;
     Ref<WorkQueue> m_statisticsQueue;
-    std::unique_ptr<ResourceLoadStatisticsMemoryStore> m_memoryStore;
+    std::unique_ptr<ResourceLoadStatisticsStore> m_statisticsStore;
     std::unique_ptr<ResourceLoadStatisticsPersistentStorage> m_persistentStorage;
 
     RunLoop::Timer<WebResourceLoadStatisticsStore> m_dailyTasksTimer;

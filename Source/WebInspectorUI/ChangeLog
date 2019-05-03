@@ -1,3 +1,1013 @@
+2019-03-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: CSS Changes: only show changes for the given node
+        https://bugs.webkit.org/show_bug.cgi?id=194608
+        <rdar://problem/48050206>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ChangesDetailsSidebarPanel.js:
+        (WI.ChangesDetailsSidebarPanel.prototype.inspect):
+        (WI.ChangesDetailsSidebarPanel.prototype.supportsDOMNode):
+        (WI.ChangesDetailsSidebarPanel.prototype.layout):
+        Make this panel a subclass of `WI.DOMDetailsSidebarPanel` so it has access to the selected
+        DOM node in the Elements tab.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView):
+        Create new general setting for controlling this change.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: color swatches aren't shown for valid inputs with leading/trailing whitespace
+        https://bugs.webkit.org/show_bug.cgi?id=195298
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement._generateDOM):
+        (WI.RecordingActionTreeElement._createSwatchForColorParameters):
+        Trim the color string since it can be an arbitrary string, seeing as it is captured before
+        the <canvas> has a chance to parse/fix it.
+
+2019-03-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: recordsInTimeRange sometimes does not get the expected record when includeRecordBeforeStart
+        https://bugs.webkit.org/show_bug.cgi?id=195317
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/Timeline.js:
+        (WI.Timeline.prototype.recordsOverlappingTimeRange):
+
+2019-03-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: remove event listeners once a recording is ready
+        https://bugs.webkit.org/show_bug.cgi?id=195324
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording):
+        (WI.Recording.prototype.async swizzle):
+        (WI.Recording.prototype.async _process):
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement):
+        (WI.RecordingActionTreeElement.prototype._handleValidityChanged):
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype.set recording):
+        (WI.CanvasSidebarPanel.prototype._handleRecordingProcessedAction):
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype.initialLayout):
+        (WI.RecordingContentView.prototype._handleRecordingProcessedAction):
+
+2019-03-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Attempting to select records in the bottom 16px of the timeline overview graph fails
+        https://bugs.webkit.org/show_bug.cgi?id=195318
+
+        Reviewed by Devin Rousso.
+
+        The bottom few pixels of the overview are reserved for the scroll-container
+        which may show a scrollbar if the overview needs to scroll. When the scrollbars
+        are not visible we can allow pointer events to click through the invisible
+        scroll-container and allow record selection.
+
+        * UserInterface/Views/TimelineOverview.css:
+        (.timeline-overview:not(.has-scrollbar) > .scroll-container):
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview.prototype._handleScrollEvent):
+        (WI.TimelineOverview.prototype._handleWheelEvent):
+        (WI.TimelineOverview._handleGestureStart):
+
+2019-03-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: iPod user agent UIString should have a lowercase "T"
+        https://bugs.webkit.org/show_bug.cgi?id=195312
+        <rdar://problem/48586853>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        (WI._handleDeviceSettingsToolbarButtonClicked):
+
+2019-03-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Adjust sizes in timeline overview
+        https://bugs.webkit.org/show_bug.cgi?id=195313
+
+        Reviewed by Devin Rousso.
+
+        Reduce the height slightly to save some precious vertical space.
+        Also increase the size of the minimum bar height so that it doesn't
+        look like there are no events when there is low CPU.
+
+        * UserInterface/Views/CPUTimelineOverviewGraph.css:
+        (body .sidebar > .panel.navigation.timeline > .timelines-content li.item.cpu,):
+        * UserInterface/Views/CPUTimelineOverviewGraph.js:
+        (WI.CPUTimelineOverviewGraph.prototype.get height):
+        Reduce the CPU overview graph height to 60px.
+
+        (WI.CPUTimelineOverviewGraph.prototype.layout):
+        Increase the minimum size of a column bar to 4px.
+
+2019-03-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reload actions from second level inspector should properly reload the inspected inspector
+        https://bugs.webkit.org/show_bug.cgi?id=195306
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        Provide a better reload for a Nth level inspector.
+
+        * UserInterface/Debug/Bootstrap.js:
+        (WI.runBootstrapOperations):
+        Simplify, should not need to check for InspectorFrontendHost.
+
+2019-03-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: MediaSource logging not initialized properly
+        https://bugs.webkit.org/show_bug.cgi?id=195307
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Controllers/ConsoleManager.js:
+        (WI.ConsoleManager.prototype.initializeLogChannels):
+        Typo caused undefined to be included and trigger assertions.
+
+2019-03-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: CSS: class input isn't fully centered
+        https://bugs.webkit.org/show_bug.cgi?id=195297
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input):
+        (body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input): Deleted.
+        (body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input): Deleted.
+
+2019-03-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: show the version number in the UI
+        https://bugs.webkit.org/show_bug.cgi?id=195292
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel.prototype.showDefaultContentView):
+        (WI.AuditNavigationSidebarPanel.prototype._updateNoAuditsPlaceholder):
+        Fix the logic for showing a placeholder when editing or with only disabled tests.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.audit > .content > .message-text-view): Added.
+        (.audit-version): Added.
+        Don't obstruct the "Edit" button when showing a placeholder.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ITMLKit Inspector: Data Bindings / Associated Data for nodes
+        https://bugs.webkit.org/show_bug.cgi?id=195290
+        <rdar://problem/48304019>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New title and empty message strings.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.css:
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-associated-data > .content .row):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WI.DOMNodeDetailsSidebarPanel.prototype.initialLayout):
+        (WI.DOMNodeDetailsSidebarPanel.prototype.layout):
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshDataBindings):
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshAssociatedData):
+        (WI.DOMNodeDetailsSidebarPanel.prototype._attributesChanged):
+        New Node sections only enabled for ITMLKit `WI.sharedApp.hasExtraDomains`.
+
+        * UserInterface/Views/ObjectTreeView.js:
+        (WI.ObjectTreeView):
+        Provide a way, like TreeElement/View to access the ObjectTreeView from an element.
+
+2019-03-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: protocol error on first open
+        https://bugs.webkit.org/show_bug.cgi?id=195059
+        <rdar://problem/48407871>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.initializeTarget):
+        (WI.CanvasManager.prototype.static supportsRecordingAutoCapture):
+        (WI.CanvasManager.prototype.setRecordingAutoCaptureFrameCount):
+        If targets aren't available, wait until they are and then set the auto-capture frame count.
+
+2019-03-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Toggling Timeline "Stop when page loads" to on should stop (immediately or soon) any active recording if already past the load event
+        https://bugs.webkit.org/show_bug.cgi?id=195239
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype._handleTimelinesAutoStopSettingChanged):
+
+2019-03-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Unexpectedly frequent flashing of DOM node attributes
+        https://bugs.webkit.org/show_bug.cgi?id=148049
+        <rdar://problem/22296830>
+
+        Reviewed by Joseph Pecoraro.
+
+        Save a timestamp of when the CSS animation began, so that if the attribute's node is replaced,
+        we can "resume" the CSS animation at the same point with the attribute's new node.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement):
+        (WI.DOMTreeElement.prototype.attributeDidChange):
+        (WI.DOMTreeElement.prototype._buildAttributeDOM):
+        (WI.DOMTreeElement.prototype._createModifiedAnimation):
+        (WI.DOMTreeElement.prototype._markNodeChanged): Deleted.
+        (WI.DOMTreeElement.prototype._nodeChangedAnimationEnd): Deleted.
+        (WI.DOMTreeElement.prototype._fireDidChange): Deleted.
+
+2019-03-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: DOM, URL, and Event breakpoints don't grey out when all breakpoints are disabled
+        https://bugs.webkit.org/show_bug.cgi?id=195170
+        <rdar://problem/48478193>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        (WI.DOMBreakpointTreeElement):
+        (WI.DOMBreakpointTreeElement.prototype.onattach):
+        (WI.DOMBreakpointTreeElement.prototype.ondetach):
+        (WI.DOMBreakpointTreeElement.prototype._updateStatus):
+        * UserInterface/Views/EventBreakpointTreeElement.js:
+        (WI.EventBreakpointTreeElement):
+        (WI.EventBreakpointTreeElement.prototype.onattach):
+        (WI.EventBreakpointTreeElement.prototype.ondetach):
+        (WI.EventBreakpointTreeElement.prototype._updateStatus):
+        * UserInterface/Views/URLBreakpointTreeElement.js:
+        (WI.URLBreakpointTreeElement):
+        (WI.URLBreakpointTreeElement.prototype.onattach):
+        (WI.URLBreakpointTreeElement.prototype.ondetach):
+        (WI.URLBreakpointTreeElement.prototype._updateStatus):
+        Remove the `"resolved"` class when the global "breakpoints enabled" state is changed.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager):
+        (WI.DOMDebuggerManager.prototype._handleDOMBreakpointDisabledStateChanged): Added.
+        (WI.DOMDebuggerManager.prototype._handleEventBreakpointDisabledStateChanged): Added.
+        (WI.DOMDebuggerManager.prototype._handleURLBreakpointDisabledStateChanged): Added.
+        (WI.DOMDebuggerManager.prototype._updateEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype._updateURLBreakpoint):
+        (WI.DOMDebuggerManager.prototype._resolveEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype._resolveURLBreakpoint):
+        (WI.DOMDebuggerManager.prototype._updateEventBreakpoint.breakpointUpdated): Deleted.
+        (WI.DOMDebuggerManager.prototype._updateURLBreakpoint.breakpointUpdated): Deleted.
+        * UserInterface/Models/DOMBreakpoint.js:
+        (WI.DOMBreakpoint):
+        (WI.DOMBreakpoint.deserialize): Added.
+        (WI.DOMBreakpoint.prototype.set disabled):
+        (WI.DOMBreakpoint.prototype.set domNodeIdentifier):
+        * UserInterface/Models/EventBreakpoint.js:
+        (WI.EventBreakpoint.deserialize): Added.
+        (WI.EventBreakpoint.prototype.set disabled):
+        (WI.EventBreakpoint.fromPayload): Deleted.
+        * UserInterface/Models/URLBreakpoint.js:
+        (WI.URLBreakpoint.deserialize): Added.
+        (WI.URLBreakpoint.prototype.set disabled):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        (WI.DOMTreeContentView.prototype._handleDOMBreakpointDisabledStateChanged): Added.
+        (WI.DOMTreeContentView.prototype._handleDOMBreakpointDOMNodeChanged): Added.
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._handleDOMBreakpointResolvedStateChanged): Added.
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleDOMBreakpointResolvedStateChanged): Added.
+        Drive-by: rename all events with the name `*DidChange` to `*Changed`.
+        Drive-by: create static `deserialize` helper functions.
+
+2019-03-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: breakpoints should be disabled when an audit is running
+        https://bugs.webkit.org/show_bug.cgi?id=195105
+        <rdar://problem/48441373>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype.closed):
+        (WI.SourcesNavigationSidebarPanel.prototype._updateTemporarilyDisabledBreakpointsButtons): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._updateBreakpointsDisabledBanner):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTimelineCapturingWillStart):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTimelineCapturingStopped):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleAuditManagerTestScheduled): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleAuditManagerTestCompleted): Added.
+        * UserInterface/Views/SourcesNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.sources > .content > .warning-banner + .warning-banner): Added.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+
+2019-03-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: don't enable breakpoints when source location changes
+        https://bugs.webkit.org/show_bug.cgi?id=195081
+        <rdar://problem/48422701>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype._breakpointDisplayLocationDidChange):
+        (WI.DebuggerManager.prototype._breakpointEditablePropertyDidChange):
+
+2019-03-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage - Energy Impact Section
+        https://bugs.webkit.org/show_bug.cgi?id=195151
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        New strings and resources.
+
+        * UserInterface/Views/CPUTimelineView.css:
+        (.timeline-view.cpu > .content .subtitle > .info):
+        (@media (prefers-color-scheme: dark)):
+        (.energy-info-popover-content):
+        (.timeline-view.cpu > .content > .overview > .divider):
+        (body[dir=ltr] .timeline-view.cpu > .content > .overview > .divider):
+        (body[dir=rtl] .timeline-view.cpu > .content > .overview > .divider):
+        (.timeline-view.cpu :matches(.area-chart, .stacked-area-chart) svg > path):
+        (.timeline-view.cpu .gauge-chart:not(.empty) > svg > path.low):
+        (.timeline-view.cpu .gauge-chart:not(.empty) > svg > path.medium):
+        (.timeline-view.cpu .gauge-chart:not(.empty) > svg > path.high):
+        (.timeline-view.cpu .gauge-chart:not(.empty) > svg > polygon.needle):
+        (.timeline-view.cpu .energy):
+        (.timeline-view.cpu .energy .energy-impact):
+        (.timeline-view.cpu .energy .energy-impact.low):
+        (.timeline-view.cpu .energy .energy-impact.medium):
+        (.timeline-view.cpu .energy .energy-impact.high):
+        (.timeline-view.cpu .energy .energy-impact-number):
+        Styling the chart and text for the different energy impact levels.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype.get lowEnergyValue):
+        (WI.CPUTimelineView.prototype.get highEnergyValue):
+        (WI.CPUTimelineView.prototype.initialLayout):
+        (WI.CPUTimelineView.prototype.layout):
+        (WI.CPUTimelineView.prototype._layoutEnergyChart.mapWithBias):
+        (WI.CPUTimelineView.prototype._layoutEnergyChart.valuesForGauge):
+        (WI.CPUTimelineView.prototype._layoutEnergyChart):
+        (WI.CPUTimelineView.prototype._clearEnergyImpactText):
+        New gauge chart and associated popover.
+        We do a bit of biasing of the data for each of the sections
+        in the gauge chart. Each section biases toward the cap of the
+        section so that:
+          - we encourage lower power usage (sub 3%)
+          - the gauge needle quickly moves past the low value of a range
+
+        * UserInterface/Views/GaugeChart.css: Added.
+        (.gauge-chart):
+        (body[dir=rtl] .gauge-chart):
+        (.gauge-chart > svg > path,):
+        (.gauge-chart > svg > polygon.needle):
+        (.gauge-chart.empty > svg > polygon.needle):
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/GaugeChart.js: Added.
+        (WI.GaugeChart.prototype.get size):
+        (WI.GaugeChart.prototype.get segments):
+        (WI.GaugeChart.prototype.get value):
+        (WI.GaugeChart.prototype.set value):
+        (WI.GaugeChart.prototype.clear):
+        (WI.GaugeChart.prototype.initialLayout):
+        (WI.GaugeChart.prototype.layout):
+        (WI.GaugeChart.prototype._validateSegments):
+        (WI.GaugeChart.prototype._createSegmentPathData):
+        GaugeChart with variable number of sections and a
+        current value needle. It has a bit of customization
+        when drawing the arc at the start of each segment.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        (@media (prefers-color-scheme: dark)):
+        New CPU colors for the different energy impact levels.
+
+2019-03-01  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Data grid border colors don't match accent colors
+        https://bugs.webkit.org/show_bug.cgi?id=195232
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid:focus tr.selected td:not(:last-child)):
+        (body[dir=ltr] .data-grid:focus tr.selected td:not(:last-child)):
+        (body[dir=rtl] .data-grid:focus tr.selected td:not(:last-child)):
+
+2019-02-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: don't show the auto-stop UI when not inspecting a page
+        https://bugs.webkit.org/show_bug.cgi?id=195192
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        (WI.TimelineRecordingContentView.prototype.get navigationItems):
+
+2019-02-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage: Worker thread that dies might stay at a high value forever
+        https://bugs.webkit.org/show_bug.cgi?id=195148
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (CPUTimelineView.prototype.layout):
+        Handle workers dieing or at least zeroing out between records.
+
+2019-02-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Make Threads section expandable / collapsable
+        https://bugs.webkit.org/show_bug.cgi?id=195085
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Setting.js:
+        New setting to save the Threads expanded/collapsed state.
+
+        * UserInterface/Views/CPUTimelineView.css:
+        (.timeline-view.cpu > .content > .details > .subtitle):
+        (.timeline-view.cpu > .content > .details > details > .subtitle.threads):
+        (.timeline-view.cpu > .content > .details > .subtitle): Deleted.
+        (.timeline-view.cpu > .content > .details > .subtitle.threads): Deleted.
+        Ensure subtitle styles apply now that one of the subtitles is inside
+        of a <details> / <summary> element.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype.initialLayout):
+        Make the Threads group a <details> / <summary> expandable / collapsed element.
+
+        * UserInterface/Views/Main.css:
+        (summary):
+        (summary::-webkit-details-marker):
+        Default styles for <summary>.
+
+2019-02-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: View.removeSubview not removing the element properly when not parented
+        https://bugs.webkit.org/show_bug.cgi?id=195146
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/View.js:
+        (WI.View.prototype.removeSubview):
+        Since the element may not be a direct child, just use Element.prototype.remove.
+
+2019-02-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Debugger: disabled breakpoint color is too dark
+        https://bugs.webkit.org/show_bug.cgi?id=195103
+        <rdar://problem/48440678>
+
+        Reviewed by Devin Rousso.
+
+        Increase the disabled breakpoint contrast, as well as the contrast between
+        disabled and auto-continue breakpoints. Disabled breakpoints stand out by
+        being somewhat brighter and less saturated. Using the same strategy for
+        auto-continue breakpoints is too subtle to provide sufficient contrast.
+
+        We can adopt the technique used by Xcode, and overlay a white triangle
+        marker on the breakpoint arrow to indicate an auto-continue breakpoint.
+
+        * UserInterface/Views/BreakpointTreeElement.css:
+        (.item.breakpoint .status > .status-image):
+        (.item.breakpoint.selected .status > .status-image.resolved):
+        Add white outline to make selected breakpoint button stand out.
+        (.item.breakpoint .status > .status-image.auto-continue::after):
+        (.item.breakpoint .status > .status-image.disabled):
+        (.item.breakpoint .status > .status-image.auto-continue): Deleted.
+
+
+        * UserInterface/Views/DOMTreeContentView.css:
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint):
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.disabled):
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.subtree):
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.disabled,): Deleted.
+
+        * UserInterface/Views/TextEditor.css:
+        (.text-editor > .CodeMirror .has-breakpoint .CodeMirror-linenumber::before):
+        (.text-editor > .CodeMirror .breakpoint-auto-continue:not(.execution-line.primary) .CodeMirror-linenumber::after):
+        (.text-editor > .CodeMirror .breakpoint-disabled .CodeMirror-linenumber::before):
+        (.text-editor > .CodeMirror .breakpoint-auto-continue:not(.breakpoint-disabled) .CodeMirror-linenumber::before): Deleted.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Add breakpoint color variables to use across all breakpoint controls.
+        Use system colors if available, otherwise fall back to hard-coded values
+        based on sampling the default (blue) accent color on Mojave.
+
+2019-02-28  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Control-Space should force completion
+        https://bugs.webkit.org/show_bug.cgi?id=194796
+        <rdar://problem/48180822>
+
+        Reviewed by Matt Baker.
+
+        Pressing Control-Space when editing CSS property should show completion popover,
+        even if the value is empty.
+
+        * UserInterface/Models/CSSCompletions.js:
+        (WI.CSSCompletions.prototype.startsWith):
+        Performance optimization: exit early when `prefix` is empty.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._nameCompletionDataProvider):
+        (WI.SpreadsheetStyleProperty.prototype._valueCompletionDataProvider):
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField):
+        (WI.SpreadsheetTextField.prototype._handleKeyDown):
+        (WI.SpreadsheetTextField.prototype._updateCompletions):
+
+2019-02-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: enabling auto-capture if the frame count is empty triggers an assertion
+        https://bugs.webkit.org/show_bug.cgi?id=195060
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView.prototype._setRecordingAutoCaptureFrameCount):
+        (WI.CanvasOverviewContentView.prototype._updateRecordingAutoCaptureCheckboxLabel):
+        (WI.CanvasOverviewContentView.prototype._handleRecordingAutoCaptureCheckedDidChange):
+
+2019-02-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Revert -webkit-border-end changes that are unreliable
+        https://bugs.webkit.org/show_bug.cgi?id=195149
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CPUUsageIndicatorView.css:
+        (.cpu-usage-indicator-view > .details):
+        (body[dir=ltr] .cpu-usage-indicator-view > .details):
+        (body[dir=rtl] .cpu-usage-indicator-view > .details):
+        * UserInterface/Views/CPUUsageStackedView.css:
+        (.cpu-usage-stacked-view > .details):
+        (body[dir=ltr] .cpu-usage-stacked-view > .details):
+        (body[dir=rtl] .cpu-usage-stacked-view > .details):
+        * UserInterface/Views/CPUUsageView.css:
+        (.cpu-usage-view > .details):
+        (body[dir=ltr] .cpu-usage-view > .details):
+        (body[dir=rtl] .cpu-usage-view > .details):
+        * UserInterface/Views/MemoryCategoryView.css:
+        (.memory-category-view > .details):
+        (body[dir=ltr] .memory-category-view > .details):
+        (body[dir=rtl] .memory-category-view > .details):
+
+2019-02-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cleanup some Chart code
+        https://bugs.webkit.org/show_bug.cgi?id=195147
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/RangeChart.js:
+        (WI.RangeChart.prototype.layout):
+        (WI.RangeChart):
+        * UserInterface/Views/StackedColumnChart.js:
+        (WI.StackedColumnChart.prototype.layout):
+        (WI.StackedColumnChart):
+
+2019-02-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add a new Scanner TimelineMarker to show up when mousing over TimelineView graphs
+        https://bugs.webkit.org/show_bug.cgi?id=195079
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Utilities.js:
+        (Note.prototype.enclosingNodeOrSelfWithClassInArray):
+        Helper for a set of classes.
+
+        * UserInterface/Models/TimelineMarker.js:
+        Add a new marker type, "Scanner".
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype.initialLayout):
+        (WI.CPUTimelineView.prototype._graphPositionForMouseEvent):
+        (WI.CPUTimelineView.prototype._handleGraphMouseMove):
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WI.MemoryTimelineView):
+        (WI.MemoryTimelineView.prototype._graphPositionForMouseEvent):
+        (WI.MemoryTimelineView.prototype._handleGraphMouseMove):
+        Update a scanner time when mousing over various graphs that span the entire time range.
+        These use the containing graph element because there was a single pixel between
+        adjacent graphs which would cause the scanner to flicker because the mouse event target
+        was not an svg element.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview.prototype.hidden):
+        (WI.TimelineOverview.prototype.updateScannerTime):
+        (WI.TimelineOverview.prototype.clearScanner):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        (WI.TimelineRecordingContentView.prototype._handleTimelineViewScannerTimeDidChange):
+        (WI.TimelineRecordingContentView.prototype._handleTimelineViewScannerDidClear):
+        Update the overview's ruler with scanner changes.
+
+        * UserInterface/Views/TimelineRuler.css:
+        (.timeline-ruler > .markers > .marker.scanner):
+        * UserInterface/Views/TimelineRuler.js:
+        (WI.TimelineRuler):
+        (WI.TimelineRuler.prototype.clearMarkers):
+        (WI.TimelineRuler.prototype.updateScannerTime):
+        (WI.TimelineRuler.prototype.clearScanner):
+        (WI.TimelineRuler.prototype._updateMarkers):
+        Have a special scanner marker that updates.
+
+        * UserInterface/Views/TimelineView.js:
+        New events that a TimelineView can dispatch to update the overview.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        (@media (prefers-color-scheme: dark)):
+        Scanner marker colors.
+
+2019-02-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Use Element.closest for internal code
+        https://bugs.webkit.org/show_bug.cgi?id=173747
+
+        Reviewed by Joseph Pecoraro.
+
+        Replace usage of added utility functions on the `Node` prototype with the built-in
+        `Element.prototype.closest` as it's more flexible and is capable of doing the same thing.
+
+        * UserInterface/Base/Utilities.js:
+        (Node.prototype.enclosingNodeOrSelfWithClass): Deleted.
+        (Node.prototype.enclosingNodeOrSelfWithNodeNameInArray): Deleted.
+        (Node.prototype.enclosingNodeOrSelfWithNodeName): Deleted.
+        * UserInterface/Base/Main.js:
+        (WI.handlePossibleLinkClick):
+        (WI._focusedContentBrowser):
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype._graphPositionForMouseEvent):
+        * UserInterface/Views/CompletionSuggestionsView.js:
+        (WI.CompletionSuggestionsView.prototype.set selectedIndex):
+        (WI.CompletionSuggestionsView.prototype.update):
+        (WI.CompletionSuggestionsView.prototype._itemClicked):
+        * UserInterface/Views/ConsoleGroup.js:
+        (WI.ConsoleGroup.prototype._titleClicked):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView.prototype._mouseWasClicked):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype._startEditingTarget):
+        (WI.DOMTreeElement.prototype._populateTagContextMenu):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype.populateContextMenu):
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid.prototype._startEditing):
+        (WI.DataGrid.prototype._editingCancelled):
+        (WI.DataGrid.prototype.dataGridNodeFromNode):
+        (WI.DataGrid.prototype.dataGridNodeFromPoint):
+        (WI.DataGrid.prototype._headerCellClicked):
+        (WI.DataGrid.prototype._mouseoverColumnCollapser):
+        (WI.DataGrid.prototype._mouseoutColumnCollapser):
+        (WI.DataGrid.prototype._clickInColumnCollapser):
+        (WI.DataGrid.prototype._contextMenuInHeader):
+        (WI.DataGrid.prototype._contextMenuInDataTable):
+        * UserInterface/Views/DataGridNode.js:
+        (WI.DataGridNode.prototype.isEventWithinDisclosureTriangle):
+        * UserInterface/Views/LegacyTabBar.js:
+        (WI.LegacyTabBar.prototype._handleMouseDown):
+        (WI.LegacyTabBar.prototype._handleClick):
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype._handleContextMenuEvent):
+        (WI.LogContentView.prototype._mousedown):
+        (WI.LogContentView.prototype._targetInMessageCanBeSelected):
+        (WI.LogContentView.prototype._mousemove):
+        (WI.LogContentView.prototype._mouseup):
+        (WI.LogContentView.prototype._ondragstart):
+        * UserInterface/Views/NavigationBar.js:
+        (WI.NavigationBar.prototype._mouseDown):
+        (WI.NavigationBar.prototype._mouseMoved):
+        * UserInterface/Views/Popover.js:
+        (WI.Popover.prototype.handleEvent):
+        * UserInterface/Views/TabBar.js:
+        (WI.TabBar.prototype._handleMouseDown):
+        (WI.TabBar.prototype._handleClick):
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype._handleMouseDown):
+        (WI.Table.prototype._handleContextMenu):
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.treeElementFromNode):
+
+2019-02-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r242118): Debugger: event breakpoints have no icon
+        https://bugs.webkit.org/show_bug.cgi?id=195119
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/EventBreakpointTreeElement.js:
+        (WI.EventBreakpointTreeElement):
+
+2019-02-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Dark Mode: unreadable text in bezier curve editor numeric input fields
+        https://bugs.webkit.org/show_bug.cgi?id=195018
+        <rdar://problem/48378541>
+
+        Reviewed by Matt Baker.
+
+        Simplify some styles using `-webkit-*` properties instead of `[dir=ltr]`/`[dir=rtl]` selectors.
+
+        * UserInterface/Views/BezierEditor.css:
+        (.bezier-editor):
+        (.bezier-editor > .bezier-preview):
+        (.bezier-editor > .bezier-preview-timing):
+        (.bezier-editor > .bezier-container .linear-curve):
+        (.bezier-editor > .bezier-container .bezier-curve):
+        (.bezier-editor > .bezier-container .control-line):
+        (.bezier-editor > .bezier-container .control-handle):
+        (.bezier-editor > .number-input-container):
+        (.bezier-editor > .number-input-container > input):
+        (body[dir=ltr] .bezier-editor > .bezier-preview-timing): Deleted.
+        (body[dir=rtl] .bezier-editor > .bezier-preview-timing): Deleted.
+        (body[dir=ltr] .bezier-editor > .number-input-container > input): Deleted.
+        (body[dir=rtl] .bezier-editor > .number-input-container > input): Deleted.
+        (@media (prefers-color-scheme: dark)): Deleted.
+        Remove all custom styling on any <input>s, as they look fine with their default styling.
+
+        * UserInterface/Views/SpringEditor.css:
+        (.spring-editor > .spring-preview):
+        (.spring-editor > .spring-preview > div):
+        (.spring-editor > .spring-timing > div):
+
+2019-02-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: popover colors don't change when transitioning to/from dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=195113
+        <rdar://problem/48444188>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/Popover.js:
+        (WI.Popover.prototype.dismiss):
+        (WI.Popover.prototype._addListenersIfNeeded):
+
+2019-02-26  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Use system accent color throughout UI
+        https://bugs.webkit.org/show_bug.cgi?id=193507
+        <rdar://problem/47327971>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Images/Breakpoint.png: Removed.
+        * UserInterface/Images/Breakpoint.svg: Added.
+        * UserInterface/Images/Breakpoint@2x.png: Removed.
+        * UserInterface/Images/BreakpointInactive.png: Removed.
+        * UserInterface/Images/BreakpointInactive@2x.png: Removed.
+        Replace breakpoint pixel art with an SVG image that can be styled in CSS.
+
+        * UserInterface/Images/CSSVariable.svg:
+        * UserInterface/Images/CubicBezier.svg:
+        * UserInterface/Images/UserInputPrompt.svg:
+        Remove fill color since it is now styled in CSS.
+
+        * UserInterface/Views/BezierEditor.css:
+        (.bezier-editor > .bezier-preview > div):
+        (@media (prefers-color-scheme: dark)):
+        (.bezier-editor > .bezier-container .control-handle):
+        (.bezier-editor > .bezier-container .control-line):
+        Use system accent color for control handles.
+
+        * UserInterface/Views/BreakpointTreeElement.css:
+        (.item.breakpoint .status > .status-image):
+        (.item.breakpoint .status > .status-image.resolved):
+        Use system accent color for breakpoint fill, with a dark outline
+        to match Xcode and make the button stand out against the selection.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WI.BreakpointTreeElement.prototype._updateStatus):
+
+        * UserInterface/Views/ButtonNavigationItem.css:
+        (.navigation-bar .item.button > .glyph):
+
+        * UserInterface/Views/ConsolePrompt.js:
+        (WI.ConsolePrompt):
+
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        * UserInterface/Views/DOMTreeContentView.css:
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint):
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.disabled,):
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.subtree):
+        (.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.disabled): Deleted.
+        (.content-view.dom-tree .tree-outline.dom.breakpoints-disabled li .status-image.breakpoint): Deleted.
+        (.content-view.dom-tree .tree-outline.dom.breakpoints-disabled li .status-image.breakpoint.disabled): Deleted.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom li.selected .selection-area):
+        (.tree-outline.dom li.elements-drag-over .selection-area):
+        (.tree-outline.dom:focus li:matches(.selected, .hovered) .selection-area):
+        (.tree-outline.dom li.hovered:not(.selected) .selection-area):
+        (.tree-outline.dom li.pseudo-class-enabled > .selection-area::before):
+        Use the system accent color for the "pseudo-class enabled" marker.
+        (@media (prefers-color-scheme: dark)):
+        (.tree-outline.dom:focus li.selected .selection-area): Deleted.
+        Use --selected-background-color for selection and hover styles, which is
+        set to the system highlight color if available.
+
+        * UserInterface/Views/InlineSwatch.css:
+        (.inline-swatch:matches(.bezier, .spring, .variable)):
+        (.inline-swatch:matches(.bezier, .spring)): Deleted.
+        (.inline-swatch.variable): Deleted.
+
+        * UserInterface/Views/InlineSwatch.js:
+        (WI.InlineSwatch):
+
+        * UserInterface/Views/NetworkDetailView.css:
+        (.network .network-detail .navigation-bar .item.radio.button.text-only:before):
+        (.network .network-detail .navigation-bar .item.radio.button.text-only.selected):
+        (@media (prefers-color-scheme: dark)):
+        (.network-detail .item.close > .glyph):
+
+        * UserInterface/Views/QuickConsole.css:
+        (.quick-console > .console-prompt > .glyph):
+        (.quick-console > .console-prompt::before): Deleted.
+
+        * UserInterface/Views/RadioButtonNavigationItem.css:
+        (.navigation-bar .item.radio.button.text-only):
+        (.navigation-bar .item.radio.button.text-only::before):
+        (.navigation-bar .item.radio.button.text-only:matches(.selected, :hover)):
+        (.navigation-bar .item.radio.button.text-only:matches(.selected, :hover)::before):
+        (.navigation-bar .item.radio.button.text-only:not(.selected):hover::before):
+        (.navigation-bar .item.radio.button.text-only.selected:active::before):
+        (.navigation-bar .item.radio.button.text-only:hover): Deleted.
+        (.navigation-bar .item.radio.button.text-only.selected): Deleted.
+        (.navigation-bar .item.radio.button.text-only:active): Deleted.
+        (.navigation-bar .item.radio.button.text-only.selected:active): Deleted.
+        Use system accent color for selection and hover styles. Since it isn't
+        yet possible to derive new colors from the accent color in CSS, fake it
+        with a ::before pseudo-element that can have have `filter` or `opacity`
+        effects applied to it without altering the button text color.
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.css:
+        (.timeline-overview-graph.rendering-frame > .frame-marker):
+        Use system accent color for selected frame marker.
+
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar > li):
+        (.scope-bar > li::before):
+        (.scope-bar.default-item-selected > li.multiple.selected::before):
+        (.scope-bar > li:matches(.selected, :hover)):
+        (.scope-bar > li:matches(.selected, :hover)::before):
+        (.scope-bar > li:not(.selected):hover::before):
+        (.scope-bar > li.selected:active::before):
+        (.scope-bar > li:hover): Deleted.
+        (.scope-bar > li.selected): Deleted.
+        (.scope-bar > li:active): Deleted.
+        (.scope-bar > li.selected:active): Deleted.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings .navigation-bar .item.radio.button.text-only:before):
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor):
+        (@media (prefers-color-scheme: dark)):
+
+        * UserInterface/Views/TextEditor.css:
+        (.text-editor > .CodeMirror .has-breakpoint .CodeMirror-linenumber::before):
+        (.text-editor > .CodeMirror .breakpoint-resolved .CodeMirror-linenumber::before):
+        (.text-editor > .CodeMirror .has-breakpoint.multiple-breakpoints .CodeMirror-linenumber::before):
+        (@keyframes text-editor-highlight-fadeout):
+        (@keyframes text-editor-hovered-expression-highlight-fadeout):
+        Replace breakpoint pixel art with a solid color (the system accent
+        color) clipped to the shape of a breakpoint.
+
+        * UserInterface/Views/TimelineRecordFrame.css:
+        (.timeline-record-frame.selected):
+
+        * UserInterface/Views/URLBreakpointTreeElement.js:
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        (body.window-inactive):
+        (@media (prefers-color-scheme: dark)):
+        (body.mac-platform:not(.sierra, .high-sierra)):
+        Add custom property overrides for system colors where supported.
+
+2019-02-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Search: no results when opening to Search tab
+        https://bugs.webkit.org/show_bug.cgi?id=195058
+        <rdar://problem/48407699>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WI.SearchSidebarPanel.prototype.performSearch):
+        If targets aren't available, wait until they are and then perform the search.
+
+        * UserInterface/Base/Main.js:
+        (WI.targetsAvailable): Added.
+        Expose getter for indicating whether targets are available.
+
+2019-02-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Main Thread Indicator
+        https://bugs.webkit.org/show_bug.cgi?id=194972
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Main.html:
+        * UserInterface/Base/Utilities.js:
+        (value):
+        The existing enclosingNode doesn't work for SVG because its names
+        are lowercase. Add a simplified version for the svg case.
+
+        * UserInterface/Views/RangeChart.js: Added.
+        (WI.RangeChart):
+        (WI.RangeChart.prototype.get size):
+        (WI.RangeChart.prototype.set size):
+        (WI.RangeChart.prototype.addRange):
+        (WI.RangeChart.prototype.clear):
+        (WI.RangeChart.prototype.layout):
+        A new chart that draws rects for given ranges.
+
+        * UserInterface/Models/Timeline.js:
+        (WI.Timeline.prototype.recordsOverlappingTimeRange):
+        Helper to specifically get records touching a range. Useful
+        for when we have a single pixel spanning (startTime -> endTime)
+        and we want to find records in that pixel.
+
+        * UserInterface/Views/CPUTimelineView.css:
+        (.timeline-view.cpu .cpu-usage-indicator-view > .graph > .range-chart rect):
+        (.timeline-view.cpu .cpu-usage-indicator-view > .graph > .range-chart .sample-type-script):
+        (.timeline-view.cpu .cpu-usage-indicator-view > .graph > .range-chart .sample-type-style):
+        (.timeline-view.cpu .cpu-usage-indicator-view > .graph > .range-chart .sample-type-layout):
+        (.timeline-view.cpu .cpu-usage-indicator-view > .graph > .range-chart .sample-type-paint):
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype.get indicatorViewHeight):
+        (WI.CPUTimelineView.prototype.clear):
+        (WI.CPUTimelineView.prototype.get scrollableElements):
+        (WI.CPUTimelineView.prototype.initialLayout):
+        (WI.CPUTimelineView.prototype.layout):
+        (WI.CPUTimelineView.prototype._graphPositionForMouseEvent):
+        (WI.CPUTimelineView.prototype._handleIndicatorClick):
+        (WI.CPUTimelineView.prototype._attemptSelectIndicatatorTimelineRecord):
+        (WI.CPUTimelineView.prototype._selectTimelineRecord):
+        Place the Main Thread Indicator view beneath the big graph.
+        Clicking inside it selects records in the Timeline Overview.
+
+        * UserInterface/Views/CPUUsageIndicatorView.css: Added.
+        (.cpu-usage-indicator-view):
+        (.cpu-usage-indicator-view > .details):
+        (body[dir=ltr] .cpu-usage-indicator-view > .details):
+        (body[dir=rtl] .cpu-usage-indicator-view > .details):
+        (body[dir=rtl] .cpu-usage-indicator-view > .graph):
+        (.cpu-usage-indicator-view > .graph):
+        (.cpu-usage-indicator-view > .graph,):
+        * UserInterface/Views/CPUUsageIndicatorView.js: Added.
+        (WI.CPUUsageIndicatorView):
+        (WI.CPUUsageIndicatorView.prototype.get chart):
+        (WI.CPUUsageIndicatorView.prototype.clear):
+        (WI.CPUUsageIndicatorView.prototype.updateChart):
+        Converts the CPU samples data into a RangeChart. It works to coalesce
+        many samples of the same type into a single range to reduce total ranges.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        (WI.TimelineRecordingContentView.prototype._recordSelected):
+        (WI.TimelineRecordingContentView.prototype._recordWasSelected):
+        (WI.TimelineRecordingContentView.prototype._selectRecordInTimelineOverview):
+        (WI.TimelineRecordingContentView.prototype._selectRecordInTimelineView):
+        * UserInterface/Views/TimelineView.js:
+        Add a path for a TimelineView to dispatch a record selected event and cause
+        have the TimelineRecordingContentView react to it by updating the timeline
+        overview and relevent timeline view.
+
 2019-02-26  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: navigation sidebar says "No Search Results" when a slow search is in progress
