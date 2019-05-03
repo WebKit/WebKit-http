@@ -133,7 +133,7 @@ public:
     void getGuessesForWord(const String& word, const String& context, const WebCore::VisibleSelection&, Vector<String>& guesses) override;
     void requestCheckingOfString(TextCheckingRequest&, const VisibleSelection& currentSelection) override;
 
-	bool requestDOMPasteAccess() final { return false;}
+	WebCore::DOMPasteAccessResponse requestDOMPasteAccess(const String&) final { return WebCore::DOMPasteAccessResponse::DeniedForGesture;}
 
 private:
     bool handleEditingKeyboardEvent(KeyboardEvent* event,
