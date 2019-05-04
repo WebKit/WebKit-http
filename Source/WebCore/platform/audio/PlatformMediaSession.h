@@ -182,15 +182,15 @@ public:
     bool hasPlayedSinceLastInterruption() const { return m_hasPlayedSinceLastInterruption; }
     void clearHasPlayedSinceLastInterruption() { m_hasPlayedSinceLastInterruption = false; }
 
-protected:
-    PlatformMediaSessionClient& client() const { return m_client; }
-
 #if !RELEASE_LOG_DISABLED
     const Logger& logger() const final { return m_logger.get(); }
-    const void* logIdentifier() const override { return reinterpret_cast<const void*>(m_logIdentifier); }
+    const void* logIdentifier() const override { return m_logIdentifier; }
     const char* logClassName() const override { return "PlatformMediaSession"; }
     WTFLogChannel& logChannel() const final;
 #endif
+
+protected:
+    PlatformMediaSessionClient& client() const { return m_client; }
 
 private:
     PlatformMediaSessionClient& m_client;
@@ -204,7 +204,7 @@ private:
 
 #if !RELEASE_LOG_DISABLED
     Ref<const Logger> m_logger;
-    uint64_t m_logIdentifier;
+    const void* m_logIdentifier;
 #endif
 
     friend class PlatformMediaSessionManager;

@@ -120,6 +120,7 @@
 #include "WebProcessProxyMessages.h"
 #include "WebProgressTrackerClient.h"
 #include "WebSocketProvider.h"
+#include "WebSpeechSynthesisClient.h"
 #include "WebStorageNamespaceProvider.h"
 #include "WebURLSchemeHandlerProxy.h"
 #include "WebUndoStep.h"
@@ -181,6 +182,7 @@
 #include <WebCore/JSDOMExceptionHandling.h>
 #include <WebCore/JSDOMWindow.h>
 #include <WebCore/KeyboardEvent.h>
+#include <WebCore/LocalizedStrings.h>
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MouseEvent.h>
 #include <WebCore/NotImplemented.h>
@@ -451,6 +453,10 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
         send(Messages::WebPageProxy::SetIsUsingHighPerformanceWebGL(isUsingHighPerformanceWebGL));
     });
 
+#if ENABLE(SPEECH_SYNTHESIS)
+    pageConfiguration.speechSynthesisClient = std::make_unique<WebSpeechSynthesisClient>(*this);
+#endif
+
 #if PLATFORM(COCOA)
     pageConfiguration.validationMessageClient = std::make_unique<WebValidationMessageClient>(*this);
 #endif
@@ -475,6 +481,11 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #endif
 
     m_page = std::make_unique<Page>(WTFMove(pageConfiguration));
+
+    // Set the sessionID *before* updating the preferences as the privateBrowsingEnabled preferences may need to override it.
+    if (parameters.sessionID.isValid())
+        setSessionID(parameters.sessionID);
+
     updatePreferences(parameters.store);
 
     m_drawingArea = DrawingArea::create(*this, parameters);
@@ -533,6 +544,9 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 
     setUseDarkAppearance(parameters.useDarkAppearance);
 
+    if (parameters.isEditable)
+        setEditable(true);
+
 #if PLATFORM(MAC)
     setUseSystemAppearance(parameters.useSystemAppearance);
 #endif
@@ -560,9 +574,6 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     
     if (!parameters.itemStates.isEmpty())
         restoreSessionInternal(parameters.itemStates, WasRestoredByAPIRequest::No, WebBackForwardListProxy::OverwriteExistingItem::Yes);
-
-    if (parameters.sessionID.isValid())
-        setSessionID(parameters.sessionID);
 
     m_drawingArea->setPaintingEnabled(true);
     
@@ -887,6 +898,19 @@ void WebPage::initializeInjectedBundleFullScreenClient(WKBundlePageFullScreenCli
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
+
+constexpr int smallPluginDimensionThreshold = 5;
+
+static bool pluginIsSmall(WebCore::HTMLPlugInElement& pluginElement)
+{
+    auto* renderer = pluginElement.renderer();
+    if (!is<RenderEmbeddedObject>(*renderer))
+        return false;
+
+    auto& box = downcast<RenderBox>(*renderer);
+    return box.contentWidth() <= smallPluginDimensionThreshold && box.contentHeight() <= smallPluginDimensionThreshold;
+}
+
 RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginElement, const Plugin::Parameters& parameters, String& newMIMEType)
 {
     String frameURLString = frame->coreFrame()->loader().documentLoader()->responseURL().string();
@@ -933,6 +957,12 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
 
     if (!pluginProcessToken)
         return nullptr;
+
+    if (m_page->settings().blockingOfSmallPluginsEnabled() && pluginIsSmall(*pluginElement)) {
+        RELEASE_LOG(Plugins, "Blocking a plugin because it is too small");
+        pluginElement->setReplacement(RenderEmbeddedObject::PluginTooSmall, pluginTooSmallText());
+        return nullptr;
+    }
 
     bool isRestartedProcess = (pluginElement->displayState() == HTMLPlugInElement::Restarting || pluginElement->displayState() == HTMLPlugInElement::RestartingWithPendingMouseClick);
     return PluginProxy::create(pluginProcessToken, isRestartedProcess);
@@ -2307,7 +2337,7 @@ RetainPtr<CFDataRef> WebPage::pdfSnapshotAtSize(const IntRect& rect, const IntSi
     CGPDFContextClose(pdfContext.get());
 #endif
 
-    return WTFMove(data);
+    return data;
 }
 #endif
 
@@ -2792,10 +2822,20 @@ void WebPage::dispatchTouchEvent(const WebTouchEvent& touchEvent, bool& handled)
 {
     SetForScope<bool> userIsInteractingChange { m_userIsInteracting, true };
 
+    auto oldFocusedFrame = makeRefPtr(m_page->focusController().focusedFrame());
+    auto oldFocusedElement = makeRefPtr(oldFocusedFrame ? oldFocusedFrame->document()->focusedElement() : nullptr);
+
     m_lastInteractionLocation = touchEvent.position();
     CurrentEvent currentEvent(touchEvent);
     handled = handleTouchEvent(touchEvent, m_page.get());
     updatePotentialTapSecurityOrigin(touchEvent, handled);
+
+    if (handled && oldFocusedElement) {
+        auto newFocusedFrame = makeRefPtr(m_page->focusController().focusedFrame());
+        auto newFocusedElement = makeRefPtr(newFocusedFrame ? newFocusedFrame->document()->focusedElement() : nullptr);
+        if (oldFocusedElement == newFocusedElement)
+            elementDidRefocus(*newFocusedElement);
+    }
 }
 
 void WebPage::touchEventSync(const WebTouchEvent& touchEvent, CompletionHandler<void(bool)>&& reply)
@@ -6034,7 +6074,7 @@ Ref<DocumentLoader> WebPage::createDocumentLoader(Frame& frame, const ResourceRe
         }
     }
 
-    return WTFMove(documentLoader);
+    return documentLoader;
 }
 
 void WebPage::updateCachedDocumentLoader(WebDocumentLoader& documentLoader, Frame& frame)
@@ -6385,6 +6425,23 @@ void WebPage::simulateDeviceOrientationChange(double alpha, double beta, double 
     frame->document()->simulateDeviceOrientationChange(alpha, beta, gamma);
 #endif
 }
+
+#if ENABLE(SPEECH_SYNTHESIS)
+void WebPage::speakingErrorOccurred()
+{
+    corePage()->speechSynthesisClient()->observer()->speakingErrorOccurred();
+}
+
+void WebPage::boundaryEventOccurred(bool wordBoundary, unsigned charIndex)
+{
+    corePage()->speechSynthesisClient()->observer()->boundaryEventOccurred(wordBoundary, charIndex);
+}
+
+void WebPage::voicesDidChange()
+{
+    corePage()->speechSynthesisClient()->observer()->voicesChanged();
+}
+#endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 

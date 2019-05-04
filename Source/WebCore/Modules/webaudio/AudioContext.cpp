@@ -106,14 +106,6 @@ namespace WebCore {
 
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(document()->page() && document()->page()->isAlwaysOnLoggingAllowed(), Media, "%p - AudioContext::" fmt, this, ##__VA_ARGS__)
     
-#if !RELEASE_LOG_DISABLED
-static const void* nextLogIdentifier()
-{
-    static uint64_t logIdentifier = cryptographicallyRandomNumber();
-    return reinterpret_cast<const void*>(++logIdentifier);
-}
-#endif
-
 bool AudioContext::isSampleRateRangeGood(float sampleRate)
 {
     // FIXME: It would be nice if the minimum sample-rate could be less than 44.1KHz,
@@ -141,7 +133,7 @@ AudioContext::AudioContext(Document& document)
     : ActiveDOMObject(document)
 #if !RELEASE_LOG_DISABLED
     , m_logger(document.logger())
-    , m_logIdentifier(nextLogIdentifier())
+    , m_logIdentifier(uniqueLogIdentifier())
 #endif
     , m_mediaSession(PlatformMediaSession::create(*this))
     , m_eventQueue(std::make_unique<GenericEventQueue>(*this))
@@ -159,7 +151,7 @@ AudioContext::AudioContext(Document& document, unsigned numberOfChannels, size_t
     : ActiveDOMObject(document)
 #if !RELEASE_LOG_DISABLED
     , m_logger(document.logger())
-    , m_logIdentifier(nextLogIdentifier())
+    , m_logIdentifier(uniqueLogIdentifier())
 #endif
     , m_isOfflineContext(true)
     , m_mediaSession(PlatformMediaSession::create(*this))
@@ -463,7 +455,7 @@ ExceptionOr<Ref<MediaElementAudioSourceNode>> AudioContext::createMediaElementSo
     mediaElement.setAudioSourceNode(node.ptr());
 
     refNode(node.get()); // context keeps reference until node is disconnected
-    return WTFMove(node);
+    return node;
 }
 
 #endif
@@ -496,7 +488,7 @@ ExceptionOr<Ref<MediaStreamAudioSourceNode>> AudioContext::createMediaStreamSour
     node->setFormat(2, sampleRate());
 
     refNode(node); // context keeps reference until node is disconnected
-    return WTFMove(node);
+    return node;
 }
 
 Ref<MediaStreamAudioDestinationNode> AudioContext::createMediaStreamDestination()
@@ -565,7 +557,7 @@ ExceptionOr<Ref<ScriptProcessorNode>> AudioContext::createScriptProcessor(size_t
     auto node = ScriptProcessorNode::create(*this, m_destinationNode->sampleRate(), bufferSize, numberOfInputChannels, numberOfOutputChannels);
 
     refNode(node); // context keeps reference until we stop making javascript rendering callbacks
-    return WTFMove(node);
+    return node;
 }
 
 Ref<BiquadFilterNode> AudioContext::createBiquadFilter()

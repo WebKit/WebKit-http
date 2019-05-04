@@ -228,7 +228,6 @@ webkit.org/b/92749 fast/dom/NavigatorContentUtils/is-protocol-handler-registered
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/URL-createObjectURL-revoke.html [ Failure ]
 # See also bug #175578
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-activesourcebuffers.html [ Crash Failure ]
-webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-addsourcebuffer.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-append-buffer.html [ Crash Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-avtracks.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-buffered.html [ Failure ]
@@ -2159,6 +2158,11 @@ webkit.org/b/193518 imported/w3c/web-platform-tests/fetch/range/general.window.h
 
 webkit.org/b/194386 media/video-background-playback.html [ Crash Pass ]
 
+webkit.org/b/195714 fast/canvas/webgl/texImage2D-video-flipY-true.html [ Pass Timeout ]
+
+webkit.org/b/194044 imported/w3c/web-platform-tests/media-source/mediasource-addsourcebuffer.html [ Crash Failure ]
+webkit.org/b/194044 imported/w3c/web-platform-tests/media-source/mediasource-addsourcebuffer-mode.html [ Crash Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2206,7 +2210,6 @@ Bug(GTK) jquery/traversing.html [ Pass Slow ]
 Bug(GTK) tables/mozilla/other/slashlogo.html [ Pass Slow ]
 
 Bug(GTK) http/tests/media/video-preload.html [ Pass Slow ]
-webkit.org/b/143989 [ Release ] http/tests/media/hls/video-controls-live-stream.html [ Pass Slow Failure ]
 
 webkit.org/b/116958 http/tests/navigation/slowmetaredirect-basic.html [ Pass Slow ]
 webkit.org/b/116958 http/tests/navigation/slowtimerredirect-basic.html [ Pass Slow ]
@@ -2730,8 +2733,6 @@ webkit.org/b/53964 fast/forms/option-mouseevents.html [ Failure ]
 webkit.org/b/122021 media/video-controls-captions-trackmenu.html [ Failure ]
 webkit.org/b/123097 media/track/track-user-preferences.html [ Skip ]
 webkit.org/b/121995 media/video-controls-captions-trackmenu-includes-enabled-track.html [ Failure ]
-
-Bug(GTK) http/tests/media/video-play-stall-seek.html [ Skip ]
 
 Bug(GTK) http/tests/misc/acid3.html [ Failure ]
 
@@ -3570,8 +3571,6 @@ webkit.org/b/188436 svg/custom/href-svg-namespace-static.svg [ ImageOnlyFailure 
 webkit.org/b/189343 imported/w3c/web-platform-tests/xhr/sync-no-timeout.any.html [ Failure ]
 webkit.org/b/189343 imported/w3c/web-platform-tests/xhr/sync-no-timeout.any.worker.html [ Failure ]
 
-webkit.org/b/189344 webanimations/css-animation-effect-target-change-and-animation-removal-crash.html [ ImageOnlyFailure ]
-
 webkit.org/b/189345 http/tests/media/clearkey/collect-webkit-media-session.html [ Timeout ]
 
 webkit.org/b/189567 webrtc/video-addLegacyTransceiver.html [ Failure ]
@@ -3742,27 +3741,26 @@ webkit.org/b/194609 http/tests/local/blob/send-hybrid-blob-using-open-panel.html
 
 webkit.org/b/194611 http/wpt/webrtc/getUserMedia-processSwapping.html [ Failure ]
 
-webkit.org/b/195129 accessibility/image-link.html [ Failure ]
-webkit.org/b/195129 accessibility/image-map2.html [ Failure ]
-webkit.org/b/195129 accessibility/lists.html [ Failure ]
-webkit.org/b/195129 accessibility/math-multiscript-attributes.html [ Failure ]
-webkit.org/b/195129 accessibility/roles-exposed.html [ Failure ]
-webkit.org/b/195129 accessibility/table-attributes.html [ Failure ]
-webkit.org/b/195129 accessibility/table-cell-spans.html [ Failure ]
-webkit.org/b/195129 accessibility/table-cells.html [ Failure ]
-webkit.org/b/195129 accessibility/table-one-cell.html [ Failure ]
-webkit.org/b/195129 accessibility/table-sections.html [ Failure ]
-webkit.org/b/195129 accessibility/table-with-rules.html [ Failure ]
-webkit.org/b/195129 accessibility/transformed-element.html [ Failure ]
-webkit.org/b/195129 accessibility/gtk/object-attributes.html [ Failure ]
-webkit.org/b/195129 accessibility/gtk/xml-roles-exposed.html [ Failure ]
-
 webkit.org/b/195133 imported/w3c/web-platform-tests/mathml/relations/css-styling/lengths-3.html [ Failure ]
 
 webkit.org/b/195134 inspector/cpu-profiler/threads.html [ Failure ]
 webkit.org/b/195134 inspector/cpu-profiler/tracking.html [ Failure ]
 
 webkit.org/b/195259 compositing/geometry/fixed-position-composited-page-scale-smaller-than-viewport.html [ ImageOnlyFailure ]
+
+webkit.org/b/195670 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/load-events-networkState.html [ Failure ]
+webkit.org/b/195670 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-control.html [ Failure ]
+webkit.org/b/195670 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-br.html [ Failure ]
+webkit.org/b/195670 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-source.html [ Failure ]
+webkit.org/b/195670 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-text.html [ Failure ]
+webkit.org/b/195670 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-source-after.html [ Failure ]
+webkit.org/b/195670 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-source.html [ Failure ]
+webkit.org/b/195670 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-text.html [ Failure ]
+
+webkit.org/b/195671 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigation_download_allow_downloads_without_user_activation.sub.tentative.html [ Failure ]
+webkit.org/b/195671 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigation_download_block_downloads_without_user_activation.sub.tentative.html [ Failure ]
+
+webkit.org/b/195712 inspector/canvas/recording-html-2d.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

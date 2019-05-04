@@ -132,6 +132,8 @@ $(PROJECT_DIR)/Modules/indexeddb/IDBVersionChangeEvent.idl
 $(PROJECT_DIR)/Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl
 $(PROJECT_DIR)/Modules/mediacapabilities/AudioConfiguration.idl
 $(PROJECT_DIR)/Modules/mediacapabilities/MediaCapabilities.idl
+$(PROJECT_DIR)/Modules/mediacapabilities/MediaCapabilitiesDecodingInfo.idl
+$(PROJECT_DIR)/Modules/mediacapabilities/MediaCapabilitiesEncodingInfo.idl
 $(PROJECT_DIR)/Modules/mediacapabilities/MediaCapabilitiesInfo.idl
 $(PROJECT_DIR)/Modules/mediacapabilities/MediaConfiguration.idl
 $(PROJECT_DIR)/Modules/mediacapabilities/MediaDecodingConfiguration.idl
@@ -363,6 +365,7 @@ $(PROJECT_DIR)/Modules/webgpu/WebGPUBufferDescriptor.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUBufferUsage.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUColor.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUCommandBuffer.idl
+$(PROJECT_DIR)/Modules/webgpu/WebGPUCommandEncoder.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUDevice.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUIndexFormat.idl
 $(PROJECT_DIR)/Modules/webgpu/WebGPUInputStateDescriptor.idl
@@ -872,6 +875,7 @@ $(PROJECT_DIR)/inspector/CommandLineAPIHost.idl
 $(PROJECT_DIR)/inspector/CommandLineAPIModuleSource.js
 $(PROJECT_DIR)/inspector/InspectorAuditAccessibilityObject.idl
 $(PROJECT_DIR)/inspector/InspectorAuditDOMObject.idl
+$(PROJECT_DIR)/inspector/InspectorAuditResourcesObject.idl
 $(PROJECT_DIR)/inspector/InspectorFrontendHost.idl
 $(PROJECT_DIR)/loader/appcache/DOMApplicationCache.idl
 $(PROJECT_DIR)/make-hash-tools.pl

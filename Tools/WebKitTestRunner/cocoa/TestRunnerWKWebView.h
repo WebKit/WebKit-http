@@ -47,6 +47,7 @@
 @property (nonatomic, copy) void (^rotationDidEndCallback)(void);
 @property (nonatomic, copy) NSString *accessibilitySpeakSelectionContent;
 
+- (void)resetInteractionCallbacks;
 - (void)zoomToScale:(double)scale animated:(BOOL)animated completionHandler:(void (^)(void))completionHandler;
 - (void)accessibilityRetrieveSpeakSelectionContentWithCompletionHandler:(void (^)(void))completionHandler;
 - (void)_didEndRotation;
@@ -61,5 +62,6 @@
 #endif
 
 @property (nonatomic, retain, setter=_setStableStateOverride:) NSNumber *_stableStateOverride;
+@property (nonatomic, setter=_setScrollingUpdatesDisabledForTesting:) BOOL _scrollingUpdatesDisabledForTesting;
 
 @end

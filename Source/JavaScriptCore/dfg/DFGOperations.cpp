@@ -770,7 +770,8 @@ EncodedJSValue JIT_OPERATION operationGetByValObjectSymbol(ExecState* exec, JSCe
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    return JSValue::encode(getByValObject(exec, vm, asObject(base), asSymbol(symbol)->privateName()));
+    auto propertyName = asSymbol(symbol)->privateName();
+    return JSValue::encode(getByValObject(exec, vm, asObject(base), propertyName));
 }
 
 void JIT_OPERATION operationPutByValStrict(ExecState* exec, EncodedJSValue encodedBase, EncodedJSValue encodedProperty, EncodedJSValue encodedValue)
@@ -826,7 +827,8 @@ void JIT_OPERATION operationPutByValCellSymbolStrict(ExecState* exec, JSCell* ce
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    putByValCellInternal<true, false>(exec, vm, cell, asSymbol(symbol)->privateName(), JSValue::decode(encodedValue));
+    auto propertyName = asSymbol(symbol)->privateName();
+    putByValCellInternal<true, false>(exec, vm, cell, propertyName, JSValue::decode(encodedValue));
 }
 
 void JIT_OPERATION operationPutByValCellSymbolNonStrict(ExecState* exec, JSCell* cell, JSCell* symbol, EncodedJSValue encodedValue)
@@ -834,7 +836,8 @@ void JIT_OPERATION operationPutByValCellSymbolNonStrict(ExecState* exec, JSCell*
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    putByValCellInternal<false, false>(exec, vm, cell, asSymbol(symbol)->privateName(), JSValue::decode(encodedValue));
+    auto propertyName = asSymbol(symbol)->privateName();
+    putByValCellInternal<false, false>(exec, vm, cell, propertyName, JSValue::decode(encodedValue));
 }
 
 void JIT_OPERATION operationPutByValBeyondArrayBoundsStrict(ExecState* exec, JSObject* object, int32_t index, EncodedJSValue encodedValue)
@@ -986,7 +989,8 @@ void JIT_OPERATION operationPutByValDirectCellSymbolStrict(ExecState* exec, JSCe
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    putByValCellInternal<true, true>(exec, vm, cell, asSymbol(symbol)->privateName(), JSValue::decode(encodedValue));
+    auto propertyName = asSymbol(symbol)->privateName();
+    putByValCellInternal<true, true>(exec, vm, cell, propertyName, JSValue::decode(encodedValue));
 }
 
 void JIT_OPERATION operationPutByValDirectCellSymbolNonStrict(ExecState* exec, JSCell* cell, JSCell* symbol, EncodedJSValue encodedValue)
@@ -994,7 +998,8 @@ void JIT_OPERATION operationPutByValDirectCellSymbolNonStrict(ExecState* exec, J
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    putByValCellInternal<false, true>(exec, vm, cell, asSymbol(symbol)->privateName(), JSValue::decode(encodedValue));
+    auto propertyName = asSymbol(symbol)->privateName();
+    putByValCellInternal<false, true>(exec, vm, cell, propertyName, JSValue::decode(encodedValue));
 }
 
 void JIT_OPERATION operationPutByValDirectBeyondArrayBoundsStrict(ExecState* exec, JSObject* object, int32_t index, EncodedJSValue encodedValue)
@@ -2054,10 +2059,12 @@ char* JIT_OPERATION operationEnsureArrayStorage(ExecState* exec, JSCell* cell)
     return result;
 }
 
-EncodedJSValue JIT_OPERATION operationHasGenericProperty(ExecState* exec, EncodedJSValue encodedBaseValue, JSCell* propertyName)
+EncodedJSValue JIT_OPERATION operationHasGenericProperty(ExecState* exec, EncodedJSValue encodedBaseValue, JSCell* property)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue baseValue = JSValue::decode(encodedBaseValue);
     if (baseValue.isUndefinedOrNull())
         return JSValue::encode(jsBoolean(false));
@@ -2065,7 +2072,9 @@ EncodedJSValue JIT_OPERATION operationHasGenericProperty(ExecState* exec, Encode
     JSObject* base = baseValue.toObject(exec);
     if (!base)
         return JSValue::encode(JSValue());
-    return JSValue::encode(jsBoolean(base->hasPropertyGeneric(exec, asString(propertyName)->toIdentifier(exec), PropertySlot::InternalMethodType::GetOwnProperty)));
+    auto propertyName = asString(property)->toIdentifier(exec);
+    RETURN_IF_EXCEPTION(scope, { });
+    RELEASE_AND_RETURN(scope, JSValue::encode(jsBoolean(base->hasPropertyGeneric(exec, propertyName, PropertySlot::InternalMethodType::GetOwnProperty))));
 }
 
 size_t JIT_OPERATION operationHasIndexedPropertyByInt(ExecState* exec, JSCell* baseCell, int32_t subscript, int32_t internalMethodType)
@@ -2159,7 +2168,7 @@ JSCell* JIT_OPERATION operationStringSubstr(ExecState* exec, JSCell* cell, int32
 
     auto string = jsCast<JSString*>(cell)->value(exec);
     RETURN_IF_EXCEPTION(scope, nullptr);
-    return jsSubstring(exec, string, from, span);
+    return jsSubstring(&vm, string, from, span);
 }
 
 JSCell* JIT_OPERATION operationStringSlice(ExecState* exec, JSCell* cell, int32_t start, int32_t end)
@@ -2172,8 +2181,7 @@ JSCell* JIT_OPERATION operationStringSlice(ExecState* exec, JSCell* cell, int32_
     RETURN_IF_EXCEPTION(scope, nullptr);
     static_assert(static_cast<uint64_t>(JSString::MaxLength) <= static_cast<uint64_t>(std::numeric_limits<int32_t>::max()), "");
 
-    scope.release();
-    return stringSlice(exec, WTFMove(string), start, end);
+    return stringSlice(vm, WTFMove(string), start, end);
 }
 
 JSString* JIT_OPERATION operationToLowerCase(ExecState* exec, JSString* string, uint32_t failingIndex)

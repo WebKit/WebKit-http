@@ -122,10 +122,15 @@ private:
 
 static void doReleaseLogging(rtc::LoggingSeverity severity, const char* message)
 {
+#if RELEASE_LOG_DISABLED
+    UNUSED_PARAM(severity);
+    UNUSED_PARAM(message);
+#else
     if (severity == rtc::LS_ERROR)
         RELEASE_LOG_ERROR(WebRTC, "LibWebRTC error: %{public}s", message);
     else
         RELEASE_LOG(WebRTC, "LibWebRTC message: %{public}s", message);
+#endif
 }
 
 static void setLogging(rtc::LoggingSeverity level)
@@ -137,25 +142,25 @@ static rtc::LoggingSeverity computeLogLevel()
 {
 #if defined(NDEBUG)
 #if !LOG_DISABLED || !RELEASE_LOG_DISABLED
-    if (LogWebRTC.state != WTFLogChannelOn)
+    if (LogWebRTC.state != WTFLogChannelState::On)
         return rtc::LS_ERROR;
 
     switch (LogWebRTC.level) {
-    case WTFLogLevelAlways:
-    case WTFLogLevelError:
+    case WTFLogLevel::Always:
+    case WTFLogLevel::Error:
         return rtc::LS_ERROR;
-    case WTFLogLevelWarning:
+    case WTFLogLevel::Warning:
         return rtc::LS_WARNING;
-    case WTFLogLevelInfo:
+    case WTFLogLevel::Info:
         return rtc::LS_INFO;
-    case WTFLogLevelDebug:
+    case WTFLogLevel::Debug:
         return rtc::LS_VERBOSE;
     }
 #else
     return rtc::LS_NONE;
 #endif
 #else
-    return (LogWebRTC.state != WTFLogChannelOn) ? rtc::LS_WARNING : rtc::LS_INFO;
+    return (LogWebRTC.state != WTFLogChannelState::On) ? rtc::LS_WARNING : rtc::LS_INFO;
 #endif
 }
 

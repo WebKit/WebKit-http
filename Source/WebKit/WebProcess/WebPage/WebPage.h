@@ -1315,6 +1315,9 @@ private:
     void viewWillEndLiveResize();
 
     void getContentsAsString(CallbackID);
+#if PLATFORM(COCOA)
+    void getContentsAsAttributedString(CompletionHandler<void(const AttributedString&)>&&);
+#endif
 #if ENABLE(MHTML)
     void getContentsAsMHTMLData(CallbackID);
 #endif
@@ -1503,6 +1506,12 @@ private:
 #endif
 
     void simulateDeviceOrientationChange(double alpha, double beta, double gamma);
+
+#if ENABLE(SPEECH_SYNTHESIS)
+    void speakingErrorOccurred();
+    void boundaryEventOccurred(bool wordBoundary, unsigned charIndex);
+    void voicesDidChange();
+#endif
 
     void frameBecameRemote(uint64_t frameID, WebCore::GlobalFrameIdentifier&& remoteFrameIdentifier, WebCore::GlobalWindowIdentifier&& remoteWindowIdentifier);
 

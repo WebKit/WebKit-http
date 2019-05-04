@@ -2654,7 +2654,7 @@ private:
         if (!read(point.w))
             return WTF::nullopt;
 
-        return WTFMove(point);
+        return point;
     }
 
     JSValue readDOMQuad()
@@ -2923,7 +2923,7 @@ private:
                 return JSValue();
             }
             auto scope = DECLARE_THROW_SCOPE(m_exec->vm());
-            JSValue result = JSC::JSWebAssemblyModule::createStub(m_exec->vm(), m_exec, m_globalObject->WebAssemblyModuleStructure(), m_wasmModules->at(index));
+            JSValue result = JSC::JSWebAssemblyModule::createStub(m_exec->vm(), m_exec, m_globalObject->webAssemblyModuleStructure(), m_wasmModules->at(index));
             // Since we are cloning a JSWebAssemblyModule, it's impossible for that
             // module to not have been a valid module. Therefore, createStub should
             // not trow.
@@ -3318,7 +3318,7 @@ static ExceptionOr<std::unique_ptr<ArrayBufferContentsArray>> transferArrayBuffe
             return Exception { TypeError };
     }
 
-    return WTFMove(contents);
+    return contents;
 }
 
 static void maybeThrowExceptionIfSerializationFailed(ExecState& state, SerializationReturnCode code)

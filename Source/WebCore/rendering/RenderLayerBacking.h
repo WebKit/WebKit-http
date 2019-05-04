@@ -121,6 +121,8 @@ public:
             return m_frameHostingNodeID;
         case ScrollCoordinationRole::ViewportConstrained:
             return m_viewportConstrainedNodeID;
+        case ScrollCoordinationRole::Positioning:
+            return m_positioningNodeID;
         }
         return 0;
     }
@@ -138,12 +140,24 @@ public:
             m_viewportConstrainedNodeID = nodeID;
             setIsScrollCoordinatedWithViewportConstrainedRole(nodeID);
             break;
+        case ScrollCoordinationRole::Positioning:
+            m_positioningNodeID = nodeID;
+            break;
         }
     }
 
     ScrollingNodeID scrollingNodeIDForChildren() const
     {
-        return m_frameHostingNodeID ? m_frameHostingNodeID : (m_scrollingNodeID ? m_scrollingNodeID : m_viewportConstrainedNodeID);
+        if (m_frameHostingNodeID)
+            return m_frameHostingNodeID;
+
+        if (m_scrollingNodeID)
+            return m_scrollingNodeID;
+
+        if (m_viewportConstrainedNodeID)
+            return m_viewportConstrainedNodeID;
+
+        return m_positioningNodeID;
     }
 
     void setIsScrollCoordinatedWithViewportConstrainedRole(bool);
@@ -180,7 +194,7 @@ public:
     void transitionPaused(double timeOffset, CSSPropertyID);
     void transitionFinished(CSSPropertyID);
 
-    bool startAnimation(double timeOffset, const Animation* anim, const KeyframeList& keyframes);
+    bool startAnimation(double timeOffset, const Animation&, const KeyframeList&);
     void animationPaused(double timeOffset, const String& name);
     void animationSeeked(double timeOffset, const String& name);
     void animationFinished(const String& name);
@@ -338,6 +352,7 @@ private:
     bool paintsContent(RenderLayer::PaintedContentRequest&) const;
 
     void updateDrawsContent(PaintedContentsInfo&);
+    void updateEventRegion();
 
     // Returns true if this compositing layer has no visible content.
     bool isSimpleContainerCompositingLayer(PaintedContentsInfo&) const;
@@ -395,6 +410,7 @@ private:
     ScrollingNodeID m_viewportConstrainedNodeID { 0 };
     ScrollingNodeID m_scrollingNodeID { 0 };
     ScrollingNodeID m_frameHostingNodeID { 0 };
+    ScrollingNodeID m_positioningNodeID { 0 };
 
     bool m_artificiallyInflatedBounds { false }; // bounds had to be made non-zero to make transform-origin work
     bool m_isMainFrameRenderViewLayer { false };

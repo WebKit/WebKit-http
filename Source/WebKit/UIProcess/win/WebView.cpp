@@ -474,7 +474,7 @@ void WebView::paint(HDC hdc, const IntRect& dirtyRect)
         cairo_destroy(context);
         cairo_surface_destroy(surface);
 
-        Vector<IntRect> unpaintedRects = unpaintedRegion.rects();
+        auto unpaintedRects = unpaintedRegion.rects();
         for (auto& rect : unpaintedRects)
             drawPageBackground(hdc, m_page.get(), rect);
     } else
@@ -737,7 +737,7 @@ void WebView::close()
 
 HCURSOR WebView::cursorToShow() const
 {
-    if (!m_page->isValid())
+    if (!m_page->hasRunningProcess())
         return 0;
 
     // We only show the override cursor if the default (arrow) cursor is showing.

@@ -290,6 +290,8 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/mediacapabilities/AudioConfiguration.idl
     Modules/mediacapabilities/MediaCapabilities.idl
+    Modules/mediacapabilities/MediaCapabilitiesDecodingInfo.idl
+    Modules/mediacapabilities/MediaCapabilitiesEncodingInfo.idl
     Modules/mediacapabilities/MediaCapabilitiesInfo.idl
     Modules/mediacapabilities/MediaConfiguration.idl
     Modules/mediacapabilities/MediaDecodingConfiguration.idl
@@ -488,7 +490,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webgpu/GPUShaderStageBit.idl
     Modules/webgpu/GPUStoreOp.idl
     Modules/webgpu/GPUTextureDescriptor.idl
-    Modules/webgpu/GPUTextureDimension.idl
     Modules/webgpu/GPUTextureFormat.idl
     Modules/webgpu/GPUTextureUsage.idl
     Modules/webgpu/GPUVertexAttributeDescriptor.idl
@@ -502,6 +503,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webgpu/WebGPUBuffer.idl
     Modules/webgpu/WebGPUBufferBinding.idl
     Modules/webgpu/WebGPUCommandBuffer.idl
+    Modules/webgpu/WebGPUCommandEncoder.idl
     Modules/webgpu/WebGPUDevice.idl
     Modules/webgpu/WebGPUPipelineDescriptorBase.idl
     Modules/webgpu/WebGPUPipelineLayout.idl
@@ -909,6 +911,7 @@ set(WebCore_NON_SVG_IDL_FILES
     inspector/CommandLineAPIHost.idl
     inspector/InspectorAuditAccessibilityObject.idl
     inspector/InspectorAuditDOMObject.idl
+    inspector/InspectorAuditResourcesObject.idl
     inspector/InspectorFrontendHost.idl
 
     loader/appcache/DOMApplicationCache.idl

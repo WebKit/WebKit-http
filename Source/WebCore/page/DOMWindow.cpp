@@ -485,6 +485,9 @@ void DOMWindow::willDetachDocumentFromFrame()
 
     if (m_performance)
         m_performance->clearResourceTimings();
+
+    JSDOMWindowBase::fireFrameClearedWatchpointsForWindow(this);
+    InspectorInstrumentation::frameWindowDiscarded(*frame(), this);
 }
 
 #if ENABLE(GAMEPAD)
@@ -1482,7 +1485,7 @@ RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String
     if (ruleList->rules().isEmpty())
         return nullptr;
 
-    return WTFMove(ruleList);
+    return ruleList;
 }
 
 RefPtr<WebKitPoint> DOMWindow::webkitConvertPointFromNodeToPage(Node* node, const WebKitPoint* p) const
@@ -1840,7 +1843,7 @@ DeviceMotionController* DOMWindow::deviceMotionController() const
 
 bool DOMWindow::isAllowedToUseDeviceMotionOrientation(String& message) const
 {
-    if (!frame() || !frame()->settings().deviceOrientationEventEnabled() || !document() || !document()->loader() || !document()->loader()->deviceOrientationEventEnabled()) {
+    if (!frame() || !frame()->settings().deviceOrientationEventEnabled()) {
         message = "API is disabled"_s;
         return false;
     }
@@ -1944,7 +1947,7 @@ void DOMWindow::failedToRegisterDeviceMotionEventListener()
         return;
 
     // FIXME: This is a quirk for chase.com on iPad (<rdar://problem/48423023>).
-    if (toRegistrableDomain(document()->url()) == "chase.com") {
+    if (RegistrableDomain::uncheckedCreateFromRegistrableDomainString("chase.com"_s).matches(document()->url())) {
         // Fire a fake DeviceMotionEvent with acceleration data to unblock the site's login flow.
         document()->postTask([](auto& context) {
             if (auto* window = downcast<Document>(context).domWindow()) {

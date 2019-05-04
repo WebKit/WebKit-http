@@ -493,14 +493,14 @@ ExceptionOr<Ref<KeyframeEffect>> KeyframeEffect::create(ExecState& state, Elemen
     if (processKeyframesResult.hasException())
         return processKeyframesResult.releaseException();
 
-    return WTFMove(keyframeEffect);
+    return keyframeEffect;
 }
 
 ExceptionOr<Ref<KeyframeEffect>> KeyframeEffect::create(JSC::ExecState&, Ref<KeyframeEffect>&& source)
 {
     auto keyframeEffect = adoptRef(*new KeyframeEffect(nullptr));
     keyframeEffect->copyPropertiesFromSource(WTFMove(source));
-    return WTFMove(keyframeEffect);
+    return keyframeEffect;
 }
 
 Ref<KeyframeEffect> KeyframeEffect::create(const Element& target)
@@ -1319,7 +1319,7 @@ void KeyframeEffect::applyPendingAcceleratedActions()
     for (const auto& action : pendingAcceleratedActions) {
         switch (action) {
         case AcceleratedAction::Play:
-            if (!compositedRenderer->startAnimation(timeOffset, backingAnimationForCompositedRenderer().ptr(), m_blendingKeyframes)) {
+            if (!compositedRenderer->startAnimation(timeOffset, backingAnimationForCompositedRenderer(), m_blendingKeyframes)) {
                 m_shouldRunAccelerated = false;
                 m_lastRecordedAcceleratedAction = AcceleratedAction::Stop;
                 animation()->acceleratedStateDidChange();
@@ -1386,7 +1386,7 @@ Ref<const Animation> KeyframeEffect::backingAnimationForCompositedRenderer() con
         break;
     }
 
-    return WTFMove(animation);
+    return animation;
 }
 
 RenderElement* KeyframeEffect::renderer() const

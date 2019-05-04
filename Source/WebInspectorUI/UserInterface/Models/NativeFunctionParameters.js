@@ -175,6 +175,7 @@ WI.NativeConstructorFunctionParameters = {
         profileEnd: "name",
         record: "object, [options]",
         recordEnd: "object",
+        screenshot: "[node]",
         table: "data, [columns]",
         takeHeapSnapshot: "[label]",
         time: "name = \"default\"",
@@ -695,7 +696,7 @@ WI.NativePrototypeFunctionParameters = {
     CommandLineAPIHost: {
         copyText: "text",
         databaseId: "database",
-        getEventListeners: "node",
+        getEventListeners: "target",
         inspect: "objectId, hints",
         storageId: "storage",
         __proto__: null,

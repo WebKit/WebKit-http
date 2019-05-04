@@ -1,3 +1,295 @@
+2019-03-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Build cleanly with GCC 9
+        https://bugs.webkit.org/show_bug.cgi?id=195920
+
+        Reviewed by Chris Dumez.
+
+        WebKit triggers three new GCC 9 warnings:
+
+        """
+        -Wdeprecated-copy, implied by -Wextra, warns about the C++11 deprecation of implicitly
+        declared copy constructor and assignment operator if one of them is user-provided.
+        """
+
+        Solution is to either add a copy constructor or copy assignment operator, if required, or
+        else remove one if it is redundant.
+
+        """
+        -Wredundant-move, implied by -Wextra, warns about redundant calls to std::move.
+        -Wpessimizing-move, implied by -Wall, warns when a call to std::move prevents copy elision.
+        """
+
+        These account for most of this patch. Solution is to just remove the bad WTFMove().
+
+        Additionally, -Wclass-memaccess has been enhanced to catch a few cases that GCC 8 didn't.
+        These are solved by casting nontrivial types to void* before using memcpy. (Of course, it
+        would be safer to not use memcpy on nontrivial types, but that's too complex for this
+        patch. Searching for memcpy used with static_cast<void*> will reveal other cases to fix.)
+
+        * wtf/CheckedArithmetic.h:
+        (WTF::Checked::Checked):
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::allocate):
+        * wtf/URLParser.cpp:
+        (WTF::CodePointIterator::operator!= const):
+        (WTF::CodePointIterator::operator=): Deleted.
+        * wtf/text/StringView.h:
+        (WTF::StringView::CodePoints::Iterator::operator=): Deleted.
+
+2019-03-19  Alex Christensen  <achristensen@webkit.org>
+
+        Make WTFLogChannelState and WTFLogLevel enum classes
+        https://bugs.webkit.org/show_bug.cgi?id=195904
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        * wtf/Logger.h:
+        (WTF::Logger::logAlways const):
+        (WTF::Logger::error const):
+        (WTF::Logger::warning const):
+        (WTF::Logger::info const):
+        (WTF::Logger::debug const):
+        (WTF::Logger::willLog const):
+        (WTF::Logger::log):
+        * wtf/MemoryPressureHandler.cpp:
+        * wtf/RefCountedLeakCounter.cpp:
+
+2019-03-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r243132.
+
+        Broke GTK build
+
+        Reverted changeset:
+
+        "Make WTFLogChannelState and WTFLogLevel enum classes"
+        https://bugs.webkit.org/show_bug.cgi?id=195904
+        https://trac.webkit.org/changeset/243132
+
+2019-03-18  Alex Christensen  <achristensen@webkit.org>
+
+        Make WTFLogChannelState and WTFLogLevel enum classes
+        https://bugs.webkit.org/show_bug.cgi?id=195904
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        * wtf/Logger.h:
+        (WTF::Logger::logAlways const):
+        (WTF::Logger::error const):
+        (WTF::Logger::warning const):
+        (WTF::Logger::info const):
+        (WTF::Logger::debug const):
+        (WTF::Logger::willLog const):
+        (WTF::Logger::log):
+        * wtf/MemoryPressureHandler.cpp:
+        * wtf/RefCountedLeakCounter.cpp:
+
+2019-03-18  Darin Adler  <darin@apple.com>
+
+        Cut down on use of StringBuffer, possibly leading toward removing it entirely
+        https://bugs.webkit.org/show_bug.cgi?id=195870
+
+        Reviewed by Daniel Bates.
+
+        * wtf/URL.cpp: Remove a now-inaccurate comment mentioning StringBuffer.
+
+        * wtf/text/StringView.cpp:
+        (WTF::convertASCIICase): Use createUninitialized instead of StringBuffer.
+
+2019-03-18  Xan Lopez  <xan@igalia.com>
+
+        [WTF] Remove redundant std::move in StringConcatenate
+        https://bugs.webkit.org/show_bug.cgi?id=195798
+
+        Reviewed by Darin Adler.
+
+        Remove redundant calls to WTFMove in return values for this
+        method. C++ will already do an implicit move here since we are
+        returning a local value where copy/move elision is not applicable.
+
+        * wtf/text/StringConcatenate.h:
+        (WTF::tryMakeStringFromAdapters):
+
+2019-03-16  Darin Adler  <darin@apple.com>
+
+        Improve normalization code, including moving from unorm.h to unorm2.h
+        https://bugs.webkit.org/show_bug.cgi?id=195330
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/URLHelpers.cpp: Removed unneeded include of unorm.h since the
+        normalization code is now in StringView.cpp.
+        (WTF::URLHelpers::escapeUnsafeCharacters): Renamed from
+        createStringWithEscapedUnsafeCharacters since it now only creates
+        a new string if one is needed. Use unsigned for string lengths, since
+        that's what WTF::String uses, not size_t. Added a first loop so that
+        we can return the string unmodified if no lookalike characters are
+        found. Removed unnecessary round trip from UTF-16 and then back in
+        the case where the character is not a lookalike.
+        (WTF::URLHelpers::toNormalizationFormC): Deleted. Moved this logic
+        into the WTF::normalizedNFC function in StringView.cpp.
+        (WTF::URLHelpers::userVisibleURL): Call escapeUnsafeCharacters and
+        normalizedNFC. The normalizedNFC function is better in multiple ways,
+        but primarily it handles 8-bit strings and other already-normalized
+        strings much more efficiently.
+
+        * wtf/text/StringView.cpp:
+        (WTF::normalizedNFC): Added. This has two overloads. One is for when
+        we already have a String, and want to re-use it if no normalization
+        is needed, and another is when we only have a StringView, and may need
+        to allocate a String to hold the result. Includes a fast special case
+        for 8-bit and already-normalized strings, and uses the same strategy
+        that JSC::normalize was already using: calls unorm2_normalize twice,
+        first just to determine the length.
+
+        * wtf/text/StringView.h: Added normalizedNFC, which can be called with
+        either a StringView or a String. Also moved StringViewWithUnderlyingString
+        here from JSString.h, here for use as the return value of normalizedNFC;
+        it is used for a similar purpose in the JavaScriptCore rope implementation.
+        Also removed an inaccurate comment.
+
+2019-03-16  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] [WPE] Fix compilation errors due to undefined ALWAYS_LOG_IF
+        https://bugs.webkit.org/show_bug.cgi?id=195850
+
+        Unreviewed build fix after r243033. 
+
+        * wtf/LoggerHelper.h:
+
+2019-03-15  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Block the accessibility server when accessibility is not enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=195342
+
+        Reviewed by Brent Fulgham.
+
+        Add SPI to issue a mach extension to a process by pid. Also, add a macro for
+        the availability of this SPI.
+
+        * wtf/Platform.h:
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2019-03-15  Eric Carlson  <eric.carlson@apple.com>
+
+        Add media stream release logging
+        https://bugs.webkit.org/show_bug.cgi?id=195823
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/LoggerHelper.h: Add LOG_IF variants that check a condition before logging.
+
+2019-03-15  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r243008.
+
+        This revision broke High Sierra builders
+
+        Reverted changeset:
+
+        "[iOS] Block the accessibility server when accessibility is
+        not enabled."
+        https://bugs.webkit.org/show_bug.cgi?id=195342
+        https://trac.webkit.org/changeset/243008
+
+2019-03-15  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS] Block the accessibility server when accessibility is not enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=195342
+
+        Reviewed by Brent Fulgham.
+
+        Add SPI to issue a mach extension to a process by pid.
+
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2019-03-13  Sam Weinig  <sam@webkit.org>
+
+        Add utility function to allow easy reverse range-based iteration of a container
+        https://bugs.webkit.org/show_bug.cgi?id=195542
+
+        Reviewed by Antti Koivisto.
+
+        Add functions to create an IteratorRange<T> that will iterate a container backwards. It
+        works with any container that is compatible with std::rbegin() and std::rend(). It is
+        expected to be used in conjunction with range-based for-loops like so:
+
+        for (auto& value : WTF::makeReversedRange(myContainer)) 
+            ...
+
+        * wtf/IteratorRange.h:
+        (WTF::makeReversedRange):
+
+2019-03-13  Keith Rollin  <krollin@apple.com>
+
+        Add support for new StagedFrameworks layout
+        https://bugs.webkit.org/show_bug.cgi?id=195543
+
+        Reviewed by Alexey Proskuryakov.
+
+        Opportunistic cleanup: remove unused JAVASCRIPTCORE_FRAMEWORKS_DIR
+        variable.
+
+        * Configurations/Base.xcconfig:
+
+2019-03-13  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        String overflow when using StringBuilder in JSC::createError
+        https://bugs.webkit.org/show_bug.cgi?id=194957
+
+        Reviewed by Mark Lam.
+
+        When calculating the new capacity of a StringBuilder object,
+        use a limit of MaxLength instead of MaxLength+1.  Allocating
+        a string of size MaxLength+1 always fails. This means that expanding
+        a StringBuilder only worked when the newly doubled capacity is less or
+        equal to MaxLength.
+
+        * wtf/text/StringBuilder.cpp:
+
+2019-03-13  Chris Dumez  <cdumez@apple.com>
+
+        Better build fix after r242901.
+
+        Reviewed by Jer Noble.
+
+        * wtf/Logger.h:
+        (WTF::LogArgument::toString):
+
+2019-03-13  Jer Noble  <jer.noble@apple.com>
+
+        Add AggregateLogger, a Logger specialization for singleton classes.
+        https://bugs.webkit.org/show_bug.cgi?id=195644
+
+        Reviewed by Eric Carlson.
+
+        Add a new class, AggregateLogger, which will log messages to each of its aggregated loggers.
+
+        Drive-by fixes: allow "const void*" to be directly logged by converting the pointer to a hex string.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AggregateLogger.h: Added.
+        (WTF::AggregateLogger::create):
+        (WTF::AggregateLogger::addLogger):
+        (WTF::AggregateLogger::removeLogger):
+        (WTF::AggregateLogger::logAlways const):
+        (WTF::AggregateLogger::error const):
+        (WTF::AggregateLogger::warning const):
+        (WTF::AggregateLogger::info const):
+        (WTF::AggregateLogger::debug const):
+        (WTF::AggregateLogger::willLog const):
+        (WTF::AggregateLogger::AggregateLogger):
+        (WTF::AggregateLogger::log const):
+        * wtf/CMakeLists.h:
+        * wtf/Logger.cpp:
+        (WTF::>::toString):
+        * wtf/Logger.h:
+
 2019-03-12  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r242747.

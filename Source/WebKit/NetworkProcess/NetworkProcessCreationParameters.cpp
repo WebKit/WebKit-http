@@ -45,7 +45,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << canHandleHTTPSServerTrustEvaluation;
     encoder << diskCacheDirectory;
     encoder << diskCacheDirectoryExtensionHandle;
-    encoder << shouldEnableNetworkCacheEfficacyLogging;
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     encoder << shouldEnableNetworkCacheSpeculativeRevalidation;
 #endif
@@ -94,6 +93,7 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << serviceWorkerRegistrationDirectory << serviceWorkerRegistrationDirectoryExtensionHandle << urlSchemesServiceWorkersCanHandle << shouldDisableServiceWorkerProcessTerminationDelay;
 #endif
     encoder << shouldEnableITPDatabase;
+    encoder << downloadMonitorSpeedMultiplier;
 }
 
 bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProcessCreationParameters& result)
@@ -112,8 +112,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     result.diskCacheDirectoryExtensionHandle = WTFMove(*diskCacheDirectoryExtensionHandle);
 
-    if (!decoder.decode(result.shouldEnableNetworkCacheEfficacyLogging))
-        return false;
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     if (!decoder.decode(result.shouldEnableNetworkCacheSpeculativeRevalidation))
         return false;
@@ -221,6 +219,12 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decode(result.shouldEnableITPDatabase))
         return false;
 
+    Optional<uint32_t> downloadMonitorSpeedMultiplier;
+    decoder >> downloadMonitorSpeedMultiplier;
+    if (!downloadMonitorSpeedMultiplier)
+        return false;
+    result.downloadMonitorSpeedMultiplier = *downloadMonitorSpeedMultiplier;
+    
     return true;
 }
 

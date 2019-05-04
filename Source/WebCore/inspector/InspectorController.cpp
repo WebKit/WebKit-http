@@ -127,28 +127,14 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     InspectorDatabaseAgent* databaseAgent = databaseAgentPtr.get();
     m_agents.append(WTFMove(databaseAgentPtr));
 
-    auto domStorageAgentPtr = std::make_unique<InspectorDOMStorageAgent>(pageContext, m_pageAgent);
-    InspectorDOMStorageAgent* domStorageAgent = domStorageAgentPtr.get();
-    m_agents.append(WTFMove(domStorageAgentPtr));
-
-    auto heapAgentPtr = std::make_unique<PageHeapAgent>(pageContext);
-    InspectorHeapAgent* heapAgent = heapAgentPtr.get();
-    m_agents.append(WTFMove(heapAgentPtr));
-
-    auto scriptProfilerAgentPtr = std::make_unique<InspectorScriptProfilerAgent>(pageContext);
-    InspectorScriptProfilerAgent* scriptProfilerAgent = scriptProfilerAgentPtr.get();
-    m_agents.append(WTFMove(scriptProfilerAgentPtr));
-
-    auto consoleAgentPtr = std::make_unique<PageConsoleAgent>(pageContext, heapAgent, m_domAgent);
+    auto consoleAgentPtr = std::make_unique<PageConsoleAgent>(pageContext, m_domAgent);
     WebConsoleAgent* consoleAgent = consoleAgentPtr.get();
     m_instrumentingAgents->setWebConsoleAgent(consoleAgentPtr.get());
     m_agents.append(WTFMove(consoleAgentPtr));
 
-    m_agents.append(std::make_unique<InspectorTimelineAgent>(pageContext, scriptProfilerAgent, heapAgent, pageAgent));
-
     ASSERT(m_injectedScriptManager->commandLineAPIHost());
     if (CommandLineAPIHost* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost())
-        commandLineAPIHost->init(m_inspectorAgent, consoleAgent, m_domAgent, domStorageAgent, databaseAgent);
+        commandLineAPIHost->init(m_inspectorAgent, consoleAgent, databaseAgent);
 }
 
 InspectorController::~InspectorController()
@@ -198,15 +184,23 @@ void InspectorController::createLazyAgents()
     m_agents.append(std::make_unique<InspectorApplicationCacheAgent>(pageContext, m_pageAgent));
     m_agents.append(std::make_unique<InspectorLayerTreeAgent>(pageContext));
     m_agents.append(std::make_unique<InspectorWorkerAgent>(pageContext));
+    m_agents.append(std::make_unique<InspectorDOMStorageAgent>(pageContext));
 #if ENABLE(INDEXED_DATABASE)
     m_agents.append(std::make_unique<InspectorIndexedDBAgent>(pageContext, m_pageAgent));
 #endif
+
+    auto scriptProfilerAgentPtr = std::make_unique<InspectorScriptProfilerAgent>(pageContext);
+    m_instrumentingAgents->setInspectorScriptProfilerAgent(scriptProfilerAgentPtr.get());
+    m_agents.append(WTFMove(scriptProfilerAgentPtr));
+
 #if ENABLE(RESOURCE_USAGE)
     m_agents.append(std::make_unique<InspectorCPUProfilerAgent>(pageContext));
     m_agents.append(std::make_unique<InspectorMemoryAgent>(pageContext));
 #endif
+    m_agents.append(std::make_unique<PageHeapAgent>(pageContext));
     m_agents.append(std::make_unique<PageAuditAgent>(pageContext));
     m_agents.append(std::make_unique<InspectorCanvasAgent>(pageContext));
+    m_agents.append(std::make_unique<InspectorTimelineAgent>(pageContext));
 }
 
 void InspectorController::inspectedPageDestroyed()

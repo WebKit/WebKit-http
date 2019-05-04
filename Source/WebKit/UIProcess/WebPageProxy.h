@@ -82,6 +82,8 @@
 #include <WebCore/MediaProducer.h>
 #include <WebCore/PlatformEvent.h>
 #include <WebCore/PlatformScreen.h>
+#include <WebCore/PlatformSpeechSynthesisUtterance.h>
+#include <WebCore/PlatformSpeechSynthesizer.h>
 #include <WebCore/PointerID.h>
 #include <WebCore/RegistrableDomain.h>
 #include <WebCore/ScrollTypes.h>
@@ -361,6 +363,10 @@ class WebPageProxy : public API::ObjectImpl<API::Object::Type::Page>
     , public WebPopupMenuProxy::Client
     , public IPC::MessageReceiver
     , public IPC::MessageSender
+#if ENABLE(SPEECH_SYNTHESIS)
+    , public WebCore::PlatformSpeechSynthesisUtteranceClient
+    , public WebCore::PlatformSpeechSynthesizerClient
+#endif
     , public CanMakeWeakPtr<WebPageProxy> {
 public:
     static Ref<WebPageProxy> create(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
@@ -967,6 +973,9 @@ public:
     void didFindStringMatches(const String&, const Vector<Vector<WebCore::IntRect>>& matchRects, int32_t firstIndexAfterSelection);
 
     void getContentsAsString(WTF::Function<void (const String&, CallbackBase::Error)>&&);
+#if PLATFORM(COCOA)
+    void getContentsAsAttributedString(CompletionHandler<void(const AttributedString&)>&&);
+#endif
     void getBytecodeProfile(WTF::Function<void (const String&, CallbackBase::Error)>&&);
     void getSamplingProfilerOutput(WTF::Function<void (const String&, CallbackBase::Error)>&&);
 
@@ -1062,7 +1071,8 @@ public:
 
     WebPageGroup& pageGroup() { return m_pageGroup; }
 
-    bool isValid() const;
+    bool hasRunningProcess() const;
+    void launchInitialProcessIfNecessary();
 
 #if ENABLE(DRAG_SUPPORT)
     WebCore::DragOperation currentDragOperation() const { return m_currentDragOperation; }
@@ -1092,7 +1102,7 @@ public:
 
     WebPageCreationParameters creationParameters(WebProcessProxy&, DrawingAreaProxy&);
 
-    void handleDownloadRequest(DownloadProxy*);
+    void handleDownloadRequest(DownloadProxy&);
 
     void advanceToNextMisspelling(bool startBeforeSelection);
     void changeSpellingToWord(const String& word);
@@ -1223,8 +1233,6 @@ public:
     void connectionWillOpen(IPC::Connection&);
     void webProcessWillShutDown();
 
-    void processDidFinishLaunching();
-
     void didSaveToPageCache();
         
     void setScrollPinningBehavior(WebCore::ScrollPinningBehavior);
@@ -1308,6 +1316,8 @@ public:
     void setHeaderBannerHeightForTesting(int);
     void setFooterBannerHeightForTesting(int);
 #endif
+
+    bool scrollingUpdatesDisabledForTesting();
 
     void installActivityStateChangeCompletionHandler(Function<void()>&&);
 
@@ -1483,6 +1493,14 @@ public:
     void dumpAdClickAttribution(CompletionHandler<void(const String&)>&&);
     void clearAdClickAttribution(CompletionHandler<void()>&&);
 
+#if ENABLE(SPEECH_SYNTHESIS)
+    void speechSynthesisVoiceList(Vector<WebSpeechSynthesisVoice>& result);
+    void speechSynthesisSpeak(const String&, const String&, float volume, float rate, float pitch, MonotonicTime startTime, const String& voiceURI, const String& voiceName, const String& voiceLang, bool localService, bool defaultVoice, CompletionHandler<void()>&&);
+    void speechSynthesisCancel();
+    void speechSynthesisPause(CompletionHandler<void()>&&);
+    void speechSynthesisResume(CompletionHandler<void()>&&);
+#endif
+
     void addObserver(WebViewDidMoveToWindowObserver&);
     void removeObserver(WebViewDidMoveToWindowObserver&);
     void webViewDidMoveToWindow();
@@ -1655,7 +1673,7 @@ private:
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
     void setCanShortCircuitHorizontalWheelEvents(bool canShortCircuitHorizontalWheelEvents) { m_canShortCircuitHorizontalWheelEvents = canShortCircuitHorizontalWheelEvents; }
 
-    void reattachToWebProcess();
+    void launchProcess(const WebCore::RegistrableDomain&);
     void swapToWebProcess(Ref<WebProcessProxy>&&, std::unique_ptr<DrawingAreaProxy>&&, RefPtr<WebFrameProxy>&& mainFrame);
     void didFailToSuspendAfterProcessSwap();
     void didSuspendAfterProcessSwap();
@@ -1663,8 +1681,8 @@ private:
     enum class IsProcessSwap { No, Yes };
     void finishAttachingToWebProcess(IsProcessSwap);
 
-    RefPtr<API::Navigation> reattachToWebProcessForReload();
-    RefPtr<API::Navigation> reattachToWebProcessWithItem(WebBackForwardListItem&);
+    RefPtr<API::Navigation> launchProcessForReload();
+    RefPtr<API::Navigation> launchProcessWithItem(WebBackForwardListItem&);
 
     void requestNotificationPermission(uint64_t notificationID, const String& originString);
     void showNotification(const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, WebCore::NotificationDirection, const String& originString, uint64_t notificationID);
@@ -1954,8 +1972,6 @@ private:
 
     void didResignInputElementStrongPasswordAppearance(const UserData&);
 
-    void finishInitializingWebPageAfterProcessLaunch();
-
     void handleMessage(IPC::Connection&, const String& messageName, const UserData& messageBody);
     void handleSynchronousMessage(IPC::Connection&, const String& messageName, const UserData& messageBody, UserData& returnUserData);
 
@@ -1990,6 +2006,8 @@ private:
     void setNeedsFontAttributes(bool);
     void updateFontAttributesAfterEditorStateChange();
 
+    void didAttachToRunningProcess();
+
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void logFrameNavigation(const WebFrameProxy&, const URL& pageURL, const WebCore::ResourceRequest&, const URL& redirectURL);
 #endif
@@ -2009,6 +2027,19 @@ private:
 #endif
 #if ENABLE(APPLE_PAY) && PLATFORM(MAC)
     NSWindow *paymentCoordinatorPresentingWindow(const WebPaymentCoordinatorProxy&) final;
+#endif
+
+#if ENABLE(SPEECH_SYNTHESIS)
+    void didStartSpeaking(WebCore::PlatformSpeechSynthesisUtterance&) override;
+    void didFinishSpeaking(WebCore::PlatformSpeechSynthesisUtterance&) override;
+    void didPauseSpeaking(WebCore::PlatformSpeechSynthesisUtterance&) override;
+    void didResumeSpeaking(WebCore::PlatformSpeechSynthesisUtterance&) override;
+    void speakingErrorOccurred(WebCore::PlatformSpeechSynthesisUtterance&) override;
+    void boundaryEventOccurred(WebCore::PlatformSpeechSynthesisUtterance&, WebCore::SpeechBoundary, unsigned charIndex) override;
+    void voicesDidChange() override;
+
+    struct SpeechSynthesisData;
+    SpeechSynthesisData& speechSynthesisData();
 #endif
 
     WeakPtr<PageClient> m_pageClient;
@@ -2182,15 +2213,13 @@ private:
     bool m_paginationLineGridEnabled { false };
         
     // If the process backing the web page is alive and kicking.
-    bool m_isValid { true };
+    bool m_hasRunningProcess { false };
 
     // Whether WebPageProxy::close() has been called on this page.
     bool m_isClosed { false };
 
     // Whether it can run modal child web pages.
     bool m_canRunModal { false };
-
-    bool m_needsToFinishInitializingWebPageAfterProcessLaunch { false };
 
     bool m_isInPrintingMode { false };
     bool m_isPerformingDOMPrintOperation { false };
@@ -2430,6 +2459,17 @@ WEBPAGEPROXY_LOADOPTIMIZER_ADDITIONS_2
 #endif
 
     HashMap<WebViewDidMoveToWindowObserver*, WeakPtr<WebViewDidMoveToWindowObserver>> m_webViewDidMoveToWindowObservers;
+    
+#if ENABLE(SPEECH_SYNTHESIS)
+    struct SpeechSynthesisData {
+        std::unique_ptr<WebCore::PlatformSpeechSynthesizer> synthesizer;
+        RefPtr<WebCore::PlatformSpeechSynthesisUtterance> utterance;
+        CompletionHandler<void()> speakingFinishedCompletionHandler;
+        CompletionHandler<void()> speakingPausedCompletionHandler;
+        CompletionHandler<void()> speakingResumedCompletionHandler;
+    };
+    Optional<SpeechSynthesisData> m_speechSynthesisData;
+#endif
 };
 
 } // namespace WebKit

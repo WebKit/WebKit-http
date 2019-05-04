@@ -56,7 +56,6 @@ struct NetworkProcessCreationParameters {
 
     String diskCacheDirectory;
     SandboxExtension::Handle diskCacheDirectoryExtensionHandle;
-    bool shouldEnableNetworkCacheEfficacyLogging { false };
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     bool shouldEnableNetworkCacheSpeculativeRevalidation { false };
 #endif
@@ -112,6 +111,7 @@ struct NetworkProcessCreationParameters {
     bool shouldDisableServiceWorkerProcessTerminationDelay { false };
 #endif
     bool shouldEnableITPDatabase { false };
+    uint32_t downloadMonitorSpeedMultiplier { 1 };
 };
 
 } // namespace WebKit

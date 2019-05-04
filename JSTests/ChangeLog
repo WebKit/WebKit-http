@@ -1,3 +1,155 @@
+2019-03-19  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] microbenchmarks/generate-multiple-llint-entrypoints.js is running out of executable memory on ARMv7
+        https://bugs.webkit.org/show_bug.cgi?id=195950
+
+        Unreviewed, reducing the amount of memory used on this test to avoid
+        OOM on devices with memory restrictions.
+
+        * microbenchmarks/generate-multiple-llint-entrypoints.js:
+
+2019-03-19  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] LLIntEntryPoint creates same DirectJITCode for all functions
+        https://bugs.webkit.org/show_bug.cgi?id=194648
+
+        Reviewed by Keith Miller.
+
+        * microbenchmarks/generate-multiple-llint-entrypoints.js: Added.
+
+2019-03-18  Mark Lam  <mark.lam@apple.com>
+
+        Missing a ThrowScope release in JSObject::toString().
+        https://bugs.webkit.org/show_bug.cgi?id=195893
+        <rdar://problem/48970986>
+
+        Reviewed by Michael Saboff.
+
+        * stress/to-string-exception-check-release.js: Added.
+
+2019-03-18  Mark Lam  <mark.lam@apple.com>
+
+        Structure::flattenDictionary() should clear unused property slots.
+        https://bugs.webkit.org/show_bug.cgi?id=195871
+        <rdar://problem/48959497>
+
+        Reviewed by Michael Saboff.
+
+        * stress/structure-flattenDictionary-should-clear-unused-property-slots.js: Added.
+
+2019-03-15  Mark Lam  <mark.lam@apple.com>
+
+        Need to check ObjectPropertyCondition liveness before accessing it when firing watchpoints.
+        https://bugs.webkit.org/show_bug.cgi?id=195827
+        <rdar://problem/48845513>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/check-object-property-condition-liveness-before-accessing-it-when-watchpoints-fire.js: Added.
+
+2019-03-15  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [ARM,MIPS] Skip slow tests
+        https://bugs.webkit.org/show_bug.cgi?id=195799
+
+        Unreviewed, test does not finish on ARM and MIPS within the
+        timeout limit.
+
+        * stress/symbol-is-destructed-before-refing-underlying-symbol-impl.js:
+
+2019-03-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Retain PrivateName of Symbol before passing it to operations potentially incurring GC
+        https://bugs.webkit.org/show_bug.cgi?id=195791
+        <rdar://problem/48806130>
+
+        Reviewed by Mark Lam.
+
+        * stress/symbol-is-destructed-before-refing-underlying-symbol-impl.js: Added.
+        (foo):
+
+2019-03-14  Saam barati  <sbarati@apple.com>
+
+        We can't remove code after ForceOSRExit until after FixupPhase
+        https://bugs.webkit.org/show_bug.cgi?id=186916
+        <rdar://problem/41396612>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/movhint-backwards-propagation-must-merge-use-as-value-add.js: Added.
+        (foo):
+        * stress/movhint-backwards-propagation-must-merge-use-as-value.js: Added.
+        (foo):
+
+2019-03-13  Michael Saboff  <msaboff@apple.com>
+
+        ASSERTION FAILED: regexp->isValid() or ASSERTION FAILED: !isCompilationThread()
+        https://bugs.webkit.org/show_bug.cgi?id=195735
+
+        Reviewed by Mark Lam.
+
+        New regression test.
+
+        * stress/dont-strength-reduce-regexp-with-compile-error.js: Added.
+        (foo):
+        (bar):
+
+2019-03-14  Saam barati  <sbarati@apple.com>
+
+        Fixup uses KnownInt32 incorrectly in some nodes
+        https://bugs.webkit.org/show_bug.cgi?id=195279
+        <rdar://problem/47915654>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/known-int32-cant-be-used-across-bytecode-boundary.js: Added.
+        (foo):
+
+2019-03-14  Keith Miller  <keith_miller@apple.com>
+
+        DFG liveness can't skip tail caller inline frames
+        https://bugs.webkit.org/show_bug.cgi?id=195715
+
+        Reviewed by Saam Barati.
+
+        * stress/dfg-scan-inlined-tail-caller-frames-liveness.js:
+        (i.foo):
+
+2019-03-13  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: reducing the variants on 2 tests to avoid timing out on JSC Debug queue.
+        https://bugs.webkit.org/show_bug.cgi?id=195415
+
+        Not reviewed.
+
+        Changed these tests to only run the default configuration.
+        The ftl-no-cjit-validate-sampling-profiler variant was timing out.
+        There's no strong need to run this test on that variant.
+
+        * stress/dfg-to-string-on-int-does-gc.js:
+        * stress/dfg-to-string-on-string-or-string-object-does-not-gc.js:
+
+2019-03-13  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        String overflow when using StringBuilder in JSC::createError
+        https://bugs.webkit.org/show_bug.cgi?id=194957
+
+        Reviewed by Mark Lam.
+
+        Add test string-overflow-createError-bulder.js that overflows
+        StringBuilder in notAFunctionSourceAppender. The second new test
+        string-overflow-createError-fit.js has an error message that doesn't
+        overflow, it still failed since the String's capacity can't be doubled.
+        Run test string-overflow-createError.js only in the default
+        configuration to reduce memory consumption when running the test
+        in all configurations on multiple CPUs in parallel.
+
+        * stress/string-overflow-createError-builder.js: Copied from JSTests/stress/string-overflow-createError.js.
+        (catch):
+        * stress/string-overflow-createError-fit.js: Copied from JSTests/stress/string-overflow-createError.js.
+        (catch):
+        * stress/string-overflow-createError.js:
+
 2019-03-12  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] OSR entry should respect abstract values in addition to flush formats

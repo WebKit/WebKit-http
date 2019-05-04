@@ -2373,6 +2373,9 @@ http/tests/xmlhttprequest/response-special-characters.html [ Failure ]
 http/tests/xmlhttprequest/web-apps/012.html
 http/tests/xmlhttprequest/web-apps/013.html
 
+storage/indexeddb/storage-limit.html [ Skip ]
+http/tests/IndexedDB/storage-limit.https.html [ Skip ]
+
 # Assertion failures: Not investigated
 [ Debug ] http/tests/security/isolatedWorld/storage-properties.html [ Skip ]
 [ Debug ] http/tests/security/javascriptURL/javascriptURL-execution-context-frame-location-htmldom.html [ Skip ]
@@ -4275,6 +4278,16 @@ webkit.org/b/194451 accessibility/set-value-not-work-for-disabled-sliders.html [
 
 storage/indexeddb/result-request-cycle.html [ Skip ]
 storage/indexeddb/value-cursor-cycle.html [ Skip ]
+storage/indexeddb/connection-leak-private.html [ Skip ]
+storage/indexeddb/connection-leak.html [ Skip ]
+storage/indexeddb/cursor-leak-private.html [ Skip ]
+storage/indexeddb/cursor-leak.html [ Skip ]
+storage/indexeddb/cursor-request-cycle-private.html [ Skip ]
+storage/indexeddb/cursor-request-cycle.html [ Skip ]
+storage/indexeddb/delete-closed-database-object-private.html [ Skip ]
+storage/indexeddb/delete-closed-database-object.html [ Skip ]
+storage/indexeddb/request-leak-private.html [ Skip ]
+storage/indexeddb/request-leak.html [ Skip ]
 
 webkit.org/b/194711 fast/replaced/encrypted-pdf-as-object-and-embed.html [ Failure ]
 

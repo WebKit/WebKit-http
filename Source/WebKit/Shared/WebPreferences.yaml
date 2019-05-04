@@ -1247,6 +1247,13 @@ CSSOMViewScrollingAPIEnabled:
   humanReadableDescription: "Implement standard behavior for scrollLeft, scrollTop, scrollWidth, scrollHeight, scrollTo, scrollBy and scrollingElement."
   category: internal
 
+BlockingOfSmallPluginsEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "Block small plugins"
+  humanReadableDescription: "Stop plugins smaller than a certain threshold from loading."
+  category: internal
+
 WebAnimationsEnabled:
   type: bool
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
@@ -1367,6 +1374,13 @@ ProcessSwapOnCrossSiteNavigationEnabled:
   category: experimental
   webcoreBinding: none
 
+MediaCapabilitiesExtensionsEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "Media Capabilities Extensions"
+  humanReadableDescription: "Media Capabilities Extensions"
+  category: experimental
+
 # For internal features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableDescription for all debug features. They
@@ -1476,6 +1490,15 @@ FasterClicksEnabled:
   condition: PLATFORM(IOS_FAMILY)
   humanReadableName: "Faster clicks"
   humanReadableDescription: "Support faster clicks on zoomable pages"
+  webcoreBinding: none
+  category: internal
+
+FastClicksEverywhere:
+  type: bool
+  defaultValue: false
+  condition: PLATFORM(IOS_FAMILY)
+  humanReadableName: "Fast clicks everywhere"
+  humanReadableDescription: "Force fast clicks on all pages"
   webcoreBinding: none
   category: internal
 

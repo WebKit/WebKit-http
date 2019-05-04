@@ -135,7 +135,7 @@ ExceptionOr<Ref<IDBRequest>> IDBCursor::update(ExecState& state, JSValue value)
     auto request = putResult.releaseReturnValue();
     request->setSource(*this);
 
-    return WTFMove(request);
+    return request;
 }
 
 ExceptionOr<void> IDBCursor::advance(unsigned count)
@@ -306,13 +306,20 @@ ExceptionOr<Ref<WebCore::IDBRequest>> IDBCursor::deleteFunction(ExecState& state
     auto request = result.releaseReturnValue();
     request->setSource(*this);
 
-    return WTFMove(request);
+    return request;
 }
 
-void IDBCursor::setGetResult(IDBRequest&, const IDBGetResult& getResult)
+bool IDBCursor::setGetResult(IDBRequest& request, const IDBGetResult& getResult)
 {
     LOG(IndexedDB, "IDBCursor::setGetResult - current key %s", getResult.keyData().loggingString().substring(0, 100).utf8().data());
     ASSERT(&effectiveObjectStore().transaction().database().originThread() == &Thread::current());
+
+    auto* context = request.scriptExecutionContext();
+    if (!context)
+        return false;
+
+    VM& vm = context->vm();
+    JSLockHolder lock(vm);
 
     m_keyWrapper = { };
     m_primaryKeyWrapper = { };
@@ -326,7 +333,7 @@ void IDBCursor::setGetResult(IDBRequest&, const IDBGetResult& getResult)
         m_value = { };
 
         m_gotValue = false;
-        return;
+        return false;
     }
 
     m_keyData = getResult.keyData();
@@ -338,6 +345,14 @@ void IDBCursor::setGetResult(IDBRequest&, const IDBGetResult& getResult)
         m_value = getResult.value();
 
     m_gotValue = true;
+    return true;
+}
+
+void IDBCursor::clearWrappers()
+{
+    m_keyWrapper.clear();
+    m_primaryKeyWrapper.clear();
+    m_valueWrapper.clear();
 }
 
 } // namespace WebCore

@@ -416,14 +416,6 @@ static bool mediaSessionMayBeConfusedWithMainContent(const MediaElementSessionIn
     return true;
 }
 
-#if !RELEASE_LOG_DISABLED
-static uint64_t nextLogIdentifier()
-{
-    static uint64_t logIdentifier = cryptographicallyRandomNumber();
-    return ++logIdentifier;
-}
-#endif
-
 HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& document, bool createdByParser)
     : HTMLElement(tagName, document)
     , ActiveDOMObject(document)
@@ -474,7 +466,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 #endif
 #if !RELEASE_LOG_DISABLED
     , m_logger(&document.logger())
-    , m_logIdentifier(nextLogIdentifier())
+    , m_logIdentifier(uniqueLogIdentifier())
 #endif
 {
     allMediaElements().add(this);
@@ -1167,7 +1159,7 @@ String HTMLMediaElement::canPlayType(const String& mimeType) const
             break;
     }
 
-    DEBUG_LOG(LOGIDENTIFIER, "[", mimeType, "] -> ", canPlay);
+    INFO_LOG(LOGIDENTIFIER, mimeType, ": ", canPlay);
 
     return canPlay;
 }
@@ -3083,10 +3075,10 @@ void HTMLMediaElement::seekTask()
     // time scale, we will ask the media engine to "seek" to the current movie time, which may be a noop and
     // not generate a timechanged callback. This means m_seeking will never be cleared and we will never
     // fire a 'seeked' event.
-    if (willLog(WTFLogLevelDebug)) {
+    if (willLog(WTFLogLevel::Debug)) {
         MediaTime mediaTime = m_player->mediaTimeForTimeValue(time);
         if (time != mediaTime)
-            DEBUG_LOG(LOGIDENTIFIER, time, " media timeline equivalent is ", mediaTime);
+            INFO_LOG(LOGIDENTIFIER, time, " media timeline equivalent is ", mediaTime);
     }
 
     time = m_player->mediaTimeForTimeValue(time);
@@ -4659,7 +4651,7 @@ URL HTMLMediaElement::selectNextSourceChild(ContentType* contentType, String* ke
     UNUSED_PARAM(keySystem);
 
     // Don't log if this was just called to find out if there are any valid <source> elements.
-    bool shouldLog = willLog(WTFLogLevelDebug) && actionIfInvalid != DoNothing;
+    bool shouldLog = willLog(WTFLogLevel::Debug) && actionIfInvalid != DoNothing;
     if (shouldLog)
         INFO_LOG(LOGIDENTIFIER);
 
@@ -4758,7 +4750,7 @@ CheckAgain:
 
 void HTMLMediaElement::sourceWasAdded(HTMLSourceElement& source)
 {
-    if (willLog(WTFLogLevelInfo) && source.hasTagName(sourceTag)) {
+    if (willLog(WTFLogLevel::Info) && source.hasTagName(sourceTag)) {
         URL url = source.getNonEmptyURLAttribute(srcAttr);
         INFO_LOG(LOGIDENTIFIER, "'src' is ", url);
     }
@@ -4810,7 +4802,7 @@ void HTMLMediaElement::sourceWasAdded(HTMLSourceElement& source)
 
 void HTMLMediaElement::sourceWasRemoved(HTMLSourceElement& source)
 {
-    if (willLog(WTFLogLevelInfo) && source.hasTagName(sourceTag)) {
+    if (willLog(WTFLogLevel::Info) && source.hasTagName(sourceTag)) {
         URL url = source.getNonEmptyURLAttribute(srcAttr);
         INFO_LOG(LOGIDENTIFIER, "'src' is ", url);
     }
@@ -5922,7 +5914,7 @@ void HTMLMediaElement::setIsPlayingToWirelessTarget(bool isPlayingToWirelessTarg
 
 void HTMLMediaElement::dispatchEvent(Event& event)
 {
-    DEBUG_LOG(LOGIDENTIFIER, "dispatching '", event.type(), "'");
+    DEBUG_LOG(LOGIDENTIFIER, event.type());
 
     HTMLElement::dispatchEvent(event);
 }
@@ -7115,7 +7107,7 @@ RefPtr<PlatformMediaResourceLoader> HTMLMediaElement::mediaPlayerCreateResourceL
 
     m_lastMediaResourceLoaderForTesting = makeWeakPtr(mediaResourceLoader.get());
 
-    return WTFMove(mediaResourceLoader);
+    return mediaResourceLoader;
 }
 
 const MediaResourceLoader* HTMLMediaElement::lastMediaResourceLoaderForTesting() const
@@ -7278,7 +7270,7 @@ DOMWrapperWorld& HTMLMediaElement::ensureIsolatedWorld()
 
 bool HTMLMediaElement::ensureMediaControlsInjectedScript()
 {
-    DEBUG_LOG(LOGIDENTIFIER);
+    INFO_LOG(LOGIDENTIFIER);
 
     Page* page = document().page();
     if (!page)
@@ -7352,7 +7344,7 @@ void HTMLMediaElement::setControllerJSProperty(const char* propertyName, JSC::JS
 
 void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot& root)
 {
-    DEBUG_LOG(LOGIDENTIFIER);
+    INFO_LOG(LOGIDENTIFIER);
 
     if (!ensureMediaControlsInjectedScript())
         return;
@@ -7430,10 +7422,10 @@ void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot& root)
 
 void HTMLMediaElement::setMediaControlsDependOnPageScaleFactor(bool dependsOnPageScale)
 {
-    DEBUG_LOG(LOGIDENTIFIER, "MediaElement::setMediaControlsDependPageScaleFactor", dependsOnPageScale);
+    INFO_LOG(LOGIDENTIFIER, dependsOnPageScale);
 
     if (document().settings().mediaControlsScaleWithPageZoom()) {
-        DEBUG_LOG(LOGIDENTIFIER, "MediaElement::setMediaControlsDependPageScaleFactor", "forced to false by Settings value");
+        INFO_LOG(LOGIDENTIFIER, "forced to false by Settings value");
         m_mediaControlsDependOnPageScaleFactor = false;
         return;
     }

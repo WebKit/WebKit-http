@@ -49,7 +49,7 @@
 #include "SuperSampler.h"
 #include <algorithm>
 #include <unicode/uconfig.h>
-#include <unicode/unorm.h>
+#include <unicode/unorm2.h>
 #include <unicode/ustring.h>
 #include <wtf/ASCIICType.h>
 #include <wtf/MathExtras.h>
@@ -527,7 +527,7 @@ static ALWAYS_INLINE JSString* replaceUsingRegExpSearch(
 {
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    const String& source = string->value(exec);
+    String source = string->value(exec);
     unsigned sourceLen = source.length();
     RETURN_IF_EXCEPTION(scope, nullptr);
     RegExpObject* regExpObject = jsCast<RegExpObject*>(searchValue);
@@ -656,8 +656,10 @@ static ALWAYS_INLINE JSString* replaceUsingRegExpSearch(
 
                     if (matchStart < 0)
                         patternValue = jsUndefined();
-                    else
-                        patternValue = jsSubstring(exec, source, matchStart, matchLen);
+                    else {
+                        patternValue = jsSubstring(&vm, source, matchStart, matchLen);
+                        RETURN_IF_EXCEPTION(scope, nullptr);
+                    }
 
                     args.append(patternValue);
 
@@ -735,7 +737,7 @@ JSCell* JIT_OPERATION operationStringProtoFuncReplaceRegExpEmptyStr(
         // ES5.1 15.5.4.10 step 8.a.
         searchValue->setLastIndex(exec, 0);
         RETURN_IF_EXCEPTION(scope, nullptr);
-        const String& source = thisValue->value(exec);
+        String source = thisValue->value(exec);
         RETURN_IF_EXCEPTION(scope, nullptr);
         RELEASE_AND_RETURN(scope, removeUsingRegExpSearch(vm, exec, thisValue, source, regExp));
     }
@@ -778,7 +780,7 @@ static ALWAYS_INLINE JSString* replaceUsingStringSearch(VM& vm, ExecState* exec,
 {
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    const String& string = jsString->value(exec);
+    String string = jsString->value(exec);
     RETURN_IF_EXCEPTION(scope, nullptr);
     String searchString = searchValue.toWTFString(exec);
     RETURN_IF_EXCEPTION(scope, nullptr);
@@ -792,7 +794,9 @@ static ALWAYS_INLINE JSString* replaceUsingStringSearch(VM& vm, ExecState* exec,
     CallType callType = getCallData(vm, replaceValue, callData);
     if (callType != CallType::None) {
         MarkedArgumentBuffer args;
-        args.append(jsSubstring(exec, string, matchStart, searchString.impl()->length()));
+        auto* substring = jsSubstring(&vm, string, matchStart, searchString.impl()->length());
+        RETURN_IF_EXCEPTION(scope, nullptr);
+        args.append(substring);
         args.append(jsNumber(matchStart));
         args.append(jsString);
         ASSERT(!args.hasOverflowed());
@@ -1153,8 +1157,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncSlice(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     double end = a1.isUndefined() ? len : a1.toInteger(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    scope.release();
-    return JSValue::encode(stringSlice(exec, WTFMove(s), start, end));
+    return JSValue::encode(stringSlice(vm, WTFMove(s), start, end));
 }
 
 // Return true in case of early return (resultLength got to limitLength).
@@ -1176,7 +1179,9 @@ static ALWAYS_INLINE bool splitStringByOneCharacterImpl(ExecState* exec, JSArray
         //    through q (exclusive).
         // 2. Call the [[DefineOwnProperty]] internal method of A with arguments ToString(lengthA),
         //    Property Descriptor {[[Value]]: T, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true}, and false.
-        result->putDirectIndex(exec, resultLength, jsSubstring(exec, originalValue, input, position, matchPosition - position));
+        auto* substring = jsSubstring(exec, originalValue, input, position, matchPosition - position);
+        RETURN_IF_EXCEPTION(scope, false);
+        result->putDirectIndex(exec, resultLength, substring);
         RETURN_IF_EXCEPTION(scope, false);
         // 3. Increment lengthA by 1.
         // 4. If lengthA == lim, return A.
@@ -1300,8 +1305,10 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncSplitFast(ExecState* exec)
             // 1. Let T be a String value equal to the substring of S consisting of the characters at positions p (inclusive)
             //    through q (exclusive).
             // 2. Call CreateDataProperty(A, ToString(lengthA), T).
-            result->putDirectIndex(exec, resultLength, jsSubstring(exec, thisValue, input, position, matchPosition - position));
-            RETURN_IF_EXCEPTION(scope, encodedJSValue());
+            auto* substring = jsSubstring(exec, thisValue, input, position, matchPosition - position);
+            RETURN_IF_EXCEPTION(scope, { });
+            result->putDirectIndex(exec, resultLength, substring);
+            RETURN_IF_EXCEPTION(scope, { });
             // 3. Increment lengthA by 1.
             // 4. If lengthA == lim, return A.
             if (++resultLength == limit)
@@ -1316,8 +1323,10 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncSplitFast(ExecState* exec)
     // 15. Let T be a String value equal to the substring of S consisting of the characters at positions p (inclusive)
     //     through s (exclusive).
     // 16. Call CreateDataProperty(A, ToString(lengthA), T).
+    auto* substring = jsSubstring(exec, thisValue, input, position, input.length() - position);
+    RETURN_IF_EXCEPTION(scope, { });
     scope.release();
-    result->putDirectIndex(exec, resultLength++, jsSubstring(exec, thisValue, input, position, input.length() - position));
+    result->putDirectIndex(exec, resultLength++, substring);
 
     // 17. Return A.
     return JSValue::encode(result);
@@ -1361,9 +1370,10 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncSubstr(ExecState* exec)
         length = len - start;
     unsigned substringStart = static_cast<unsigned>(start);
     unsigned substringLength = static_cast<unsigned>(length);
+    scope.release();
     if (jsString)
         return JSValue::encode(jsSubstring(exec, jsString, substringStart, substringLength));
-    return JSValue::encode(jsSubstring(exec, uString, substringStart, substringLength));
+    return JSValue::encode(jsSubstring(&vm, uString, substringStart, substringLength));
 }
 
 EncodedJSValue JSC_HOST_CALL builtinStringSubstrInternal(ExecState* exec)
@@ -1421,7 +1431,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncSubstring(ExecState* exec)
     }
     unsigned substringStart = static_cast<unsigned>(start);
     unsigned substringLength = static_cast<unsigned>(end) - substringStart;
-    return JSValue::encode(jsSubstring(exec, jsString, substringStart, substringLength));
+    RELEASE_AND_RETURN(scope, JSValue::encode(jsSubstring(exec, jsString, substringStart, substringLength)));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncToLowerCase(ExecState* exec)
@@ -1434,7 +1444,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncToLowerCase(ExecState* exec)
         return throwVMTypeError(exec, scope);
     JSString* sVal = thisValue.toString(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    const String& s = sVal->value(exec);
+    String s = sVal->value(exec);
     String lowercasedString = s.convertToLowercaseWithoutLocale();
     if (lowercasedString.impl() == s.impl())
         return JSValue::encode(sVal);
@@ -1451,7 +1461,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncToUpperCase(ExecState* exec)
         return throwVMTypeError(exec, scope);
     JSString* sVal = thisValue.toString(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    const String& s = sVal->value(exec);
+    String s = sVal->value(exec);
     String uppercasedString = s.convertToUppercaseWithoutLocale();
     if (uppercasedString.impl() == s.impl())
         return JSValue::encode(sVal);
@@ -1805,58 +1815,85 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncIterator(ExecState* exec)
     return JSValue::encode(JSStringIterator::create(exec, exec->jsCallee()->globalObject(vm)->stringIteratorStructure(), string));
 }
 
-enum class NormalizationForm {
-    CanonicalComposition,
-    CanonicalDecomposition,
-    CompatibilityComposition,
-    CompatibilityDecomposition
-};
+enum class NormalizationForm { NFC, NFD, NFKC, NFKD };
 
-static JSValue normalize(ExecState* exec, const UChar* source, size_t sourceLength, NormalizationForm form)
+static constexpr bool normalizationAffects8Bit(NormalizationForm form)
+{
+    switch (form) {
+    case NormalizationForm::NFC:
+        return false;
+    case NormalizationForm::NFD:
+        return true;
+    case NormalizationForm::NFKC:
+        return false;
+    case NormalizationForm::NFKD:
+        return true;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+    return true;
+}
+
+static const UNormalizer2* normalizer(NormalizationForm form)
+{
+    UErrorCode status = U_ZERO_ERROR;
+    const UNormalizer2* normalizer = nullptr;
+    switch (form) {
+    case NormalizationForm::NFC:
+        normalizer = unorm2_getNFCInstance(&status);
+        break;
+    case NormalizationForm::NFD:
+        normalizer = unorm2_getNFDInstance(&status);
+        break;
+    case NormalizationForm::NFKC:
+        normalizer = unorm2_getNFKCInstance(&status);
+        break;
+    case NormalizationForm::NFKD:
+        normalizer = unorm2_getNFKDInstance(&status);
+        break;
+    }
+    ASSERT(normalizer);
+    ASSERT(U_SUCCESS(status));
+    return normalizer;
+}
+
+static JSValue normalize(ExecState* exec, JSString* string, NormalizationForm form)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
+    auto viewWithString = string->viewWithUnderlyingString(exec);
+    RETURN_IF_EXCEPTION(scope, { });
+
+    StringView view = viewWithString.view;
+    if (view.is8Bit() && (!normalizationAffects8Bit(form) || charactersAreAllASCII(view.characters8(), view.length())))
+        RELEASE_AND_RETURN(scope, string);
+
+    const UNormalizer2* normalizer = JSC::normalizer(form);
+
+    // Since ICU does not offer functions that can perform normalization or check for
+    // normalization with input that is Latin-1, we need to upconvert to UTF-16 at this point.
+    auto characters = view.upconvertedCharacters();
+
     UErrorCode status = U_ZERO_ERROR;
-    // unorm2_get*Instance() documentation says: "Returns an unmodifiable singleton instance. Do not delete it."
-    const UNormalizer2* normalizer = nullptr;
-    switch (form) {
-    case NormalizationForm::CanonicalComposition:
-        normalizer = unorm2_getNFCInstance(&status);
-        break;
-    case NormalizationForm::CanonicalDecomposition:
-        normalizer = unorm2_getNFDInstance(&status);
-        break;
-    case NormalizationForm::CompatibilityComposition:
-        normalizer = unorm2_getNFKCInstance(&status);
-        break;
-    case NormalizationForm::CompatibilityDecomposition:
-        normalizer = unorm2_getNFKDInstance(&status);
-        break;
-    }
+    UBool isNormalized = unorm2_isNormalized(normalizer, characters, view.length(), &status);
+    ASSERT(U_SUCCESS(status));
+    if (isNormalized)
+        RELEASE_AND_RETURN(scope, string);
 
-    if (!normalizer || U_FAILURE(status))
-        return throwTypeError(exec, scope);
+    int32_t normalizedStringLength = unorm2_normalize(normalizer, characters, view.length(), nullptr, 0, &status);
+    ASSERT(status == U_BUFFER_OVERFLOW_ERROR);
 
-    int32_t normalizedStringLength = unorm2_normalize(normalizer, source, sourceLength, nullptr, 0, &status);
-
-    if (U_FAILURE(status) && status != U_BUFFER_OVERFLOW_ERROR) {
-        // The behavior is not specified when normalize fails.
-        // Now we throw a type error since it seems that the contents of the string are invalid.
-        return throwTypeError(exec, scope);
-    }
-
-    UChar* buffer = nullptr;
-    auto impl = StringImpl::tryCreateUninitialized(normalizedStringLength, buffer);
-    if (!impl)
+    UChar* buffer;
+    auto result = StringImpl::tryCreateUninitialized(normalizedStringLength, buffer);
+    if (!result)
         return throwOutOfMemoryError(exec, scope);
 
     status = U_ZERO_ERROR;
-    unorm2_normalize(normalizer, source, sourceLength, buffer, normalizedStringLength, &status);
-    if (U_FAILURE(status))
-        return throwTypeError(exec, scope);
+    unorm2_normalize(normalizer, characters, view.length(), buffer, normalizedStringLength, &status);
+    ASSERT(U_SUCCESS(status));
 
-    RELEASE_AND_RETURN(scope, jsString(exec, WTFMove(impl)));
+    RELEASE_AND_RETURN(scope, jsString(&vm, WTFMove(result)));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncNormalize(ExecState* exec)
@@ -1867,29 +1904,28 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncNormalize(ExecState* exec)
     JSValue thisValue = exec->thisValue();
     if (!checkObjectCoercible(thisValue))
         return throwVMTypeError(exec, scope);
-    auto viewWithString = thisValue.toString(exec)->viewWithUnderlyingString(exec);
-    RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    StringView view = viewWithString.view;
+    JSString* string = thisValue.toString(exec);
+    RETURN_IF_EXCEPTION(scope, { });
 
-    NormalizationForm form = NormalizationForm::CanonicalComposition;
-    // Verify that the argument is provided and is not undefined.
-    if (!exec->argument(0).isUndefined()) {
-        String formString = exec->uncheckedArgument(0).toWTFString(exec);
-        RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    auto form = NormalizationForm::NFC;
+    JSValue formValue = exec->argument(0);
+    if (!formValue.isUndefined()) {
+        String formString = formValue.toWTFString(exec);
+        RETURN_IF_EXCEPTION(scope, { });
 
         if (formString == "NFC")
-            form = NormalizationForm::CanonicalComposition;
+            form = NormalizationForm::NFC;
         else if (formString == "NFD")
-            form = NormalizationForm::CanonicalDecomposition;
+            form = NormalizationForm::NFD;
         else if (formString == "NFKC")
-            form = NormalizationForm::CompatibilityComposition;
+            form = NormalizationForm::NFKC;
         else if (formString == "NFKD")
-            form = NormalizationForm::CompatibilityDecomposition;
+            form = NormalizationForm::NFKD;
         else
-            return throwVMError(exec, scope, createRangeError(exec, "argument does not match any normalization form"_s));
+            return throwVMRangeError(exec, scope, "argument does not match any normalization form"_s);
     }
 
-    RELEASE_AND_RETURN(scope, JSValue::encode(normalize(exec, view.upconvertedCharacters(), view.length(), form)));
+    RELEASE_AND_RETURN(scope, JSValue::encode(normalize(exec, string, form)));
 }
 
 } // namespace JSC

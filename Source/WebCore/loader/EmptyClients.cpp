@@ -118,9 +118,9 @@ class EmptyContextMenuClient final : public ContextMenuClient {
 
 class EmptyDatabaseProvider final : public DatabaseProvider {
 #if ENABLE(INDEXED_DATABASE)
-    IDBClient::IDBConnectionToServer& idbConnectionToServerForSession(const PAL::SessionID&) final
+    IDBClient::IDBConnectionToServer& idbConnectionToServerForSession(const PAL::SessionID& sessionID) final
     {
-        static auto& sharedConnection = InProcessIDBServer::create().leakRef();
+        static auto& sharedConnection = InProcessIDBServer::create(sessionID).leakRef();
         return sharedConnection.connectionToServer();
     }
 #endif
@@ -483,10 +483,6 @@ RefPtr<Frame> EmptyFrameLoaderClient::createFrame(const URL&, const String&, HTM
 RefPtr<Widget> EmptyFrameLoaderClient::createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool)
 {
     return nullptr;
-}
-
-void EmptyFrameLoaderClient::recreatePlugin(Widget*)
-{
 }
 
 RefPtr<Widget> EmptyFrameLoaderClient::createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const URL&, const Vector<String>&, const Vector<String>&)

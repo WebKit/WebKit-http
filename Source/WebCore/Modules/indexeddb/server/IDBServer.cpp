@@ -32,9 +32,12 @@
 #include "IDBResultData.h"
 #include "Logging.h"
 #include "MemoryIDBBackingStore.h"
+#include "SQLiteDatabase.h"
 #include "SQLiteFileSystem.h"
 #include "SQLiteIDBBackingStore.h"
+#include "SQLiteStatement.h"
 #include "SecurityOrigin.h"
+#include "StorageQuotaManager.h"
 #include <wtf/CrossThreadCopier.h>
 #include <wtf/Locker.h>
 #include <wtf/MainThread.h>
@@ -42,32 +45,37 @@
 namespace WebCore {
 namespace IDBServer {
 
-Ref<IDBServer> IDBServer::create(IDBBackingStoreTemporaryFileHandler& fileHandler, WTF::Function<void(bool)>&& isClosingDatabaseCallback)
+Ref<IDBServer> IDBServer::create(PAL::SessionID sessionID, IDBBackingStoreTemporaryFileHandler& fileHandler, QuotaManagerGetter&& quotaManagerGetter, WTF::Function<void(bool)>&& isClosingDatabaseCallback)
 {
-    return adoptRef(*new IDBServer(fileHandler, WTFMove(isClosingDatabaseCallback)));
+    return adoptRef(*new IDBServer(sessionID, fileHandler, WTFMove(quotaManagerGetter), WTFMove(isClosingDatabaseCallback)));
 }
 
-Ref<IDBServer> IDBServer::create(const String& databaseDirectoryPath, IDBBackingStoreTemporaryFileHandler& fileHandler, WTF::Function<void(bool)>&& isClosingDatabaseCallback)
+Ref<IDBServer> IDBServer::create(PAL::SessionID sessionID, const String& databaseDirectoryPath, IDBBackingStoreTemporaryFileHandler& fileHandler, QuotaManagerGetter&& quotaManagerGetter, WTF::Function<void(bool)>&& isClosingDatabaseCallback)
 {
-    return adoptRef(*new IDBServer(databaseDirectoryPath, fileHandler, WTFMove(isClosingDatabaseCallback)));
+    return adoptRef(*new IDBServer(sessionID, databaseDirectoryPath, fileHandler, WTFMove(quotaManagerGetter), WTFMove(isClosingDatabaseCallback)));
 }
 
-IDBServer::IDBServer(IDBBackingStoreTemporaryFileHandler& fileHandler, WTF::Function<void(bool)>&& isClosingDatabaseCallback)
+IDBServer::IDBServer(PAL::SessionID sessionID, IDBBackingStoreTemporaryFileHandler& fileHandler, QuotaManagerGetter&& quotaManagerGetter, WTF::Function<void(bool)>&& isClosingDatabaseCallback)
     : CrossThreadTaskHandler("IndexedDatabase Server")
+    , m_sessionID(sessionID)
     , m_backingStoreTemporaryFileHandler(fileHandler)
     , m_isClosingDatabaseCallback(WTFMove(isClosingDatabaseCallback))
     , m_isClosingDatabaseHysteresis([&](PAL::HysteresisState state) { m_isClosingDatabaseCallback(state == PAL::HysteresisState::Started); })
+    , m_quotaManagerGetter(WTFMove(quotaManagerGetter))
 {
 }
 
-IDBServer::IDBServer(const String& databaseDirectoryPath, IDBBackingStoreTemporaryFileHandler& fileHandler, WTF::Function<void(bool)>&& isClosingDatabaseCallback)
+IDBServer::IDBServer(PAL::SessionID sessionID, const String& databaseDirectoryPath, IDBBackingStoreTemporaryFileHandler& fileHandler, QuotaManagerGetter&& quotaManagerGetter, WTF::Function<void(bool)>&& isClosingDatabaseCallback)
     : CrossThreadTaskHandler("IndexedDatabase Server")
+    , m_sessionID(sessionID)
     , m_databaseDirectoryPath(databaseDirectoryPath)
     , m_backingStoreTemporaryFileHandler(fileHandler)
     , m_isClosingDatabaseCallback(WTFMove(isClosingDatabaseCallback))
     , m_isClosingDatabaseHysteresis([&](PAL::HysteresisState state) { m_isClosingDatabaseCallback(state == PAL::HysteresisState::Started); })
+    , m_quotaManagerGetter(WTFMove(quotaManagerGetter))
 {
     LOG(IndexedDB, "IDBServer created at path %s", databaseDirectoryPath.utf8().data());
+    postDatabaseTask(createCrossThreadTask(*this, &IDBServer::upgradeFilesIfNecessary));
 }
 
 void IDBServer::registerConnection(IDBConnectionToClient& connection)
@@ -461,14 +469,20 @@ void IDBServer::getAllDatabaseNames(uint64_t serverConnectionIdentifier, const S
 
 void IDBServer::performGetAllDatabaseNames(uint64_t serverConnectionIdentifier, const SecurityOriginData& mainFrameOrigin, const SecurityOriginData& openingOrigin, uint64_t callbackID)
 {
-    String directory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(mainFrameOrigin, openingOrigin, m_databaseDirectoryPath);
-
-    Vector<String> entries = FileSystem::listDirectory(directory, "*"_s);
+    String oldDirectory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(mainFrameOrigin, openingOrigin, m_databaseDirectoryPath, "v0");
+    Vector<String> files = FileSystem::listDirectory(oldDirectory, "*"_s);
     Vector<String> databases;
-    databases.reserveInitialCapacity(entries.size());
-    for (auto& entry : entries) {
-        String encodedName = FileSystem::lastComponentOfPathIgnoringTrailingSlash(entry);
-        databases.uncheckedAppend(SQLiteIDBBackingStore::databaseNameFromEncodedFilename(encodedName));
+    for (auto& file : files) {
+        String encodedName = FileSystem::lastComponentOfPathIgnoringTrailingSlash(file);
+        databases.append(SQLiteIDBBackingStore::databaseNameFromEncodedFilename(encodedName));
+    }
+
+    String directory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(mainFrameOrigin, openingOrigin, m_databaseDirectoryPath, "v1");
+    files = FileSystem::listDirectory(directory, "*"_s);
+    for (auto& file : files) {
+        auto databaseName = SQLiteIDBBackingStore::databaseNameFromFile(SQLiteIDBBackingStore::fullDatabasePathForDirectory(file));
+        if (!databaseName.isEmpty())
+            databases.append(databaseName);
     }
 
     postDatabaseTaskReply(createCrossThreadTask(*this, &IDBServer::didGetAllDatabaseNames, serverConnectionIdentifier, callbackID, databases));
@@ -545,15 +559,12 @@ void IDBServer::closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginDat
     postDatabaseTask(createCrossThreadTask(*this, &IDBServer::performCloseAndDeleteDatabasesForOrigins, origins, callbackID));
 }
 
-static void removeAllDatabasesForOriginPath(const String& originPath, WallTime modifiedSince)
+static void removeAllDatabasesForFullOriginPath(const String& originPath, WallTime modifiedSince)
 {
     LOG(IndexedDB, "removeAllDatabasesForOriginPath with originPath %s", originPath.utf8().data());
     Vector<String> databasePaths = FileSystem::listDirectory(originPath, "*");
 
     for (auto& databasePath : databasePaths) {
-        if (FileSystem::fileIsDirectory(databasePath, FileSystem::ShouldFollowSymbolicLinks::No))
-            removeAllDatabasesForOriginPath(databasePath, modifiedSince);
-
         String databaseFile = FileSystem::pathByAppendingComponent(databasePath, "IndexedDB.sqlite3");
         if (modifiedSince > -WallTime::infinity() && FileSystem::fileExists(databaseFile)) {
             auto modificationTime = FileSystem::getFileModificationTime(databaseFile);
@@ -613,29 +624,61 @@ static void removeAllDatabasesForOriginPath(const String& originPath, WallTime m
     FileSystem::deleteEmptyDirectory(originPath);
 }
 
+static void removeAllDatabasesForOriginPath(const String& originPath, WallTime modifiedSince)
+{
+    String databaseIdentifier = FileSystem::lastComponentOfPathIgnoringTrailingSlash(originPath);
+    if (!SecurityOriginData::fromDatabaseIdentifier(databaseIdentifier))
+        return;
+    
+    auto directories = FileSystem::listDirectory(originPath, "*"_s);
+    for (auto& directory : directories) {
+        String databaseIdentifier = FileSystem::lastComponentOfPathIgnoringTrailingSlash(directory);
+        if (auto securityOrigin = SecurityOriginData::fromDatabaseIdentifier(databaseIdentifier))
+            removeAllDatabasesForFullOriginPath(directory, modifiedSince);
+    }
+    
+    removeAllDatabasesForFullOriginPath(originPath, modifiedSince);
+}
+
+void IDBServer::removeDatabasesModifiedSinceForVersion(WallTime modifiedSince, const String& version)
+{
+    String versionPath = FileSystem::pathByAppendingComponent(m_databaseDirectoryPath, version);
+    for (auto& originPath : FileSystem::listDirectory(versionPath, "*")) {
+        String databaseIdentifier = FileSystem::lastComponentOfPathIgnoringTrailingSlash(originPath);
+        if (auto securityOrigin = SecurityOriginData::fromDatabaseIdentifier(databaseIdentifier))
+            removeAllDatabasesForOriginPath(originPath, modifiedSince);
+    }
+}
+
 void IDBServer::performCloseAndDeleteDatabasesModifiedSince(WallTime modifiedSince, uint64_t callbackID)
 {
     if (!m_databaseDirectoryPath.isEmpty()) {
-        Vector<String> originPaths = FileSystem::listDirectory(m_databaseDirectoryPath, "*");
-        for (auto& originPath : originPaths)
-            removeAllDatabasesForOriginPath(originPath, modifiedSince);
+        removeDatabasesModifiedSinceForVersion(modifiedSince, "v0");
+        removeDatabasesModifiedSinceForVersion(modifiedSince, "v1");
     }
 
     postDatabaseTaskReply(createCrossThreadTask(*this, &IDBServer::didPerformCloseAndDeleteDatabases, callbackID));
 }
 
+void IDBServer::removeDatabasesWithOriginsForVersion(const Vector<SecurityOriginData> &origins, const String& version)
+{
+    String versionPath = FileSystem::pathByAppendingComponent(m_databaseDirectoryPath, version);
+    for (const auto& origin : origins) {
+        String originPath = FileSystem::pathByAppendingComponent(versionPath, origin.databaseIdentifier());
+        removeAllDatabasesForOriginPath(originPath, -WallTime::infinity());
+        
+        for (auto& topOriginPath : FileSystem::listDirectory(versionPath, "*")) {
+            originPath = FileSystem::pathByAppendingComponent(topOriginPath, origin.databaseIdentifier());
+            removeAllDatabasesForOriginPath(originPath, -WallTime::infinity());
+        }
+    }
+}
+    
 void IDBServer::performCloseAndDeleteDatabasesForOrigins(const Vector<SecurityOriginData>& origins, uint64_t callbackID)
 {
     if (!m_databaseDirectoryPath.isEmpty()) {
-        for (const auto& origin : origins) {
-            String originPath = FileSystem::pathByAppendingComponent(m_databaseDirectoryPath, origin.databaseIdentifier());
-            removeAllDatabasesForOriginPath(originPath, -WallTime::infinity());
-
-            for (const auto& topOriginPath : FileSystem::listDirectory(m_databaseDirectoryPath, "*")) {
-                originPath = FileSystem::pathByAppendingComponent(topOriginPath, origin.databaseIdentifier());
-                removeAllDatabasesForOriginPath(originPath, -WallTime::infinity());
-            }
-        }
+        removeDatabasesWithOriginsForVersion(origins, "v0");
+        removeDatabasesWithOriginsForVersion(origins, "v1");
     }
 
     postDatabaseTaskReply(createCrossThreadTask(*this, &IDBServer::didPerformCloseAndDeleteDatabases, callbackID));
@@ -643,6 +686,9 @@ void IDBServer::performCloseAndDeleteDatabasesForOrigins(const Vector<SecurityOr
 
 void IDBServer::didPerformCloseAndDeleteDatabases(uint64_t callbackID)
 {
+    for (auto& user : m_quotaUsers.values())
+        user->resetSpaceUsed();
+
     auto callback = m_deleteDatabaseCompletionHandlers.take(callbackID);
     ASSERT(callback);
     callback();
@@ -677,6 +723,136 @@ void IDBServer::didCloseDatabase(UniqueIDBDatabase* database)
         if (m_uniqueIDBDatabasesInClose.isEmpty())
             m_isClosingDatabaseHysteresis.stop();
     }
+}
+
+IDBServer::QuotaUser::QuotaUser(IDBServer& server, StorageQuotaManager* manager, ClientOrigin&& origin)
+    : m_server(server)
+    , m_manager(makeWeakPtr(manager))
+    , m_origin(WTFMove(origin))
+    , m_isInitialized(m_server.m_sessionID.isEphemeral())
+{
+    if (manager)
+        manager->addUser(*this);
+}
+
+IDBServer::QuotaUser::~QuotaUser()
+{
+    if (m_manager)
+        m_manager->removeUser(*this);
+}
+
+void IDBServer::QuotaUser::resetSpaceUsed()
+{
+    m_spaceUsed = 0;
+    m_estimatedSpaceIncrease = 0;
+
+    if (!m_manager)
+        return;
+
+    if (m_server.m_sessionID.isEphemeral())
+        return;
+
+    if (!m_isInitialized)
+        return;
+
+    ASSERT(!m_initializationCallback);
+
+    m_isInitialized = false;
+
+    // Do add/remove to trigger call to whenInitialized.
+    m_manager->removeUser(*this);
+    m_manager->addUser(*this);
+}
+
+void IDBServer::QuotaUser::whenInitialized(CompletionHandler<void()>&& callback)
+{
+    if (m_isInitialized) {
+        callback();
+        return;
+    }
+    m_initializationCallback = WTFMove(callback);
+    m_server.startComputingSpaceUsedForOrigin(m_origin);
+}
+
+void IDBServer::QuotaUser::initializeSpaceUsed(uint64_t spaceUsed)
+{
+    ASSERT(m_isInitialized || !m_estimatedSpaceIncrease);
+    m_spaceUsed = spaceUsed;
+    m_isInitialized = true;
+
+    if (auto callback = WTFMove(m_initializationCallback))
+        callback();
+}
+
+IDBServer::QuotaUser& IDBServer::quotaUser(const ClientOrigin& origin)
+{
+    return *m_quotaUsers.ensure(origin, [this, &origin] {
+        return std::make_unique<QuotaUser>(*this, m_quotaManagerGetter(m_sessionID, origin), ClientOrigin { origin });
+    }).iterator->value;
+}
+
+void IDBServer::startComputingSpaceUsedForOrigin(const ClientOrigin& origin)
+{
+    ASSERT(!m_sessionID.isEphemeral());
+    postDatabaseTask(createCrossThreadTask(*this, &IDBServer::computeSpaceUsedForOrigin, origin));
+}
+
+void IDBServer::computeSpaceUsedForOrigin(const ClientOrigin& origin)
+{
+    ASSERT(!isMainThread());
+
+    auto oldVersionOriginDirectory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(origin.topOrigin, origin.clientOrigin, m_databaseDirectoryPath, "v0");
+    auto newVersionOriginDirectory = IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(origin.topOrigin, origin.clientOrigin, m_databaseDirectoryPath, "v1");
+    auto size = SQLiteIDBBackingStore::databasesSizeForFolder(oldVersionOriginDirectory) + SQLiteIDBBackingStore::databasesSizeForFolder(newVersionOriginDirectory);
+
+    postDatabaseTaskReply(createCrossThreadTask(*this, &IDBServer::finishComputingSpaceUsedForOrigin, origin, size));
+}
+
+void IDBServer::finishComputingSpaceUsedForOrigin(const ClientOrigin& origin, uint64_t spaceUsed)
+{
+    quotaUser(origin).initializeSpaceUsed(spaceUsed);
+}
+
+void IDBServer::requestSpace(const ClientOrigin& origin, uint64_t taskSize, CompletionHandler<void(StorageQuotaManager::Decision)>&& callback)
+{
+    auto* quotaManager = quotaUser(origin).manager();
+    if (!quotaManager) {
+        callback(StorageQuotaManager::Decision::Deny);
+        return;
+    }
+
+    quotaManager->requestSpace(taskSize, WTFMove(callback));
+}
+
+void IDBServer::resetSpaceUsed(const ClientOrigin& origin)
+{
+    if (auto* user = m_quotaUsers.get(origin))
+        user->resetSpaceUsed();
+}
+
+void IDBServer::setSpaceUsed(const ClientOrigin& origin, uint64_t taskSize)
+{
+    quotaUser(origin).setSpaceUsed(taskSize);
+}
+
+void IDBServer::increasePotentialSpaceUsed(const ClientOrigin& origin, uint64_t taskSize)
+{
+    quotaUser(origin).increasePotentialSpaceUsed(taskSize);
+}
+
+void IDBServer::decreasePotentialSpaceUsed(const ClientOrigin& origin, uint64_t spaceUsed)
+{
+    quotaUser(origin).decreasePotentialSpaceUsed(spaceUsed);
+}
+
+void IDBServer::upgradeFilesIfNecessary()
+{
+    if (m_databaseDirectoryPath.isEmpty() || !FileSystem::fileExists(m_databaseDirectoryPath))
+        return;
+
+    String newVersionDirectory = FileSystem::pathByAppendingComponent(m_databaseDirectoryPath, "v1");
+    if (!FileSystem::fileExists(newVersionDirectory))
+        FileSystem::makeAllDirectories(newVersionDirectory);
 }
 
 } // namespace IDBServer

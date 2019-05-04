@@ -35,6 +35,7 @@
 #import "GPUSampler.h"
 #import "GPUTexture.h"
 #import "Logging.h"
+#import <Metal/Metal.h>
 #import <wtf/BlockObjCExceptions.h>
 #import <wtf/Optional.h>
 
@@ -172,8 +173,8 @@ RefPtr<GPUBindGroup> GPUBindGroup::tryCreate(const GPUBindGroupDescriptor& descr
         
         switch (layoutBinding.type) {
         // FIXME: Support more resource types.
-        case GPUBindGroupLayoutBinding::BindingType::UniformBuffer:
-        case GPUBindGroupLayoutBinding::BindingType::StorageBuffer: {
+        case GPUBindingType::UniformBuffer:
+        case GPUBindingType::StorageBuffer: {
             auto bufferResource = tryGetResourceAsBufferBinding(resourceBinding.resource, functionName);
             if (!bufferResource)
                 return nullptr;
@@ -184,7 +185,7 @@ RefPtr<GPUBindGroup> GPUBindGroup::tryCreate(const GPUBindGroupDescriptor& descr
             boundBuffers.append(bufferResource->buffer.copyRef());
             break;
         }
-        case GPUBindGroupLayoutBinding::BindingType::Sampler: {
+        case GPUBindingType::Sampler: {
             auto samplerResource = tryGetResourceAsSampler(resourceBinding.resource, functionName);
             if (!samplerResource)
                 return nullptr;
@@ -194,7 +195,7 @@ RefPtr<GPUBindGroup> GPUBindGroup::tryCreate(const GPUBindGroupDescriptor& descr
                 setSamplerOnEncoder(fragmentEncoder, samplerResource->platformSampler(), resourceBinding.binding);
             break;
         }
-        case GPUBindGroupLayoutBinding::BindingType::SampledTexture: {
+        case GPUBindingType::SampledTexture: {
             auto textureResource = tryGetResourceAsTexture(resourceBinding.resource, functionName);
             if (!textureResource)
                 return nullptr;

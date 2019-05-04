@@ -51,9 +51,7 @@ EligibilityResult<Config> IsoDirectory<Config, passedNumPages>::takeFirstEligibl
     if (pageIndex >= numPages)
         return EligibilityKind::Full;
 
-    m_highWatermark = std::max(pageIndex, m_highWatermark);
-    
-    Scavenger& scavenger = *PerProcess<Scavenger>::get();
+    Scavenger& scavenger = *Scavenger::get();
     scavenger.didStartGrowing();
     
     IsoPage<Config>* page = m_pages[pageIndex];
@@ -108,7 +106,7 @@ void IsoDirectory<Config, passedNumPages>::didBecome(IsoPage<Config>* page, IsoP
         BASSERT(!!m_committed[pageIndex]);
         this->m_heap.isNowFreeable(page, IsoPageBase::pageSize);
         m_empty[pageIndex] = true;
-        PerProcess<Scavenger>::get()->schedule(IsoPageBase::pageSize);
+        Scavenger::get()->schedule(IsoPageBase::pageSize);
         return;
     }
     BCRASH();
@@ -143,18 +141,6 @@ void IsoDirectory<Config, passedNumPages>::scavenge(Vector<DeferredDecommit>& de
         [&] (size_t index) {
             scavengePage(index, decommits);
         });
-    m_highWatermark = 0;
-}
-
-template<typename Config, unsigned passedNumPages>
-void IsoDirectory<Config, passedNumPages>::scavengeToHighWatermark(Vector<DeferredDecommit>& decommits)
-{
-    (m_empty & m_committed).forEachSetBit(
-        [&] (size_t index) {
-            if (index > m_highWatermark)
-                scavengePage(index, decommits);
-        });
-    m_highWatermark = 0;
 }
 
 template<typename Config, unsigned passedNumPages>

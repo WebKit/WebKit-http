@@ -84,8 +84,8 @@ public:
     const PAL::SessionID& sessionID() const { return m_sessionID; }
     const ClientOrigin& origin() const { return m_origin; }
 
-    String databaseDirectoryRelativeToRoot(const String& rootDirectory) const;
-    static String databaseDirectoryRelativeToRoot(const SecurityOriginData& topLevelOrigin, const SecurityOriginData& openingOrigin, const String& rootDirectory);
+    String databaseDirectoryRelativeToRoot(const String& rootDirectory, const String& versionString="v1") const;
+    static String databaseDirectoryRelativeToRoot(const SecurityOriginData& topLevelOrigin, const SecurityOriginData& openingOrigin, const String& rootDirectory, const String& versionString);
 
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static Optional<IDBDatabaseIdentifier> decode(Decoder&);
@@ -143,7 +143,7 @@ Optional<IDBDatabaseIdentifier> IDBDatabaseIdentifier::decode(Decoder& decoder)
     identifier.m_databaseName = WTFMove(*databaseName); // FIXME: When decoding from IPC, databaseName can be null, and the non-empty constructor asserts that this is not the case.
     identifier.m_sessionID = WTFMove(*sessionID);
     identifier.m_origin = WTFMove(*origin);
-    return WTFMove(identifier);
+    return identifier;
 }
 
 } // namespace WebCore

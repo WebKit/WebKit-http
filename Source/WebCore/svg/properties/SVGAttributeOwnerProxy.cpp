@@ -26,6 +26,8 @@
 #include "config.h"
 #include "SVGAttributeOwnerProxy.h"
 
+#include "SVGElement.h"
+
 namespace WebCore {
 
 SVGAttributeOwnerProxy::SVGAttributeOwnerProxy(SVGElement& element)

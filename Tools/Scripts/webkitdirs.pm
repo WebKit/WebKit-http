@@ -1108,7 +1108,7 @@ sub builtDylibPathForName
         }
     }
     if (isWPE()) {
-        return "$configurationProductDir/lib/libWPEWebKit-0.1.so";
+        return "$configurationProductDir/lib/libWPEWebKit-1.0.so";
     }
 
     die "Unsupported platform, can't determine built library locations.\nTry `build-webkit --help` for more information.\n";
@@ -2284,7 +2284,7 @@ sub generateBuildSystemFromCMakeProject
     # Some ports have production mode, but build-webkit should always use developer mode.
     push @args, "-DDEVELOPER_MODE=ON" if isGtk() || isJSCOnly() || isWPE() || isWinCairo();
 
-    if ($architecture eq "x86_64" && shouldBuild32Bit()) {
+    if (architecture() eq "x86_64" && shouldBuild32Bit()) {
         # CMAKE_LIBRARY_ARCHITECTURE is needed to get the right .pc
         # files in Debian-based systems, for the others
         # CMAKE_PREFIX_PATH will get us /usr/lib, which should be the
@@ -2300,8 +2300,8 @@ sub generateBuildSystemFromCMakeProject
 
     # Compiler options to keep floating point values consistent
     # between 32-bit and 64-bit architectures.
-    determineArchitecture();
-    if ($architecture eq "i686" && !isCrossCompilation() && !isAnyWindows() && !isHaiku()) {
+    if ((architecture() eq "i686" || (architecture() eq "x86_64" && shouldBuild32Bit())) && !isCrossCompilation() && !isAnyWindows()) {
+        $ENV{'CFLAGS'} = "-march=pentium4 -msse2 -mfpmath=sse " . ($ENV{'CFLAGS'} || "");
         $ENV{'CXXFLAGS'} = "-march=pentium4 -msse2 -mfpmath=sse " . ($ENV{'CXXFLAGS'} || "");
     }
 

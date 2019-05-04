@@ -47,7 +47,8 @@
 
 @interface TestRunnerWKWebView () <WKUIDelegatePrivate> {
     RetainPtr<NSNumber> m_stableStateOverride;
-    BOOL m_isInteractingWithFormControl;
+    BOOL _isInteractingWithFormControl;
+    BOOL _scrollingUpdatesDisabled;
 }
 
 @property (nonatomic, copy) void (^zoomToScaleCompletionHandler)(void);
@@ -87,18 +88,7 @@ IGNORE_WARNINGS_END
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 
-    self.didStartFormControlInteractionCallback = nil;
-    self.didEndFormControlInteractionCallback = nil;
-    self.didShowForcePressPreviewCallback = nil;
-    self.didDismissForcePressPreviewCallback = nil;
-    self.willBeginZoomingCallback = nil;
-    self.didEndZoomingCallback = nil;
-    self.didShowKeyboardCallback = nil;
-    self.didHideKeyboardCallback = nil;
-    self.didShowMenuCallback = nil;
-    self.didHideMenuCallback = nil;
-    self.didEndScrollingCallback = nil;
-    self.rotationDidEndCallback = nil;
+    [self resetInteractionCallbacks];
 
     self.zoomToScaleCompletionHandler = nil;
     self.retrieveSpeakSelectionContentCompletionHandler = nil;
@@ -108,7 +98,7 @@ IGNORE_WARNINGS_END
 
 - (void)didStartFormControlInteraction
 {
-    m_isInteractingWithFormControl = YES;
+    _isInteractingWithFormControl = YES;
 
     if (self.didStartFormControlInteractionCallback)
         self.didStartFormControlInteractionCallback();
@@ -116,7 +106,7 @@ IGNORE_WARNINGS_END
 
 - (void)didEndFormControlInteraction
 {
-    m_isInteractingWithFormControl = NO;
+    _isInteractingWithFormControl = NO;
 
     if (self.didEndFormControlInteractionCallback)
         self.didEndFormControlInteractionCallback();
@@ -124,7 +114,7 @@ IGNORE_WARNINGS_END
 
 - (BOOL)isInteractingWithFormControl
 {
-    return m_isInteractingWithFormControl;
+    return _isInteractingWithFormControl;
 }
 
 - (void)_didShowForcePressPreview
@@ -137,6 +127,22 @@ IGNORE_WARNINGS_END
 {
     if (self.didDismissForcePressPreviewCallback)
         self.didDismissForcePressPreviewCallback();
+}
+
+- (void)resetInteractionCallbacks
+{
+    self.didStartFormControlInteractionCallback = nil;
+    self.didEndFormControlInteractionCallback = nil;
+    self.didShowForcePressPreviewCallback = nil;
+    self.didDismissForcePressPreviewCallback = nil;
+    self.willBeginZoomingCallback = nil;
+    self.didEndZoomingCallback = nil;
+    self.didShowKeyboardCallback = nil;
+    self.didHideKeyboardCallback = nil;
+    self.didShowMenuCallback = nil;
+    self.didHideMenuCallback = nil;
+    self.didEndScrollingCallback = nil;
+    self.rotationDidEndCallback = nil;
 }
 
 - (void)zoomToScale:(double)scale animated:(BOOL)animated completionHandler:(void (^)(void))completionHandler
@@ -232,6 +238,16 @@ IGNORE_WARNINGS_END
 {
     m_stableStateOverride = overrideBoolean;
     [self _scheduleVisibleContentRectUpdate];
+}
+
+- (BOOL)_scrollingUpdatesDisabledForTesting
+{
+    return _scrollingUpdatesDisabled;
+}
+
+- (void)_setScrollingUpdatesDisabledForTesting:(BOOL)disabled
+{
+    _scrollingUpdatesDisabled = disabled;
 }
 
 - (void)_didEndRotation

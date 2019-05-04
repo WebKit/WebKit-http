@@ -26,6 +26,7 @@
 #pragma once
 
 #include <algorithm>
+#include <wtf/JSONValues.h>
 #include <wtf/Forward.h>
 
 #if PLATFORM(MAC) && defined __OBJC__
@@ -180,6 +181,9 @@ public:
     operator BSize() const;
 #endif
 
+    String toJSONString() const;
+    Ref<JSON::Object> toJSONObject() const;
+
 private:
     int m_width, m_height;
 };
@@ -230,4 +234,14 @@ WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const IntSize&);
 namespace WTF {
 template<> struct DefaultHash<WebCore::IntSize>;
 template<> struct HashTraits<WebCore::IntSize>;
+
+template<typename Type> struct LogArgument;
+template <>
+struct LogArgument<WebCore::IntSize> {
+    static String toString(const WebCore::IntSize& size)
+    {
+        return size.toJSONString();
+    }
+};
 }
+

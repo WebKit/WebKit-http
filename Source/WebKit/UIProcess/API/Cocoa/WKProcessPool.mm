@@ -522,6 +522,11 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     return _processPool->webProcessCache().capacity();
 }
 
+- (NSUInteger)_processCacheSize
+{
+    return _processPool->webProcessCache().size();
+}
+
 - (size_t)_serviceWorkerProcessCount
 {
 #if ENABLE(SERVICE_WORKER)
@@ -558,6 +563,11 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     _processPool->setStorageAccessAPIEnabled(enabled);
 }
 
+- (void)_synthesizeAppIsBackground:(BOOL)background
+{
+    _processPool->synthesizeAppIsBackground(background);
+}
+
 - (void)_setAllowsAnySSLCertificateForServiceWorker:(BOOL) allows
 {
 #if ENABLE(SERVICE_WORKER)
@@ -582,7 +592,7 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 
 - (_WKDownload *)_downloadURLRequest:(NSURLRequest *)request originatingWebView:(WKWebView *)webView
 {
-    return (_WKDownload *)_processPool->download([webView _page], request)->wrapper();
+    return (_WKDownload *)_processPool->download([webView _page], request).wrapper();
 }
 
 - (_WKDownload *)_resumeDownloadFromData:(NSData *)resumeData path:(NSString *)path originatingWebView:(WKWebView *)webView

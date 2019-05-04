@@ -1,3 +1,1110 @@
+2019-03-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Build cleanly with GCC 9
+        https://bugs.webkit.org/show_bug.cgi?id=195920
+
+        Reviewed by Chris Dumez.
+
+        WebKit triggers three new GCC 9 warnings:
+
+        """
+        -Wdeprecated-copy, implied by -Wextra, warns about the C++11 deprecation of implicitly
+        declared copy constructor and assignment operator if one of them is user-provided.
+        """
+
+        Solution is to either add a copy constructor or copy assignment operator, if required, or
+        else remove one if it is redundant.
+
+        """
+        -Wredundant-move, implied by -Wextra, warns about redundant calls to std::move.
+        -Wpessimizing-move, implied by -Wall, warns when a call to std::move prevents copy elision.
+        """
+
+        These account for most of this patch. Solution is to just remove the bad WTFMove().
+
+        Additionally, -Wclass-memaccess has been enhanced to catch a few cases that GCC 8 didn't.
+        These are solved by casting nontrivial types to void* before using memcpy. (Of course, it
+        would be safer to not use memcpy on nontrivial types, but that's too complex for this
+        patch. Searching for memcpy used with static_cast<void*> will reveal other cases to fix.)
+
+        * b3/B3ValueRep.h:
+        * bindings/ScriptValue.cpp:
+        (Inspector::jsToInspectorValue):
+        * bytecode/GetterSetterAccessCase.cpp:
+        (JSC::GetterSetterAccessCase::create):
+        (JSC::GetterSetterAccessCase::clone const):
+        * bytecode/InstanceOfAccessCase.cpp:
+        (JSC::InstanceOfAccessCase::clone const):
+        * bytecode/IntrinsicGetterAccessCase.cpp:
+        (JSC::IntrinsicGetterAccessCase::clone const):
+        * bytecode/ModuleNamespaceAccessCase.cpp:
+        (JSC::ModuleNamespaceAccessCase::clone const):
+        * bytecode/ProxyableAccessCase.cpp:
+        (JSC::ProxyableAccessCase::clone const):
+        * bytecode/StructureSet.h:
+        * debugger/Breakpoint.h:
+        * dfg/DFGRegisteredStructureSet.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::buildDebuggerLocation):
+        * inspector/scripts/codegen/cpp_generator_templates.py:
+        * parser/UnlinkedSourceCode.h:
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::parseAndCompileAir):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmNameSectionParser.cpp:
+        (JSC::Wasm::NameSectionParser::parse):
+        * wasm/WasmStreamingParser.cpp:
+        (JSC::Wasm::StreamingParser::consume):
+
+2019-03-19  Saam Barati  <sbarati@apple.com>
+
+        Style fix: remove C style cast in Instruction.h
+        https://bugs.webkit.org/show_bug.cgi?id=195917
+
+        Reviewed by Filip Pizlo.
+
+        * bytecode/Instruction.h:
+        (JSC::Instruction::wide const):
+
+2019-03-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Provide $event in the console when paused on an event listener
+        https://bugs.webkit.org/show_bug.cgi?id=188672
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScript.h:
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::setEventValue): Added.
+        (Inspector::InjectedScript::clearEventValue): Added.
+
+        * inspector/InjectedScriptManager.h:
+        * inspector/InjectedScriptManager.cpp:
+        (Inspector::InjectedScriptManager::clearEventValue): Added.
+
+        * inspector/InjectedScriptSource.js:
+        (WI.InjectedScript.prototype.setEventValue): Added.
+        (WI.InjectedScript.prototype.clearEventValue): Added.
+        (BasicCommandLineAPI):
+
+2019-03-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: ScriptProfiler: lazily create the agent
+        https://bugs.webkit.org/show_bug.cgi?id=195591
+        <rdar://problem/48791756>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/JSGlobalObjectConsoleClient.h:
+        (Inspector::JSGlobalObjectConsoleClient::setInspectorScriptProfilerAgent): Added.
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::JSGlobalObjectConsoleClient):
+        (Inspector::JSGlobalObjectConsoleClient::startConsoleProfile):
+        (Inspector::JSGlobalObjectConsoleClient::stopConsoleProfile):
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::createLazyAgents):
+
+2019-03-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Heap: lazily create the agent
+        https://bugs.webkit.org/show_bug.cgi?id=195590
+        <rdar://problem/48791750>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/agents/InspectorHeapAgent.h:
+        * inspector/agents/InspectorHeapAgent.cpp:
+        (Inspector::InspectorHeapAgent::~InspectorHeapAgent): Deleted.
+
+        * inspector/agents/InspectorConsoleAgent.h:
+        (Inspector::InspectorConsoleAgent::setInspectorHeapAgent): Added.
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::InspectorConsoleAgent):
+        (Inspector::InspectorConsoleAgent::takeHeapSnapshot):
+        (Inspector::InspectorConsoleAgent::~InspectorConsoleAgent): Deleted.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::createLazyAgents):
+
+2019-03-19  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] LLIntEntryPoint creates same DirectJITCode for all functions
+        https://bugs.webkit.org/show_bug.cgi?id=194648
+
+        Reviewed by Keith Miller.
+
+        1. Making LLIntThunks singleton. 
+
+        Motivation: Former implementation has one LLIntThunk per type per VM.
+        However, the generated code for every kind of thunk is essentially the
+        same and we end up wasting memory (right now jitAllocationGranule = 32 bytes)
+        when we have 2 or more VM instantiated. Turn these thunks into
+        singleton will avoid such wasting.
+
+        Tradeoff: This change comes with a price, because we will keep thunks
+        allocated even when there is no VM instantiated. Considering WebCore use case,
+        the situation of having no VM instantiated is uncommon, since once a
+        VM is created through `commomVM()`, it will never be destroyed. Given
+        that, this change does not impact the overall memory comsumption of
+        WebCore/JSC. It also doesn't impact memory footprint, since thunks are
+        generated lazily (see results below).
+
+        Since we are keeping a static `MacroAssemblerCodeRef<JITThunkPtrTag>`,
+        we have the assurance that JITed code will never be deallocated,
+        given it is being pointed by `RefPtr<ExecutableMemoryHandle> m_executableMemory`.
+        To understand why we decided to make LLIntThunks singleton instead of
+        removing them, please see the comment on `llint/LLIntThunks.cpp`.
+
+        2. Making all LLIntEntrypoints singleton
+
+        Motivation: With singleton LLIntThunks, we also can have singleton
+        DirectJITCodes and NativeJITCodes for each LLIntEntrypoint type and
+        avoid multiple allocations of objects with the same content.
+
+        Tradeoff: As explained before, once we allocate an entrypoint, it
+        will be alive until the program exits. However, the gains we can
+        achieve in some use cases justifies such allocations.
+
+        As DirectJITCode and NativeJITCode are ThreadSafeRefCounted and we are using
+        `codeBlock->setJITCode(makeRef(*jitCode))`, their reference counter
+        will never be less than 1.
+
+        3. Memory usage analysis
+
+        This change reduces memory usage on stress/generate-multiple-llint-entrypoints.js
+        by 2% and is neutral on JetStream 2. Following results were generated
+        running each benchmark 6 times and using 95% Student's t distribution
+        confidence interval.
+
+        microbenchmarks/generate-multiple-llint-entrypoints.js (Changes uses less memory): 
+            Mean of memory peak on ToT: 122576896 bytes (confidence interval: 67747.2316)
+            Mean of memory peak on Changes: 119248213.33 bytes (confidence interval: 50251.2718)
+
+        JetStream2 (Neutral):
+            Mean of memory peak on ToT: 5442742272 bytes (confidence interval: 134381565.9117)
+            Mean of memory peak on Changes: 5384949760 bytes (confidence interval: 158413904.8352)
+
+        4. Performance Analysis
+
+        This change is performance neutral on JetStream 2 and Speedometer 2.
+        See results below.:
+
+        JetStream 2 (Neutral):
+            Mean of score on ToT: 139.58 (confidence interval: 2.44)
+            Mean of score on Changes: 141.46 (confidence interval: 4.24)
+
+        Speedometer run #1
+           ToT: 110 +- 2.9
+           Changes: 110 +- 1.8
+
+        Speedometer run #2
+           ToT: 110 +- 1.6
+           Changes: 108 +- 2.3
+
+        Speedometer run #3
+           ToT: 110 +- 3.0
+           Changes: 110 +- 1.4
+
+        * jit/JSInterfaceJIT.h:
+        (JSC::JSInterfaceJIT::JSInterfaceJIT):
+        * llint/LLIntEntrypoint.cpp:
+
+        Here we are changing the usage or DirectJITCode by NativeJITCode on cases
+        where there is no difference from address of calls with and without
+        ArithCheck.
+
+        (JSC::LLInt::setFunctionEntrypoint):
+        (JSC::LLInt::setEvalEntrypoint):
+        (JSC::LLInt::setProgramEntrypoint):
+        (JSC::LLInt::setModuleProgramEntrypoint):
+        (JSC::LLInt::setEntrypoint):
+        * llint/LLIntEntrypoint.h:
+        * llint/LLIntThunks.cpp:
+        (JSC::LLInt::generateThunkWithJumpTo):
+        (JSC::LLInt::functionForCallEntryThunk):
+        (JSC::LLInt::functionForConstructEntryThunk):
+        (JSC::LLInt::functionForCallArityCheckThunk):
+        (JSC::LLInt::functionForConstructArityCheckThunk):
+        (JSC::LLInt::evalEntryThunk):
+        (JSC::LLInt::programEntryThunk):
+        (JSC::LLInt::moduleProgramEntryThunk):
+        (JSC::LLInt::functionForCallEntryThunkGenerator): Deleted.
+        (JSC::LLInt::functionForConstructEntryThunkGenerator): Deleted.
+        (JSC::LLInt::functionForCallArityCheckThunkGenerator): Deleted.
+        (JSC::LLInt::functionForConstructArityCheckThunkGenerator): Deleted.
+        (JSC::LLInt::evalEntryThunkGenerator): Deleted.
+        (JSC::LLInt::programEntryThunkGenerator): Deleted.
+        (JSC::LLInt::moduleProgramEntryThunkGenerator): Deleted.
+        * llint/LLIntThunks.h:
+        * runtime/ScriptExecutable.cpp:
+        (JSC::setupLLInt):
+        (JSC::ScriptExecutable::prepareForExecutionImpl):
+
+2019-03-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add missing exception checks revealed by newly added exception checks, follow-up after r243081
+        https://bugs.webkit.org/show_bug.cgi?id=195927
+
+        Reviewed by Mark Lam.
+
+        r243081 adds more exception checks which are previously missing, and it reveals missing exception checks in the caller.
+        This patch is a follow-up patch after r243081, adding missing exception checks more to fix debug test failures.
+
+        * runtime/RegExpConstructor.cpp:
+        (JSC::setRegExpConstructorInput):
+        (JSC::setRegExpConstructorMultiline):
+        * runtime/RegExpGlobalData.cpp:
+        (JSC::RegExpGlobalData::getBackref):
+        (JSC::RegExpGlobalData::getLastParen):
+
+2019-03-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Generator should not create JSLexicalEnvironment if it is not necessary
+        https://bugs.webkit.org/show_bug.cgi?id=195901
+
+        Reviewed by Saam Barati.
+
+        It is not rare that generators do not need to have any registers to be suspended and resumed.
+        Since currently we always emit op_create_lexical_environment for generator code, we sometimes
+        create empty JSLexicalEnvironment while it is not required. We can see that a lot of empty JSLexicalEnvironment
+        are allocated in RAMification's Basic test.
+
+        This patch removes this unnecessary allocation. We introduce op_create_generator_frame_environment, which is
+        a marker, similar to op_yield. And generatorification phase decides whether we should actually emit op_create_lexical_environment,
+        based on the result of the analysis in generatorification. This can remove unnecessary JSLexicalEnvironment allocations.
+
+        We run RAMification in 6 times, use average of them.
+        RAMification's Basic in JIT mode shows 1.4% improvement.
+        ToT
+            Current: 55076864.00, Peak: 55080960.00
+        Patched
+            Current: 54325930.67, Peak: 54329344.00
+
+        RAMification's Basic in non-JIT mode shows 5.0% improvement.
+        ToT
+            Current: 12485290.67, Peak: 12485290.67
+        Patched
+            Current: 11894101.33, Peak: 11894101.33
+
+        * bytecode/BytecodeGeneratorification.cpp:
+        (JSC::BytecodeGeneratorification::BytecodeGeneratorification):
+        (JSC::BytecodeGeneratorification::generatorFrameData const):
+        (JSC::BytecodeGeneratorification::run):
+        * bytecode/BytecodeList.rb:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * llint/LowLevelInterpreter.asm:
+
+2019-03-18  Robin Morisset  <rmorisset@apple.com>
+
+        Remove the inline capacity of Operands
+        https://bugs.webkit.org/show_bug.cgi?id=195898
+
+        Reviewed by Yusuke Suzuki.
+
+        Operands currently has a vector with an inline capacity of 24.
+        I tested on JetStream2, and only 4776 functions out of 12035 (that reach the DFG tier) have 24 or fewer elements in it.
+        This is a major problem, because we have 5 Operands in every DFG::BasicBlock, resulting in 2688 bytes of inline capacity per basic block.
+        Still on JetStream 2, functions have an average of 18 BB, but those functions whose operands overflow have an average of 27 BB (so we are wasting 72kB on average when compiling them), and the largest function has 1241 BB (!), for a total of 3.3MB being wasted while it is compiled.
+        
+        So I removed the inline capacity of the vector in Operands, and here are the results:
+        Baseline Jetstream2:
+        159.741
+        159.746
+        159.989
+        Baseline RAMification on grouped and jit tests: (end/peak/score)
+        89.288/89.763/89.526
+        90.166/90.761/90.418
+        89.560/90.014/89.787
+        After optimization Jetstream2:
+        159.342
+        161.812
+        162.037
+        After optimization RAMification:
+        89.147/89.644/89.395
+        89.102.89.585/89.343
+        88.953/89.536/89.2444
+        
+        So it looks like a roughly 1% improvement on RAMification (at least the tests where the JIT is enabled), and more surprisingly also a 1% progression on Jetstream2 (although I have more doubts about this one considering the variability in my numbers).
+        I hope to land this, and get more accurate results from the bots.
+
+        * bytecode/Operands.h:
+
+2019-03-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add --destroy-vm shell option and dumpHeapStatisticsAtVMDestruction option
+        https://bugs.webkit.org/show_bug.cgi?id=195897
+
+        Reviewed by Keith Miller.
+
+        It is useful if we have an option logging the status of all the existing MarkedBlocks and their objects at VM destruction.
+        I used this feature to find wasting memory, and successfully removed many wasted MarkedBlocks and JS cells like r243081.
+        This patch adds,
+
+        1. --destroy-vm option to JSC shell to destroy main thread JSC::VM
+        2. dumpHeapStatisticsAtVMDestruction to dump MarkedBlocks at VM destruction
+
+        While the current option name is "dumpHeapStatisticsAtVMDestruction", we just dump the status of MarkedBlocks and cells. But eventually,
+        we would like to collect heap statistics and dump them to investigate Heap status more.
+
+        This patch also removes logHeapStatisticsAtExit option since it is no longer used in JSC.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::dumpHeapStatisticsAtVMDestruction):
+        (JSC::Heap::lastChanceToFinalize):
+        * heap/Heap.h:
+        * jsc.cpp:
+        (printUsageStatement):
+        (CommandLine::parseArguments):
+        (runJSC):
+        * runtime/Options.h:
+
+2019-03-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] jsSubstring should resolve rope before calling JSRopeString::create
+        https://bugs.webkit.org/show_bug.cgi?id=195840
+
+        Reviewed by Geoffrey Garen.
+
+        jsSubstring always ends up resolving rope of the base string because substring JSRopeString only accepts non-rope JSString
+        as its base. Instead of resolving ropes in finishCreationSubstring, we should resolve before passing it to JSRopeString.
+        So that, we can access string data before creating JSRopeString, and we can introduce optimizations like avoiding creation
+        of single character substrings.
+
+        We can find that a lot of substrings for length = 1 are allocated in RAMification regexp tests. This patch avoids creation of these
+        strings to save memory.
+
+        This patch also strengthen error checks caused by rope resolution for base of substrings. Previously we sometimes miss this checks.
+
+        * dfg/DFGOperations.cpp:
+        * runtime/JSString.cpp:
+        (JSC::JSString::dumpToStream):
+        * runtime/JSString.h:
+        (JSC::jsSubstring):
+        (JSC::jsSubstringOfResolved):
+        (JSC::jsSingleCharacterString):
+        * runtime/RegExpCachedResult.cpp:
+        (JSC::RegExpCachedResult::lastResult): We no longer need to have length = 0 path since jsSubstring returns an empty string if length == 0.
+        (JSC::RegExpCachedResult::leftContext):
+        (JSC::RegExpCachedResult::rightContext):
+        (JSC::RegExpCachedResult::setInput):
+        * runtime/RegExpGlobalData.cpp:
+        (JSC::RegExpGlobalData::getBackref):
+        (JSC::RegExpGlobalData::getLastParen):
+        * runtime/StringObject.h:
+        (JSC::jsStringWithReuse):
+        (JSC::jsSubstring):
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+        (JSC::operationStringProtoFuncReplaceRegExpEmptyStr):
+        (JSC::replaceUsingStringSearch):
+        (JSC::stringProtoFuncSlice):
+        (JSC::splitStringByOneCharacterImpl):
+        (JSC::stringProtoFuncSplitFast):
+        (JSC::stringProtoFuncSubstr):
+        (JSC::stringProtoFuncSubstring):
+        (JSC::stringProtoFuncToLowerCase):
+        (JSC::stringProtoFuncToUpperCase):
+        Some `const String& value = string->value(exec)` is dangerous if GC happens later. Changed to getting `String` instead of `const String&` here.
+
+        * runtime/StringPrototypeInlines.h:
+        (JSC::stringSlice):
+
+2019-03-18  Mark Lam  <mark.lam@apple.com>
+
+        Missing a ThrowScope release in JSObject::toString().
+        https://bugs.webkit.org/show_bug.cgi?id=195893
+        <rdar://problem/48970986>
+
+        Reviewed by Michael Saboff.
+
+        Placate the validator with a RELEASE_AND_RETURN().
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::toString const):
+
+2019-03-18  Mark Lam  <mark.lam@apple.com>
+
+        Structure::flattenDictionary() should clear unused property slots.
+        https://bugs.webkit.org/show_bug.cgi?id=195871
+        <rdar://problem/48959497>
+
+        Reviewed by Michael Saboff.
+
+        It currently attempts to do this but fails because it's actually clearing up the
+        preCapacity region instead.  The fix is simply to account for the preCapacity
+        when computing the start address of the property slots.
+
+        * runtime/Structure.cpp:
+        (JSC::Structure::flattenDictionaryStructure):
+
+2019-03-18  Robin Morisset  <rmorisset@apple.com>
+
+        B3 should reduce Shl(<S|Z>Shr(@x, @const), @const) to BitAnd(@x, -(1<<@const))
+        https://bugs.webkit.org/show_bug.cgi?id=152164
+
+        Reviewed by Filip Pizlo.
+
+        Turn this: Shl(<S|Z>Shr(@x, @const), @const)
+        Into this: BitAnd(@x, -(1<<@const))
+
+        I added two tests: one for ZShr/32 bits, and one for SShr/64 bits, I think it is enough coverage (no reason for any interaction between the signedness of the shift and the bitwidth).
+        I also modified a few adjacent tests to remove undefined behaviours.
+
+        * b3/B3ReduceStrength.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testShlImms):
+        (JSC::B3::testShlArgImm):
+        (JSC::B3::testShlSShrArgImm):
+        (JSC::B3::testShlImms32):
+        (JSC::B3::testShlArgImm32):
+        (JSC::B3::testShlZShrArgImm32):
+        (JSC::B3::run):
+
+2019-03-17  Robin Morisset  <rmorisset@apple.com>
+
+        ParserError can be shrunk by 8 bytes
+        https://bugs.webkit.org/show_bug.cgi?id=195496
+
+        Reviewed by Mark Lam.
+
+        * parser/ParserError.h:
+
+2019-03-17  Diego Pino Garcia  <dpino@igalia.com>
+
+        Fix WPE and GTK Debug builds after r243049
+        https://bugs.webkit.org/show_bug.cgi?id=195860
+
+        Unreviewed, build fix after r243049.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::normalizationAffects8Bit):
+
+2019-03-17  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        REGRESSION: !vm.isInitializingObject() void* JSC::tryAllocateCellHelper<JSC::Structure> JSC::Structure::create
+        https://bugs.webkit.org/show_bug.cgi?id=195858
+
+        Reviewed by Mark Lam.
+
+        r243011 changed WebAssembly related structures lazily-allocated. It means that this lazy allocation must not be done in the middle of
+        the other object allocations. This patch changes the signature of wasm related objects' ::create functions to taking Structure*.
+        This prevents us from materializing lazily-allocated structures while allocating wasm related objects, and this style is used in the
+        other places to fix the same problem. This bug is caught by existing debug tests for wasm.
+
+        * runtime/JSGlobalObject.h:
+        * wasm/js/JSWebAssemblyCompileError.cpp:
+        (JSC::createJSWebAssemblyCompileError):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::finalizeCreation):
+        (JSC::JSWebAssemblyInstance::create):
+        * wasm/js/JSWebAssemblyLinkError.cpp:
+        (JSC::createJSWebAssemblyLinkError):
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::createStub):
+        (JSC::JSWebAssemblyModule::finishCreation):
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::wasmToJSException):
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyCompileError):
+        (JSC::callJSWebAssemblyCompileError):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::WebAssemblyFunction::create):
+        * wasm/js/WebAssemblyFunction.h:
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyLinkErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyLinkError):
+        (JSC::callJSWebAssemblyLinkError):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::WebAssemblyModuleConstructor::createModule):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        (JSC::WebAssemblyModuleRecord::evaluate):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::webAssemblyModuleValidateAsyncInternal):
+        (JSC::instantiate):
+        (JSC::compileAndInstantiate):
+        (JSC::webAssemblyModuleInstantinateAsyncInternal):
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyRuntimeError):
+        (JSC::callJSWebAssemblyRuntimeError):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::constructJSWebAssemblyTable):
+        * wasm/js/WebAssemblyToJSCallee.cpp:
+        (JSC::WebAssemblyToJSCallee::create):
+        * wasm/js/WebAssemblyToJSCallee.h:
+        * wasm/js/WebAssemblyWrapperFunction.cpp:
+        (JSC::WebAssemblyWrapperFunction::create):
+        * wasm/js/WebAssemblyWrapperFunction.h:
+
+2019-03-16  Darin Adler  <darin@apple.com>
+
+        Improve normalization code, including moving from unorm.h to unorm2.h
+        https://bugs.webkit.org/show_bug.cgi?id=195330
+
+        Reviewed by Michael Catanzaro.
+
+        * runtime/JSString.h: Move StringViewWithUnderlyingString to StringView.h.
+
+        * runtime/StringPrototype.cpp: Include unorm2.h instead of unorm.h.
+        (JSC::normalizer): Added. Function to create normalizer object given
+        enumeration value indicating which is selected. Simplified because we
+        know the function will not fail and so we don't need error handling code.
+        (JSC::normalize): Changed this function to take a JSString* so we can
+        optimize the case where no normalization is needed. Added an early exit
+        if the string is stored as 8-bit and another if the string is already
+        normalized, using unorm2_isNormalized. Changed error handling to only
+        check cases that can actually fail in practice. Also did other small
+        optimizations like passing VM rather than ExecState.
+        (JSC::stringProtoFuncNormalize): Used smaller enumeration names that are
+        identical to the names used in the API and normalization parlance rather
+        than longer ones that expand the acronyms. Updated to pass JSString* to
+        the normalize function, so we can optimize 8-bit and already-normalized
+        cases, rather than callling the expensive String::upconvertedCharacters
+        function. Use throwVMRangeError.
+
+2019-03-15  Mark Lam  <mark.lam@apple.com>
+
+        Need to check ObjectPropertyCondition liveness before accessing it when firing watchpoints.
+        https://bugs.webkit.org/show_bug.cgi?id=195827
+        <rdar://problem/48845513>
+
+        Reviewed by Filip Pizlo.
+
+        m_object in ObjectPropertyCondition may no longer be live by the time the watchpoint fires.
+
+        * bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp:
+        (JSC::AdaptiveInferredPropertyValueWatchpointBase::fire):
+        * bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp:
+        (JSC::LLIntPrototypeLoadAdaptiveStructureWatchpoint::fireInternal):
+        * bytecode/ObjectPropertyCondition.cpp:
+        (JSC::ObjectPropertyCondition::dumpInContext const):
+        * bytecode/StructureStubClearingWatchpoint.cpp:
+        (JSC::StructureStubClearingWatchpoint::fireInternal):
+        * dfg/DFGAdaptiveStructureWatchpoint.cpp:
+        (JSC::DFG::AdaptiveStructureWatchpoint::fireInternal):
+        * runtime/StructureRareData.cpp:
+        (JSC::ObjectToStringAdaptiveStructureWatchpoint::fireInternal):
+
+2019-03-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Make more properties lazily-allocated in JSGlobalObject, including properties only used in JIT mode
+        https://bugs.webkit.org/show_bug.cgi?id=195816
+
+        Reviewed by Michael Saboff.
+
+        This patch makes more properties lazily-allocated in JSGlobalObject. This patch makes the following lazily-allocated.
+
+        1. iteratorResultObjectStructure
+        2. WebAssembly related objects except for JSWebAssembly top-level object.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::iteratorResultObjectStructure const):
+        (JSC::JSGlobalObject::webAssemblyModuleRecordStructure const):
+        (JSC::JSGlobalObject::webAssemblyFunctionStructure const):
+        (JSC::JSGlobalObject::webAssemblyWrapperFunctionStructure const):
+        (JSC::JSGlobalObject::webAssemblyToJSCalleeStructure const):
+        * wasm/js/JSWebAssembly.cpp:
+        * wasm/js/JSWebAssembly.h:
+
+2019-03-15  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [CMake] Move test .js files into testapiScripts
+        https://bugs.webkit.org/show_bug.cgi?id=195565
+
+        Reviewed by Yusuke Suzuki.
+
+        testapi expect .js file in the testapiScripts-directory.
+
+        * shell/CMakeLists.txt:
+
+2019-03-15  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: add a missing exception check after r242991.
+        https://bugs.webkit.org/show_bug.cgi?id=195791
+
+        Unreviewed.
+
+        * tools/JSDollarVM.cpp:
+        (JSC::functionGetGetterSetter):
+
+2019-03-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to capture a screenshot of a node from within the page
+        https://bugs.webkit.org/show_bug.cgi?id=194279
+        <rdar://problem/10731573>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add `console.screenshot` functionality, which displays a screenshot of a given object (if
+        able) within Web Inspector's Console tab. From there, it can be viewed and saved.
+
+        Currently, `console.screenshot` will
+         - capture an image of a `Node` (if provided)
+         - capture an image of the viewport if nothing is provided
+
+        * inspector/protocol/Console.json:
+        Add `Image` enum value to `ConsoleMessage` type.
+        * runtime/ConsoleTypes.h:
+        * inspector/ConsoleMessage.h:
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::messageTypeValue):
+
+        * runtime/ConsoleClient.h:
+        * runtime/ConsoleObject.cpp:
+        (JSC::ConsoleObject::finishCreation):
+        (JSC::consoleProtoFuncScreenshot): Added.
+
+        * inspector/JSGlobalObjectConsoleClient.h:
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::screenshot): Added.
+
+2019-03-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Retain PrivateName of Symbol before passing it to operations potentially incurring GC
+        https://bugs.webkit.org/show_bug.cgi?id=195791
+        <rdar://problem/48806130>
+
+        Reviewed by Mark Lam.
+
+        Consider the following example:
+
+            void putByVal(JSObject*, PropertyName propertyName, ...);
+
+            putByVal(object, symbol->privateName(), ...);
+
+        PropertyName does not retain the passed UniquedStringImpl*. It just holds the pointer to UniquedStringImpl*.
+        It means that since `Symbol::privateName()` returns `const PrivateName&` instead of `PrivateName`, putByVal
+        and its caller does not retain UniquedStringImpl* held in PropertyName. The problem happens when the putByVal
+        incurs GC, and when the `symbol` is missing in the conservative GC scan. The underlying UniquedStringImpl* of
+        PropertyName can be accidentally destroyed in the middle of the putByVal operation. We should retain PrivateName
+        before passing it to operations which takes it as PropertyName.
+
+        1. We use the code pattern like this.
+
+            auto propertyName = symbol->privateName();
+            someOperation(..., propertyName);
+
+        This pattern is well aligned to existing `JSValue::toPropertyKey(exec)` and `JSString::toIdentifier(exec)` code patterns.
+
+            auto propertyName = value.toPropertyKey(exec);
+            RETURN_IF_EXCEPTION(scope, { });
+            someOperation(..., propertyName);
+
+        2. We change `Symbol::privateName()` to returning `PrivateName` instead of `const PrivateName&` to avoid
+           potential dangerous use cases. This is OK because the code using `Symbol::privateName()` is not a critical path,
+           and they typically need to retain PrivateName.
+
+        3. We audit similar functions `toPropertyKey(exec)` and `toIdentifier(exec)` for needed but missing exception checks.
+           BTW, these functions are safe to the problem fixed in this patch since they return `Identifier` instead
+           of `const Identifier&`.
+
+        Mark and Robin investigated and offered important data to understand what went wrong. And figured out the reason behind
+        the mysterious behavior shown in the data, and now, we confirm that this is the right fix for this bug.
+
+        * dfg/DFGOperations.cpp:
+        * jit/JITOperations.cpp:
+        (JSC::tryGetByValOptimize):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::setFunctionName):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::printableModuleKey):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::Stringifier):
+        * runtime/Symbol.cpp:
+        (JSC::Symbol::descriptiveString const):
+        (JSC::Symbol::description const):
+        * runtime/Symbol.h:
+        * runtime/SymbolConstructor.cpp:
+        (JSC::symbolConstructorKeyFor):
+        * tools/JSDollarVM.cpp:
+        (JSC::functionGetGetterSetter):
+
+2019-03-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        REGRESSION(r242841): Fix conservative DFG OSR entry validation to accept values which will be stored in AnyInt / Double flush formats
+        https://bugs.webkit.org/show_bug.cgi?id=195752
+
+        Reviewed by Saam Barati.
+
+        We fixed the bug skipping AbstractValue validations when the flush format is Double or AnyInt. But it
+        was too conservative. While validating inputs with AbstractValue is mandatory (without it, whole CFA
+        falls into wrong condition), our validation does not care AnyInt and Double representations in lower
+        tiers. For example, if a value is stored in Double flush format in DFG, its AbstractValue becomes
+        SpecFullDouble. However, it does not include Int32 and OSR entry is rejected if Int32 comes for DoubleRep
+        OSR entry value. This is wrong since we later convert these numbers into DoubleRep representation
+        before entering DFG code.
+
+        This patch performs AbstractValue validation onto the correctly converted value with flush format hint.
+
+        And it still does not fix OSR entry failures in navier-stokes. This is because AbstractValue representation
+        in navier-stokes's lin_solve was too strict. Then, this patch reverts r242627. Instead of removing must handle
+        value handling in CFA, DFG OSR entry now correctly validates inputs with AbstractValues even if the flush format
+        is Double or AnyInt. As long as DFG OSR entry validates inputs, merging must handle values as proven constants is OK.
+
+        We can see that # of OSR entry failures in navier-stokes.js becomes the same to the previous count. And we can see
+        AnyInt OSR entry actually works in microbenchmarks/large-int.js. However, AnyInt effect is hard to observe because this
+        is super rare. Since we inject type prediction based on must handle value, the flush format tends to be SpecAnyIntAsDouble
+        and it accepts JSValues simply.
+
+        * bytecode/SpeculatedType.cpp:
+        (JSC::dumpSpeculation):
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::filterValueByType):
+        * dfg/DFGAbstractValue.h:
+        (JSC::DFG::AbstractValue::validateOSREntryValue const):
+        (JSC::DFG::AbstractValue::validateTypeAcceptingBoxedInt52 const):
+        (JSC::DFG::AbstractValue::validate const): Deleted.
+        (JSC::DFG::AbstractValue::validateType const): Deleted.
+        * dfg/DFGCFAPhase.cpp:
+        (JSC::DFG::CFAPhase::run):
+        (JSC::DFG::CFAPhase::injectOSR):
+        (JSC::DFG::CFAPhase::performBlockCFA):
+        * dfg/DFGOSREntry.cpp:
+        (JSC::DFG::prepareOSREntry):
+
+2019-03-14  Saam barati  <sbarati@apple.com>
+
+        We can't remove code after ForceOSRExit until after FixupPhase
+        https://bugs.webkit.org/show_bug.cgi?id=186916
+        <rdar://problem/41396612>
+
+        Reviewed by Yusuke Suzuki.
+
+        There was an optimization in the bytecode parser I added in r232742 that converted blocks
+        with ForceOSRExit in them to remove all IR after the ForceOSRExit. However,
+        this is incorrect because it breaks backwards propagation. For example, it
+        could incorrectly lead us to think it's safe to not check for overflow in
+        an Add because such Add has no non-int uses. Backwards propagation relies on
+        having a view over bytecode uses, and this optimization broke that. This patch
+        rolls out that optimization, as initial perf data shows it may no longer be
+        needed.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addToGraph):
+        (JSC::DFG::ByteCodeParser::parse):
+
+2019-03-14  Saam barati  <sbarati@apple.com>
+
+        JSScript should have an accessor saying if it's cached or not
+        https://bugs.webkit.org/show_bug.cgi?id=195783
+
+        Reviewed by Michael Saboff.
+
+        * API/JSScript.h:
+        * API/JSScript.mm:
+        (-[JSScript isUsingBytecodeCache]):
+        * API/tests/testapi.mm:
+        (testIsUsingBytecodeCacheAccessor):
+        (testObjectiveCAPI):
+
+2019-03-14  Saam barati  <sbarati@apple.com>
+
+        Remove retain cycle from JSScript and also don't keep the cache file descriptor open so many JSScripts can be cached in a loop
+        https://bugs.webkit.org/show_bug.cgi?id=195782
+        <rdar://problem/48880625>
+
+        Reviewed by Michael Saboff.
+
+        This patch fixes two issues with JSScript API:
+        
+        1. There was a retain cycle causing us to never destroy a JSScript once it
+        created a JSSourceCode. The reason for this is that JSScript had a 
+        Strong<JSSourceCode> field. And JSSourceCode transitively had RetainPtr<JSScript>.
+        
+        This patch fixes this issue by making the "jsSourceCode" accessor return a transient object.
+        
+        2. r242585 made it so that JSScript would keep the cache file descriptor open
+        (and locked) for the duration of the lifetime of the JSScript itself. Our
+        anticipation here is that it would make implementing iterative cache updates
+        easier. However, this made using the API super limiting in other ways. For
+        example, if a program had a loop that cached 3000 different JSScripts, it's
+        likely that such a program would exhaust the open file count limit. This patch
+        reverts to the behavior prior to r242585 where we just keep open the file descriptor
+        while we read or write it.
+
+        * API/JSAPIGlobalObject.mm:
+        (JSC::JSAPIGlobalObject::moduleLoaderFetch):
+        * API/JSContext.mm:
+        (-[JSContext evaluateJSScript:]):
+        * API/JSScript.mm:
+        (-[JSScript dealloc]):
+        (-[JSScript readCache]):
+        (-[JSScript init]):
+        (-[JSScript sourceCode]):
+        (-[JSScript jsSourceCode]):
+        (-[JSScript writeCache:]):
+        (-[JSScript forceRecreateJSSourceCode]): Deleted.
+        * API/JSScriptInternal.h:
+        * API/tests/testapi.mm:
+        (testCanCacheManyFilesWithTheSameVM):
+        (testObjectiveCAPI):
+        (testCacheFileIsExclusive): Deleted.
+
+2019-03-14  Michael Saboff  <msaboff@apple.com>
+
+        ASSERTION FAILED: regexp->isValid() or ASSERTION FAILED: !isCompilationThread()
+        https://bugs.webkit.org/show_bug.cgi?id=195735
+
+        Reviewed by Mark Lam.
+
+        There are two bug fixes here.
+
+        The first bug happens due to a race condition when we are compiling on a separate thread while the
+        main thread is compiling the RegExp at a place where it can run out of stack.  When that happens,
+        the RegExp becomes invalid due to the out of stack error.  If we check the ASSERT condition in the DFG
+        compilation thread, we crash.  After the main thread throws an exception, it resets the RegExp as
+        it might compile successfully the next time we try to execute it on a shallower stack.
+        The main thread will see the regular expression as valid when it executes the JIT'ed code we are compiling
+        or any slow path we call out to.  Therefore ASSERTs like this in compilation code can be eliminated.
+
+        The second bug is due to incorrect logic when we go to run the regexp in the Strength Reduction phase.
+        The current check for "do we have code to run the RegExp?" only checks that the RegExp's state
+        is != NotCompiled.  We also can't run the RegExp if there the state is ParseError.
+        Changing hasCode() to take this into account fixes the second issue.
+
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewRegexp):
+        * runtime/RegExp.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewRegexp):
+        * runtime/RegExp.h:
+
+2019-03-14  Saam barati  <sbarati@apple.com>
+
+        Fixup uses KnownInt32 incorrectly in some nodes
+        https://bugs.webkit.org/show_bug.cgi?id=195279
+        <rdar://problem/47915654>
+
+        Reviewed by Yusuke Suzuki.
+
+        Fixup was sometimes using KnownInt32 edges when it knew some
+        incoming value is an Int32 based on what the bytecode would return.
+        However, because bytecode may result in Int32 for some node does
+        not mean we'll pick Int32 as the value format for that local. For example,
+        we may choose for a value to be represented as a double. This patch
+        corrects such uses of KnownInt32.
+
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArrayPush):
+        (JSC::DFG::SpeculativeJIT::compileGetDirectPname):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArrayPush):
+
+2019-03-14  Keith Miller  <keith_miller@apple.com>
+
+        DFG liveness can't skip tail caller inline frames
+        https://bugs.webkit.org/show_bug.cgi?id=195715
+        <rdar://problem/46221598>
+
+        Reviewed by Saam Barati.
+
+        In order to simplify OSR exit/DFG bytecode parsing our bytecode
+        generator always emits an op_ret after any tail call. However, the
+        DFG when computing the liveness of locals, would skip any tail
+        caller inline frames. This mean that if we ended up inserting a
+        Check that would OSR to the op_ret we wouldn't have kept
+        availability data around for it.
+
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::isLiveInBytecode):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::forAllLocalsLiveInBytecode):
+
+2019-03-14  Robin Morisset  <rmorisset@apple.com>
+
+        DFG::Worklist can be shrunk by 16 bytes
+        https://bugs.webkit.org/show_bug.cgi?id=195490
+
+        Reviewed by Darin Adler.
+
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::Worklist):
+        * dfg/DFGWorklist.h:
+
+2019-03-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: provide a way to get the contents of resources
+        https://bugs.webkit.org/show_bug.cgi?id=195266
+        <rdar://problem/48550911>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/InjectedScriptBase.cpp:
+        (Inspector::InjectedScriptBase::makeAsyncCall):
+        Drive-by: fix missing `else`.
+
+2019-03-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Styles: `::-webkit-scrollbar*` rules aren't shown
+        https://bugs.webkit.org/show_bug.cgi?id=195123
+        <rdar://problem/48450148>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/CSS.json:
+        Add `CSS.PseudoId` enum, rather than send a number, so that we have more knowledge about
+        which pseudo type the rule corresponds to (e.g. a string is more descriptive than a number).
+
+2019-03-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] CodeBlock::visitChildren is reporting extra memory even when its JITCode is singleton
+        https://bugs.webkit.org/show_bug.cgi?id=195638
+
+        Reviewed by Mark Lam.
+
+        This patch introduces a m_isShared flag to track whether the
+        JITCode is shared between many CodeBlocks. This flag is used in
+        `CodeBlock::setJITCode` and `CodeBlock::visitChildren` to avoid
+        reporting duplicated extra memory for singleton JITCodes.
+        With those changes, we now stop counting singleton LLIntEntrypoints
+        as extra memory, since they are declared as static variables. This
+        change can potentially avoid unecessary GC pressure, because
+        extra memory is used by Heap::updateAllocationLimits() to update Heap
+        limits.
+        Even though it is hard to show performance difference for this change
+        (see results below), it is important to keep extra memory usage
+        correct. Otherwise, it can be a source of a complicated bug on
+        GC in the future.
+
+        Results from last run of Speedometer 2 comparing ToT and changes. We
+        collected those numbers running Minibrowser on a MacBook Pro 15-inch
+        with 2,6 GHz Intel Core i7. Both versions are with JIT disabled,
+        since these singleton JITCode are only used by this configuration:
+
+        Speedometer2 Run #1
+            ToT: 58.2 +- 1.1
+            changes: 57.9 +- 0.99
+
+        Speedometer2 Run #2
+            ToT: 58.5 +- 1.7
+            changes: 58.0 +- 1.5
+
+        Speedometer2 Run #2
+            ToT: 58.5 +- 0.99
+            changes: 57.1 +- 1.5
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::estimatedSize):
+        (JSC::CodeBlock::visitChildren):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::setJITCode):
+        * jit/JITCode.cpp:
+        (JSC::JITCode::JITCode):
+        (JSC::JITCodeWithCodeRef::JITCodeWithCodeRef):
+        (JSC::DirectJITCode::DirectJITCode):
+        (JSC::NativeJITCode::NativeJITCode):
+        * jit/JITCode.h:
+        (JSC::JITCode::isShared const):
+        * llint/LLIntEntrypoint.cpp:
+        (JSC::LLInt::setFunctionEntrypoint):
+        (JSC::LLInt::setEvalEntrypoint):
+        (JSC::LLInt::setProgramEntrypoint):
+        (JSC::LLInt::setModuleProgramEntrypoint):
+
+2019-03-13  Keith Rollin  <krollin@apple.com>
+
+        Add support for new StagedFrameworks layout
+        https://bugs.webkit.org/show_bug.cgi?id=195543
+
+        Reviewed by Alexey Proskuryakov.
+
+        When creating the WebKit layout for out-of-band Safari/WebKit updates,
+        use an optional path prefix when called for.
+
+        * Configurations/Base.xcconfig:
+
+2019-03-13  Mark Lam  <mark.lam@apple.com>
+
+        Remove unneeded --tradeDestructorBlocks option.
+        https://bugs.webkit.org/show_bug.cgi?id=195698
+        <rdar://problem/39681388>
+
+        Reviewed by Yusuke Suzuki.
+
+        There's no reason why we would ever want --tradeDestructorBlocks to be false.
+
+        Also, there was an assertion in BlockDirectory::endMarking() for when
+        (!Options::tradeDestructorBlocks() && needsDestruction()).  This assertion is
+        outdated because the BlockDirectory's m_empty set used to mean the set of all
+        blocks that have no live (as in not reachable by GC) objects and dead objects
+        also do not require destructors to be called on them.  The current meaning of
+        m_empty is that it is the set of all blocks that have no live objects,
+        independent of whether they needs destructors to be called on them or not.
+        The assertion is no longer valid for the new meaning of m_empty as m_empty may
+        now contain destructible blocks.  This assertion is now removed as part of this
+        patch.
+
+        * heap/BlockDirectory.cpp:
+        (JSC::BlockDirectory::endMarking):
+        * heap/LocalAllocator.cpp:
+        (JSC::LocalAllocator::tryAllocateWithoutCollecting):
+        * runtime/Options.h:
+
+2019-03-13  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        String overflow when using StringBuilder in JSC::createError
+        https://bugs.webkit.org/show_bug.cgi?id=194957
+
+        Reviewed by Mark Lam.
+
+        StringBuilder in notAFunctionSourceAppender didn't check
+        for overflows but just failed.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::notAFunctionSourceAppender):
+
+2019-03-11  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Move species watchpoint installation from ArrayPrototype to JSGlobalObject
+        https://bugs.webkit.org/show_bug.cgi?id=195593
+
+        Reviewed by Keith Miller.
+
+        This patch moves watchpoints installation and watchpoints themselves from ArrayPrototype to JSGlobalObject because of the following two reasons.
+
+        1. ArrayPrototype configures finalizer because of std::unique_ptr<> for watchpoints. If we move them from ArrayPrototype to JSGlobalObject, we do
+           not need to set finalizer. And we can avoid unnecessary WeakBlock allocation.
+
+        2. This code lazily configures watchpoints instead of setting watchpoints eagerly in JSGlobalObject::init. We would like to expand this mechanism
+           to other watchpoints which are eagerly configured in JSGlobalObject::init. Putting these code in JSGlobalObject instead of scattering them in
+           each XXXPrototype / XXXConstructor can encourage the reuse of the code.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::create):
+        (JSC::speciesWatchpointIsValid):
+        (JSC::ArrayPrototype::destroy): Deleted.
+        (JSC::ArrayPrototype::tryInitializeSpeciesWatchpoint): Deleted.
+        (JSC::ArrayPrototypeAdaptiveInferredPropertyWatchpoint::ArrayPrototypeAdaptiveInferredPropertyWatchpoint): Deleted.
+        (JSC::ArrayPrototypeAdaptiveInferredPropertyWatchpoint::handleFire): Deleted.
+        * runtime/ArrayPrototype.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::tryInstallArraySpeciesWatchpoint): Instead of using ArrayPrototypeAdaptiveInferredPropertyWatchpoint,
+        we use ObjectPropertyChangeAdaptiveWatchpoint. We create watchpoints after touching WatchpointSet since ObjectPropertyChangeAdaptiveWatchpoint
+        requires WatchpointSet is IsWatched state.
+        * runtime/JSGlobalObject.h:
+
 2019-03-12  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] OSR entry should respect abstract values in addition to flush formats

@@ -867,6 +867,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSInspectorAuditAccessibilityObject
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSInspectorAuditAccessibilityObject.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSInspectorAuditDOMObject.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSInspectorAuditDOMObject.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSInspectorAuditResourcesObject.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSInspectorAuditResourcesObject.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSInspectorFrontendHost.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSInspectorFrontendHost.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSInternalSettings.cpp
@@ -903,6 +905,10 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMathMLElementWrapperFactory.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMathMLElementWrapperFactory.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMediaCapabilities.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMediaCapabilities.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMediaCapabilitiesDecodingInfo.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMediaCapabilitiesDecodingInfo.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMediaCapabilitiesEncodingInfo.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMediaCapabilitiesEncodingInfo.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMediaCapabilitiesInfo.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMediaCapabilitiesInfo.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSMediaConfiguration.cpp
@@ -1919,6 +1925,8 @@ $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSWebGPUColor.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSWebGPUColor.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSWebGPUCommandBuffer.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSWebGPUCommandBuffer.h
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSWebGPUCommandEncoder.cpp
+$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSWebGPUCommandEncoder.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSWebGPUDevice.cpp
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSWebGPUDevice.h
 $(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/JSWebGPUIndexFormat.cpp

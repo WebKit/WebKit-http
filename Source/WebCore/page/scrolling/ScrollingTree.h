@@ -72,6 +72,8 @@ public:
     WEBCORE_EXPORT void applyLayerPositions();
 
     virtual Ref<ScrollingTreeNode> createScrollingTreeNode(ScrollingNodeType, ScrollingNodeID) = 0;
+    
+    ScrollingTreeNode* nodeForID(ScrollingNodeID) const;
 
     // Called after a scrolling tree node has handled a scroll and updated its layers.
     // Updates FrameView/RenderLayer scrolling state and GraphicsLayers.
@@ -142,8 +144,13 @@ public:
         ASSERT(m_fixedOrStickyNodeCount);
         --m_fixedOrStickyNodeCount;
     }
-    
-    WEBCORE_EXPORT String scrollingTreeAsText();
+
+    // A map of overflow scrolling nodes to positioned nodes which need to be updated
+    // when the scroller changes, but are not descendants.
+    using RelatedNodesMap = HashMap<ScrollingNodeID, Vector<ScrollingNodeID>>;
+    RelatedNodesMap& overflowRelatedNodes() { return m_overflowRelatedNodesMap; }
+
+    WEBCORE_EXPORT String scrollingTreeAsText(ScrollingStateTreeAsTextBehavior = ScrollingStateTreeAsTextBehaviorNormal);
     
 protected:
     void setMainFrameScrollPosition(FloatPoint);
@@ -153,8 +160,6 @@ protected:
 private:
     using OrphanScrollingNodeMap = HashMap<ScrollingNodeID, RefPtr<ScrollingTreeNode>>;
     void updateTreeFromStateNode(const ScrollingStateNode*, OrphanScrollingNodeMap&, HashSet<ScrollingNodeID>& unvisitedNodes);
-
-    ScrollingTreeNode* nodeForID(ScrollingNodeID) const;
 
     void applyLayerPositionsRecursive(ScrollingTreeNode&, FloatRect layoutViewport, FloatSize cumulativeDelta);
 
@@ -166,6 +171,8 @@ private:
 
     using ScrollingTreeNodeMap = HashMap<ScrollingNodeID, ScrollingTreeNode*>;
     ScrollingTreeNodeMap m_nodeMap;
+
+    RelatedNodesMap m_overflowRelatedNodesMap;
 
     struct TreeState {
         ScrollingNodeID latchedNodeID { 0 };

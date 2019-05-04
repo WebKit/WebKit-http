@@ -103,14 +103,23 @@ WI.HARBuilder = class HARBuilder
 
         if (resource.timingData.startTime && resource.timingData.responseEnd)
             entry.time = (resource.timingData.responseEnd - resource.timingData.startTime) * 1000;
-        if (resource.remoteAddress)
+        if (resource.remoteAddress) {
             entry.serverIPAddress = HARBuilder.ipAddress(resource.remoteAddress);
+
+            // WebKit Custom Field `_serverPort`.
+            if (entry.serverIPAddress)
+                entry._serverPort = HARBuilder.port(resource.remoteAddress);
+        }
         if (resource.connectionIdentifier)
             entry.connection = "" + resource.connectionIdentifier;
 
         // CFNetwork Custom Field `_fetchType`.
         if (resource.responseSource !== WI.Resource.ResponseSource.Unknown)
             entry._fetchType = HARBuilder.fetchType(resource.responseSource);
+
+        // WebKit Custom Field `_priority`.
+        if (resource.priority !== WI.Resource.NetworkPriority.Unknown)
+            entry._priority = HARBuilder.priority(resource.priority);
 
         return entry;
     }
@@ -241,6 +250,7 @@ WI.HARBuilder = class HARBuilder
 
     static timings(resource)
     {
+        // FIXME: <https://webkit.org/b/195694> Web Inspector: HAR Extension for Redirect Timing Info
         // Chrome has Custom Fields `_blocked_queueing` and `_blocked_proxy`.
 
         let result = {
@@ -262,7 +272,12 @@ WI.HARBuilder = class HARBuilder
                 result.connect = ((connectEnd || requestStart) - connectStart) * 1000;
             if (secureConnectionStart)
                 result.ssl = ((connectEnd || requestStart) - secureConnectionStart) * 1000;
-            result.send = (requestStart - (connectEnd || domainLookupEnd || startTime)) * 1000;
+
+            // If all the time before requestStart was included in blocked, then make send time zero
+            // as send time is essentially just blocked time after dns / connection time, and we
+            // do not want to double count it.
+            result.send = (domainLookupEnd || connectEnd) ? (requestStart - (connectEnd || domainLookupEnd)) * 1000 : 0;
+
             result.wait = (responseStart - requestStart) * 1000;
             result.receive = (responseEnd - responseStart) * 1000;
         }
@@ -281,6 +296,26 @@ WI.HARBuilder = class HARBuilder
         // NOTE: Resource.remoteAddress always includes the port at the end.
         // So this always strips the last part.
         return remoteAddress.replace(/:\d+$/, "");
+    }
+
+    static port(remoteAddress)
+    {
+        // IP Address, without port.
+        if (!remoteAddress)
+            return undefined;
+
+        // NOTE: Resource.remoteAddress always includes the port at the end.
+        // So this always matches the last part.
+        let index = remoteAddress.lastIndexOf(":");
+        if (!index)
+            return undefined;
+
+        let portString = remoteAddress.substr(index + 1);
+        let port = parseInt(portString);
+        if (isNaN(port))
+            return undefined;
+
+        return port;
     }
 
     static date(date)
@@ -305,7 +340,83 @@ WI.HARBuilder = class HARBuilder
             return "Service Worker";
         }
 
-        console.assert(false);
+        console.assert();
         return undefined;
+    }
+
+    static priority(priority)
+    {
+        switch (priority) {
+        case WI.Resource.NetworkPriority.Low:
+            return "low";
+        case WI.Resource.NetworkPriority.Medium:
+            return "medium";
+        case WI.Resource.NetworkPriority.High:
+            return "high";
+        }
+
+        console.assert();
+        return undefined;
+    }
+
+    // Consuming.
+
+    static dateFromHARDate(isoString)
+    {
+        return Date.parse(isoString);
+    }
+
+    static protocolFromHARProtocol(protocol)
+    {
+        switch (protocol) {
+        case "HTTP/2":
+            return "h2";
+        case "HTTP/1.0":
+            return "http/1.0";
+        case "HTTP/1.1":
+            return "http/1.1";
+        case "SPDY/2":
+            return "spdy/2";
+        case "SPDY/3":
+            return "spdy/3";
+        case "SPDY/3.1":
+            return "spdy/3.1";
+        }
+
+        if (protocol)
+            console.warn("Unknown HAR protocol value", protocol);
+        return null;
+    }
+
+    static responseSourceFromHARFetchType(fetchType)
+    {
+        switch (fetchType) {
+        case "Network Load":
+            return WI.Resource.ResponseSource.Network;
+        case "Memory Cache":
+            return WI.Resource.ResponseSource.MemoryCache;
+        case "Disk Cache":
+            return WI.Resource.ResponseSource.DiskCache;
+        }
+
+        if (fetchType)
+            console.warn("Unknown HAR _fetchType value", fetchType);
+        return WI.Resource.ResponseSource.Other;
+    }
+
+    static networkPriorityFromHARPriority(priority)
+    {
+        switch (priority) {
+        case "low":
+            return WI.Resource.NetworkPriority.Low;
+        case "medium":
+            return WI.Resource.NetworkPriority.Medium;
+        case "high":
+            return WI.Resource.NetworkPriority.High;
+        }
+
+        if (priority)
+            console.warn("Unknown HAR priority value", priority);
+        return WI.Resource.NetworkPriority.Unknown;
     }
 };

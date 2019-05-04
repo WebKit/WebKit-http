@@ -136,18 +136,28 @@ void NetworkProcessProxy::getNetworkProcessConnection(WebProcessProxy& webProces
     }
 
     bool isServiceWorkerProcess = false;
-    SecurityOriginData securityOrigin;
+    RegistrableDomain registrableDomain;
 #if ENABLE(SERVICE_WORKER)
     if (is<ServiceWorkerProcessProxy>(webProcessProxy)) {
         isServiceWorkerProcess = true;
-        securityOrigin = downcast<ServiceWorkerProcessProxy>(webProcessProxy).securityOrigin();
+        registrableDomain = downcast<ServiceWorkerProcessProxy>(webProcessProxy).registrableDomain();
     }
 #endif
 
-    connection()->send(Messages::NetworkProcess::CreateNetworkConnectionToWebProcess(isServiceWorkerProcess, securityOrigin), 0, IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
+    connection()->send(Messages::NetworkProcess::CreateNetworkConnectionToWebProcess(isServiceWorkerProcess, registrableDomain), 0, IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
-DownloadProxy* NetworkProcessProxy::createDownloadProxy(const ResourceRequest& resourceRequest)
+void NetworkProcessProxy::synthesizeAppIsBackground(bool background)
+{
+    if (m_downloadProxyMap) {
+        if (background)
+            m_downloadProxyMap->applicationDidEnterBackground();
+        else
+            m_downloadProxyMap->applicationWillEnterForeground();
+    }
+}
+
+DownloadProxy& NetworkProcessProxy::createDownloadProxy(const ResourceRequest& resourceRequest)
 {
     if (!m_downloadProxyMap)
         m_downloadProxyMap = std::make_unique<DownloadProxyMap>(*this);
@@ -1063,8 +1073,12 @@ void NetworkProcessProxy::addSession(Ref<WebsiteDataStore>&& store)
     if (canSendMessage())
         send(Messages::NetworkProcess::AddWebsiteDataStore { store->parameters() }, 0);
     auto sessionID = store->sessionID();
-    if (!sessionID.isEphemeral())
+    if (!sessionID.isEphemeral()) {
+#if ENABLE(INDEXED_DATABASE)
+        createSymLinkForFileUpgrade(store->resolvedIndexedDatabaseDirectory());
+#endif
         m_websiteDataStores.set(sessionID, WTFMove(store));
+    }
 }
 
 void NetworkProcessProxy::removeSession(PAL::SessionID sessionID)
@@ -1178,14 +1192,14 @@ void NetworkProcessProxy::getSandboxExtensionsForBlobFiles(const Vector<String>&
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-void NetworkProcessProxy::establishWorkerContextConnectionToNetworkProcess(SecurityOriginData&& origin)
+void NetworkProcessProxy::establishWorkerContextConnectionToNetworkProcess(RegistrableDomain&& registrableDomain)
 {
-    m_processPool.establishWorkerContextConnectionToNetworkProcess(*this, WTFMove(origin), WTF::nullopt);
+    m_processPool.establishWorkerContextConnectionToNetworkProcess(*this, WTFMove(registrableDomain), WTF::nullopt);
 }
 
-void NetworkProcessProxy::establishWorkerContextConnectionToNetworkProcessForExplicitSession(SecurityOriginData&& origin, PAL::SessionID sessionID)
+void NetworkProcessProxy::establishWorkerContextConnectionToNetworkProcessForExplicitSession(RegistrableDomain&& registrableDomain, PAL::SessionID sessionID)
 {
-    m_processPool.establishWorkerContextConnectionToNetworkProcess(*this, WTFMove(origin), sessionID);
+    m_processPool.establishWorkerContextConnectionToNetworkProcess(*this, WTFMove(registrableDomain), sessionID);
 }
 #endif
 
@@ -1200,6 +1214,31 @@ void NetworkProcessProxy::requestStorageSpace(PAL::SessionID sessionID, const We
 
     store->client().requestStorageSpace(origin.topOrigin, origin.clientOrigin, quota, currentSize, spaceRequired, WTFMove(completionHandler));
 }
+
+void NetworkProcessProxy::takeUploadAssertion()
+{
+    ASSERT(!m_uploadAssertion);
+    m_uploadAssertion = std::make_unique<ProcessAssertion>(processIdentifier(), "WebKit uploads"_s, AssertionState::UnboundedNetworking);
+}
+
+void NetworkProcessProxy::clearUploadAssertion()
+{
+    ASSERT(m_uploadAssertion);
+    m_uploadAssertion = nullptr;
+}
+
+#if ENABLE(INDEXED_DATABASE)
+void NetworkProcessProxy::createSymLinkForFileUpgrade(const String& indexedDatabaseDirectory)
+{
+    if (indexedDatabaseDirectory.isEmpty())
+        return;
+
+    String oldVersionDirectory = FileSystem::pathByAppendingComponent(indexedDatabaseDirectory, "v0");
+    FileSystem::deleteEmptyDirectory(oldVersionDirectory);
+    if (!FileSystem::fileExists(oldVersionDirectory))
+        FileSystem::createSymbolicLink(indexedDatabaseDirectory, oldVersionDirectory);
+}
+#endif
 
 } // namespace WebKit
 

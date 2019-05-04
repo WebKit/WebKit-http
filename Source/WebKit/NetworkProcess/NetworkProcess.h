@@ -287,8 +287,8 @@ public:
     void didReceiveNetworkProcessMessage(IPC::Connection&, IPC::Decoder&);
 
 #if ENABLE(SERVICE_WORKER)
-    WebSWServerToContextConnection* serverToContextConnectionForOrigin(const WebCore::SecurityOriginData&);
-    void createServerToContextConnection(const WebCore::SecurityOriginData&, Optional<PAL::SessionID>);
+    WebSWServerToContextConnection* serverToContextConnectionForRegistrableDomain(const WebCore::RegistrableDomain&);
+    void createServerToContextConnection(const WebCore::RegistrableDomain&, Optional<PAL::SessionID>);
     
     WebCore::SWServer& swServerForSession(PAL::SessionID);
     void registerSWServerConnection(WebSWServerConnection&);
@@ -366,11 +366,12 @@ private:
     IPC::Connection* parentProcessConnectionForDownloads() override { return parentProcessConnection(); }
     AuthenticationManager& downloadsAuthenticationManager() override;
     void pendingDownloadCanceled(DownloadID) override;
+    uint32_t downloadMonitorSpeedMultiplier() const override { return m_downloadMonitorSpeedMultiplier; }
 
     // Message Handlers
     void didReceiveSyncNetworkProcessMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
     void initializeNetworkProcess(NetworkProcessCreationParameters&&);
-    void createNetworkConnectionToWebProcess(bool isServiceWorkerProcess, WebCore::SecurityOriginData&&);
+    void createNetworkConnectionToWebProcess(bool isServiceWorkerProcess, WebCore::RegistrableDomain&&);
 
     void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, uint64_t callbackID);
     void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, uint64_t callbackID);
@@ -391,6 +392,8 @@ private:
 #endif
     void continueWillSendRequest(DownloadID, WebCore::ResourceRequest&&);
     void continueDecidePendingDownloadDestination(DownloadID, String destination, SandboxExtension::Handle&&, bool allowOverwrite);
+    void applicationDidEnterBackground();
+    void applicationWillEnterForeground();
 
     void setCacheModel(CacheModel);
     void allowSpecificHTTPSCertificateForHost(const WebCore::CertificateInfo&, const String& host);
@@ -429,7 +432,9 @@ private:
 
 #if ENABLE(INDEXED_DATABASE)
     void addIndexedDatabaseSession(PAL::SessionID, String&, SandboxExtension::Handle&);
+    void collectIndexedDatabaseOriginsForVersion(const String&, HashSet<WebCore::SecurityOriginData>&);
     HashSet<WebCore::SecurityOriginData> indexedDatabaseOrigins(const String& path);
+    Ref<WebCore::IDBServer::IDBServer> createIDBServer(PAL::SessionID);
 #endif
 
 #if ENABLE(SERVICE_WORKER)
@@ -442,7 +447,7 @@ private:
     
     WebSWOriginStore& swOriginStoreForSession(PAL::SessionID);
     WebSWOriginStore* existingSWOriginStoreForSession(PAL::SessionID) const;
-    bool needsServerToContextConnectionForOrigin(const WebCore::SecurityOriginData&) const;
+    bool needsServerToContextConnectionForRegistrableDomain(const WebCore::RegistrableDomain&) const;
 
     void addServiceWorkerSession(PAL::SessionID, String& serviceWorkerRegistrationDirectory, const SandboxExtension::Handle&);
 #endif
@@ -451,6 +456,8 @@ private:
     // For execution on work queue thread only.
     void performNextStorageTask();
     void ensurePathExists(const String& path);
+
+    void clearStorageQuota(PAL::SessionID);
 
     // Connections to WebProcesses.
     Vector<Ref<NetworkConnectionToWebProcess>> m_webProcessConnections;
@@ -511,7 +518,7 @@ private:
     Lock m_storageTaskMutex;
     
 #if ENABLE(SERVICE_WORKER)
-    HashMap<WebCore::SecurityOriginData, RefPtr<WebSWServerToContextConnection>> m_serverToContextConnections;
+    HashMap<WebCore::RegistrableDomain, RefPtr<WebSWServerToContextConnection>> m_serverToContextConnections;
     bool m_waitingForServerToContextProcessConnection { false };
     bool m_shouldDisableServiceWorkerProcessTerminationDelay { false };
     HashMap<PAL::SessionID, String> m_swDatabasePaths;
@@ -524,10 +531,11 @@ private:
 #endif
 
     struct StorageQuotaManagers {
-        uint64_t defaultQuota { 0 };
+        uint64_t defaultQuota { WebCore::StorageQuotaManager::defaultQuota() };
         HashMap<WebCore::ClientOrigin, std::unique_ptr<WebCore::StorageQuotaManager>> managersPerOrigin;
     };
     HashMap<PAL::SessionID, StorageQuotaManagers> m_storageQuotaManagers;
+    uint32_t m_downloadMonitorSpeedMultiplier { 1 };
 };
 
 } // namespace WebKit

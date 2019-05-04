@@ -174,6 +174,8 @@ void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollin
     for (auto nodeID : m_nodeMap.keys())
         unvisitedNodes.add(nodeID);
 
+    m_overflowRelatedNodesMap.clear();
+
     // orphanNodes keeps child nodes alive while we rebuild child lists.
     OrphanScrollingNodeMap orphanNodes;
     updateTreeFromStateNode(rootNode, orphanNodes, unvisitedNodes);
@@ -185,6 +187,8 @@ void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollin
         LOG(Scrolling, "ScrollingTree::commitTreeState - removing unvisited node %" PRIu64, nodeID);
         m_nodeMap.remove(nodeID);
     }
+
+    LOG(Scrolling, "committed ScrollingTree\n%s", scrollingTreeAsText(ScrollingStateTreeAsTextBehaviorDebug).utf8().data());
 }
 
 void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode, OrphanScrollingNodeMap& orphanNodes, HashSet<ScrollingNodeID>& unvisitedNodes)
@@ -220,7 +224,14 @@ void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode,
         ASSERT_WITH_SECURITY_IMPLICATION(parentIt != m_nodeMap.end());
         if (parentIt != m_nodeMap.end()) {
             auto* parent = parentIt->value;
-            node->setParent(parent);
+
+            auto* oldParent = node->parent();
+            if (oldParent)
+                oldParent->removeChild(*node);
+
+            if (oldParent != parent)
+                node->setParent(parent);
+
             parent->appendChild(*node);
         } else {
             // FIXME: Use WeakPtr in m_nodeMap.
@@ -256,7 +267,11 @@ void ScrollingTree::applyLayerPositions()
     if (!m_rootNode)
         return;
 
+    LOG(Scrolling, "\nScrollingTree %p applyLayerPositions", this);
+
     applyLayerPositionsRecursive(*m_rootNode, { }, { });
+
+    LOG(Scrolling, "ScrollingTree %p applyLayerPositions - done\n", this);
 }
 
 void ScrollingTree::applyLayerPositionsRecursive(ScrollingTreeNode& currNode, FloatRect layoutViewport, FloatSize cumulativeDelta)
@@ -284,6 +299,8 @@ ScrollingTreeNode* ScrollingTree::nodeForID(ScrollingNodeID nodeID) const
 
 void ScrollingTree::notifyRelatedNodesAfterScrollPositionChange(ScrollingTreeScrollingNode& changedNode)
 {
+    Vector<ScrollingNodeID> additionalUpdateRoots;
+    
     FloatSize deltaFromLastCommittedScrollPosition;
     FloatRect currentFrameLayoutViewport;
     if (is<ScrollingTreeFrameScrollingNode>(changedNode))
@@ -293,9 +310,17 @@ void ScrollingTree::notifyRelatedNodesAfterScrollPositionChange(ScrollingTreeScr
 
         if (auto* frameScrollingNode = changedNode.enclosingFrameNodeIncludingSelf())
             currentFrameLayoutViewport = frameScrollingNode->layoutViewport();
+        
+        additionalUpdateRoots = overflowRelatedNodes().get(changedNode.scrollingNodeID());
     }
 
     notifyRelatedNodesRecursive(changedNode, changedNode, currentFrameLayoutViewport, deltaFromLastCommittedScrollPosition);
+    
+    for (auto positionedNodeID : additionalUpdateRoots) {
+        auto* positionedNode = nodeForID(positionedNodeID);
+        if (positionedNode)
+            notifyRelatedNodesRecursive(changedNode, *positionedNode, currentFrameLayoutViewport, deltaFromLastCommittedScrollPosition);
+    }
 }
 
 void ScrollingTree::notifyRelatedNodesRecursive(ScrollingTreeScrollingNode& changedNode, ScrollingTreeNode& currNode, const FloatRect& layoutViewport, FloatSize cumulativeDelta)
@@ -444,26 +469,37 @@ void ScrollingTree::clearLatchedNode()
     m_treeState.latchedNodeID = 0;
 }
 
-String ScrollingTree::scrollingTreeAsText()
+String ScrollingTree::scrollingTreeAsText(ScrollingStateTreeAsTextBehavior behavior)
 {
     TextStream ts(TextStream::LineMode::MultipleLine);
 
-    TextStream::GroupScope scope(ts);
-    ts << "scrolling tree";
-
-    LockHolder locker(m_treeStateMutex);
-
-    if (m_treeState.latchedNodeID)
-        ts.dumpProperty("latched node", m_treeState.latchedNodeID);
-
-    if (!m_treeState.mainFrameScrollPosition.isZero())
-        ts.dumpProperty("main frame scroll position", m_treeState.mainFrameScrollPosition);
-    
-    if (m_rootNode) {
+    {
         TextStream::GroupScope scope(ts);
-        m_rootNode->dump(ts, ScrollingStateTreeAsTextBehaviorIncludeLayerPositions);
-    }
+        ts << "scrolling tree";
 
+        LockHolder locker(m_treeStateMutex);
+
+        if (m_treeState.latchedNodeID)
+            ts.dumpProperty("latched node", m_treeState.latchedNodeID);
+
+        if (!m_treeState.mainFrameScrollPosition.isZero())
+            ts.dumpProperty("main frame scroll position", m_treeState.mainFrameScrollPosition);
+        
+        if (m_rootNode) {
+            TextStream::GroupScope scope(ts);
+            m_rootNode->dump(ts, behavior | ScrollingStateTreeAsTextBehaviorIncludeLayerPositions);
+        }
+        
+        if (behavior & ScrollingStateTreeAsTextBehaviorIncludeNodeIDs && !m_overflowRelatedNodesMap.isEmpty()) {
+            TextStream::GroupScope scope(ts);
+            ts << "overflow related nodes";
+            {
+                TextStream::IndentScope indentScope(ts);
+                for (auto& it : m_overflowRelatedNodesMap)
+                    ts << "\n" << indent << it.key << " -> " << it.value;
+            }
+        }
+    }
     return ts.release();
 }
 

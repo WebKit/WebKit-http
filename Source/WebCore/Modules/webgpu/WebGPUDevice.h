@@ -41,7 +41,7 @@ class ScriptExecutionContext;
 class WebGPUBindGroup;
 class WebGPUBindGroupLayout;
 class WebGPUBuffer;
-class WebGPUCommandBuffer;
+class WebGPUCommandEncoder;
 class WebGPUPipelineLayout;
 class WebGPURenderPipeline;
 class WebGPUSampler;
@@ -60,7 +60,7 @@ struct WebGPUShaderModuleDescriptor;
 
 class WebGPUDevice : public RefCounted<WebGPUDevice> {
 public:
-    static RefPtr<WebGPUDevice> create(Ref<WebGPUAdapter>&&);
+    static RefPtr<WebGPUDevice> tryCreate(Ref<const WebGPUAdapter>&&);
 
     const WebGPUAdapter& adapter() const { return m_adapter.get(); }
     const GPUDevice& device() const { return m_device.get(); }
@@ -76,16 +76,16 @@ public:
     RefPtr<WebGPUShaderModule> createShaderModule(WebGPUShaderModuleDescriptor&&) const;
     Ref<WebGPURenderPipeline> createRenderPipeline(const WebGPURenderPipelineDescriptor&) const;
 
-    RefPtr<WebGPUCommandBuffer> createCommandBuffer() const;
+    Ref<WebGPUCommandEncoder> createCommandEncoder() const;
 
     Ref<WebGPUSwapChain> createSwapChain(const WebGPUSwapChainDescriptor&) const;
 
     RefPtr<WebGPUQueue> getQueue() const;
 
 private:
-    WebGPUDevice(Ref<WebGPUAdapter>&&, Ref<GPUDevice>&&);
+    WebGPUDevice(Ref<const WebGPUAdapter>&&, Ref<GPUDevice>&&);
 
-    Ref<WebGPUAdapter> m_adapter;
+    Ref<const WebGPUAdapter> m_adapter;
     Ref<GPUDevice> m_device;
     mutable RefPtr<WebGPUQueue> m_queue;
 };

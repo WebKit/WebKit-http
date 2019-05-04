@@ -603,7 +603,6 @@
        (global-name "com.apple.lsd.mapdb")
        (global-name "com.apple.mobileassetd")
        (global-name "com.apple.powerlog.plxpclogger.xpc")
-       (global-name "com.apple.speech.speechsynthesisd")
        (global-name "com.apple.system.logger")
        (global-name "com.apple.tccd")
        (global-name "com.apple.tccd.system")
@@ -679,7 +678,7 @@
 ;; Network Extensions / VPN helper.
 (allow mach-lookup
     (global-name "com.apple.nehelper")
-    (global-name "com.apple.nesessionmanager"))
+    (global-name "com.apple.nesessionmanager.content-filter")) ;; <rdar://problem/48442387>
 
 #if PLATFORM(MAC)
 ;; FIXME should be removed when <rdar://problem/9347205> + related radar in Safari is fixed

@@ -87,6 +87,7 @@ enum class ScrollCoordinationRole {
     ViewportConstrained = 1 << 0,
     Scrolling           = 1 << 1,
     FrameHosting        = 1 << 2,
+    Positioning         = 1 << 3,
 };
 
 #if PLATFORM(IOS_FAMILY)
@@ -325,6 +326,7 @@ public:
     // FIXME: make the coordinated/async terminology consistent.
     bool isViewportConstrainedFixedOrStickyLayer(const RenderLayer&) const;
     bool useCoordinatedScrollingForLayer(const RenderLayer&) const;
+    ScrollPositioningBehavior computeCoordinatedPositioningForLayer(const RenderLayer&) const;
     bool isLayerForIFrameWithScrollCoordinatedContents(const RenderLayer&) const;
 
     ScrollableArea* scrollableAreaForScrollLayerID(ScrollingNodeID) const;
@@ -491,6 +493,7 @@ private:
     ScrollingNodeID updateScrollingNodeForViewportConstrainedRole(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollingNodeChangeFlags>);
     ScrollingNodeID updateScrollingNodeForScrollingRole(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollingNodeChangeFlags>);
     ScrollingNodeID updateScrollingNodeForFrameHostingRole(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollingNodeChangeFlags>);
+    ScrollingNodeID updateScrollingNodeForPositioningRole(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollingNodeChangeFlags>);
 
     void updateScrollingNodeLayers(ScrollingNodeID, RenderLayer&, ScrollingCoordinator&);
 
@@ -536,7 +539,6 @@ private:
     
 private:
     RenderView& m_renderView;
-    RefPtr<GraphicsLayer> m_rootContentsLayer;
     Timer m_updateCompositingLayersTimer;
 
     ChromeClient::CompositingTriggerFlags m_compositingTriggers { static_cast<ChromeClient::CompositingTriggerFlags>(ChromeClient::AllTriggers) };
@@ -563,6 +565,8 @@ private:
     unsigned m_compositingUpdateCount { 0 };
 
     RootLayerAttachment m_rootLayerAttachment { RootLayerUnattached };
+
+    RefPtr<GraphicsLayer> m_rootContentsLayer;
 
     // Enclosing clipping layer for iframe content
     RefPtr<GraphicsLayer> m_clipLayer;

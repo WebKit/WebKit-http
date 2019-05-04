@@ -31,8 +31,8 @@
 #include "FormData.h"
 #include "HTTPHeaderMap.h"
 #include "IntRect.h"
-#include <wtf/URL.h>
 #include "ResourceLoadPriority.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
@@ -144,6 +144,7 @@ public:
     WEBCORE_EXPORT void setResponseContentDispositionEncodingFallbackArray(const String& encoding1, const String& encoding2 = String(), const String& encoding3 = String());
 
     WEBCORE_EXPORT FormData* httpBody() const;
+    WEBCORE_EXPORT bool hasUpload() const;
     WEBCORE_EXPORT void setHTTPBody(RefPtr<FormData>&&);
 
     bool allowCookies() const;
@@ -256,24 +257,6 @@ private:
 };
 
 bool equalIgnoringHeaderFields(const ResourceRequestBase&, const ResourceRequestBase&);
-
-// FIXME: Find a better place for these functions.
-inline String toRegistrableDomain(const URL& a)
-{
-    auto host = a.host().toString();
-    auto registrableDomain = ResourceRequestBase::partitionName(host);
-    // Fall back to the host if we cannot determine the registrable domain.
-    return registrableDomain.isEmpty() ? host : registrableDomain;
-}
-
-inline bool registrableDomainsAreEqual(const URL& a, const URL& b)
-{
-    return toRegistrableDomain(a) == toRegistrableDomain(b);
-}
-inline bool registrableDomainsAreEqual(const URL& a, const String& registrableDomain)
-{
-    return toRegistrableDomain(a) == registrableDomain;
-}
 
 inline bool operator==(const ResourceRequest& a, const ResourceRequest& b) { return ResourceRequestBase::equal(a, b); }
 inline bool operator!=(ResourceRequest& a, const ResourceRequest& b) { return !(a == b); }

@@ -219,18 +219,12 @@ bool LibWebRTCMediaEndpoint::addTrack(LibWebRTCRtpSenderBackend& sender, MediaSt
     switch (track.privateTrack().type()) {
     case RealtimeMediaSource::Type::Audio: {
         auto audioSource = RealtimeOutgoingAudioSource::create(track.privateTrack());
-#if !RELEASE_LOG_DISABLED
-        audioSource->setLogger(m_logger.copyRef());
-#endif
         rtcTrack = m_peerConnectionFactory.CreateAudioTrack(track.id().utf8().data(), audioSource.ptr());
         source = WTFMove(audioSource);
         break;
     }
     case RealtimeMediaSource::Type::Video: {
         auto videoSource = RealtimeOutgoingVideoSource::create(track.privateTrack());
-#if !RELEASE_LOG_DISABLED
-        videoSource->setLogger(m_logger.copyRef());
-#endif
         rtcTrack = m_peerConnectionFactory.CreateVideoTrack(track.id().utf8().data(), videoSource.ptr());
         source = WTFMove(videoSource);
         break;
@@ -304,7 +298,7 @@ void LibWebRTCMediaEndpoint::getStats(Ref<DeferredPromise>&& promise, WTF::Funct
         // The promise resolution might fail in which case no backing map will be created.
         if (!report->backingMap())
             return nullptr;
-        return WTFMove(report);
+        return report;
     });
     LibWebRTCProvider::callOnWebRTCSignalingThread([getStatsFunction = WTFMove(getStatsFunction), collector = WTFMove(collector)]() mutable {
         getStatsFunction(WTFMove(collector));
@@ -462,19 +456,11 @@ RefPtr<RealtimeMediaSource> LibWebRTCMediaEndpoint::sourceFromNewReceiver(webrtc
         return nullptr;
     case cricket::MEDIA_TYPE_AUDIO: {
         rtc::scoped_refptr<webrtc::AudioTrackInterface> audioTrack = static_cast<webrtc::AudioTrackInterface*>(rtcTrack.get());
-        auto audioSource = RealtimeIncomingAudioSource::create(WTFMove(audioTrack), fromStdString(rtcTrack->id()));
-#if !RELEASE_LOG_DISABLED
-        audioSource->setLogger(m_logger.copyRef());
-#endif
-        return audioSource;
+        return RealtimeIncomingAudioSource::create(WTFMove(audioTrack), fromStdString(rtcTrack->id()));
     }
     case cricket::MEDIA_TYPE_VIDEO: {
         rtc::scoped_refptr<webrtc::VideoTrackInterface> videoTrack = static_cast<webrtc::VideoTrackInterface*>(rtcTrack.get());
-        auto videoSource =  RealtimeIncomingVideoSource::create(WTFMove(videoTrack), fromStdString(rtcTrack->id()));
-#if !RELEASE_LOG_DISABLED
-        videoSource->setLogger(m_logger.copyRef());
-#endif
-        return videoSource;
+        return RealtimeIncomingVideoSource::create(WTFMove(videoTrack), fromStdString(rtcTrack->id()));
     }
     }
 
@@ -879,7 +865,7 @@ void LibWebRTCMediaEndpoint::OnStatsDelivered(const rtc::scoped_refptr<const web
         }
 
         for (auto iterator = report->begin(); iterator != report->end(); ++iterator) {
-            if (logger().willLog(logChannel(), WTFLogLevelDebug)) {
+            if (logger().willLog(logChannel(), WTFLogLevel::Debug)) {
                 // Stats are very verbose, let's only display them in inspector console in verbose mode.
                 logger().debug(LogWebRTC,
                     Logger::LogSiteIdentifier("LibWebRTCMediaEndpoint", "OnStatsDelivered", logIdentifier()),
@@ -918,7 +904,7 @@ WTFLogChannel& LibWebRTCMediaEndpoint::logChannel() const
 
 Seconds LibWebRTCMediaEndpoint::statsLogInterval(int64_t reportTimestamp) const
 {
-    if (logger().willLog(logChannel(), WTFLogLevelInfo))
+    if (logger().willLog(logChannel(), WTFLogLevel::Info))
         return 2_s;
 
     if (reportTimestamp - m_statsFirstDeliveredTimestamp > 15000000)

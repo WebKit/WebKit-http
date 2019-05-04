@@ -82,6 +82,7 @@ class IntSize;
 class KeyframeValueList;
 class LayoutSize;
 class LayoutPoint;
+class LayoutConstraints;
 class LinearTimingFunction;
 class Notification;
 class Path;
@@ -323,12 +324,6 @@ template<> struct ArgumentCoder<WebCore::Path> {
     static Optional<WebCore::Path> decode(Decoder&);
 };
 
-template<> struct ArgumentCoder<WebCore::Region> {
-    static void encode(Encoder&, const WebCore::Region&);
-    static bool decode(Decoder&, WebCore::Region&);
-    static Optional<WebCore::Region> decode(Decoder&);
-};
-
 template<> struct ArgumentCoder<WebCore::Length> {
     static void encode(Encoder&, const WebCore::Length&);
     static bool decode(Decoder&, WebCore::Length&);
@@ -543,6 +538,11 @@ template<> struct ArgumentCoder<WebCore::StickyPositionViewportConstraints> {
     static bool decode(Decoder&, WebCore::StickyPositionViewportConstraints&);
 };
 
+template<> struct ArgumentCoder<WebCore::LayoutConstraints> {
+    static void encode(Encoder&, const WebCore::LayoutConstraints&);
+    static bool decode(Decoder&, WebCore::LayoutConstraints&);
+};
+
 #if !USE(COORDINATED_GRAPHICS)
 template<> struct ArgumentCoder<WebCore::FilterOperations> {
     static void encode(Encoder&, const WebCore::FilterOperations&);
@@ -582,6 +582,8 @@ template<> struct ArgumentCoder<WebCore::TextIndicatorData> {
 template<> struct ArgumentCoder<WebCore::DictionaryPopupInfo> {
     static void encode(Encoder&, const WebCore::DictionaryPopupInfo&);
     static bool decode(Decoder&, WebCore::DictionaryPopupInfo&);
+    static void encodePlatformData(Encoder&, const WebCore::DictionaryPopupInfo&);
+    static bool decodePlatformData(Decoder&, WebCore::DictionaryPopupInfo&);
 };
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -744,6 +746,8 @@ template<> struct ArgumentCoder<Vector<RefPtr<WebCore::SecurityOrigin>>> {
 template<> struct ArgumentCoder<WebCore::FontAttributes> {
     static void encode(Encoder&, const WebCore::FontAttributes&);
     static Optional<WebCore::FontAttributes> decode(Decoder&);
+    static void encodePlatformData(Encoder&, const WebCore::FontAttributes&);
+    static Optional<WebCore::FontAttributes> decodePlatformData(Decoder&, WebCore::FontAttributes&);
 };
 
 #if ENABLE(ATTACHMENT_ELEMENT)

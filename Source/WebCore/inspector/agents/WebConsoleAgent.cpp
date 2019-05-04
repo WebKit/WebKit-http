@@ -43,8 +43,8 @@ namespace WebCore {
 
 using namespace Inspector;
 
-WebConsoleAgent::WebConsoleAgent(AgentContext& context, InspectorHeapAgent* heapAgent)
-    : InspectorConsoleAgent(context, heapAgent)
+WebConsoleAgent::WebConsoleAgent(AgentContext& context)
+    : InspectorConsoleAgent(context)
 {
 }
 
@@ -68,15 +68,15 @@ void WebConsoleAgent::getLoggingChannels(ErrorString&, RefPtr<JSON::ArrayOf<Insp
             return;
 
         auto level = Inspector::Protocol::Console::ChannelLevel::Off;
-        if (logChannel->state != WTFLogChannelOff) {
+        if (logChannel->state != WTFLogChannelState::Off) {
             switch (logChannel->level) {
-            case WTFLogLevelAlways:
-            case WTFLogLevelError:
-            case WTFLogLevelWarning:
+            case WTFLogLevel::Always:
+            case WTFLogLevel::Error:
+            case WTFLogLevel::Warning:
+            case WTFLogLevel::Info:
                 level = Inspector::Protocol::Console::ChannelLevel::Basic;
                 break;
-            case WTFLogLevelInfo:
-            case WTFLogLevelDebug:
+            case WTFLogLevel::Debug:
                 level = Inspector::Protocol::Console::ChannelLevel::Verbose;
                 break;
             }
@@ -96,14 +96,14 @@ static Optional<std::pair<WTFLogChannelState, WTFLogLevel>> channelConfiguration
     WTFLogLevel level;
 
     if (equalIgnoringASCIICase(levelString, "off")) {
-        state = WTFLogChannelOff;
-        level = WTFLogLevelError;
+        state = WTFLogChannelState::Off;
+        level = WTFLogLevel::Error;
     } else {
-        state = WTFLogChannelOn;
+        state = WTFLogChannelState::On;
         if (equalIgnoringASCIICase(levelString, "basic"))
-            level = WTFLogLevelWarning;
+            level = WTFLogLevel::Warning;
         else if (equalIgnoringASCIICase(levelString, "verbose"))
-            level = WTFLogLevelDebug;
+            level = WTFLogLevel::Debug;
         else
             return WTF::nullopt;
     }

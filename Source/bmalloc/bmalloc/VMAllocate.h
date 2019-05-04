@@ -203,6 +203,8 @@ inline void vmDeallocatePhysicalPages(void* p, size_t vmSize)
     SYSCALL(madvise(p, vmSize, MADV_FREE_REUSABLE));
 #elif BOS(HAIKU)
     SYSCALL(posix_madvise(p, vmSize, POSIX_MADV_DONTNEED));
+#elif BOS(FREEBSD)
+    SYSCALL(madvise(p, vmSize, MADV_FREE));
 #else
     SYSCALL(madvise(p, vmSize, MADV_DONTNEED));
 #if BOS(LINUX)

@@ -1,3 +1,189 @@
+2019-03-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix -Wformat warning
+        https://bugs.webkit.org/show_bug.cgi?id=195895
+        <rdar://problem/48517629>
+
+        * bmalloc/Scavenger.cpp:
+        (bmalloc::Scavenger::threadRunLoop):
+
+2019-03-18  Michael Saboff  <msaboff@apple.com>
+
+        [BMalloc] Scavenger should react to recent memory activity
+        https://bugs.webkit.org/show_bug.cgi?id=195895
+
+        Reviewed by Geoffrey Garen.
+
+        This change adds a recently used bit to objects that are scavenged.  When an object is allocated, that bit is set.
+        When we scavenge, if the bit is set, we clear it.  If the bit was already clear, we decommit the object.  The timing
+        to scavenging has been changed as well.  We perform our first scavne almost immediately after bmalloc is initialized
+        (10ms later).  Subsequent scavenging is done as a multiple of the time it took to scavenge.  We bound this computed
+        time between a minimum and maximum.  Through empirical testing, the multiplier, minimum and maximum are
+        150x, 100ms and 10,000ms respectively.  For mini-mode, when the JIT is disabled, we use much more aggressive values of
+        50x, 25ms and 500ms.
+
+        Eliminated partial scavenging since this change allows for any scavenge to be partial or full based on recent use of
+        the objects on the various free lists.
+
+        * bmalloc/Chunk.h:
+        (bmalloc::Chunk::usedSinceLastScavenge):
+        (bmalloc::Chunk::clearUsedSinceLastScavenge):
+        (bmalloc::Chunk::setUsedSinceLastScavenge):
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::scavenge):
+        (bmalloc::Heap::allocateSmallChunk):
+        (bmalloc::Heap::allocateSmallPage):
+        (bmalloc::Heap::splitAndAllocate):
+        (bmalloc::Heap::tryAllocateLarge):
+        (bmalloc::Heap::scavengeToHighWatermark): Deleted.
+        * bmalloc/Heap.h:
+        * bmalloc/IsoDirectory.h:
+        * bmalloc/IsoDirectoryInlines.h:
+        (bmalloc::passedNumPages>::takeFirstEligible):
+        (bmalloc::passedNumPages>::scavenge):
+        (bmalloc::passedNumPages>::scavengeToHighWatermark): Deleted.
+        * bmalloc/IsoHeapImpl.h:
+        * bmalloc/IsoHeapImplInlines.h:
+        (bmalloc::IsoHeapImpl<Config>::scavengeToHighWatermark): Deleted.
+        * bmalloc/LargeRange.h:
+        (bmalloc::LargeRange::LargeRange):
+        (bmalloc::LargeRange::usedSinceLastScavenge):
+        (bmalloc::LargeRange::clearUsedSinceLastScavenge):
+        (bmalloc::LargeRange::setUsedSinceLastScavenge):
+        (): Deleted.
+        * bmalloc/Scavenger.cpp:
+        (bmalloc::Scavenger::Scavenger):
+        (bmalloc::Scavenger::threadRunLoop):
+        (bmalloc::Scavenger::timeSinceLastPartialScavenge): Deleted.
+        (bmalloc::Scavenger::partialScavenge): Deleted.
+        * bmalloc/Scavenger.h:
+        * bmalloc/SmallPage.h:
+        (bmalloc::SmallPage::usedSinceLastScavenge):
+        (bmalloc::SmallPage::clearUsedSinceLastScavenge):
+        (bmalloc::SmallPage::setUsedSinceLastScavenge):
+
+2019-03-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [bmalloc] Add StaticPerProcess for known types to save pages
+        https://bugs.webkit.org/show_bug.cgi?id=195691
+
+        Reviewed by Mark Lam.
+
+        As initial memory footprint of VM + JSGlobalObject becomes 488KB dirty size in fast malloc memory (w/ JSC_useJIT=0 and Malloc=1), pages for PerProcess is costly.
+        For example, under Malloc=1 mode, we still need to allocate PerProcess<DebugHeap> and PerProcess<Environment>. And sizeof(Environment) is only 1 (bool flag), and
+        sizeof(DebugHeap) is 120. But we are allocating 1 pages for them. Since page size in iOS is 16KB, this 121B consumes 16KB dirty memory, and it is not negligible
+        size if we keep in mind that the current fast malloc heap size is 488KB. Putting them into the __DATA section, close to the other mutable data, we can avoid allocating
+        this page.
+
+        This patch revives the SafePerProcess concept in r228107. We add "StaticPerProcess<T>", which allocates underlying storage statically in the __DATA section instead of
+        allocating it at runtime. And we use this StaticPerProcess<T> for types where (1) T is known a priori, and (2) sizeof(T) is not huge.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/AllIsoHeaps.cpp:
+        * bmalloc/AllIsoHeaps.h:
+        * bmalloc/Allocator.cpp:
+        (bmalloc::Allocator::Allocator):
+        * bmalloc/Cache.cpp:
+        (bmalloc::Cache::Cache):
+        * bmalloc/CryptoRandom.cpp:
+        (bmalloc::cryptoRandom):
+        * bmalloc/Deallocator.cpp:
+        (bmalloc::Deallocator::Deallocator):
+        * bmalloc/DebugHeap.cpp:
+        * bmalloc/DebugHeap.h:
+        (bmalloc::DebugHeap::tryGet):
+        * bmalloc/Environment.cpp:
+        * bmalloc/Environment.h:
+        * bmalloc/Gigacage.cpp:
+        (Gigacage::Callback::Callback):
+        (Gigacage::Callback::function):
+        (bmalloc::PrimitiveDisableCallbacks::PrimitiveDisableCallbacks):
+        (Gigacage::disablePrimitiveGigacage):
+        (Gigacage::addPrimitiveDisableCallback):
+        (Gigacage::removePrimitiveDisableCallback):
+        (Gigacage::shouldBeEnabled):
+        (Gigacage::bmalloc::Callback::Callback): Deleted.
+        (Gigacage::bmalloc::Callback::function): Deleted.
+        (Gigacage::bmalloc::PrimitiveDisableCallbacks::PrimitiveDisableCallbacks): Deleted.
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap):
+        (bmalloc::Heap::tryAllocateLarge):
+        * bmalloc/IsoDirectoryInlines.h:
+        (bmalloc::passedNumPages>::takeFirstEligible):
+        (bmalloc::passedNumPages>::didBecome):
+        * bmalloc/IsoHeapImpl.cpp:
+        (bmalloc::IsoHeapImplBase::addToAllIsoHeaps):
+        * bmalloc/IsoPage.cpp:
+        (bmalloc::IsoPageBase::allocatePageMemory):
+        * bmalloc/IsoTLS.cpp:
+        (bmalloc::IsoTLS::IsoTLS):
+        (bmalloc::IsoTLS::ensureEntries):
+        (bmalloc::IsoTLS::forEachEntry):
+        * bmalloc/IsoTLSEntry.cpp:
+        (bmalloc::IsoTLSEntry::IsoTLSEntry):
+        * bmalloc/IsoTLSInlines.h:
+        (bmalloc::IsoTLS::allocateSlow):
+        (bmalloc::IsoTLS::deallocateSlow):
+        * bmalloc/IsoTLSLayout.cpp:
+        * bmalloc/IsoTLSLayout.h:
+        * bmalloc/Scavenger.cpp:
+        (bmalloc::Scavenger::Scavenger):
+        (bmalloc::dumpStats):
+        (bmalloc::Scavenger::scavenge):
+        (bmalloc::Scavenger::partialScavenge):
+        (bmalloc::Scavenger::freeableMemory):
+        (bmalloc::Scavenger::footprint):
+        * bmalloc/Scavenger.h:
+        * bmalloc/StaticPerProcess.h: Added.
+        * bmalloc/VMHeap.cpp:
+        * bmalloc/VMHeap.h:
+        * bmalloc/Zone.h:
+        * bmalloc/bmalloc.cpp:
+        (bmalloc::api::scavenge):
+        (bmalloc::api::isEnabled):
+        (bmalloc::api::setScavengerThreadQOSClass):
+        (bmalloc::api::enableMiniMode):
+        * test/testbmalloc.cpp:
+        (assertEmptyPointerSet):
+        (assertHasObjects):
+        (assertHasOnlyObjects):
+        (assertClean):
+
+2019-03-13  Yoshiaki Jitsukawa  <yoshiaki.jitsukawa@sony.com>
+
+        [bmalloc] Use MADV_FREE on FreeBSD
+        https://bugs.webkit.org/show_bug.cgi?id=195665
+
+        Reviewed by Geoffrey Garen.
+
+        * bmalloc/BPlatform.h:
+
+        Introduce BOS_FREEBSD, which is equivalent to WTF_OS_FREEBSD
+
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmDeallocatePhysicalPages):
+
+        Use MADV_FREE instead of MADV_DONTNEED if BOS(FREEBSD), since on FreeBSD,
+        unlike on Linux, MADV_DONTNEED doesn't let the OS discard the contents of
+        the pages.
+
+2019-03-13  Sam Weinig  <sam@webkit.org>
+
+        Fix testbmalloc build
+        https://bugs.webkit.org/show_bug.cgi?id=195660
+
+        Reviewed by Geoffrey Garen.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        Link Foundation in when building testbmalloc. Since bmalloc requires Foundation, and is a static
+        library, all clients of bmalloc are required to link it themselves.
+        
+        * bmalloc/IsoPageInlines.h:
+        * bmalloc/StdLibExtras.h: Added.
+        (bmalloc::bitwise_cast):
+        Add bitwise_cast implementation, and use it in IsoPageInlines.h. It is a layering violation
+        to expect the one from WTF to be available, as seems to have been the case.
+
 2019-03-12  Robin Morisset  <rmorisset@apple.com>
 
         A lot more classes have padding that can be reduced by reordering their fields

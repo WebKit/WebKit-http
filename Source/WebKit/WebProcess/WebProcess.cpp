@@ -1230,6 +1230,7 @@ NetworkProcessConnection& WebProcess::ensureNetworkProcessConnection()
             CRASH();
 
         m_networkProcessConnection = NetworkProcessConnection::create(connectionIdentifier);
+        m_networkProcessConnection->connection().send(Messages::NetworkConnectionToWebProcess::SetWebProcessIdentifier(Process::identifier()), 0);
     }
     
     return *m_networkProcessConnection;
@@ -1865,5 +1866,13 @@ void WebProcess::clearCurrentModifierStateForTesting()
 {
     PlatformKeyboardEvent::setCurrentModifierState({ });
 }
+
+#if PLATFORM(IOS_FAMILY)
+void WebProcess::unblockAccessibilityServer(const SandboxExtension::Handle& handle)
+{
+    bool ok = SandboxExtension::consumePermanently(handle);
+    ASSERT_UNUSED(ok, ok);
+}
+#endif
 
 } // namespace WebKit

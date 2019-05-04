@@ -361,6 +361,8 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 
     for (auto& scheme : parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest)
         registerURLSchemeAsCanDisplayOnlyIfCanRequest(scheme);
+    
+    m_downloadMonitorSpeedMultiplier = parameters.downloadMonitorSpeedMultiplier;
 
     RELEASE_LOG(Process, "%p - NetworkProcess::initializeNetworkProcess: Presenting process = %d", this, WebCore::presentingApplicationPID());
 }
@@ -377,7 +379,7 @@ void NetworkProcess::initializeConnection(IPC::Connection* connection)
         supplement->initializeConnection(connection);
 }
 
-void NetworkProcess::createNetworkConnectionToWebProcess(bool isServiceWorkerProcess, WebCore::SecurityOriginData&& securityOrigin)
+void NetworkProcess::createNetworkConnectionToWebProcess(bool isServiceWorkerProcess, WebCore::RegistrableDomain&& registrableDomain)
 {
 #if USE(UNIX_DOMAIN_SOCKETS)
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
@@ -429,8 +431,8 @@ void NetworkProcess::createNetworkConnectionToWebProcess(bool isServiceWorkerPro
     if (isServiceWorkerProcess && !m_webProcessConnections.isEmpty()) {
         ASSERT(parentProcessHasServiceWorkerEntitlement());
         ASSERT(m_waitingForServerToContextProcessConnection);
-        auto contextConnection = WebSWServerToContextConnection::create(*this, securityOrigin, m_webProcessConnections.last()->connection());
-        auto addResult = m_serverToContextConnections.add(WTFMove(securityOrigin), contextConnection.copyRef());
+        auto contextConnection = WebSWServerToContextConnection::create(*this, registrableDomain, m_webProcessConnections.last()->connection());
+        auto addResult = m_serverToContextConnections.add(WTFMove(registrableDomain), contextConnection.copyRef());
         ASSERT_UNUSED(addResult, addResult.isNewEntry);
 
         m_waitingForServerToContextProcessConnection = false;
@@ -440,7 +442,7 @@ void NetworkProcess::createNetworkConnectionToWebProcess(bool isServiceWorkerPro
     }
 #else
     UNUSED_PARAM(isServiceWorkerProcess);
-    UNUSED_PARAM(securityOrigin);
+    UNUSED_PARAM(registrableDomain);
 #endif
 }
 
@@ -1404,6 +1406,9 @@ void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
 
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache) && !sessionID.isEphemeral())
         clearDiskCache(modifiedSince, [clearTasksHandler = WTFMove(clearTasksHandler)] { });
+
+    if (websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases) || websiteDataTypes.contains(WebsiteDataType::DOMCache))
+        clearStorageQuota(sessionID);
 }
 
 static void clearDiskCacheEntries(NetworkCache::Cache* cache, const Vector<SecurityOriginData>& origins, CompletionHandler<void()>&& completionHandler)
@@ -1468,6 +1473,18 @@ void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
 
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache) && !sessionID.isEphemeral())
         clearDiskCacheEntries(cache(), originDatas, [clearTasksHandler = WTFMove(clearTasksHandler)] { });
+
+    // FIXME: Implement storage quota clearing for these origins.
+}
+
+void NetworkProcess::clearStorageQuota(PAL::SessionID sessionID)
+{
+    auto iterator = m_storageQuotaManagers.find(sessionID);
+    if (iterator == m_storageQuotaManagers.end())
+        return;
+
+    for (auto& manager : iterator->value.managersPerOrigin.values())
+        manager->resetQuota(iterator->value.defaultQuota);
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -1940,6 +1957,16 @@ void NetworkProcess::cancelPrepareToSuspend()
         connection->endSuspension();
 }
 
+void NetworkProcess::applicationDidEnterBackground()
+{
+    m_downloadManager.applicationDidEnterBackground();
+}
+
+void NetworkProcess::applicationWillEnterForeground()
+{
+    m_downloadManager.applicationWillEnterForeground();
+}
+
 void NetworkProcess::processDidResume()
 {
     RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::processDidResume()", this);
@@ -2035,24 +2062,32 @@ void NetworkProcess::didSyncAllCookies()
 }
 
 #if ENABLE(INDEXED_DATABASE)
+Ref<IDBServer::IDBServer> NetworkProcess::createIDBServer(PAL::SessionID sessionID)
+{
+    String path;
+    if (!sessionID.isEphemeral()) {
+        ASSERT(m_idbDatabasePaths.contains(sessionID));
+        path = m_idbDatabasePaths.get(sessionID);
+    }
+
+    auto server = IDBServer::IDBServer::create(sessionID, path, *this, [this, weakThis = makeWeakPtr(this)](PAL::SessionID sessionID, const auto& origin) -> StorageQuotaManager* {
+        if (!weakThis)
+            return nullptr;
+        return &this->storageQuotaManager(sessionID, origin);
+    }, [this, weakThis = makeWeakPtr(this)](bool isHoldingLockedFiles) {
+        if (!weakThis)
+            return;
+        this->notifyHoldingLockedFiles(isHoldingLockedFiles);
+    });
+    server->setPerOriginQuota(m_idbPerOriginQuota);
+    return server;
+}
+
 IDBServer::IDBServer& NetworkProcess::idbServer(PAL::SessionID sessionID)
 {
-    auto addResult = m_idbServers.add(sessionID, nullptr);
-    if (!addResult.isNewEntry) {
-        ASSERT(addResult.iterator->value);
-        return *addResult.iterator->value;
-    }
-    
-    auto path = m_idbDatabasePaths.get(sessionID);
-    // There should already be a registered path for this PAL::SessionID.
-    // If there's not, then where did this PAL::SessionID come from?
-    ASSERT(!path.isEmpty());
-    
-    addResult.iterator->value = IDBServer::IDBServer::create(path, *this, [this](bool isHoldingLockedFiles) {
-        notifyHoldingLockedFiles(isHoldingLockedFiles);
-    });
-    addResult.iterator->value->setPerOriginQuota(m_idbPerOriginQuota);
-    return *addResult.iterator->value;
+    return *m_idbServers.ensure(sessionID, [this, sessionID] {
+        return this->createIDBServer(sessionID);
+    }).iterator->value;
 }
 
 void NetworkProcess::ensurePathExists(const String& path)
@@ -2098,23 +2133,33 @@ void NetworkProcess::accessToTemporaryFileComplete(const String& path)
     FileSystem::deleteFile(path);
 }
 
+void NetworkProcess::collectIndexedDatabaseOriginsForVersion(const String& path, HashSet<WebCore::SecurityOriginData>& securityOrigins)
+{
+    if (path.isEmpty())
+        return;
+
+    for (auto& topOriginPath : FileSystem::listDirectory(path, "*")) {
+        auto databaseIdentifier = FileSystem::pathGetFileName(topOriginPath);
+        if (auto securityOrigin = SecurityOriginData::fromDatabaseIdentifier(databaseIdentifier)) {
+            securityOrigins.add(WTFMove(*securityOrigin));
+        
+            for (auto& originPath : FileSystem::listDirectory(topOriginPath, "*")) {
+                databaseIdentifier = FileSystem::pathGetFileName(originPath);
+                if (auto securityOrigin = SecurityOriginData::fromDatabaseIdentifier(databaseIdentifier))
+                    securityOrigins.add(WTFMove(*securityOrigin));
+            }
+        }
+    }
+}
+
 HashSet<WebCore::SecurityOriginData> NetworkProcess::indexedDatabaseOrigins(const String& path)
 {
     if (path.isEmpty())
         return { };
     
     HashSet<WebCore::SecurityOriginData> securityOrigins;
-    for (auto& topOriginPath : FileSystem::listDirectory(path, "*")) {
-        auto databaseIdentifier = FileSystem::pathGetFileName(topOriginPath);
-        if (auto securityOrigin = SecurityOriginData::fromDatabaseIdentifier(databaseIdentifier))
-            securityOrigins.add(WTFMove(*securityOrigin));
-        
-        for (auto& originPath : FileSystem::listDirectory(topOriginPath, "*")) {
-            databaseIdentifier = FileSystem::pathGetFileName(originPath);
-            if (auto securityOrigin = SecurityOriginData::fromDatabaseIdentifier(databaseIdentifier))
-                securityOrigins.add(WTFMove(*securityOrigin));
-        }
-    }
+    collectIndexedDatabaseOriginsForVersion(FileSystem::pathByAppendingComponent(path, "v0"), securityOrigins);
+    collectIndexedDatabaseOriginsForVersion(FileSystem::pathByAppendingComponent(path, "v1"), securityOrigins);
 
     return securityOrigins;
 }
@@ -2160,24 +2205,24 @@ WebSWServerToContextConnection* NetworkProcess::connectionToContextProcessFromIP
 
 void NetworkProcess::connectionToContextProcessWasClosed(Ref<WebSWServerToContextConnection>&& serverToContextConnection)
 {
-    auto& securityOrigin = serverToContextConnection->securityOrigin();
+    auto& registrableDomain = serverToContextConnection->registrableDomain();
     
     serverToContextConnection->connectionClosed();
-    m_serverToContextConnections.remove(securityOrigin);
+    m_serverToContextConnections.remove(registrableDomain);
     
     for (auto& swServer : m_swServers.values())
-        swServer->markAllWorkersForOriginAsTerminated(securityOrigin);
+        swServer->markAllWorkersForRegistrableDomainAsTerminated(registrableDomain);
     
-    if (needsServerToContextConnectionForOrigin(securityOrigin)) {
+    if (needsServerToContextConnectionForRegistrableDomain(registrableDomain)) {
         RELEASE_LOG(ServiceWorker, "Connection to service worker process was closed but is still needed, relaunching it");
-        createServerToContextConnection(securityOrigin, WTF::nullopt);
+        createServerToContextConnection(registrableDomain, WTF::nullopt);
     }
 }
 
-bool NetworkProcess::needsServerToContextConnectionForOrigin(const SecurityOriginData& securityOrigin) const
+bool NetworkProcess::needsServerToContextConnectionForRegistrableDomain(const RegistrableDomain& registrableDomain) const
 {
     return WTF::anyOf(m_swServers.values(), [&](auto& swServer) {
-        return swServer->needsServerToContextConnectionForOrigin(securityOrigin);
+        return swServer->needsServerToContextConnectionForRegistrableDomain(registrableDomain);
     });
 }
 
@@ -2213,21 +2258,21 @@ WebSWOriginStore* NetworkProcess::existingSWOriginStoreForSession(PAL::SessionID
     return &static_cast<WebSWOriginStore&>(swServer->originStore());
 }
 
-WebSWServerToContextConnection* NetworkProcess::serverToContextConnectionForOrigin(const SecurityOriginData& securityOrigin)
+WebSWServerToContextConnection* NetworkProcess::serverToContextConnectionForRegistrableDomain(const RegistrableDomain& registrableDomain)
 {
-    return m_serverToContextConnections.get(securityOrigin);
+    return m_serverToContextConnections.get(registrableDomain);
 }
 
-void NetworkProcess::createServerToContextConnection(const SecurityOriginData& securityOrigin, Optional<PAL::SessionID> sessionID)
+void NetworkProcess::createServerToContextConnection(const RegistrableDomain& registrableDomain, Optional<PAL::SessionID> sessionID)
 {
     if (m_waitingForServerToContextProcessConnection)
         return;
     
     m_waitingForServerToContextProcessConnection = true;
     if (sessionID)
-        parentProcessConnection()->send(Messages::NetworkProcessProxy::EstablishWorkerContextConnectionToNetworkProcessForExplicitSession(securityOrigin, *sessionID), 0);
+        parentProcessConnection()->send(Messages::NetworkProcessProxy::EstablishWorkerContextConnectionToNetworkProcessForExplicitSession(registrableDomain, *sessionID), 0);
     else
-        parentProcessConnection()->send(Messages::NetworkProcessProxy::EstablishWorkerContextConnectionToNetworkProcess(securityOrigin), 0);
+        parentProcessConnection()->send(Messages::NetworkProcessProxy::EstablishWorkerContextConnectionToNetworkProcess(registrableDomain), 0);
 }
 
 void NetworkProcess::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, MessageWithMessagePorts&& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
@@ -2260,18 +2305,18 @@ void NetworkProcess::unregisterSWServerConnection(WebSWServerConnection& connect
 
 void NetworkProcess::swContextConnectionMayNoLongerBeNeeded(WebSWServerToContextConnection& serverToContextConnection)
 {
-    auto& securityOrigin = serverToContextConnection.securityOrigin();
-    if (needsServerToContextConnectionForOrigin(securityOrigin))
+    auto& registrableDomain = serverToContextConnection.registrableDomain();
+    if (needsServerToContextConnectionForRegistrableDomain(registrableDomain))
         return;
     
     RELEASE_LOG(ServiceWorker, "Service worker process is no longer needed, terminating it");
     serverToContextConnection.terminate();
     
     for (auto& swServer : m_swServers.values())
-        swServer->markAllWorkersForOriginAsTerminated(securityOrigin);
+        swServer->markAllWorkersForRegistrableDomainAsTerminated(registrableDomain);
     
     serverToContextConnection.connectionClosed();
-    m_serverToContextConnections.remove(securityOrigin);
+    m_serverToContextConnections.remove(registrableDomain);
 }
 
 void NetworkProcess::disableServiceWorkerProcessTerminationDelay()

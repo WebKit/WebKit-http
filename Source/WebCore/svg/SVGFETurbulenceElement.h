@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,7 +23,6 @@
 
 #include "FETurbulence.h"
 #include "SVGAnimatedEnumeration.h"
-#include "SVGAnimatedInteger.h"
 #include "SVGAnimatedNumber.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 
@@ -100,14 +99,14 @@ public:
 
     float baseFrequencyX() const { return m_baseFrequencyX.currentValue(attributeOwnerProxy()); }
     float baseFrequencyY() const { return m_baseFrequencyY.currentValue(attributeOwnerProxy()); }
-    int numOctaves() const { return m_numOctaves.currentValue(attributeOwnerProxy()); }
+    int numOctaves() const { return m_numOctaves->currentValue(); }
     float seed() const { return m_seed.currentValue(attributeOwnerProxy()); }
     SVGStitchOptions stitchTiles() const { return m_stitchTiles.currentValue(attributeOwnerProxy()); }
     TurbulenceType type() const { return m_type.currentValue(attributeOwnerProxy()); }
 
     RefPtr<SVGAnimatedNumber> baseFrequencyXAnimated() { return m_baseFrequencyX.animatedProperty(attributeOwnerProxy()); }
     RefPtr<SVGAnimatedNumber> baseFrequencyYAnimated() { return m_baseFrequencyY.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedInteger> numOctavesAnimated() { return m_numOctaves.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedInteger& numOctavesAnimated() { return m_numOctaves; }
     RefPtr<SVGAnimatedNumber> seedAnimated() { return m_seed.animatedProperty(attributeOwnerProxy()); }
     RefPtr<SVGAnimatedEnumeration> stitchTilesAnimated() { return m_stitchTiles.animatedProperty(attributeOwnerProxy()); }
     RefPtr<SVGAnimatedEnumeration> typeAnimated() { return m_type.animatedProperty(attributeOwnerProxy()); }
@@ -117,10 +116,17 @@ private:
 
     using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGFETurbulenceElement, SVGFilterPrimitiveStandardAttributes>;
     static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
     static void registerAttributes();
-
     const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
+
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGFETurbulenceElement, SVGFilterPrimitiveStandardAttributes>;
+    const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
+
+    static bool isKnownAttribute(const QualifiedName& attributeName)
+    {
+        return AttributeOwnerProxy::isKnownAttribute(attributeName) || PropertyRegistry::isKnownAttribute(attributeName);
+    }
+
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
@@ -131,9 +137,10 @@ private:
     static const AtomicString& baseFrequencyYIdentifier();
 
     AttributeOwnerProxy m_attributeOwnerProxy { *this };
+    PropertyRegistry m_propertyRegistry { *this };
     SVGAnimatedNumberAttribute m_baseFrequencyX;
     SVGAnimatedNumberAttribute m_baseFrequencyY;
-    SVGAnimatedIntegerAttribute m_numOctaves { 1 };
+    Ref<SVGAnimatedInteger> m_numOctaves { SVGAnimatedInteger::create(this, 1) };
     SVGAnimatedNumberAttribute m_seed;
     SVGAnimatedEnumerationAttribute<SVGStitchOptions> m_stitchTiles { SVG_STITCHTYPE_NOSTITCH };
     SVGAnimatedEnumerationAttribute<TurbulenceType> m_type { TurbulenceType::Turbulence };

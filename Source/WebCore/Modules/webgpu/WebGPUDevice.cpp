@@ -44,10 +44,11 @@
 #include "Logging.h"
 #include "WebGPUBindGroup.h"
 #include "WebGPUBindGroupBinding.h"
+#include "WebGPUBindGroupDescriptor.h"
 #include "WebGPUBindGroupLayout.h"
 #include "WebGPUBuffer.h"
 #include "WebGPUBufferBinding.h"
-#include "WebGPUCommandBuffer.h"
+#include "WebGPUCommandEncoder.h"
 #include "WebGPUPipelineLayout.h"
 #include "WebGPUPipelineLayoutDescriptor.h"
 #include "WebGPUPipelineStageDescriptor.h"
@@ -62,18 +63,17 @@
 
 namespace WebCore {
 
-RefPtr<WebGPUDevice> WebGPUDevice::create(Ref<WebGPUAdapter>&& adapter)
+RefPtr<WebGPUDevice> WebGPUDevice::tryCreate(Ref<const WebGPUAdapter>&& adapter)
 {
-    if (auto device = GPUDevice::create(adapter->options()))
+    if (auto device = GPUDevice::tryCreate(adapter->options()))
         return adoptRef(new WebGPUDevice(WTFMove(adapter), device.releaseNonNull()));
     return nullptr;
 }
 
-WebGPUDevice::WebGPUDevice(Ref<WebGPUAdapter>&& adapter, Ref<GPUDevice>&& device)
+WebGPUDevice::WebGPUDevice(Ref<const WebGPUAdapter>&& adapter, Ref<GPUDevice>&& device)
     : m_adapter(WTFMove(adapter))
     , m_device(WTFMove(device))
 {
-    UNUSED_PARAM(m_adapter);
 }
 
 Ref<WebGPUBuffer> WebGPUDevice::createBuffer(GPUBufferDescriptor&& descriptor) const
@@ -122,7 +122,7 @@ Ref<WebGPUBindGroup> WebGPUDevice::createBindGroup(WebGPUBindGroupDescriptor&& d
 RefPtr<WebGPUShaderModule> WebGPUDevice::createShaderModule(WebGPUShaderModuleDescriptor&& descriptor) const
 {
     // FIXME: What can be validated here?
-    if (auto module = m_device->createShaderModule(GPUShaderModuleDescriptor { descriptor.code }))
+    if (auto module = m_device->createShaderModule(GPUShaderModuleDescriptor { descriptor.code, descriptor.isWHLSL }))
         return WebGPUShaderModule::create(module.releaseNonNull());
     return nullptr;
 }
@@ -137,11 +137,10 @@ Ref<WebGPURenderPipeline> WebGPUDevice::createRenderPipeline(const WebGPURenderP
     return WebGPURenderPipeline::create(WTFMove(pipeline));
 }
 
-RefPtr<WebGPUCommandBuffer> WebGPUDevice::createCommandBuffer() const
+Ref<WebGPUCommandEncoder> WebGPUDevice::createCommandEncoder() const
 {
-    if (auto commandBuffer = m_device->createCommandBuffer())
-        return WebGPUCommandBuffer::create(commandBuffer.releaseNonNull());
-    return nullptr;
+    auto commandBuffer = m_device->tryCreateCommandBuffer();
+    return WebGPUCommandEncoder::create(WTFMove(commandBuffer));
 }
 
 Ref<WebGPUSwapChain> WebGPUDevice::createSwapChain(const WebGPUSwapChainDescriptor& descriptor) const

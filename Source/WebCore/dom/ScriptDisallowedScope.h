@@ -55,6 +55,11 @@ public:
         s_count--;
     }
 
+    ScriptDisallowedScope& operator=(const ScriptDisallowedScope&)
+    {
+        return *this;
+    }
+
     static bool isEventAllowedInMainThread()
     {
         return !isMainThread() || !s_count;
@@ -160,25 +165,6 @@ public:
         }
     private:
         unsigned m_originalCount { 0 };
-    };
-
-    // FIXME: Remove all uses of this class.
-    class LayoutAssertionDisableScope {
-    public:
-        LayoutAssertionDisableScope()
-        {
-            s_layoutAssertionDisableCount++;
-        }
-
-        ~LayoutAssertionDisableScope()
-        {
-            s_layoutAssertionDisableCount--;
-        }
-
-        static bool shouldDisable() { return s_layoutAssertionDisableCount; }
-
-    private:
-        static unsigned s_layoutAssertionDisableCount;
     };
 
 private:

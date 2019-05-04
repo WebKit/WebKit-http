@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2006, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2007 Rob Buis <buis@kde.org>
- * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Samsung Electronics. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -22,12 +22,13 @@
 
 #pragma once
 
-#include "SVGAnimatedString.h"
+#include "SVGAnimatedPropertyImpl.h"
 #include "SVGAttributeOwnerProxy.h"
 #include "SVGLangSpace.h"
 #include "SVGLocatable.h"
 #include "SVGNames.h"
 #include "SVGParsingError.h"
+#include "SVGPropertyOwnerRegistry.h"
 #include "StyledElement.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -46,7 +47,7 @@ class SVGUseElement;
 
 void mapAttributeToCSSProperty(HashMap<AtomicStringImpl*, CSSPropertyID>* propertyNameToIdMap, const QualifiedName& attrName);
 
-class SVGElement : public StyledElement, public SVGLangSpace, public CanMakeWeakPtr<SVGElement> {
+class SVGElement : public StyledElement, public SVGLangSpace, public SVGPropertyOwner, public CanMakeWeakPtr<SVGElement> {
     WTF_MAKE_ISO_ALLOCATED(SVGElement);
 public:
     bool isOutermostSVGSVGElement() const;
@@ -146,9 +147,21 @@ public:
     void synchronizeAttribute(const QualifiedName& name) { attributeOwnerProxy().synchronizeAttribute(name); }
     void synchronizeAttributes() { attributeOwnerProxy().synchronizeAttributes(); }
     Vector<AnimatedPropertyType> animatedTypes(const QualifiedName& attributeName) const { return attributeOwnerProxy().animatedTypes(attributeName); }
-    RefPtr<SVGAnimatedProperty> lookupAnimatedProperty(const SVGAttribute& attribute) const { return attributeOwnerProxy().lookupAnimatedProperty(attribute); }
-    RefPtr<SVGAnimatedProperty> lookupOrCreateAnimatedProperty(const SVGAttribute& attribute) { return attributeOwnerProxy().lookupOrCreateAnimatedProperty(attribute); }
-    Vector<RefPtr<SVGAnimatedProperty>> lookupOrCreateAnimatedProperties(const QualifiedName& name) { return attributeOwnerProxy().lookupOrCreateAnimatedProperties(name); }
+    RefPtr<SVGLegacyAnimatedProperty> lookupAnimatedProperty(const SVGAttribute& attribute) const { return attributeOwnerProxy().lookupAnimatedProperty(attribute); }
+    RefPtr<SVGLegacyAnimatedProperty> lookupOrCreateAnimatedProperty(const SVGAttribute& attribute) { return attributeOwnerProxy().lookupOrCreateAnimatedProperty(attribute); }
+    Vector<RefPtr<SVGLegacyAnimatedProperty>> lookupOrCreateAnimatedProperties(const QualifiedName& name) { return attributeOwnerProxy().lookupOrCreateAnimatedProperties(name); }
+
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGElement>;
+    virtual const SVGPropertyRegistry& propertyRegistry() const { return m_propertyRegistry; }
+
+    bool isAnimatedPropertyAttribute(const QualifiedName&) const;
+    bool isAnimatedAttribute(const QualifiedName&) const;
+
+    void commitPropertyChange(SVGProperty*) override;
+    void commitPropertyChange(SVGAnimatedProperty&);
+
+    const SVGElement* attributeContextElement() const override { return this; }
+    std::unique_ptr<SVGAttributeAnimator> createAnimator(const QualifiedName&, AnimationMode, CalcMode, bool isAccumulated, bool isAdditive);
 
     // These are needed for the RenderTree, animation and DOM.
     const auto& className() const { return m_className.currentValue(attributeOwnerProxy()); }
@@ -203,6 +216,7 @@ private:
     HashSet<SVGElement*> m_elementsWithRelativeLengths;
 
     AttributeOwnerProxy m_attributeOwnerProxy { *this };
+    PropertyRegistry m_propertyRegistry { *this };
     SVGAnimatedStringAttribute m_className;
 };
 

@@ -54,7 +54,7 @@ Heap::Heap(HeapKind kind, std::lock_guard<Mutex>&)
     initializeLineMetadata();
     initializePageMetadata();
     
-    BASSERT(!PerProcess<Environment>::get()->isDebugHeapEnabled());
+    BASSERT(!Environment::get()->isDebugHeapEnabled());
 
     Gigacage::ensureGigacage();
 #if GIGACAGE_ENABLED
@@ -69,7 +69,7 @@ Heap::Heap(HeapKind kind, std::lock_guard<Mutex>&)
     }
 #endif
     
-    m_scavenger = PerProcess<Scavenger>::get();
+    m_scavenger = Scavenger::get();
 }
 
 bool Heap::usingGigacage()
@@ -175,13 +175,18 @@ void Heap::decommitLargeRange(std::lock_guard<Mutex>&, LargeRange& range, BulkDe
 #endif
 }
 
-void Heap::scavenge(std::lock_guard<Mutex>& lock, BulkDecommit& decommitter)
+void Heap::scavenge(std::lock_guard<Mutex>& lock, BulkDecommit& decommitter, size_t& deferredDecommits)
 {
     for (auto& list : m_freePages) {
         for (auto* chunk : list) {
             for (auto* page : chunk->freePages()) {
                 if (!page->hasPhysicalPages())
                     continue;
+                if (page->usedSinceLastScavenge()) {
+                    page->clearUsedSinceLastScavenge();
+                    deferredDecommits++;
+                    continue;
+                }
 
                 size_t pageSize = bmalloc::pageSize(&list - &m_freePages[0]);
                 size_t decommitSize = physicalPageSizeSloppy(page->begin()->begin(), pageSize);
@@ -189,36 +194,36 @@ void Heap::scavenge(std::lock_guard<Mutex>& lock, BulkDecommit& decommitter)
                 m_footprint -= decommitSize;
                 decommitter.addEager(page->begin()->begin(), pageSize);
                 page->setHasPhysicalPages(false);
-#if ENABLE_PHYSICAL_PAGE_MAP 
+#if ENABLE_PHYSICAL_PAGE_MAP
                 m_physicalPageMap.decommit(page->begin()->begin(), pageSize);
 #endif
             }
         }
     }
-    
+
     for (auto& list : m_chunkCache) {
-        while (!list.isEmpty())
-            deallocateSmallChunk(list.pop(), &list - &m_chunkCache[0]);
+        for (auto iter = list.begin(); iter != list.end(); ) {
+            Chunk* chunk = *iter;
+            if (chunk->usedSinceLastScavenge()) {
+                chunk->clearUsedSinceLastScavenge();
+                deferredDecommits++;
+                ++iter;
+                continue;
+            }
+            ++iter;
+            list.remove(chunk);
+            deallocateSmallChunk(chunk, &list - &m_chunkCache[0]);
+        }
     }
 
     for (LargeRange& range : m_largeFree) {
-        m_highWatermark = std::min(m_highWatermark, static_cast<void*>(range.begin()));
+        if (range.usedSinceLastScavenge()) {
+            range.clearUsedSinceLastScavenge();
+            deferredDecommits++;
+            continue;
+        }
         decommitLargeRange(lock, range, decommitter);
     }
-
-    m_freeableMemory = 0;
-}
-
-void Heap::scavengeToHighWatermark(std::lock_guard<Mutex>& lock, BulkDecommit& decommitter)
-{
-    void* newHighWaterMark = nullptr;
-    for (LargeRange& range : m_largeFree) {
-        if (range.begin() <= m_highWatermark)
-            newHighWaterMark = std::min(newHighWaterMark, static_cast<void*>(range.begin()));
-        else
-            decommitLargeRange(lock, range, decommitter);
-    }
-    m_highWatermark = newHighWaterMark;
 }
 
 void Heap::deallocateLineCache(std::unique_lock<Mutex>&, LineCache& lineCache)
@@ -249,6 +254,7 @@ void Heap::allocateSmallChunk(std::unique_lock<Mutex>& lock, size_t pageClass)
 
         forEachPage(chunk, pageSize, [&](SmallPage* page) {
             page->setHasPhysicalPages(true);
+            page->setUsedSinceLastScavenge();
             page->setHasFreeLines(lock, true);
             chunk->freePages().push(page);
         });
@@ -310,6 +316,7 @@ SmallPage* Heap::allocateSmallPage(std::unique_lock<Mutex>& lock, size_t sizeCla
         Chunk* chunk = m_freePages[pageClass].tail();
 
         chunk->ref();
+        chunk->setUsedSinceLastScavenge();
 
         SmallPage* page = chunk->freePages().pop();
         if (chunk->freePages().isEmpty())
@@ -324,10 +331,11 @@ SmallPage* Heap::allocateSmallPage(std::unique_lock<Mutex>& lock, size_t sizeCla
             m_footprint += physicalSize;
             vmAllocatePhysicalPagesSloppy(page->begin()->begin(), pageSize);
             page->setHasPhysicalPages(true);
-#if ENABLE_PHYSICAL_PAGE_MAP 
+#if ENABLE_PHYSICAL_PAGE_MAP
             m_physicalPageMap.commit(page->begin()->begin(), pageSize);
 #endif
         }
+        page->setUsedSinceLastScavenge();
 
         return page;
     }();
@@ -574,7 +582,7 @@ void* Heap::tryAllocateLarge(std::unique_lock<Mutex>& lock, size_t alignment, si
         if (usingGigacage())
             return nullptr;
 
-        range = PerProcess<VMHeap>::get()->tryAllocateLargeChunk(alignment, size);
+        range = VMHeap::get()->tryAllocateLargeChunk(alignment, size);
         if (!range)
             return nullptr;
         
@@ -585,7 +593,6 @@ void* Heap::tryAllocateLarge(std::unique_lock<Mutex>& lock, size_t alignment, si
     m_freeableMemory -= range.totalPhysicalSize();
 
     void* result = splitAndAllocate(lock, range, alignment, size).begin();
-    m_highWatermark = std::max(m_highWatermark, result);
     return result;
 }
 

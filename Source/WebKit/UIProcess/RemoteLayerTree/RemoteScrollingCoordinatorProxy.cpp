@@ -37,6 +37,7 @@
 #include "WebProcessProxy.h"
 #include <WebCore/ScrollingStateFrameScrollingNode.h>
 #include <WebCore/ScrollingStateOverflowScrollingNode.h>
+#include <WebCore/ScrollingStatePositionedNode.h>
 #include <WebCore/ScrollingStateTree.h>
 #include <WebCore/ScrollingTreeScrollingNode.h>
 
@@ -157,6 +158,7 @@ void RemoteScrollingCoordinatorProxy::connectStateNodeLayers(ScrollingStateTree&
         case ScrollingNodeType::FrameHosting:
         case ScrollingNodeType::Fixed:
         case ScrollingNodeType::Sticky:
+        case ScrollingNodeType::Positioned:
             break;
         }
     }
@@ -200,6 +202,9 @@ void RemoteScrollingCoordinatorProxy::scrollingTreeNodeDidScroll(ScrollingNodeID
     // Scroll updates for the main frame are sent via WebPageProxy::updateVisibleContentRects()
     // so don't send them here.
     if (!m_propagatesMainFrameScrolls && scrolledNodeID == rootScrollingNodeID())
+        return;
+
+    if (m_webPageProxy.scrollingUpdatesDisabledForTesting())
         return;
 
 #if PLATFORM(IOS_FAMILY)

@@ -57,7 +57,7 @@ Ref<SVGAnimateMotionElement> SVGAnimateMotionElement::create(const QualifiedName
     return adoptRef(*new SVGAnimateMotionElement(tagName, document));
 }
 
-bool SVGAnimateMotionElement::hasValidAttributeType()
+bool SVGAnimateMotionElement::hasValidAttributeType() const
 {
     auto targetElement = makeRefPtr(this->targetElement());
     if (!targetElement)
@@ -90,7 +90,7 @@ bool SVGAnimateMotionElement::hasValidAttributeType()
     return false;
 }
 
-bool SVGAnimateMotionElement::hasValidAttributeName()
+bool SVGAnimateMotionElement::hasValidAttributeName() const
 {
     // AnimateMotion does not use attributeName so it is always valid.
     return true;
@@ -176,7 +176,7 @@ bool SVGAnimateMotionElement::calculateFromAndToValues(const String& fromString,
 bool SVGAnimateMotionElement::calculateFromAndByValues(const String& fromString, const String& byString)
 {
     m_hasToPointAtEndOfDuration = false;
-    if (animationMode() == ByAnimation && !isAdditive())
+    if (animationMode() == AnimationMode::By && !isAdditive())
         return false;
     parsePoint(fromString, m_fromPoint);
     FloatPoint byPoint;
@@ -222,7 +222,7 @@ void SVGAnimateMotionElement::calculateAnimatedValue(float percentage, unsigned 
     if (!isAdditive())
         transform->makeIdentity();
 
-    if (animationMode() != PathAnimation) {
+    if (animationMode() != AnimationMode::Path) {
         FloatPoint toPointAtEndOfDuration = m_toPoint;
         if (isAccumulated() && repeatCount && m_hasToPointAtEndOfDuration)
             toPointAtEndOfDuration = m_toPointAtEndOfDuration;
@@ -288,7 +288,7 @@ float SVGAnimateMotionElement::calculateDistance(const String& fromString, const
 void SVGAnimateMotionElement::updateAnimationMode()
 {
     if (!m_animationPath.isEmpty())
-        setAnimationMode(PathAnimation);
+        setAnimationMode(AnimationMode::Path);
     else
         SVGAnimationElement::updateAnimationMode();
 }

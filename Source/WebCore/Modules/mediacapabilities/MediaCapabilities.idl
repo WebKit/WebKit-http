@@ -28,6 +28,6 @@
     ImplementationLacksVTable
 ]
 interface MediaCapabilities {
-  Promise<MediaCapabilitiesInfo> decodingInfo(MediaDecodingConfiguration configuration);
-  Promise<MediaCapabilitiesInfo> encodingInfo(MediaEncodingConfiguration configuration);
+  [CallWith=Document] Promise<MediaCapabilitiesDecodingInfo> decodingInfo(MediaDecodingConfiguration configuration);
+  Promise<MediaCapabilitiesEncodingInfo> encodingInfo(MediaEncodingConfiguration configuration);
 };

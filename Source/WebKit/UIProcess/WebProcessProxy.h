@@ -104,7 +104,9 @@ public:
         Yes
     };
 
-    static Ref<WebProcessProxy> create(WebProcessPool&, WebsiteDataStore&, IsPrewarmed);
+    enum class ShouldLaunchProcess : bool { No, Yes };
+
+    static Ref<WebProcessProxy> create(WebProcessPool&, WebsiteDataStore&, IsPrewarmed, ShouldLaunchProcess = ShouldLaunchProcess::Yes);
     ~WebProcessProxy();
 
     WebConnection* webConnection() const { return m_webConnection.get(); }
@@ -144,9 +146,12 @@ public:
 
     virtual bool isServiceWorkerProcess() const { return false; }
 
-    void addVisitedLinkStore(VisitedLinkStore&);
+    void didCreateWebPageInProcess(uint64_t pageID);
+
+    void addVisitedLinkStoreUser(VisitedLinkStore&, uint64_t pageID);
+    void removeVisitedLinkStoreUser(VisitedLinkStore&, uint64_t pageID);
+
     void addWebUserContentControllerProxy(WebUserContentControllerProxy&, WebPageCreationParameters&);
-    void didDestroyVisitedLinkStore(VisitedLinkStore&);
     void didDestroyWebUserContentControllerProxy(WebUserContentControllerProxy&);
 
     RefPtr<API::UserInitiatedAction> userInitiatedActivity(uint64_t);
@@ -293,6 +298,10 @@ public:
     void revokeAudioCaptureExtension() { m_mediaCaptureSandboxExtensions &= ~Audio; }
 #endif
 
+#if PLATFORM(IOS_FAMILY)
+    void unblockAccessibilityServerIfNeeded();
+#endif
+
 protected:
     static uint64_t generatePageID();
     WebProcessProxy(WebProcessPool&, WebsiteDataStore&, IsPrewarmed);
@@ -422,7 +431,7 @@ private:
     HashSet<ProvisionalPageProxy*> m_provisionalPages;
     UserInitiatedActionMap m_userInitiatedActionMap;
 
-    HashSet<VisitedLinkStore*> m_visitedLinkStores;
+    HashMap<VisitedLinkStore*, HashSet<uint64_t/* pageID */>> m_visitedLinkStoresWithUsers;
     HashSet<WebUserContentControllerProxy*> m_webUserContentControllerProxies;
 
     int m_numberOfTimesSuddenTerminationWasDisabled;
@@ -431,6 +440,7 @@ private:
 #if PLATFORM(IOS_FAMILY)
     ForegroundWebProcessToken m_foregroundToken;
     BackgroundWebProcessToken m_backgroundToken;
+    bool m_hasSentMessageToUnblockAccessibilityServer { false };
 #endif
 
     HashMap<String, uint64_t> m_pageURLRetainCountMap;

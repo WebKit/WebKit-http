@@ -270,6 +270,7 @@ void InbandTextTrackPrivateAVF::processCueAttributes(CFAttributedStringRef attri
                 if (!makeRGBA32FromARGBCFArray(arrayValue, color))
                     continue;
                 cueData.setForegroundColor(color);
+                continue;
             }
             
             if (CFStringCompare(key, kCMTextMarkupAttribute_BackgroundColorARGB, 0) == kCFCompareEqualTo) {
@@ -281,6 +282,7 @@ void InbandTextTrackPrivateAVF::processCueAttributes(CFAttributedStringRef attri
                 if (!makeRGBA32FromARGBCFArray(arrayValue, color))
                     continue;
                 cueData.setBackgroundColor(color);
+                continue;
             }
 
             if (CFStringCompare(key, kCMTextMarkupAttribute_CharacterBackgroundColorARGB, 0) == kCFCompareEqualTo) {
@@ -292,6 +294,7 @@ void InbandTextTrackPrivateAVF::processCueAttributes(CFAttributedStringRef attri
                 if (!makeRGBA32FromARGBCFArray(arrayValue, color))
                     continue;
                 cueData.setHighlightColor(color);
+                continue;
             }
         }
 
@@ -318,7 +321,7 @@ void InbandTextTrackPrivateAVF::processAttributedStrings(CFArrayRef attributedSt
     CFIndex count = attributedStrings ? CFArrayGetCount(attributedStrings) : 0;
 
     if (count)
-        DEBUG_LOG(LOGIDENTIFIER, "added ", count, count > 1 ? " cues" : " cue", " at time ", time);
+        INFO_LOG(LOGIDENTIFIER, "added ", count, count > 1 ? " cues" : " cue", " at time ", time);
 
     Vector<Ref<GenericCueData>> arrivingCues;
     if (count) {
@@ -359,7 +362,7 @@ void InbandTextTrackPrivateAVF::processAttributedStrings(CFArrayRef attributedSt
                     if (!arrivingCue->doesExtendCueData(*cueData))
                         nonExtensionCues.append(WTFMove(arrivingCue));
                     else
-                        DEBUG_LOG(LOGIDENTIFIER, "found an extension cue ", *cueData);
+                        INFO_LOG(LOGIDENTIFIER, "found an extension cue ", *cueData);
                 }
 
                 bool currentCueIsExtended = (arrivingCues.size() != nonExtensionCues.size());
@@ -373,13 +376,13 @@ void InbandTextTrackPrivateAVF::processAttributedStrings(CFArrayRef attributedSt
                     cueData->setEndTime(m_currentCueEndTime);
                     cueData->setStatus(GenericCueData::Complete);
 
-                    DEBUG_LOG(LOGIDENTIFIER, "updating cue ", *cueData);
+                    INFO_LOG(LOGIDENTIFIER, "updating cue ", *cueData);
 
                     client()->updateGenericCue(*cueData);
                 } else {
                     // We have to assume that the implicit duration is invalid for cues delivered during a seek because the AVF decode pipeline may not
                     // see every cue, so DO NOT update cue duration while seeking.
-                    DEBUG_LOG(LOGIDENTIFIER, "ignoring cue delivered during seek ", *cueData);
+                    INFO_LOG(LOGIDENTIFIER, "ignoring cue delivered during seek ", *cueData);
                 }
             }
         } else
@@ -395,7 +398,7 @@ void InbandTextTrackPrivateAVF::processAttributedStrings(CFArrayRef attributedSt
 
     for (auto& cueData : arrivingCues) {
         m_cues.append(cueData.ptr());
-        DEBUG_LOG(LOGIDENTIFIER, "adding cue ", cueData.get());
+        INFO_LOG(LOGIDENTIFIER, "adding cue ", cueData.get());
         client()->addGenericCue(cueData);
     }
 
@@ -426,7 +429,7 @@ void InbandTextTrackPrivateAVF::removeCompletedCues()
             if (cue->status() != GenericCueData::Complete)
                 continue;
 
-            DEBUG_LOG(LOGIDENTIFIER, "removing cue ", *cue);
+            INFO_LOG(LOGIDENTIFIER, "removing cue ", *cue);
 
             m_cues.remove(currentCue);
         }
@@ -501,7 +504,7 @@ void InbandTextTrackPrivateAVF::processNativeSamples(CFArrayRef nativeSamples, c
             continue;
         }
 
-        DEBUG_LOG(LOGIDENTIFIER, "chunk  type = '", type.toString(), "', size = ", (size_t)boxLength);
+        INFO_LOG(LOGIDENTIFIER, "chunk  type = '", type.toString(), "', size = ", (size_t)boxLength);
 
         do {
             if (m_haveReportedVTTHeader || !formatDescription)
@@ -529,7 +532,7 @@ void InbandTextTrackPrivateAVF::processNativeSamples(CFArrayRef nativeSamples, c
             header.append(reinterpret_cast<const unsigned char*>(CFDataGetBytePtr(webvttHeaderData)), length);
             header.append("\n\n");
 
-            DEBUG_LOG(LOGIDENTIFIER, "VTT header ", &header);
+            INFO_LOG(LOGIDENTIFIER, "VTT header ", &header);
             client()->parseWebVTTFileHeader(header.toString());
             m_haveReportedVTTHeader = true;
         } while (0);
@@ -537,7 +540,7 @@ void InbandTextTrackPrivateAVF::processNativeSamples(CFArrayRef nativeSamples, c
         if (type == ISOWebVTTCue::boxTypeName()) {
             ISOWebVTTCue cueData = ISOWebVTTCue(presentationTime, duration);
             cueData.read(view);
-            DEBUG_LOG(LOGIDENTIFIER, "VTT cue data ", cueData);
+            INFO_LOG(LOGIDENTIFIER, "VTT cue data ", cueData);
             client()->parseWebVTTCueData(cueData);
         }
 

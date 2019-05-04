@@ -58,11 +58,7 @@ public:
         PlatformLayerIDRepresentation
     };
 
-    LayerRepresentation()
-        : m_graphicsLayer(nullptr)
-        , m_layerID(0)
-        , m_representation(EmptyRepresentation)
-    { }
+    LayerRepresentation() = default;
 
     LayerRepresentation(GraphicsLayer* graphicsLayer)
         : m_graphicsLayer(graphicsLayer)
@@ -72,15 +68,13 @@ public:
 
     LayerRepresentation(PlatformLayer* platformLayer)
         : m_typelessPlatformLayer(makePlatformLayerTypeless(platformLayer))
-        , m_layerID(0)
         , m_representation(PlatformLayerRepresentation)
     {
         retainPlatformLayer(m_typelessPlatformLayer);
     }
 
     LayerRepresentation(GraphicsLayer::PlatformLayerID layerID)
-        : m_graphicsLayer(nullptr)
-        , m_layerID(layerID)
+        : m_layerID(layerID)
         , m_representation(PlatformLayerIDRepresentation)
     {
     }
@@ -103,7 +97,7 @@ public:
     operator GraphicsLayer*() const
     {
         ASSERT(m_representation == GraphicsLayerRepresentation);
-        return m_graphicsLayer;
+        return m_graphicsLayer.get();
     }
 
     operator PlatformLayer*() const
@@ -125,6 +119,7 @@ public:
 
     LayerRepresentation& operator=(const LayerRepresentation& other)
     {
+        m_graphicsLayer = other.m_graphicsLayer;
         m_typelessPlatformLayer = other.m_typelessPlatformLayer;
         m_layerID = other.m_layerID;
         m_representation = other.m_representation;
@@ -161,7 +156,7 @@ public:
             return LayerRepresentation();
         case GraphicsLayerRepresentation:
             ASSERT(m_representation == GraphicsLayerRepresentation);
-            return *this;
+            return LayerRepresentation(m_graphicsLayer.get());
         case PlatformLayerRepresentation:
             return m_graphicsLayer ? m_graphicsLayer->platformLayer() : nullptr;
         case PlatformLayerIDRepresentation:
@@ -179,13 +174,10 @@ private:
     WEBCORE_EXPORT static PlatformLayer* makePlatformLayerTyped(void* typelessPlatformLayer);
     WEBCORE_EXPORT static void* makePlatformLayerTypeless(PlatformLayer*);
 
-    union {
-        GraphicsLayer* m_graphicsLayer;
-        void* m_typelessPlatformLayer;
-    };
-
-    GraphicsLayer::PlatformLayerID m_layerID;
-    Type m_representation;
+    RefPtr<GraphicsLayer> m_graphicsLayer;
+    void* m_typelessPlatformLayer { nullptr };
+    GraphicsLayer::PlatformLayerID m_layerID { 0 };
+    Type m_representation { EmptyRepresentation };
 };
 
 class ScrollingStateNode : public RefCounted<ScrollingStateNode> {
@@ -198,6 +190,7 @@ public:
 
     bool isFixedNode() const { return m_nodeType == ScrollingNodeType::Fixed; }
     bool isStickyNode() const { return m_nodeType == ScrollingNodeType::Sticky; }
+    bool isPositionedNode() const { return m_nodeType == ScrollingNodeType::Positioned; }
     bool isScrollingNode() const { return isFrameScrollingNode() || isOverflowScrollingNode(); }
     bool isFrameScrollingNode() const { return m_nodeType == ScrollingNodeType::MainFrame || m_nodeType == ScrollingNodeType::Subframe; }
     bool isFrameHostingNode() const { return m_nodeType == ScrollingNodeType::FrameHosting; }

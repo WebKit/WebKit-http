@@ -646,6 +646,12 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
 - (void)_createAndConfigureDoubleTapGestureRecognizer
 {
+    if (_doubleTapGestureRecognizer) {
+        [self removeGestureRecognizer:_doubleTapGestureRecognizer.get()];
+        [_doubleTapGestureRecognizer setDelegate:nil];
+        [_doubleTapGestureRecognizer setGestureFailedTarget:nil action:nil];
+    }
+
     _doubleTapGestureRecognizer = adoptNS([[WKSyntheticTapGestureRecognizer alloc] initWithTarget:self action:@selector(_doubleTapRecognized:)]);
     [_doubleTapGestureRecognizer setGestureFailedTarget:self action:@selector(_doubleTapDidFail:)];
     [_doubleTapGestureRecognizer setNumberOfTapsRequired:2];
@@ -665,6 +671,10 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
 - (void)setupInteraction
 {
+    // If the page is not valid yet then delay interaction setup until the process is launched/relaunched.
+    if (!_page->hasRunningProcess())
+        return;
+
     if (_hasSetUpInteractions)
         return;
 
@@ -1164,7 +1174,8 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     if (!_webView._retainingActiveFocusedState) {
         // We need to complete the editing operation before we blur the element.
         [self _endEditing];
-        _page->blurFocusedElement();
+        if (_dismissingAccessory || _keyboardDidRequestDismissal)
+            _page->blurFocusedElement();
     }
 
     [self _cancelInteraction];
@@ -1211,7 +1222,7 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
 
 - (void)_webTouchEventsRecognized:(UIWebTouchEventsGestureRecognizer *)gestureRecognizer
 {
-    if (!_page->isValid())
+    if (!_page->hasRunningProcess())
         return;
 
     const _UIWebTouchEvent* lastTouchEvent = gestureRecognizer.lastTouchEvent;
@@ -1221,9 +1232,11 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
         [self _handleDOMPasteRequestWithResult:WebCore::DOMPasteAccessResponse::DeniedForGesture];
         _layerTreeTransactionIdAtLastTouchStart = downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).lastCommittedLayerTreeTransactionID();
 
+        WebKit::InteractionInformationRequest positionInformationRequest { WebCore::IntPoint(_lastInteractionLocation) };
+        positionInformationRequest.readonly = true;
         [self doAfterPositionInformationUpdate:[assistant = WeakObjCPtr<WKActionSheetAssistant>(_actionSheetAssistant.get())] (WebKit::InteractionInformationAtPosition information) {
             [assistant interactionDidStartWithPositionInformation:information];
-        } forRequest:WebKit::InteractionInformationRequest(WebCore::IntPoint(_lastInteractionLocation))];
+        } forRequest:positionInformationRequest];
     }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -1503,6 +1516,12 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     if (!_potentialTapInProgress)
         return;
 
+    if (_page->preferences().fastClicksEverywhere()) {
+        RELEASE_LOG(ViewGestures, "Potential tap found an element and fast taps are forced on. Trigger click. (%p)", self);
+        [self _setDoubleTapGesturesEnabled:NO];
+        return;
+    }
+
     auto targetScale = _smartMagnificationController->zoomFactorForTargetRect(renderRect, fitEntireRect, viewportMinimumScale, viewportMaximumScale);
 
     auto initialScale = [self _initialScaleFactor];
@@ -1597,7 +1616,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
 - (void)_zoomToRevealFocusedElement
 {
-    if (_suppressSelectionAssistantReasons.contains(WebKit::FocusedElementIsTransparentOrFullyClipped) || _suppressSelectionAssistantReasons.contains(WebKit::FocusedElementIsTooSmall))
+    if (_suppressSelectionAssistantReasons.contains(WebKit::EditableRootIsTransparentOrFullyClipped) || _suppressSelectionAssistantReasons.contains(WebKit::FocusedElementIsTooSmall))
         return;
 
     SetForScope<BOOL> isZoomingToRevealFocusedElementForScope { _isZoomingToRevealFocusedElement, YES };
@@ -2757,6 +2776,16 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
     if (_domPasteRequestHandler)
         return action == @selector(paste:);
 
+    // These are UIKit IPI selectors. We don't want to forward them to the web view.
+    auto editorState = _page->editorState();
+    if (action == @selector(_deleteByWord) || action == @selector(_deleteForwardAndNotify:) || action == @selector(_deleteToEndOfParagraph) || action == @selector(_deleteToStartOfLine)
+        || action == @selector(_moveDown:withHistory:) || action == @selector(_moveLeft:withHistory:) || action == @selector(_moveRight:withHistory:)
+        || action == @selector(_moveToEndOfDocument:withHistory:) || action == @selector(_moveToEndOfLine:withHistory:) || action == @selector(_moveToEndOfParagraph:withHistory:)
+        || action == @selector(_moveToEndOfWord:withHistory:) || action == @selector(_moveToStartOfDocument:withHistory:) || action == @selector(_moveToStartOfLine:withHistory:)
+        || action == @selector(_moveToStartOfParagraph:withHistory:) || action == @selector(_moveToStartOfWord:withHistory:) || action == @selector(_moveUp:withHistory:)
+        || action == @selector(_transpose))
+        return editorState.isContentEditable;
+
     return [_webView canPerformAction:action withSender:sender];
 }
 
@@ -3663,6 +3692,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 // UIWebFormAccessoryDelegate
 - (void)accessoryDone
 {
+    SetForScope<BOOL> dismissingAccessoryScope { _dismissingAccessory, YES };
     [self resignFirstResponder];
 }
 
@@ -3727,8 +3757,6 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     if (enabled && ![_doubleTapGestureRecognizer isEnabled]) {
         // The first tap recognized after re-enabling double tap gestures will not wait for the
         // second tap before committing. To fix this, we use a new double tap gesture recognizer.
-        [self removeGestureRecognizer:_doubleTapGestureRecognizer.get()];
-        [_doubleTapGestureRecognizer setDelegate:nil];
         [self _createAndConfigureDoubleTapGestureRecognizer];
     }
 
@@ -4817,8 +4845,6 @@ static WebCore::FloatRect rectToRevealWhenZoomingToFocusedElement(const WebKit::
     return selectionBoundingRect;
 }
 
-static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 4;
-
 - (void)_elementDidFocus:(const WebKit::FocusedElementInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode changingActivityState:(BOOL)changingActivityState userObject:(NSObject <NSSecureCoding> *)userObject
 {
     SetForScope<BOOL> isChangingFocusForScope { _isChangingFocus, hasFocusedElement(_focusedElementInformation) };
@@ -4840,17 +4866,6 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
 
     if ([inputDelegate respondsToSelector:@selector(_webView:decidePolicyForFocusedElement:)])
         startInputSessionPolicy = [inputDelegate _webView:_webView decidePolicyForFocusedElement:focusedElementInfo.get()];
-
-    if (information.elementIsTransparentOrFullyClipped)
-        [self _beginSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTransparentOrFullyClipped];
-    else
-        [self _stopSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTransparentOrFullyClipped];
-
-    auto elementArea = information.elementRect.area<RecordOverflow>();
-    if (!elementArea.hasOverflowed() && elementArea < minimumFocusedElementAreaForSuppressingSelectionAssistant)
-        [self _beginSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTooSmall];
-    else
-        [self _stopSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTooSmall];
 
     BOOL shouldShowInputView = [&] {
         switch (startInputSessionPolicy) {
@@ -5025,11 +5040,8 @@ static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 
     [_webView didEndFormControlInteraction];
     _page->setIsShowingInputViewForFocusedElement(false);
 
-    if (!_isChangingFocus) {
-        [self _stopSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTransparentOrFullyClipped];
-        [self _stopSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTooSmall];
+    if (!_isChangingFocus)
         _didAccessoryTabInitiateFocus = NO;
-    }
 }
 
 - (void)_didUpdateInputMode:(WebCore::InputMode)mode
@@ -5448,8 +5460,43 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     [super _wheelChangedWithEvent:event];
 }
 
+- (void)_updateSelectionAssistantSuppressionState
+{
+    static const double minimumFocusedElementAreaForSuppressingSelectionAssistant = 4;
+
+    auto& editorState = _page->editorState();
+    if (editorState.isMissingPostLayoutData)
+        return;
+
+    BOOL editableRootIsTransparentOrFullyClipped = NO;
+    BOOL focusedElementIsTooSmall = NO;
+    if (!editorState.selectionIsNone) {
+        auto& postLayoutData = editorState.postLayoutData();
+        if (postLayoutData.editableRootIsTransparentOrFullyClipped)
+            editableRootIsTransparentOrFullyClipped = YES;
+
+        if (hasFocusedElement(_focusedElementInformation)) {
+            auto elementArea = postLayoutData.focusedElementRect.area<RecordOverflow>();
+            if (!elementArea.hasOverflowed() && elementArea < minimumFocusedElementAreaForSuppressingSelectionAssistant)
+                focusedElementIsTooSmall = YES;
+        }
+    }
+
+    if (editableRootIsTransparentOrFullyClipped)
+        [self _startSuppressingSelectionAssistantForReason:WebKit::EditableRootIsTransparentOrFullyClipped];
+    else
+        [self _stopSuppressingSelectionAssistantForReason:WebKit::EditableRootIsTransparentOrFullyClipped];
+
+    if (focusedElementIsTooSmall)
+        [self _startSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTooSmall];
+    else
+        [self _stopSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTooSmall];
+}
+
 - (void)_selectionChanged
 {
+    [self _updateSelectionAssistantSuppressionState];
+
     _selectionNeedsUpdate = YES;
     // If we are changing the selection with a gesture there is no need
     // to wait to paint the selection.
@@ -5476,20 +5523,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
         return;
 
     auto& postLayoutData = state.postLayoutData();
-    if (!state.selectionIsNone && hasFocusedElement(_focusedElementInformation)) {
-        if (postLayoutData.elementIsTransparentOrFullyClipped)
-            [self _beginSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTransparentOrFullyClipped];
-        else
-            [self _stopSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTransparentOrFullyClipped];
-
-        auto elementArea = postLayoutData.focusedElementRect.area<RecordOverflow>();
-        if (!elementArea.hasOverflowed() && elementArea < minimumFocusedElementAreaForSuppressingSelectionAssistant)
-            [self _beginSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTooSmall];
-        else
-            [self _stopSuppressingSelectionAssistantForReason:WebKit::FocusedElementIsTooSmall];
-    }
-
-    WebKit::WKSelectionDrawingInfo selectionDrawingInfo(_page->editorState());
+    WebKit::WKSelectionDrawingInfo selectionDrawingInfo(state);
     if (force || selectionDrawingInfo != _lastSelectionDrawingInfo) {
         LOG_WITH_STREAM(Selection, stream << "_updateChangedSelection " << selectionDrawingInfo);
 
@@ -5526,7 +5560,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     return !!_suppressSelectionAssistantReasons;
 }
 
-- (void)_beginSuppressingSelectionAssistantForReason:(WebKit::SuppressSelectionAssistantReason)reason
+- (void)_startSuppressingSelectionAssistantForReason:(WebKit::SuppressSelectionAssistantReason)reason
 {
     bool wasSuppressingSelectionAssistant = !!_suppressSelectionAssistantReasons;
     _suppressSelectionAssistantReasons.add(reason);
@@ -6525,7 +6559,7 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
         retainedSelf->_page->performDragOperation(capturedDragData, "data interaction pasteboard", WTFMove(sandboxExtensionHandle), WTFMove(sandboxExtensionForUpload));
 
         retainedSelf->_visibleContentViewSnapshot = [retainedSelf snapshotViewAfterScreenUpdates:NO];
-        [retainedSelf _beginSuppressingSelectionAssistantForReason:WebKit::DropAnimationIsRunning];
+        [retainedSelf _startSuppressingSelectionAssistantForReason:WebKit::DropAnimationIsRunning];
         [UIView performWithoutAnimation:[retainedSelf] {
             [retainedSelf->_visibleContentViewSnapshot setFrame:[retainedSelf bounds]];
             [retainedSelf addSubview:retainedSelf->_visibleContentViewSnapshot.get()];
@@ -6771,7 +6805,7 @@ static WebEventFlags webEventFlagsForUIKeyModifierFlags(UIKeyModifierFlags flags
 
 - (void)_hoverGestureRecognizerChanged:(UIGestureRecognizer *)gestureRecognizer
 {
-    if (!_page->isValid())
+    if (!_page->hasRunningProcess())
         return;
 
     // Make a timestamp that matches UITouch and UIEvent.

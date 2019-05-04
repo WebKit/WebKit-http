@@ -63,6 +63,7 @@
 #include "WebCookieManagerProxy.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebGeolocationManagerProxy.h"
+#include "WebInspectorUtilities.h"
 #include "WebKit2Initialize.h"
 #include "WebMemorySampler.h"
 #include "WebNotificationManagerProxy.h"
@@ -551,6 +552,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
         parameters.defaultDataStoreParameters.indexedDatabaseDirectory = API::WebsiteDataStore::defaultDataStore()->websiteDataStore().parameters().indexedDatabaseDirectory;
     
     SandboxExtension::createHandleForReadWriteDirectory(parameters.defaultDataStoreParameters.indexedDatabaseDirectory, parameters.defaultDataStoreParameters.indexedDatabaseDirectoryExtensionHandle);
+    m_networkProcess->createSymLinkForFileUpgrade(parameters.defaultDataStoreParameters.indexedDatabaseDirectory);
 #endif
 
 #if ENABLE(SERVICE_WORKER)
@@ -666,11 +668,11 @@ void WebProcessPool::getNetworkProcessConnection(WebProcessProxy& webProcessProx
 }
 
 #if ENABLE(SERVICE_WORKER)
-void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy& proxy, SecurityOriginData&& securityOrigin, Optional<PAL::SessionID> sessionID)
+void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy& proxy, RegistrableDomain&& registrableDomain, Optional<PAL::SessionID> sessionID)
 {
     ASSERT_UNUSED(proxy, &proxy == m_networkProcess.get());
 
-    if (m_serviceWorkerProcesses.contains(securityOrigin))
+    if (m_serviceWorkerProcesses.contains(registrableDomain))
         return;
 
     m_mayHaveRegisteredServiceWorkers.clear();
@@ -688,8 +690,8 @@ void WebProcessPool::establishWorkerContextConnectionToNetworkProcess(NetworkPro
     if (m_serviceWorkerProcesses.isEmpty())
         sendToAllProcesses(Messages::WebProcess::RegisterServiceWorkerClients { });
 
-    auto serviceWorkerProcessProxy = ServiceWorkerProcessProxy::create(*this, securityOrigin, *websiteDataStore);
-    m_serviceWorkerProcesses.add(WTFMove(securityOrigin), serviceWorkerProcessProxy.ptr());
+    auto serviceWorkerProcessProxy = ServiceWorkerProcessProxy::create(*this, registrableDomain, *websiteDataStore);
+    m_serviceWorkerProcesses.add(WTFMove(registrableDomain), serviceWorkerProcessProxy.ptr());
 
     updateProcessAssertions();
     initializeNewWebProcess(serviceWorkerProcessProxy, *websiteDataStore);
@@ -737,9 +739,10 @@ void WebProcessPool::windowServerConnectionStateChanged()
 void WebProcessPool::setAnyPageGroupMightHavePrivateBrowsingEnabled(bool privateBrowsingEnabled)
 {
     if (privateBrowsingEnabled) {
-        sendToNetworkingProcess(Messages::NetworkProcess::AddWebsiteDataStore(WebsiteDataStoreParameters::legacyPrivateSessionParameters()));
+        ensureNetworkProcess().send(Messages::NetworkProcess::AddWebsiteDataStore(WebsiteDataStoreParameters::legacyPrivateSessionParameters()), 0);
     } else {
-        networkProcess()->removeSession(PAL::SessionID::legacyPrivateSessionID());
+        if (auto* networkProcess = this->networkProcess())
+            networkProcess->removeSession(PAL::SessionID::legacyPrivateSessionID());
     }
 }
 
@@ -897,7 +900,7 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
     }
 
     parameters.cacheModel = cacheModel();
-    parameters.languages = userPreferredLanguages();
+    parameters.languages = configuration().overrideLanguages().isEmpty() ? userPreferredLanguages() : configuration().overrideLanguages();
 
     parameters.urlSchemesRegisteredAsEmptyDocument = copyToVector(m_schemesToRegisterAsEmptyDocument);
     parameters.urlSchemesRegisteredAsSecure = copyToVector(m_schemesToRegisterAsSecure);
@@ -1103,6 +1106,9 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
         m_prewarmedProcess = nullptr;
     }
 
+    if (m_dummyProcessProxy == process)
+        m_dummyProcessProxy = nullptr;
+
     // FIXME (Multi-WebProcess): <rdar://problem/12239765> Some of the invalidation calls of the other supplements are still necessary in multi-process mode, but they should only affect data structures pertaining to the process being disconnected.
     // Clearing everything causes assertion failures, so it's less trouble to skip that for now.
     RefPtr<WebProcessProxy> protect(process);
@@ -1115,7 +1121,7 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
 
 #if ENABLE(SERVICE_WORKER)
     if (is<ServiceWorkerProcessProxy>(*process)) {
-        auto* removedProcess = m_serviceWorkerProcesses.take(downcast<ServiceWorkerProcessProxy>(*process).securityOrigin());
+        auto* removedProcess = m_serviceWorkerProcesses.take(downcast<ServiceWorkerProcessProxy>(*process).registrableDomain());
         ASSERT_UNUSED(removedProcess, removedProcess == process);
         updateProcessAssertions();
     }
@@ -1142,8 +1148,26 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
 #endif
 }
 
-WebProcessProxy& WebProcessPool::createNewWebProcessRespectingProcessCountLimit(WebsiteDataStore& websiteDataStore)
+WebProcessProxy& WebProcessPool::processForRegistrableDomain(WebsiteDataStore& websiteDataStore, WebPageProxy* page, const RegistrableDomain& registrableDomain)
 {
+    if (!registrableDomain.isEmpty()) {
+        if (auto process = webProcessCache().takeProcess(registrableDomain, websiteDataStore))
+            return *process;
+
+        // Check if we have a suspended page for the given registrable domain and use its process if we do, for performance reasons.
+        if (auto process = page ? findReusableSuspendedPageProcess(registrableDomain, *page, websiteDataStore) : nullptr) {
+            RELEASE_LOG(ProcessSwapping, "Using WebProcess %i from a SuspendedPage", process->processIdentifier());
+            return *process;
+        }
+    }
+
+    if (auto process = tryTakePrewarmedProcess(websiteDataStore)) {
+        RELEASE_LOG(ProcessSwapping, "Using prewarmed process %i", process->processIdentifier());
+        if (!registrableDomain.isEmpty())
+            tryPrewarmWithDomainInformation(*process, registrableDomain);
+        return *process;
+    }
+
     if (!usesSingleWebProcess())
         return createNewWebProcess(websiteDataStore);
 
@@ -1191,11 +1215,19 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
     if (pageConfiguration->relatedPage()) {
         // Sharing processes, e.g. when creating the page via window.open().
         process = &pageConfiguration->relatedPage()->process();
+    } else if (WebKit::isInspectorProcessPool(*this)) {
+        // Do not delay process launch for inspector pages as inspector pages do not know how to transition from a terminated process.
+        process = &processForRegistrableDomain(pageConfiguration->websiteDataStore()->websiteDataStore(), nullptr, { });
     } else {
-        process = tryTakePrewarmedProcess(pageConfiguration->websiteDataStore()->websiteDataStore());
-        if (!process)
-            process = &createNewWebProcessRespectingProcessCountLimit(pageConfiguration->websiteDataStore()->websiteDataStore());
+        // In the common case, we delay process launch until something is actually loaded in the page.
+        if (!m_dummyProcessProxy) {
+            auto dummyProcessProxy = WebProcessProxy::create(*this, WebsiteDataStore::createNonPersistent().get(), WebProcessProxy::IsPrewarmed::No, WebProcessProxy::ShouldLaunchProcess::No);
+            m_dummyProcessProxy = dummyProcessProxy.ptr();
+            m_processes.append(WTFMove(dummyProcessProxy));
+        }
+        process = m_dummyProcessProxy;
     }
+    ASSERT(process);
 
     auto page = process->createWebPage(pageClient, WTFMove(pageConfiguration));
 
@@ -1260,13 +1292,15 @@ void WebProcessPool::pageBeginUsingWebsiteDataStore(uint64_t pageID, WebsiteData
     auto sessionID = dataStore.sessionID();
     if (sessionID.isEphemeral()) {
         ASSERT(dataStore.parameters().networkSessionParameters.sessionID == sessionID);
-        if (m_networkProcess)
+        if (m_networkProcess) {
             m_networkProcess->addSession(makeRef(dataStore));
-        dataStore.clearPendingCookies();
+            dataStore.clearPendingCookies();
+        }
     } else if (sessionID != PAL::SessionID::defaultSessionID()) {
-        if (m_networkProcess)
+        if (m_networkProcess) {
             m_networkProcess->addSession(makeRef(dataStore));
-        dataStore.clearPendingCookies();
+            dataStore.clearPendingCookies();
+        }
     }
 }
 
@@ -1298,9 +1332,9 @@ bool WebProcessPool::hasPagesUsingWebsiteDataStore(WebsiteDataStore& dataStore) 
     return m_sessionToPageIDsMap.contains(dataStore.sessionID());
 }
 
-DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const ResourceRequest& request, const String& suggestedFilename)
+DownloadProxy& WebProcessPool::download(WebPageProxy* initiatingPage, const ResourceRequest& request, const String& suggestedFilename)
 {
-    auto* downloadProxy = createDownloadProxy(request, initiatingPage);
+    auto& downloadProxy = createDownloadProxy(request, initiatingPage);
     PAL::SessionID sessionID = initiatingPage ? initiatingPage->sessionID() : PAL::SessionID::defaultSessionID();
 
     if (initiatingPage)
@@ -1313,7 +1347,7 @@ DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const Reso
         if (initiatingPage) {
             URL initiatingPageURL = URL { URL { }, initiatingPage->pageLoadState().url() };
             updatedRequest.setFirstPartyForCookies(initiatingPageURL);
-            updatedRequest.setIsSameSite(registrableDomainsAreEqual(initiatingPageURL, request.url()));
+            updatedRequest.setIsSameSite(areRegistrableDomainsEqual(initiatingPageURL, request.url()));
             if (!updatedRequest.hasHTTPHeaderField(HTTPHeaderName::UserAgent))
                 updatedRequest.setHTTPUserAgent(initiatingPage->userAgent());
         } else {
@@ -1323,16 +1357,16 @@ DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const Reso
                 updatedRequest.setHTTPUserAgent(WebPageProxy::standardUserAgent());
         }
         updatedRequest.setIsTopSite(false);
-        networkProcess()->send(Messages::NetworkProcess::DownloadRequest(sessionID, downloadProxy->downloadID(), updatedRequest, suggestedFilename), 0);
+        networkProcess()->send(Messages::NetworkProcess::DownloadRequest(sessionID, downloadProxy.downloadID(), updatedRequest, suggestedFilename), 0);
         return downloadProxy;
     }
 
     return downloadProxy;
 }
 
-DownloadProxy* WebProcessPool::resumeDownload(WebPageProxy* initiatingPage, const API::Data* resumeData, const String& path)
+DownloadProxy& WebProcessPool::resumeDownload(WebPageProxy* initiatingPage, const API::Data* resumeData, const String& path)
 {
-    auto* downloadProxy = createDownloadProxy(ResourceRequest(), initiatingPage);
+    auto& downloadProxy = createDownloadProxy(ResourceRequest(), initiatingPage);
     PAL::SessionID sessionID = initiatingPage ? initiatingPage->sessionID() : PAL::SessionID::defaultSessionID();
 
     SandboxExtension::Handle sandboxExtensionHandle;
@@ -1340,7 +1374,7 @@ DownloadProxy* WebProcessPool::resumeDownload(WebPageProxy* initiatingPage, cons
         SandboxExtension::createHandle(path, SandboxExtension::Type::ReadWrite, sandboxExtensionHandle);
 
     if (networkProcess()) {
-        networkProcess()->send(Messages::NetworkProcess::ResumeDownload(sessionID, downloadProxy->downloadID(), resumeData->dataReference(), path, sandboxExtensionHandle), 0);
+        networkProcess()->send(Messages::NetworkProcess::ResumeDownload(sessionID, downloadProxy.downloadID(), resumeData->dataReference(), path, sandboxExtensionHandle), 0);
         return downloadProxy;
     }
 
@@ -1591,11 +1625,16 @@ void WebProcessPool::setDefaultRequestTimeoutInterval(double timeoutInterval)
     sendToAllProcesses(Messages::WebProcess::SetDefaultRequestTimeoutInterval(timeoutInterval));
 }
 
-DownloadProxy* WebProcessPool::createDownloadProxy(const ResourceRequest& request, WebPageProxy* originatingPage)
+DownloadProxy& WebProcessPool::createDownloadProxy(const ResourceRequest& request, WebPageProxy* originatingPage)
 {
-    auto downloadProxy = ensureNetworkProcess().createDownloadProxy(request);
-    downloadProxy->setOriginatingPage(originatingPage);
+    auto& downloadProxy = ensureNetworkProcess().createDownloadProxy(request);
+    downloadProxy.setOriginatingPage(originatingPage);
     return downloadProxy;
+}
+
+void WebProcessPool::synthesizeAppIsBackground(bool background)
+{
+    ensureNetworkProcess().synthesizeAppIsBackground(background);
 }
 
 void WebProcessPool::addMessageReceiver(IPC::StringReference messageReceiverName, IPC::MessageReceiver& messageReceiver)
@@ -2071,9 +2110,9 @@ void WebProcessPool::updateProcessAssertions()
         if (!m_serviceWorkerProcesses.isEmpty() && m_foregroundWebProcessCounter.value()) {
             // FIXME: We can do better than this once we have process per origin.
             for (auto* serviceWorkerProcess : m_serviceWorkerProcesses.values()) {
-                auto& securityOrigin = serviceWorkerProcess->securityOrigin();
-                if (!m_foregroundTokensForServiceWorkerProcesses.contains(securityOrigin))
-                    m_foregroundTokensForServiceWorkerProcesses.add(securityOrigin, serviceWorkerProcess->throttler().foregroundActivityToken());
+                auto& registrableDomain = serviceWorkerProcess->registrableDomain();
+                if (!m_foregroundTokensForServiceWorkerProcesses.contains(registrableDomain))
+                    m_foregroundTokensForServiceWorkerProcesses.add(registrableDomain, serviceWorkerProcess->throttler().foregroundActivityToken());
             }
             m_backgroundTokensForServiceWorkerProcesses.clear();
             return;
@@ -2081,9 +2120,9 @@ void WebProcessPool::updateProcessAssertions()
         if (!m_serviceWorkerProcesses.isEmpty() && m_backgroundWebProcessCounter.value()) {
             // FIXME: We can do better than this once we have process per origin.
             for (auto* serviceWorkerProcess : m_serviceWorkerProcesses.values()) {
-                auto& securityOrigin = serviceWorkerProcess->securityOrigin();
-                if (!m_backgroundTokensForServiceWorkerProcesses.contains(securityOrigin))
-                    m_backgroundTokensForServiceWorkerProcesses.add(securityOrigin, serviceWorkerProcess->throttler().backgroundActivityToken());
+                auto& registrableDomain = serviceWorkerProcess->registrableDomain();
+                if (!m_backgroundTokensForServiceWorkerProcesses.contains(registrableDomain))
+                    m_backgroundTokensForServiceWorkerProcesses.add(registrableDomain, serviceWorkerProcess->throttler().backgroundActivityToken());
             }
             m_foregroundTokensForServiceWorkerProcesses.clear();
             return;
@@ -2212,26 +2251,10 @@ void WebProcessPool::processForNavigation(WebPageProxy& page, const API::Navigat
 void WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API::Navigation& navigation, Ref<WebProcessProxy>&& sourceProcess, const URL& pageSourceURL, ProcessSwapRequestedByClient processSwapRequestedByClient, Ref<WebsiteDataStore>&& dataStore, CompletionHandler<void(Ref<WebProcessProxy>&&, SuspendedPageProxy*, const String&)>&& completionHandler)
 {
     auto& targetURL = navigation.currentRequest().url();
-    auto registrableDomain = WebCore::RegistrableDomain { targetURL };
+    auto targetRegistrableDomain = WebCore::RegistrableDomain { targetURL };
 
-    auto createNewProcess = [this, protectedThis = makeRef(*this), page = makeRef(page), targetURL, registrableDomain, dataStore = dataStore.copyRef()] () -> Ref<WebProcessProxy> {
-        if (auto process = webProcessCache().takeProcess(registrableDomain, dataStore))
-            return process.releaseNonNull();
-
-        // Check if we have a suspended page for the given registrable domain and use its process if we do, for performance reasons.
-        if (auto process = findReusableSuspendedPageProcess(registrableDomain, page, dataStore)) {
-            RELEASE_LOG(ProcessSwapping, "Using WebProcess %i from a SuspendedPage", process->processIdentifier());
-            return process.releaseNonNull();
-        }
-
-        if (auto process = tryTakePrewarmedProcess(dataStore)) {
-            RELEASE_LOG(ProcessSwapping, "Using prewarmed process %i", process->processIdentifier());
-            tryPrewarmWithDomainInformation(*process, targetURL);
-            return process.releaseNonNull();
-        }
-
-        RELEASE_LOG(ProcessSwapping, "Launching a new process");
-        return createNewWebProcess(dataStore);
+    auto createNewProcess = [this, protectedThis = makeRef(*this), page = makeRef(page), targetRegistrableDomain, dataStore = dataStore.copyRef()] () -> Ref<WebProcessProxy> {
+        return processForRegistrableDomain(dataStore, page.ptr(), targetRegistrableDomain);
     };
 
     if (usesSingleWebProcess())
@@ -2247,7 +2270,7 @@ void WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API:
         return completionHandler(WTFMove(sourceProcess), nullptr, "An automation session is active"_s);
 
     if (!sourceProcess->hasCommittedAnyProvisionalLoads()) {
-        tryPrewarmWithDomainInformation(sourceProcess, targetURL);
+        tryPrewarmWithDomainInformation(sourceProcess, targetRegistrableDomain);
         return completionHandler(WTFMove(sourceProcess), nullptr, "Process has not yet committed any provisional loads"_s);
     }
 
@@ -2300,15 +2323,15 @@ void WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API:
         RELEASE_LOG(ProcessSwapping, "Using related page %p's URL as source URL for process swap decision", page.configuration().relatedPage());
     }
 
-    if (!sourceURL.isValid() || !targetURL.isValid() || sourceURL.isEmpty() || sourceURL.protocolIsAbout() || registrableDomainsAreEqual(sourceURL, targetURL))
+    if (!sourceURL.isValid() || !targetURL.isValid() || sourceURL.isEmpty() || sourceURL.protocolIsAbout() || targetRegistrableDomain.matches(sourceURL))
         return completionHandler(WTFMove(sourceProcess), nullptr, "Navigation is same-site"_s);
 
     String reason = "Navigation is cross-site"_s;
     
     if (m_configuration->alwaysKeepAndReuseSwappedProcesses()) {
-        LOG(ProcessSwapping, "(ProcessSwapping) Considering re-use of a previously cached process for domain %s", registrableDomain.string().utf8().data());
+        LOG(ProcessSwapping, "(ProcessSwapping) Considering re-use of a previously cached process for domain %s", targetRegistrableDomain.string().utf8().data());
 
-        if (auto* process = m_swappedProcessesPerRegistrableDomain.get(registrableDomain)) {
+        if (auto* process = m_swappedProcessesPerRegistrableDomain.get(targetRegistrableDomain)) {
             if (&process->websiteDataStore() == dataStore.ptr()) {
                 LOG(ProcessSwapping, "(ProcessSwapping) Reusing a previously cached process with pid %i to continue navigation to URL %s", process->processIdentifier(), targetURL.string().utf8().data());
 
@@ -2342,7 +2365,7 @@ RefPtr<WebProcessProxy> WebProcessPool::findReusableSuspendedPageProcess(const W
         m_suspendedPages.remove(it);
 
 
-    return WTFMove(process);
+    return process;
 }
 
 void WebProcessPool::addSuspendedPage(std::unique_ptr<SuspendedPageProxy>&& suspendedPage)
@@ -2463,9 +2486,9 @@ void WebProcessPool::didCollectPrewarmInformation(const WebCore::RegistrableDoma
     *value = prewarmInformation;
 }
 
-void WebProcessPool::tryPrewarmWithDomainInformation(WebProcessProxy& process, const URL& url)
+void WebProcessPool::tryPrewarmWithDomainInformation(WebProcessProxy& process, const RegistrableDomain& registrableDomain)
 {
-    auto* prewarmInformation = m_prewarmInformationPerRegistrableDomain.get(RegistrableDomain { url });
+    auto* prewarmInformation = m_prewarmInformationPerRegistrableDomain.get(registrableDomain);
     if (!prewarmInformation)
         return;
     process.send(Messages::WebProcess::PrewarmWithDomainInformation(*prewarmInformation), 0);
@@ -2509,6 +2532,49 @@ void WebProcessPool::committedCrossSiteLoadWithLinkDecoration(PAL::SessionID ses
     UNUSED_PARAM(toDomain);
     UNUSED_PARAM(pageID);
 #endif
+}
+
+void WebProcessPool::setWebProcessHasUploads(ProcessIdentifier processID)
+{
+    auto* process = WebProcessProxy::processForIdentifier(processID);
+    ASSERT(process);
+
+    RELEASE_LOG(ProcessSuspension, "Web process pid %u now has uploads in progress", (unsigned)process->processIdentifier());
+
+    if (m_processesWithUploads.isEmpty()) {
+        RELEASE_LOG(ProcessSuspension, "The number of uploads in progress is now one. Taking Networking and UI process assertions.");
+
+        ASSERT(m_networkProcess);
+        m_networkProcess->takeUploadAssertion();
+        
+        ASSERT(!m_uiProcessUploadAssertion);
+        m_uiProcessUploadAssertion = std::make_unique<ProcessAssertion>(getCurrentProcessID(), "WebKit uploads"_s, AssertionState::UnboundedNetworking);
+    }
+    
+    auto result = m_processesWithUploads.add(processID, nullptr);
+    ASSERT(result.isNewEntry);
+    result.iterator->value = std::make_unique<ProcessAssertion>(process->processIdentifier(), "WebKit uploads"_s, AssertionState::UnboundedNetworking);
+}
+
+void WebProcessPool::clearWebProcessHasUploads(ProcessIdentifier processID)
+{
+    auto result = m_processesWithUploads.take(processID);
+    ASSERT_UNUSED(result, result);
+
+    auto* process = WebProcessProxy::processForIdentifier(processID);
+    ASSERT(process);
+    RELEASE_LOG(ProcessSuspension, "Web process pid %u no longer has uploads in progress", (unsigned)process->processIdentifier());
+
+    if (m_processesWithUploads.isEmpty()) {
+        RELEASE_LOG(ProcessSuspension, "The number of uploads in progress is now zero. Releasing Networking and UI process assertions.");
+
+        if (m_networkProcess)
+            m_networkProcess->clearUploadAssertion();
+        
+        ASSERT(m_uiProcessUploadAssertion);
+        m_uiProcessUploadAssertion = nullptr;
+    }
+    
 }
 
 } // namespace WebKit

@@ -39,7 +39,6 @@ class CompositeAnimation;
 class Element;
 class FloatRect;
 class LayoutRect;
-class RenderBoxModelObject;
 class RenderElement;
 class RenderStyle;
 class TimingFunction;
@@ -62,7 +61,6 @@ public:
     Element* element() const { return m_element.get(); }
     const RenderStyle& currentStyle() const override;
     RenderElement* renderer() const override;
-    RenderBoxModelObject* compositedRenderer() const;
     void clear();
 
     double duration() const;

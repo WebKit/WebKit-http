@@ -35,8 +35,6 @@ OBJC_CLASS CALayer;
 
 namespace WebCore {
 
-class StickyPositionViewportConstraints;
-
 class ScrollingTreeStickyNode : public ScrollingTreeNode {
 public:
     WEBCORE_EXPORT static Ref<ScrollingTreeStickyNode> create(ScrollingTree&, ScrollingNodeID);

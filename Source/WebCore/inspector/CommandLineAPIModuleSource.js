@@ -47,6 +47,7 @@ function bind(func, thisObject, ...outerArgs)
 function CommandLineAPI(commandLineAPIImpl, callFrame)
 {
     this.$_ = injectedScript._lastResult;
+    this.$event = injectedScript._eventValue;
     this.$exception = injectedScript._exceptionValue;
 
     // $0
@@ -83,6 +84,7 @@ CommandLineAPI.methods = [
     "profile",
     "profileEnd",
     "queryObjects",
+    "screenshot",
     "table",
     "unmonitorEvents",
     "values",
@@ -200,6 +202,11 @@ CommandLineAPIImpl.prototype = {
         return inspectedWindow.console.table.apply(inspectedWindow.console, arguments)
     },
 
+    screenshot: function()
+    {
+        return inspectedWindow.console.screenshot.apply(inspectedWindow.console, arguments)
+    },
+
     /**
      * @param {Object} object
      * @param {Array.<string>|string=} types
@@ -272,12 +279,9 @@ CommandLineAPIImpl.prototype = {
         CommandLineAPIHost.clearConsoleMessages();
     },
 
-    /**
-     * @param {Node} node
-     */
-    getEventListeners: function(node)
+    getEventListeners: function(target)
     {
-        return CommandLineAPIHost.getEventListeners(node);
+        return CommandLineAPIHost.getEventListeners(target);
     },
 
     _inspectedObject: function()

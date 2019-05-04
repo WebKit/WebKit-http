@@ -1,6 +1,6 @@
 async function getBasicDevice() {
     const adapter = await gpu.requestAdapter({ powerPreference: "low-power" });
-    const device = adapter.createDevice();
+    const device = await adapter.requestDevice();
     return device;
 }
 
@@ -66,16 +66,16 @@ function createBasicPipeline(shaderModule, device, pipelineLayout, inputStateDes
     return device.createRenderPipeline(pipelineDescriptor);
 }
 
-function beginBasicRenderPass(swapChain, commandBuffer) {
+function beginBasicRenderPass(swapChain, commandEncoder) {
     const basicAttachment = {
-        attachment: swapChain.getCurrentTexture().createDefaultTextureView(),
+        attachment: swapChain.getCurrentTexture().createDefaultView(),
         loadOp: "clear",
         storeOp: "store",
         clearColor: { r: 1.0, g: 0, b: 0, a: 1.0 }
     }
 
     // FIXME: Flesh out the rest of WebGPURenderPassDescriptor. 
-    return commandBuffer.beginRenderPass({ colorAttachments : [basicAttachment] });
+    return commandEncoder.beginRenderPass({ colorAttachments : [basicAttachment] });
 }
 
 function encodeBasicCommands(renderPassEncoder, renderPipeline, vertexBuffer) {
@@ -83,5 +83,5 @@ function encodeBasicCommands(renderPassEncoder, renderPipeline, vertexBuffer) {
         renderPassEncoder.setVertexBuffers(0, [vertexBuffer], [0]);
     renderPassEncoder.setPipeline(renderPipeline);
     renderPassEncoder.draw(4, 1, 0, 0);
-    return renderPassEncoder.endPass();
+    renderPassEncoder.endPass();
 }

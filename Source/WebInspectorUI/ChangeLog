@@ -1,3 +1,715 @@
+2019-03-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: CPU Usage Timeline - the right edge of each column should align with a CPU measurement
+        https://bugs.webkit.org/show_bug.cgi?id=195789
+        <rdar://problem/48915271>
+
+        Reviewed by Joseph Pecoraro.
+
+        Right now, each column is rendered such that the middle of the column is aligned with the
+        time of the CPU measurement. This could potentially be misleading, as the width/position of
+        the bar implies that there was a period of time after the actual time of the CPU measurement
+        that should be "attributed" to that same CPU measurement.
+
+           1      2      3
+               _______
+               [  *  ]
+               [  *  ]_______
+               [  *  ][  *  ]
+        _______[  *  ][  *  ]
+        [  *  ][  *  ][  *  ]
+        [__*__][__*__][__*__]
+         A   B  C   D  E   F
+
+        In this example, one might "attribute" any work done at time B to record 1, when in reality,
+        it should be "attributed" to record 2, since the CPU measurement had already been taken by
+        the time B was captured, meaning that the work for B hadn't yet been done and could
+        therefore not have affected the CPU measurement for record 1.
+
+        We should be rendering the columns such that the CPU measurement aligns with the trailing
+        edge of the column, so that all of the work that could be "attributed" to a given CPU
+        measurement comes before it.
+
+          1      2      3
+            _______       ___
+            [    *]       [
+            [    *]_______[
+            [    *][    *][
+        ____[    *][    *][
+          *][    *][    *][
+        __*][____*][____*][__
+         A   B  C   D  E   F
+
+                NOTE: this "rendering" isn't exactly accurate, as the `*` should overlap the `]`.
+
+        Legend:
+         - `[     ]` represents a column for a CPU measurement
+         - `*` represents the time when the measurement actually takes place
+
+        * UserInterface/Views/CPUTimelineOverviewGraph.js:
+        (WI.CPUTimelineOverviewGraph.prototype.layout):
+        (WI.CPUTimelineOverviewGraph.prototype._handleChartClick):
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview.prototype._recordSelected):
+
+2019-03-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Provide $event in the console when paused on an event listener
+        https://bugs.webkit.org/show_bug.cgi?id=188672
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WI.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.receivedPropertyNames):
+
+2019-03-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: "Capture Screenshot" should only be shown if the node is attached
+        https://bugs.webkit.org/show_bug.cgi?id=195793
+        <rdar://problem/48916594>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode.prototype.get attached): Added.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForDOMNode):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype._populateTagContextMenu):
+
+2019-03-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: HAR Extension for `serverIPAddress` port number
+        https://bugs.webkit.org/show_bug.cgi?id=195695
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Controllers/HARBuilder.js:
+        (WI.HARBuilder.entry):
+        (WI.HARBuilder.port):
+        * UserInterface/Models/LocalResource.js:
+        (WI.LocalResource.fromHAREntry):
+
+2019-03-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Changes: style attribute changes aren't being tracked
+        https://bugs.webkit.org/show_bug.cgi?id=193859
+        <rdar://problem/47568977>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/CSSManager.js:
+        (WI.CSSManager):
+        (WI.CSSManager.prototype.get modifiedStyles):
+        (WI.CSSManager.prototype.addModifiedStyle):
+        (WI.CSSManager.prototype._mainResourceDidChange):
+        (WI.CSSManager.prototype.get modifiedCSSRules): Deleted.
+        (WI.CSSManager.prototype.addModifiedCSSRule): Deleted.
+        (WI.CSSManager.prototype.removeModifiedCSSRule): Deleted.
+        * UserInterface/Models/CSSRule.js:
+        (WI.CSSRule.prototype.get stringId): Deleted.
+        (WI.CSSRule.prototype.markModified): Deleted.
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration.prototype.get stringId):
+        (WI.CSSStyleDeclaration.prototype.markModified):
+        Inline styles weren't tracked because they didn't have owner rules.
+        Track style declarations instead of CSS rules.
+
+        * UserInterface/Views/ChangesDetailsSidebarPanel.css:
+        (.sidebar > .panel.changes-panel .css-rule):
+        (.sidebar > .panel.changes-panel .css-rule + .css-rule):
+        (.changes-panel .selector.style-attribute):
+        (.changes-panel .selector:not(.style-attribute)):
+        (.changes-panel .css-property-line > .property):
+        (.changes-panel .css-property-line.unchanged): Deleted.
+        Drive-by: use text-color-secondary for unchanged properties instead of altering opacity.
+
+        * UserInterface/Views/ChangesDetailsSidebarPanel.js:
+        (WI.ChangesDetailsSidebarPanel.prototype.layout):
+        (WI.ChangesDetailsSidebarPanel.prototype._createRuleElement):
+        For an inline style declaration, instead of showing a CSS source file location show an appropriate selector for its DOM node.
+
+2019-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: HAR Extension for Resource Priority
+        https://bugs.webkit.org/show_bug.cgi?id=195693
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/HARBuilder.js:
+        (WI.HARBuilder.entry):
+        (WI.HARBuilder.priority):
+        (WI.HARBuilder.networkPriorityFromHARPriority):
+        Include priority custom extension.
+
+        * UserInterface/Models/LocalResource.js:
+        (WI.LocalResource.fromHAREntry):
+        Import priority.
+
+2019-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Give long thread names a tooltip if they could be ellipsized
+        https://bugs.webkit.org/show_bug.cgi?id=195314
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CPUUsageView.js:
+        (WI.CPUUsageView):
+
+2019-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Reduce the intensity of the orange overlay color in dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=195772
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/Variables.css:
+        (@media (prefers-color-scheme: dark)):
+        (:root):
+
+2019-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timelines - Import / Export Timeline Recordings
+        https://bugs.webkit.org/show_bug.cgi?id=195709
+        <rdar://problem/23188921>
+
+        Reviewed by Devin Rousso.
+
+        Timeline exporting saves TimelineRecording and TimelineOverview state.
+        The TimelineRecording includes all kinds of model objects, such as
+        records, markers, memory pressure events, etc. It also includes raw
+        protocol data, such as script profiler samples. TimelineOverview
+        includes some of the view state to restore, such as the selected
+        time range, zoom level, and selected timeline.
+
+        Timeline importing constructs a new TimelineRecording by replaying
+        the records, markers, and other events, as well as re-initializing
+        more state. To finally display the imported recording, the content
+        view will immediately initialize start/current/end times and the
+        overview will restore the view state.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New strings.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.synthesizeImportError):
+        (WI.TimelineManager.prototype.importRecording):
+        Import API.
+
+        (WI.TimelineManager.prototype.scriptProfilerTrackingCompleted):
+        Initialize the samples on the recording via a different path
+        so that the data can be saved for exporting.
+
+        * UserInterface/Models/TimelineRecording.js:
+        (WI.TimelineRecording):
+        (WI.TimelineRecording.import):
+        (WI.TimelineRecording.prototype.exportData):
+        (WI.TimelineRecording.prototype.get capturing):
+        (WI.TimelineRecording.prototype.get imported):
+        (WI.TimelineRecording.prototype.unloaded):
+        (WI.TimelineRecording.prototype.reset):
+        (WI.TimelineRecording.prototype.addEventMarker):
+        (WI.TimelineRecording.prototype.addRecord):
+        (WI.TimelineRecording.prototype.addMemoryPressureEvent):
+        (WI.TimelineRecording.prototype.initializeCallingContextTrees):
+        (WI.TimelineRecording.prototype.canExport):
+        Save data at the TimelineRecording level that can be used for export.
+        We only allow exporting a TimelineRecording that has started/stopped
+        at least once and is not currently capturing.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        (WI.TimelineRecordingContentView.prototype.get navigationItems):
+        (WI.TimelineRecordingContentView.prototype.get supportsSave):
+        (WI.TimelineRecordingContentView.prototype.get saveData):
+        (WI.TimelineRecordingContentView.prototype.shown):
+        (WI.TimelineRecordingContentView.prototype._capturingStarted):
+        (WI.TimelineRecordingContentView.prototype._capturingStopped):
+        (WI.TimelineRecordingContentView.prototype._initializeImportedRecording):
+        (WI.TimelineRecordingContentView.prototype._exportTimelineRecording):
+        (WI.TimelineRecordingContentView.prototype._importButtonNavigationItemClicked):
+        (WI.TimelineRecordingContentView.prototype._recordingReset):
+        Add Import and Export buttons in the Timeline navigation bar.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview):
+        (WI.TimelineOverview.prototype.exportData):
+        (WI.TimelineOverview.prototype._instrumentAdded):
+        (WI.TimelineOverview.prototype._recordingImported):
+        When importing a recording update the TimelineOverview state
+        soon afterwards.
+
+        * UserInterface/Models/CPUTimelineRecord.js:
+        (WI.CPUTimelineRecord.fromJSON):
+        (WI.CPUTimelineRecord.prototype.toJSON):
+        * UserInterface/Models/GarbageCollection.js:
+        (WI.GarbageCollection.fromJSON):
+        (WI.GarbageCollection.prototype.toJSON):
+        * UserInterface/Models/Geometry.js:
+        (WI.Quad.fromJSON):
+        (WI.Quad.prototype.toJSON):
+        * UserInterface/Models/HeapAllocationsTimelineRecord.js:
+        (WI.HeapAllocationsTimelineRecord.fromJSON):
+        (WI.HeapAllocationsTimelineRecord.prototype.toJSON):
+        * UserInterface/Models/LayoutTimelineRecord.js:
+        (WI.LayoutTimelineRecord.fromJSON):
+        (WI.LayoutTimelineRecord.prototype.toJSON):
+        * UserInterface/Models/MediaTimelineRecord.js:
+        (WI.MediaTimelineRecord.fromJSON):
+        (WI.MediaTimelineRecord.prototype.toJSON):
+        * UserInterface/Models/MemoryPressureEvent.js:
+        (WI.MemoryPressureEvent.fromJSON):
+        (WI.MemoryPressureEvent.prototype.toJSON):
+        * UserInterface/Models/MemoryTimelineRecord.js:
+        (WI.MemoryTimelineRecord):
+        (WI.MemoryTimelineRecord.fromJSON):
+        (WI.MemoryTimelineRecord.prototype.toJSON):
+        * UserInterface/Models/RenderingFrameTimelineRecord.js:
+        (WI.RenderingFrameTimelineRecord.fromJSON):
+        (WI.RenderingFrameTimelineRecord.prototype.toJSON):
+        * UserInterface/Models/ResourceTimelineRecord.js:
+        (WI.ResourceTimelineRecord.fromJSON):
+        (WI.ResourceTimelineRecord.prototype.toJSON):
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WI.ScriptTimelineRecord.fromJSON):
+        (WI.ScriptTimelineRecord.prototype.toJSON):
+        * UserInterface/Models/TimelineMarker.js:
+        (WI.TimelineMarker.fromJSON):
+        (WI.TimelineMarker.prototype.toJSON):
+        (WI.TimelineMarker.prototype.get type):
+        (WI.TimelineMarker.prototype.get details):
+        (WI.TimelineMarker.prototype.set time):
+        (WI.TimelineMarker):
+        * UserInterface/Models/TimelineRecord.js:
+        (WI.TimelineRecord.fromJSON):
+        (WI.TimelineRecord.prototype.toJSON):
+        Import / Export toJSON / fromJSON implementations.
+        
+        * UserInterface/Views/CPUTimelineOverviewGraph.js:
+        (WI.CPUTimelineOverviewGraph):
+        (WI.CPUTimelineOverviewGraph.prototype._cpuTimelineRecordAdded):
+        (WI.CPUTimelineOverviewGraph.prototype._processRecord):
+        * UserInterface/Views/LayoutTimelineOverviewGraph.js:
+        (WI.LayoutTimelineOverviewGraph):
+        (WI.LayoutTimelineOverviewGraph.prototype._layoutTimelineRecordAdded):
+        (WI.LayoutTimelineOverviewGraph.prototype._processRecord):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WI.LayoutTimelineView):
+        (WI.LayoutTimelineView.prototype._layoutTimelineRecordAdded):
+        (WI.LayoutTimelineView.prototype._processRecord):
+        * UserInterface/Views/MediaTimelineView.js:
+        (WI.MediaTimelineView):
+        (WI.MediaTimelineView.prototype._handleRecordAdded):
+        (WI.MediaTimelineView.prototype._processRecord):
+        * UserInterface/Views/MemoryTimelineOverviewGraph.js:
+        (WI.MemoryTimelineOverviewGraph):
+        (WI.MemoryTimelineOverviewGraph.prototype._memoryTimelineRecordAdded):
+        (WI.MemoryTimelineOverviewGraph.prototype._processRecord):
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WI.MemoryTimelineView):
+        (WI.MemoryTimelineView.prototype._memoryTimelineRecordAdded):
+        (WI.MemoryTimelineView.prototype._processRecord):
+        * UserInterface/Views/NetworkTimelineOverviewGraph.js:
+        (WI.NetworkTimelineOverviewGraph):
+        (WI.NetworkTimelineOverviewGraph.prototype.reset):
+        (WI.NetworkTimelineOverviewGraph.prototype._networkTimelineRecordAdded):
+        (WI.NetworkTimelineOverviewGraph.prototype._processRecord):
+        (WI.NetworkTimelineOverviewGraph.prototype._networkTimelineRecordAdded.compareByStartTime): Deleted.
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WI.NetworkTimelineView):
+        (WI.NetworkTimelineView.prototype._networkTimelineRecordAdded):
+        (WI.NetworkTimelineView.prototype._processRecord):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WI.RenderingFrameTimelineView):
+        (WI.RenderingFrameTimelineView.prototype._renderingFrameTimelineRecordAdded):
+        (WI.RenderingFrameTimelineView.prototype._processRecord):
+        * UserInterface/Views/ScriptDetailsTimelineView.js:
+        (WI.ScriptDetailsTimelineView):
+        (WI.ScriptDetailsTimelineView.prototype._scriptTimelineRecordAdded):
+        (WI.ScriptDetailsTimelineView.prototype._processRecord):
+        Add common _processRecord path to each timeline OverviewGraph and TimelineView.
+        By calling this in construction we populate graphs with TimelineRecords that
+        may have already existed. This is necessary for imports, but this also fixes
+        the case where you enable a timeline that had data and it didn't show data.
+
+        * UserInterface/Views/LayoutTimelineOverviewGraph.css:
+        (.timeline-overview-graph.layout-overview > .graph-row):
+        (.timeline-overview-graph.layout-overview > .graph-row > .timeline-record-bar):
+        (.timeline-overview-graph.layout-overview > .graph-row > .timeline-record-bar > .segment):
+        (.timeline-overview-graph.layout > .graph-row): Deleted.
+        (.timeline-overview-graph.layout > .graph-row > .timeline-record-bar): Deleted.
+        (.timeline-overview-graph.layout > .graph-row > .timeline-record-bar > .segment): Deleted.
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar.timeline-record-type-layout.paint > .segment,):
+        (.timeline-record-bar.timeline-record-type-layout.layout-timeline-record-paint > .segment,): Deleted.
+        We simplified some of the sub-record type enum strings. To do this we needed to change
+        "layout" to "layout-overview" to avoid a conflict.
+
+2019-03-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network - Toggle Between Live Activity and Imported HAR resource collections
+        https://bugs.webkit.org/show_bug.cgi?id=195734
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Images/NetworkHAR.svg: Added.
+        * UserInterface/Images/NetworkOverview.svg: Added.
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.content-view.tab.network > .content-browser > .navigation-bar .hierarchical-path .icon):
+        (.network-overview-icon > .icon):
+        (.network-har-icon > .icon):
+        (@media (prefers-color-scheme: dark)):
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.get navigationItems):
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype.tableIndexForRepresentedObject):
+        (WI.NetworkTableContentView.prototype.tableRepresentedObjectForIndex):
+        (WI.NetworkTableContentView.prototype.tableNumberOfRows):
+        (WI.NetworkTableContentView.prototype.tableCellContextMenuClicked):
+        (WI.NetworkTableContentView.prototype.tableSelectionDidChange):
+        (WI.NetworkTableContentView.prototype.tablePopulateCell):
+        (WI.NetworkTableContentView.prototype._addCollection):
+        (WI.NetworkTableContentView.prototype._setActiveCollection):
+        (WI.NetworkTableContentView.prototype._addCollectionPathComponent):
+        (WI.NetworkTableContentView.prototype._collectionsHierarchicalPathComponentWasSelected):
+        (WI.NetworkTableContentView.prototype._changeCollection):
+        (WI.NetworkTableContentView.prototype.handleClearShortcut):
+        (WI.NetworkTableContentView.prototype._updateWaterfallTimeRange):
+        (WI.NetworkTableContentView.prototype._updateWaterfallTimelineRuler):
+        (WI.NetworkTableContentView.prototype._canExportHAR):
+        (WI.NetworkTableContentView.prototype._processPendingEntries):
+        (WI.NetworkTableContentView.prototype._populateWithInitialResourcesIfNeeded):
+        (WI.NetworkTableContentView.prototype._rowIndexForRepresentedObject):
+        (WI.NetworkTableContentView.prototype._updateEntryForResource):
+        (WI.NetworkTableContentView.prototype._updateEmptyFilterResultsMessage):
+        (WI.NetworkTableContentView.prototype._mainResourceDidChange):
+        (WI.NetworkTableContentView.prototype._mainFrameDidChange):
+        (WI.NetworkTableContentView.prototype._resourceLoadingDidFinish):
+        (WI.NetworkTableContentView.prototype._resourceLoadingDidFail):
+        (WI.NetworkTableContentView.prototype._resourceTransferSizeDidChange):
+        (WI.NetworkTableContentView.prototype._handleResourceAdded):
+        (WI.NetworkTableContentView.prototype._runForMainCollection):
+        (WI.NetworkTableContentView.prototype._isShowingMainCollection):
+        (WI.NetworkTableContentView.prototype._insertResourceAndReloadTable):
+        (WI.NetworkTableContentView.prototype._handleNodeDidFireEvent):
+        (WI.NetworkTableContentView.prototype._handleNodeLowPowerChanged):
+        (WI.NetworkTableContentView.prototype._updateSort):
+        (WI.NetworkTableContentView.prototype._updateFilteredEntries):
+        (WI.NetworkTableContentView.prototype._urlFilterDidChange):
+        (WI.NetworkTableContentView.prototype._HARResources):
+        (WI.NetworkTableContentView.prototype._importHAR):
+        Introduce the concept of collections that can be swapped in/out
+        to re-render the Network Table with different contents.
+
+2019-03-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: provide a way to capture a screenshot of a node from within the page
+        https://bugs.webkit.org/show_bug.cgi?id=194279
+        <rdar://problem/10731573>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add `console.screenshot` functionality, which displays a screenshot of a given object (if
+        able) within Web Inspector's Console tab. From there, it can be viewed and saved.
+
+        Currently, `console.screenshot` will
+         - capture an image of a `Node` (if provided)
+         - capture an image of the viewport if nothing is provided
+
+        * UserInterface/Models/ConsoleMessage.js:
+        (WI.ConsoleMessage):
+        * UserInterface/Views/ConsoleCommandView.js:
+        (WI.ConsoleCommandView.prototype.render):
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WI.ConsoleMessageView.prototype.render):
+        (WI.ConsoleMessageView.prototype.toClipboardString):
+        (WI.ConsoleMessageView.prototype._appendMessageTextAndArguments):
+        (WI.ConsoleMessageView.prototype._appendSavedResultIndex):
+        (WI.ConsoleMessageView.prototype._appendStackTrace):
+        (WI.ConsoleMessageView.prototype._makeExpandable):
+        (WI.ConsoleMessageView.prototype._handleContextMenu): Added.
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-user-command.special-user-log > .console-message-body): Added.
+        (.console-message-body): Added.
+        (.console-message-body > span): Added.
+        (.console-message-body > span > :matches(.console-message-enclosed, .console-message-preview, .console-message-preview-divider)): Added.
+        (.console-message-body > .console-image): Added.
+        (.console-message-body > .show-grid): Added.
+        (.console-error-level .console-message-body): Added.
+        (.console-warning-level .console-message-body): Added.
+        (.console-log-level.console-image-container::before): Added.
+        (.console-user-command > .console-message-body): Added.
+        (.console-warning-level .console-message-body): Added.
+        (.console-error-level .console-message-body): Added.
+        (.console-user-command > .console-message-body): Added.
+        (.console-user-command.special-user-log > .console-message-text): Deleted.
+        (.console-message-text): Deleted.
+        (.console-message-text > span): Deleted.
+        (.console-message-text > span > :matches(.console-message-enclosed, .console-message-preview, .console-message-preview-divider)): Deleted.
+        (.console-error-level .console-message-text): Deleted.
+        (.console-warning-level .console-message-text): Deleted.
+        (.console-user-command > .console-message-text): Deleted.
+        (.console-warning-level .console-message-text): Deleted.
+        (.console-error-level .console-message-text): Deleted.
+        (.console-user-command > .console-message-text): Deleted.
+        * UserInterface/Views/LogContentView.css:
+        (.search-in-progress .console-item:not(.filtered-out-by-search).special-user-log .console-message-text .highlighted): Added.
+        (.search-in-progress .console-item:not(.filtered-out-by-search).special-user-log .console-message-body .highlighted): Deleted.
+        Renamed variables/classes to be more semantically correct when the content is an image.
+         - `_messageTextElement` to `_messageBodyElement` (JS)
+         - `.console-message-text` to `.console-message-body` (CSS)
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WI.JavaScriptLogViewController.prototype.renderPendingMessages):
+
+        * UserInterface/Views/Main.css:
+        (:matches(img, canvas).show-grid):
+        (@media (prefers-color-scheme: dark) :matches(img, canvas).show-grid):
+
+        * UserInterface/Base/FileUtilities.js:
+        (WI.FileUtilities.screenshotString): Added.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+
+        * UserInterface/Images/ConsoleImage.svg: Copied from UserInterface/Images/Canvas.svg.
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Jump to effective property button doesn't hide after overridden property become effective
+        https://bugs.webkit.org/show_bug.cgi?id=195770
+        <rdar://problem/48903634>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property .select-effective-property): Added.
+        (.spreadsheet-style-declaration-editor .property.overridden .select-effective-property): Deleted.
+        Hide `.select-effective-property` element for properties that aren't overridden.
+
+2019-03-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Canvas: the first processed action should be selected as soon as it's available if no previous selected action exists
+        https://bugs.webkit.org/show_bug.cgi?id=195732
+        <rdar://problem/48875214>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype._handleRecordingProcessedAction):
+        Rather than wait until the entire recording is ready, set the selected action as soon as the
+        first action is ready (assuming there isn't already a selected action).
+
+2019-03-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network - HAR Import
+        https://bugs.webkit.org/show_bug.cgi?id=195642
+        <rdar://problem/34820974>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js
+        * UserInterface/Test.html:
+        * UserInterface/Test.html:
+        New strings and resources.
+
+        * UserInterface/Controllers/HARBuilder.js:
+        (WI.HARBuilder.dateFromHARDate):
+        (WI.HARBuilder.protocolFromHARProtocol):
+        (WI.HARBuilder.responseSourceFromHARFetchType):
+        Reverse parsers from HAR to WI.Resource types.
+
+        * UserInterface/Models/LocalResource.js: Added.
+        (WI.LocalResource):
+        (WI.LocalResource.headersArrayToHeadersObject):
+        (WI.LocalResource.fromHAREntry):
+        (WI.LocalResource.prototype.hasContent):
+        (WI.LocalResource.prototype.setContent):
+        (WI.LocalResource.prototype.requestContentFromBackend):
+        A Resource subclass with data fully supplied in the frontend.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager):
+        (WI.NetworkManager.synthesizeImportError):
+        (WI.NetworkManager.prototype.localResourceForURL):
+        (WI.NetworkManager.prototype.processHAR):
+        Process a HAR and extract local resources.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype._handleResourceAdded):
+        (WI.NetworkTableContentView.prototype._importHAR):
+        Add an import button. When an import succeeds reset the
+        table and only show imported resources (ignoring page
+        loaded resources).
+
+2019-03-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Console: getEventListeners should work for any EventTarget
+        https://bugs.webkit.org/show_bug.cgi?id=195713
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2019-03-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Styles: `::-webkit-scrollbar*` rules aren't shown
+        https://bugs.webkit.org/show_bug.cgi?id=195123
+        <rdar://problem/48450148>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/CSSManager.js:
+        (WI.CSSManager.displayNameForPseudoId): Added.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.static uniqueOrderedStyles): Added.
+        (WI.DOMNodeStyles.prototype.get uniqueOrderedStyles):
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.layout):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype._handleSectionFilterApplied):
+        Rather than iterate over the `WI.DOMNode`'s list of pseudo-elements (which is only ::before
+        and ::after), we iterate over the `WI.DOMNodeStyle`'s list of pseudo-element rules. This is
+        an object where the key is a `CSS.PseudoId` and the value is an object containing all the
+        matched rules and ordered styles for that pseudo-type. We can preserve the current
+        functionality by using the ::before/::after `WI.DOMNode` when we encounter one of those
+        pseudo-ids.
+
+        An additional benefit of this change is that `::before`/`::after` styles will still appear
+        in the Rules panel even if they don't have a `content` property set (e.g. when the
+        `::before`/`::after` pseudo-element doesn't exist). This is because the styles are no longer
+        fetched from those pseudo-element nodes directly, but rather as a matched style for the
+        parent node. As such, editing a `content` property to become invalid/disablde in a
+        `::before`/`::after` rule won't make the entire rule disappeaer.
+
+2019-03-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: we should show artificial context menus on mousedown instead of click
+        https://bugs.webkit.org/show_bug.cgi?id=195494
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ContextMenu.js:
+        (WI.ContextMenu):
+        (WI.ContextMenu.prototype.show):
+        (WI.ContextMenu.prototype.addBeforeShowCallback): Added.
+        (WI.ContextMenu.prototype.handleEvent):
+        Provide a way to register a callback that will be called right as the "contextmenu" event is
+        handled, but before the context menu is actually shown. Since "mousedown" events are also
+        fired when/before a "contextmenu" event is fired, each of the below callers has to maintain
+        some state indicating "we are about to show a context menu, so ignore all "mousedown" events
+        until that time". Without this, the below callers wouldn't be able to tell when the context
+        menu is finally shown.
+
+        * UserInterface/Base/SearchUtilities.js:
+        (WI.SearchUtilities.createSettingsButton):
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView):
+        (WI.CanvasContentView.prototype.initialLayout):
+        (WI.CanvasContentView.prototype._handleCanvasElementButtonMouseDown): Added.
+        (WI.CanvasContentView.prototype._handleViewShaderButtonMouseDown): Added.
+        (WI.CanvasContentView.prototype._handleViewRecordingButtonMouseDown): Added.
+        (WI.CanvasContentView.prototype._canvasElementButtonClicked): Deleted.
+        (WI.CanvasContentView.prototype._handleViewShaderButtonClicked): Deleted.
+        (WI.CanvasContentView.prototype._handleViewRecordingButtonClicked): Deleted.
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+        (WI.DebuggerSidebarPanel.prototype._handleCreateBreakpointMouseDown): Added.
+        (WI.DebuggerSidebarPanel.prototype._handleCreateBreakpointClicked): Deleted.
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleCreateBreakpointMouseDown): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleCreateBreakpointClicked): Deleted.
+        * UserInterface/Views/TabBar.js:
+        (WI.TabBar.prototype._handleMouseDown):
+        * UserInterface/Views/LegacyTabBar.js:
+        (WI.LegacyTabBar.prototype._handleMouseDown):
+
+2019-03-13  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: pausing in an inline script on a page with a URL query creates an Extra Script
+        https://bugs.webkit.org/show_bug.cgi?id=195705
+        <rdar://problem/48853820>
+
+        Reviewed by Antoine Quint.
+
+        * UserInterface/Models/Script.js:
+        (WI.Script.prototype._resolveResource):
+        If the page's URL has a query parameter, the payload we receive for any inline <script>s
+        doesn't include the query parameter as part of its URL. As such, if there isn't an existing
+        resource with a URL that exactly matches the URL of the script and if the URL of the main
+        resource for the script's target starts with the URL of the script, we assume that the
+        script "belongs" to the target's main resource and associate the script with it as such.
+
+2019-03-13  Keith Rollin  <krollin@apple.com>
+
+        Add support for new StagedFrameworks layout
+        https://bugs.webkit.org/show_bug.cgi?id=195543
+
+        Reviewed by Alexey Proskuryakov.
+
+        When creating the WebKit layout for out-of-band Safari/WebKit updates,
+        use an optional path prefix when called for.
+
+        Opportunistic cleanup: remove unused
+        OTHER_LDFLAGS_VERSIONED_FRAMEWORK_PATH variable, which otherwise would
+        have needlessly been updated to also incorporate the new prefix.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig: Added.
+
+2019-03-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r240946): Web Inspector: Styles: removing selected property doesn't update overridden status
+        https://bugs.webkit.org/show_bug.cgi?id=195389
+        <rdar://problem/48658929>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype.changeStyleText):
+        Call DOMNodeStyles.prototype.refresh after the callback. No updates
+        to CSSStyleDeclaration happen until the callback is called.
+
+2019-03-13  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Protocol Logging: log messages with backtrace if inspector^2 is open
+        https://bugs.webkit.org/show_bug.cgi?id=195687
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/LoggingProtocolTracer.js:
+        (WI.LoggingProtocolTracer.prototype._processEntry):
+
+2019-03-13  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r242737): unnecessary semicolon added when populating WI.TreeOutline stylesheet
+        https://bugs.webkit.org/show_bug.cgi?id=195689
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline._generateStyleRulesIfNeeded):
+
+2019-03-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network - HAR Export duplicates blocked/send time if there was no dns/connect block
+        https://bugs.webkit.org/show_bug.cgi?id=195655
+        <rdar://problem/48831152>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/HARBuilder.js:
+        (WI.HARBuilder.timings):
+
 2019-03-12  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Sources: allow image collections to be filtered by type

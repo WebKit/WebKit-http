@@ -89,23 +89,23 @@ async function test() {
     const inputStateDescriptor = createInputStateDescriptor();
     const depthStateDescriptor = createBasicDepthStateDescriptor();
     const pipeline = createBasicPipeline(shaderModule, device, null, inputStateDescriptor, depthStateDescriptor);
-    const commandBuffer = device.createCommandBuffer();
+    const commandEncoder = device.createCommandEncoder();
 
     const basicAttachment = {
-        attachment: swapChain.getCurrentTexture().createDefaultTextureView(),
+        attachment: swapChain.getCurrentTexture().createDefaultView(),
         loadOp: "clear",
         storeOp: "store",
         clearColor: { r: 1.0, g: 0, b: 0, a: 1.0 }
     };
 
     const depthAttachment = {
-        attachment: createBasicDepthTexture(canvas, device).createDefaultTextureView(),
+        attachment: createBasicDepthTexture(canvas, device).createDefaultView(),
         depthLoadOp: "clear",
         depthStoreOp: "store",
         clearDepth: 1.0
     };
 
-    const encoder = commandBuffer.beginRenderPass({
+    const encoder = commandEncoder.beginRenderPass({
         colorAttachments: [basicAttachment],
         depthStencilAttachment: depthAttachment
     });
@@ -115,7 +115,7 @@ async function test() {
     encoder.draw(4, 2, 0, 0);
     encoder.endPass();
 
-    device.getQueue().submit([commandBuffer]);
+    device.getQueue().submit([commandEncoder.finish()]);
 
     if (window.testRunner)
         testRunner.notifyDone();

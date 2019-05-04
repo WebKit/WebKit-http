@@ -352,10 +352,11 @@ Modules/webgpu/WHLSL/WHLSLPrepare.cpp
 Modules/webgpu/WebGPU.cpp
 Modules/webgpu/WebGPUBindGroup.cpp
 Modules/webgpu/WebGPUBindGroupDescriptor.cpp
+Modules/webgpu/WebGPUCommandBuffer.cpp
+Modules/webgpu/WebGPUCommandEncoder.cpp
 Modules/webgpu/WebGPUAdapter.cpp
 Modules/webgpu/WebGPUBindGroupLayout.cpp
 Modules/webgpu/WebGPUBuffer.cpp
-Modules/webgpu/WebGPUCommandBuffer.cpp
 Modules/webgpu/WebGPUDevice.cpp
 Modules/webgpu/WebGPUQueue.cpp
 Modules/webgpu/WebGPUPipelineLayout.cpp
@@ -1275,6 +1276,7 @@ inspector/DOMEditor.cpp
 inspector/DOMPatchSupport.cpp
 inspector/InspectorAuditAccessibilityObject.cpp
 inspector/InspectorAuditDOMObject.cpp
+inspector/InspectorAuditResourcesObject.cpp
 inspector/InspectorCanvas.cpp
 inspector/InspectorClient.cpp
 inspector/InspectorController.cpp
@@ -1595,6 +1597,7 @@ page/scrolling/ScrollingStateFrameHostingNode.cpp
 page/scrolling/ScrollingStateFrameScrollingNode.cpp
 page/scrolling/ScrollingStateNode.cpp
 page/scrolling/ScrollingStateOverflowScrollingNode.cpp
+page/scrolling/ScrollingStatePositionedNode.cpp
 page/scrolling/ScrollingStateScrollingNode.cpp
 page/scrolling/ScrollingStateStickyNode.cpp
 page/scrolling/ScrollingStateTree.cpp
@@ -2267,11 +2270,8 @@ svg/SVGAnimateElementBase.cpp
 svg/SVGAnimateMotionElement.cpp
 svg/SVGAnimateTransformElement.cpp
 svg/SVGAnimatedAngle.cpp
-svg/SVGAnimatedBoolean.cpp
 svg/SVGAnimatedColor.cpp
 svg/SVGAnimatedEnumeration.cpp
-svg/SVGAnimatedInteger.cpp
-svg/SVGAnimatedIntegerOptionalInteger.cpp
 svg/SVGAnimatedLength.cpp
 svg/SVGAnimatedLengthList.cpp
 svg/SVGAnimatedNumber.cpp
@@ -2285,6 +2285,8 @@ svg/SVGAnimatedString.cpp
 svg/SVGAnimatedTransformList.cpp
 svg/SVGAnimatedTypeAnimator.cpp
 svg/SVGAnimationElement.cpp
+svg/SVGAttributeAnimationController.cpp
+svg/SVGAttributeAnimationControllerBase.cpp
 svg/SVGCircleElement.cpp
 svg/SVGClipPathElement.cpp
 svg/SVGComponentTransferFunctionElement.cpp
@@ -2342,6 +2344,7 @@ svg/SVGHKernElement.cpp
 svg/SVGImageElement.cpp
 svg/SVGImageLoader.cpp
 svg/SVGLangSpace.cpp
+svg/SVGLegacyAttributeAnimationController.cpp
 svg/SVGLengthContext.cpp
 svg/SVGLengthListValues.cpp
 svg/SVGLengthValue.cpp
@@ -2381,7 +2384,6 @@ svg/SVGSVGElement.cpp
 svg/SVGScriptElement.cpp
 svg/SVGSetElement.cpp
 svg/SVGStopElement.cpp
-svg/SVGStringListValues.cpp
 svg/SVGStyleElement.cpp
 svg/SVGSwitchElement.cpp
 svg/SVGSymbolElement.cpp
@@ -2422,7 +2424,9 @@ svg/graphics/filters/SVGFilterBuilder.cpp
 
 svg/properties/SVGAnimatedPathSegListPropertyTearOff.cpp
 svg/properties/SVGAnimatedProperty.cpp
+svg/properties/SVGAttributeAnimator.cpp
 svg/properties/SVGAttributeOwnerProxy.cpp
+svg/properties/SVGLegacyAnimatedProperty.cpp
 
 workers/AbstractWorker.cpp
 workers/DedicatedWorkerGlobalScope.cpp
@@ -2794,7 +2798,6 @@ JSGPUSamplerDescriptor.cpp
 JSGPUShaderStageBit.cpp
 JSGPUStoreOp.cpp
 JSGPUTextureDescriptor.cpp
-JSGPUTextureDimension.cpp
 JSGPUTextureFormat.cpp
 JSGPUTextureUsage.cpp
 JSGPUVertexAttributeDescriptor.cpp
@@ -2913,6 +2916,7 @@ JSImageSmoothingQuality.cpp
 JSInputEvent.cpp
 JSInspectorAuditAccessibilityObject.cpp
 JSInspectorAuditDOMObject.cpp
+JSInspectorAuditResourcesObject.cpp
 JSInspectorFrontendHost.cpp
 JSIntersectionObserver.cpp
 JSIntersectionObserverCallback.cpp
@@ -2926,6 +2930,8 @@ JSKeyframeEffectOptions.cpp
 JSLocation.cpp
 JSLongRange.cpp
 JSMediaCapabilities.cpp
+JSMediaCapabilitiesDecodingInfo.cpp
+JSMediaCapabilitiesEncodingInfo.cpp
 JSMediaCapabilitiesInfo.cpp
 JSMediaController.cpp
 JSMediaControlsHost.cpp
@@ -3336,6 +3342,7 @@ JSWebGPUBindGroupLayout.cpp
 JSWebGPUBuffer.cpp
 JSWebGPUBufferBinding.cpp
 JSWebGPUCommandBuffer.cpp
+JSWebGPUCommandEncoder.cpp
 JSWebGPUDevice.cpp
 JSWebGPUQueue.cpp
 JSWebGPUPipelineDescriptorBase.cpp

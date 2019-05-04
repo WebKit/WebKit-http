@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,6 +23,7 @@
 
 #include "QualifiedName.h"
 #include "SVGAttributeOwnerProxyImpl.h"
+#include "SVGPropertyOwnerRegistry.h"
 #include <wtf/HashSet.h>
 
 namespace WebCore {
@@ -47,15 +48,18 @@ public:
     using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGExternalResourcesRequired>;
     static auto& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
 
-    auto externalResourcesRequiredAnimated() { return m_externalResourcesRequired.animatedProperty(attributeOwnerProxy()); }
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGExternalResourcesRequired>;
 
-    bool externalResourcesRequired() const { return m_externalResourcesRequired.value(); }
-    void setExternalResourcesRequired(bool externalResourcesRequired) { m_externalResourcesRequired.setValue(externalResourcesRequired); }
+    bool externalResourcesRequired() const { return m_externalResourcesRequired->currentValue(); }
+    SVGAnimatedBoolean& externalResourcesRequiredAnimated() { return m_externalResourcesRequired; }
 
 protected:
     SVGExternalResourcesRequired(SVGElement* contextElement);
 
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
+    static bool isKnownAttribute(const QualifiedName& attributeName)
+    {
+        return AttributeOwnerProxy::isKnownAttribute(attributeName) || PropertyRegistry::isKnownAttribute(attributeName);
+    }
 
     virtual void setHaveFiredLoadEvent(bool) { }
     virtual bool isParserInserted() const { return false; }
@@ -67,11 +71,10 @@ protected:
     bool haveLoadedRequiredResources() const;
 
 private:
-    static void registerAttributes();
     AttributeOwnerProxy attributeOwnerProxy() { return { *this, m_contextElement }; }
     
     SVGElement& m_contextElement;
-    SVGAnimatedBooleanAttribute m_externalResourcesRequired;
+    Ref<SVGAnimatedBoolean> m_externalResourcesRequired;
 };
 
 } // namespace WebCore

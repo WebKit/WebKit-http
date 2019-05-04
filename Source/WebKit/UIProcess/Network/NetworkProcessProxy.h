@@ -66,7 +66,7 @@ struct NetworkProcessCreationParameters;
 class WebUserContentControllerProxy;
 struct WebsiteData;
 
-class NetworkProcessProxy final : public AuxiliaryProcessProxy, private ProcessThrottlerClient {
+class NetworkProcessProxy final : public AuxiliaryProcessProxy, private ProcessThrottlerClient, public CanMakeWeakPtr<NetworkProcessProxy> {
 public:
     using RegistrableDomain = WebCore::RegistrableDomain;
     using TopFrameDomain = WebCore::RegistrableDomain;
@@ -88,7 +88,7 @@ public:
 
     void getNetworkProcessConnection(WebProcessProxy&, Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&&);
 
-    DownloadProxy* createDownloadProxy(const WebCore::ResourceRequest&);
+    DownloadProxy& createDownloadProxy(const WebCore::ResourceRequest&);
 
     void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, CompletionHandler<void(WebsiteData)>&&);
     void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, WallTime modifiedSince, CompletionHandler<void()>&& completionHandler);
@@ -154,6 +154,7 @@ public:
     
     void sendProcessDidTransitionToForeground();
     void sendProcessDidTransitionToBackground();
+    void synthesizeAppIsBackground(bool background);
 
     void setIsHoldingLockedFiles(bool);
     void setIsIDBDatabaseHoldingLockedFiles(bool);
@@ -173,6 +174,13 @@ public:
 
     void addSession(Ref<WebsiteDataStore>&&);
     void removeSession(PAL::SessionID);
+    
+    void takeUploadAssertion();
+    void clearUploadAssertion();
+    
+#if ENABLE(INDEXED_DATABASE)
+    void createSymLinkForFileUpgrade(const String& indexedDatabaseDirectory);
+#endif
 
 private:
     // AuxiliaryProcessProxy
@@ -225,8 +233,8 @@ private:
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    void establishWorkerContextConnectionToNetworkProcess(WebCore::SecurityOriginData&&);
-    void establishWorkerContextConnectionToNetworkProcessForExplicitSession(WebCore::SecurityOriginData&&, PAL::SessionID);
+    void establishWorkerContextConnectionToNetworkProcess(WebCore::RegistrableDomain&&);
+    void establishWorkerContextConnectionToNetworkProcessForExplicitSession(WebCore::RegistrableDomain&&, PAL::SessionID);
 #endif
 
     void requestStorageSpace(PAL::SessionID, const WebCore::ClientOrigin&, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired, CompletionHandler<void(Optional<uint64_t> quota)>&&);
@@ -261,6 +269,8 @@ private:
 #endif
 
     HashMap<PAL::SessionID, RefPtr<WebsiteDataStore>> m_websiteDataStores;
+    
+    std::unique_ptr<ProcessAssertion> m_uploadAssertion;
 };
 
 } // namespace WebKit

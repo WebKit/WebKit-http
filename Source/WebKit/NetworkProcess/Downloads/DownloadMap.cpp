@@ -75,6 +75,11 @@ bool DownloadMap::remove(DownloadID downloadID)
     return result;
 }
 
+auto DownloadMap::values() -> DownloadMapType::ValuesIteratorRange
+{
+    return m_downloads.values();
+}
+
 } // namespace WebKit
 
 #endif // ENABLE(TAKE_UNBOUNDED_NETWORKING_ASSERTION)

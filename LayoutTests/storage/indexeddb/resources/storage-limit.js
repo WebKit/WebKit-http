@@ -3,11 +3,11 @@ if (this.importScripts) {
     importScripts('shared.js');
 }
 
-var quota = 1024 * 1024; // 1 MB
-description("This test makes sure that storage of indexedDB does not grow unboundedly.");
-
 if (window.testRunner)
-    testRunner.setIDBPerOriginQuota(quota);
+    testRunner.setAllowStorageQuotaIncrease(false);
+
+var quota = 400 * 1024; // default quota for testing.
+description("This test makes sure that storage of indexedDB does not grow unboundedly.");
 
 indexedDBTest(prepareDatabase, onOpenSuccess);
 
