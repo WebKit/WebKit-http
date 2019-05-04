@@ -375,6 +375,7 @@
     (iokit-property "cail_properties")
     (iokit-property "dpm")
 #endif
+    (iokit-property "IOGVAH264EncodeCapabilities") ;; <rdar://problem/49498040>
 )
 
 #if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
@@ -641,7 +642,7 @@
        (subpath "/private/var/db/mds")
        (literal "/private/var/db/DetachedSignatures"))
 
-(allow ipc-posix-shm-read* ipc-posix-shm-write-data
+(allow ipc-posix-shm-read* ipc-posix-shm-write-data ipc-posix-shm-write-create
        (ipc-posix-name "com.apple.AppleDatabaseChanged"))
 
 ;; CoreFoundation. We don't import com.apple.corefoundation.sb, because it allows unnecessary access to pasteboard.
@@ -963,10 +964,8 @@
         (syscall-number SYS_kdebug_typefilter)
         (syscall-number SYS_gettid) ;; Needed for base system, see <rdar://problem/48651255>
         (syscall-number SYS_memorystatus_control) ;; Needed for memory measurement infrastructure, see <rdar://problem/48647263>
+        (syscall-number SYS_kdebug_trace_string) ;; Needed for performance sampling, see <rdar://problem/48829655>.
         (syscall-number SYS_psynch_rw_rdlock) ;; <rdar://problem/49060359>
-    )
-    (with-filter (system-attribute apple-internal)
-        (allow syscall-unix (syscall-number SYS_kdebug_trace_string)) ;; <rdar://problem/49531420>
     )
 )
 

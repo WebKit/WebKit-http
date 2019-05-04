@@ -1,3 +1,604 @@
+2019-04-10  Antoine Quint  <graouts@apple.com>
+
+        Enable Pointer Events on watchOS
+        https://bugs.webkit.org/show_bug.cgi?id=196771
+        <rdar://problem/49040909>
+
+        Reviewed by Dean Jackson.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-04-10  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed. Fix WPE accessibility tests after r244059.
+
+        We are failing to load the injected bundle due to undefined symbol
+        AccessibilityUIElement::replaceTextInRange().
+
+        * WebKitTestRunner/InjectedBundle/wpe/AccessibilityUIElementWPE.cpp:
+        (WTR::AccessibilityUIElement::replaceTextInRange):
+
+2019-04-10  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [WinCairo][MiniBrowser] Pull down menu "Disable JavaScript" doesn't work.
+        https://bugs.webkit.org/show_bug.cgi?id=196727
+
+        Reviewed by Fujii Hironori.
+
+        * MiniBrowser/win/WebKitBrowserWindow.cpp:
+        (WebKitBrowserWindow::create):
+
+2019-04-09  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add unit tests for PrintConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=196752
+
+        Reviewed by Dewei Zhu.
+
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-tests.
+
+2019-04-09  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build maintenance -- update .xcfilelists.
+
+        * DumpRenderTree/DerivedSources-input.xcfilelist:
+        * DumpRenderTree/DerivedSources-output.xcfilelist:
+
+2019-04-09  Zalan Bujtas  <zalan@apple.com>
+
+        [AutoSizing] Avoid making text paragraphs scroll horizontally when there is a wide table
+        https://bugs.webkit.org/show_bug.cgi?id=196743
+        <rdar://problem/43897551>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/AutoLayoutIntegration.mm: expected behavior change.
+        (TEST):
+
+2019-04-09  Youenn Fablet  <youenn@apple.com>
+
+        Close service worker database on network process suspension
+        https://bugs.webkit.org/show_bug.cgi?id=196623
+        <rdar://problem/48930869>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+
+2019-04-09  Daniel Bates  <dabates@apple.com>
+
+        [iPad] Should open popover when the spacebar is pressed
+        https://bugs.webkit.org/show_bug.cgi?id=196360
+        <rdar://problem/49389129>
+
+        Reviewed by Brent Fulgham.
+
+        Add testing infrastructure to support waiting for a popover to be presented or dismissed.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::isShowingPopover const): Added.
+        (WTR::UIScriptController::platformSetWillPresentPopoverCallback): Added.
+        (WTR::UIScriptController::platformSetDidDismissPopoverCallback): Added.
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptContext.h:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setWillPresentPopoverCallback): Added.
+        (WTR::UIScriptController::willPresentPopoverCallback const): Added.
+        (WTR::UIScriptController::setDidDismissPopoverCallback): Added.
+        (WTR::UIScriptController::didDismissPopoverCallback const): Added.
+        (WTR::UIScriptController::isShowingPopover const): Added.
+        (WTR::UIScriptController::platformSetWillPresentPopoverCallback): Added.
+        (WTR::UIScriptController::platformSetDidDismissPopoverCallback): Added.
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView initWithFrame:configuration:]): Update some state.
+        (-[TestRunnerWKWebView resetInteractionCallbacks]): Ditto.
+        (-[TestRunnerWKWebView _willPresentPopover]): Added.
+        (-[TestRunnerWKWebView _didDismissPopover]): Added.
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::isShowingPopover const): Added.
+        (WTR::UIScriptController::platformSetWillPresentPopoverCallback): Added.
+        (WTR::UIScriptController::platformSetDidDismissPopoverCallback): Added.
+
+2019-04-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clicking "Go Back" from a safe browsing warning from an iframe should navigate the WKWebView back to the previous page
+        https://bugs.webkit.org/show_bug.cgi?id=196665
+        <rdar://45115669>
+
+        Reviewed by Geoff Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/SafeBrowsing.mm:
+        (goBack):
+        (+[SimpleLookupContext sharedLookupContext]):
+        (-[SimpleLookupContext lookUpURL:completionHandler:]):
+        (TEST):
+        (+[Simple3LookupContext sharedLookupContext]): Deleted.
+        (-[Simple3LookupContext lookUpURL:completionHandler:]): Deleted.
+
+2019-04-09  John Wilander  <wilander@apple.com>
+
+        Pick up Ad Click Attribution conversions in NetworkResourceLoader::willSendRedirectedRequest()
+        https://bugs.webkit.org/show_bug.cgi?id=196558
+        <rdar://problem/47650245>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebCore/AdClickAttribution.cpp:
+        (TestWebKitAPI::TEST):
+            Added tests of WebCore::AdClickAttribution::parseConversionRequest().
+
+2019-04-09  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Apple builds should use ICU_INCLUDE_DIRS
+        https://bugs.webkit.org/show_bug.cgi?id=196720
+
+        Reviewed by Konstantin Tokarev.
+
+        * TestWebKitAPI/PlatformMac.cmake:
+
+2019-04-09  Jonathan Bedard  <jbedard@apple.com>
+
+        iOS 12 Simulator Release WK2 frequently timing out while running layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=196694
+        <rdar://problem/48388734>
+
+        Rubber-stamped by Aakash Jain.
+
+        * Scripts/webkitpy/port/image_diff.py:
+        (ImageDiffer.diff_image): If the ImageDiff process has data, kill it before running again.
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess.has_available_stdout): Check if stdout has data in it.
+        (ServerProcess._wait_for_data_and_update_buffers_using_select):
+        (ServerProcess._wait_for_data_and_update_buffers_using_win32_apis):
+        * Scripts/webkitpy/port/server_process_mock.py:
+        (MockServerProcess.has_available_stdout):
+        * Scripts/webkitpy/port/server_process_unittest.py:
+        (TestServerProcess.serial_test_basic):
+
+2019-04-09  Jer Noble  <jer.noble@apple.com>
+
+        Test for: 196095 Inband Text Track cues interspersed with Data cues can display out of order.
+        https://bugs.webkit.org/show_bug.cgi?id=196097
+
+        Reviewed by Eric Carlson.
+
+        Drive-by bug fix: allow tests to play audio without a user gesture by default.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2019-04-09  Pablo Saavedra  <psaavedra@igalia.com>
+
+        [JSCOnly] Add an i386 JSCOnly EWS that runs tests
+        https://bugs.webkit.org/show_bug.cgi?id=196690
+
+        Reviewed by Michael Catanzaro.
+
+        * QueueStatusServer/config/queues.py:
+        * Scripts/webkitpy/common/config/ews.json:
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        (test_ews_name):
+
+2019-04-09  Chris Dumez  <cdumez@apple.com>
+
+        Loads using loadHTMLString() cause flashing when process-swapping
+        https://bugs.webkit.org/show_bug.cgi?id=196714
+        <rdar://problem/49637354>
+
+        Reviewed by Antti Koivisto.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-04-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix ATK accessibility tests after r244059.
+
+        We are failing to load the injected bundle due to undefined symbol
+        AccessibilityUIElement::replaceTextInRange().
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::replaceTextInRange):
+
+2019-04-08  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        AX: Support API: accessibilityReplaceRange:withText
+        https://bugs.webkit.org/show_bug.cgi?id=196636
+
+        Unreviewed build fix for Windows port.
+
+        * WebKitTestRunner/InjectedBundle/win/AccessibilityUIElementWin.cpp:
+        (WTR::AccessibilityUIElement::replaceTextInRange): Added.
+
+2019-04-08  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][WinCairo] Separate copied headers into different directories
+        https://bugs.webkit.org/show_bug.cgi?id=196655
+
+        Reviewed by Michael Catanzaro.
+
+        * DumpRenderTree/CMakeLists.txt:
+        * MiniBrowser/win/CMakeLists.txt:
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformWin.cmake:
+
+2019-04-08  Jonathan Bedard  <jbedard@apple.com>
+
+        Log stack-trace for run-webkit-tests when interrupted
+        https://bugs.webkit.org/show_bug.cgi?id=176393
+        <rdar://problem/34262310>
+
+        Reviewed by Lucas Forschler.
+
+        * Scripts/webkitpy/common/interrupt_debugging.py: Added.
+        (log_stack_trace): Given a Python frame object, log a stack trace to the provided file.
+        (StackTraceFileContext): Context which allows stack-traces to be printed to stderr or to a file. 
+        (log_stack_trace_on_term): Attach a listener to SIGTERM so that a stack-trace can be logged when a program is terminated.
+        (log_stack_trace_on_ctrl_c): Attach a listener to SIGINT so that a stack-trace can be logged when a program is CTRL+Ced. 
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (main): Set handlers to log stack trace on interruption.
+
+2019-04-08  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        AX: Support API: accessibilityReplaceRange:withText
+        https://bugs.webkit.org/show_bug.cgi?id=196636
+
+        Unreviewed build fix for Windows port.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (AccessibilityUIElement::replaceTextInRange): Changed the return value type from void to bool.
+
+2019-04-08  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Scripts using Buildbot API have CORS error
+        https://bugs.webkit.org/show_bug.cgi?id=196709
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-build/master.cfg: Set allowed_origins appropriately.
+
+2019-04-08  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Support API: accessibilityReplaceRange:withText
+        https://bugs.webkit.org/show_bug.cgi?id=196636
+
+        Reviewed by Daniel Bates.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (replaceTextInRangeCallback):
+        (AccessibilityUIElement::replaceTextInRange):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::replaceTextInRange):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::replaceTextInRange):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::replaceTextInRange):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::replaceTextInRange):
+
+2019-04-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Do not allow starting selection drags when selection views are not visible
+        https://bugs.webkit.org/show_bug.cgi?id=196686
+        <rdar://problem/49399192>
+
+        Reviewed by Tim Horton.
+
+        Adjust some existing API tests to make the web view become first responder before trying to begin dragging, and
+        also add some new API tests to cover scenarios where the web view is not first responder.
+
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+
+        Add a switch to optionally make the web view first responder when starting the simulated drag.
+
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator initWithWebView:]):
+        (-[DragAndDropSimulator runFrom:to:additionalItemRequestLocations:]):
+
+2019-04-08  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Fix Web GPU experimental feature on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=196632
+
+        Reviewed by Myles C. Maxfield.
+
+        Properly make Web GPU available on iOS 11+.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-04-08  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Do not upload archive when Compile Fails
+        https://bugs.webkit.org/show_bug.cgi?id=196674
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-build/factories.py:
+        (BuildFactory.__init__): Remove steps which require dynamic decision about whether to run or not.
+        * BuildSlaveSupport/ews-build/steps.py:
+        (CompileWebKit.evaluateCommand): Dynamically decide which steps to run based on compile status.
+        (CompileWebKitToT.evaluateCommand): Explicitly override Compile.evaluateCommand so that it 
+        doesn't inherit CompileWebKit.evaluateCommand which dynamically adds more steps.
+
+2019-04-08  Guillaume Emont  <guijemont@igalia.com>
+
+        Enable DFG on MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=196689
+
+        Reviewed by Žan Doberšek.
+
+        Since the bytecode change, we enabled the baseline JIT on mips in
+        r240432, but DFG is still missing. With this change, all tests are
+        passing on a ci20 board.
+
+        * Scripts/run-jsc-stress-tests: Enable DFG tests on MIPS.
+
+2019-04-08  Philippe Normand  <pnormand@igalia.com>
+
+        [Flatpak] Second run update-webkitwpe-flatpak fails
+        https://bugs.webkit.org/show_bug.cgi?id=192702
+
+        Reviewed by Carlos Garcia Campos.
+
+        * flatpak/flatpakutils.py:
+        (FlatpakObject.flatpak): Fix typo.
+        (FlatpakPackage.install): When installing, also update to the configured remote commit.
+        * flatpak/org.webkit.WebKit.yaml: Update GNOME 3.28 SDK/runtime hashes.
+
+2019-04-05  Sergio Villar Senin  <svillar@igalia.com>
+
+        [GTK][WPE] outlook.live.com displays old-fashioned UI
+        https://bugs.webkit.org/show_bug.cgi?id=196642
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST): New Mac platform quirk test.
+
+2019-04-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r243956.
+        https://bugs.webkit.org/show_bug.cgi?id=196688
+
+        Broke API Test SafeBrowsing.WKWebViewGoBackIFrame (Requested
+        by aakashjain on #webkit).
+
+        Reverted changeset:
+
+        "Clicking "Go Back" from a safe browsing warning from an
+        iframe should navigate the WKWebView back to the previous
+        page"
+        https://bugs.webkit.org/show_bug.cgi?id=196665
+        https://trac.webkit.org/changeset/243956
+
+2019-04-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Added tests for WeakHashSet::computesEmpty and WeakHashSet::computeSize
+        https://bugs.webkit.org/show_bug.cgi?id=196669
+
+        Reviewed by Geoffrey Garen.
+
+        Added three new unit tests for WeakHashSet.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp:
+        (WTF_WeakPtr.WeakHashSetConstObjects):
+        (WTF_WeakPtr.WeakHashSetComputesEmpty):
+        (WTF_WeakPtr.WeakHashSetComputeSize):
+
+2019-04-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Hide next and previous form control buttons when WKWebView is editable
+        https://bugs.webkit.org/show_bug.cgi?id=196672
+        <rdar://problem/35625321>
+
+        Reviewed by Tim Horton.
+
+        Add a new API test.
+
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+        (-[TestWKWebView lastTrailingBarButtonGroup]):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+2019-04-05  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        We should pass minimumEffectiveDeviceWidth to web process on new page creation.
+        https://bugs.webkit.org/show_bug.cgi?id=196077
+        <rdar://problem/49108202>
+
+        Reviewed by Chris Dumez.
+
+        Add an API test to verify the minimumEffectDeviceWidth is passed to web content process
+        on new web view.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-04-05  Saam Barati  <sbarati@apple.com>
+
+        Make compare-results understand MotionMark
+        https://bugs.webkit.org/show_bug.cgi?id=196666
+
+        Reviewed by Yusuke Suzuki.
+
+        * Scripts/compare-results:
+        (PLT5Results):
+        (detectMotionMark):
+        (detectMotionMark1_1):
+        (motionMarkResults):
+        (motionMark1_1Results):
+        (detectBenchmark):
+        (biggerIsBetter):
+        (main):
+
+2019-04-05  Alex Christensen  <achristensen@webkit.org>
+
+        Clicking "Go Back" from a safe browsing warning from an iframe should navigate the WKWebView back to the previous page
+        https://bugs.webkit.org/show_bug.cgi?id=196665
+        <rdar://45115669>
+
+        Reviewed by Geoff Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/SafeBrowsing.mm:
+        (goBack):
+        (+[SimpleLookupContext sharedLookupContext]):
+        (-[SimpleLookupContext lookUpURL:completionHandler:]):
+        (TEST):
+        (+[Simple3LookupContext sharedLookupContext]): Deleted.
+        (-[Simple3LookupContext lookUpURL:completionHandler:]): Deleted.
+
+2019-04-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add configuration and architecture for windows builders
+        https://bugs.webkit.org/show_bug.cgi?id=196660
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/config.json:
+
+2019-04-05  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Don't run subsequent rounds if interrupted
+        https://bugs.webkit.org/show_bug.cgi?id=196646
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.run): Bail out if interrupted.
+
+2019-04-05  Sihui Liu  <sihui_liu@apple.com>
+
+        Test sessionStorage in PSON private browsing mode
+        https://bugs.webkit.org/show_bug.cgi?id=196561
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-04-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r243833.
+        https://bugs.webkit.org/show_bug.cgi?id=196645
+
+        This change breaks build of WPE and GTK ports (Requested by
+        annulen on #webkit).
+
+        Reverted changeset:
+
+        "[CMake][WTF] Mirror XCode header directories"
+        https://bugs.webkit.org/show_bug.cgi?id=191662
+        https://trac.webkit.org/changeset/243833
+
+2019-04-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Simple iframe scrolling test fails to get a composited scrolling frame in WebKitTestRunnerApp
+        https://bugs.webkit.org/show_bug.cgi?id=196635
+
+        Reviewed by Antti Koivisto.
+        
+        InjectedBundle::beginTesting() calling WKBundleSetAsyncFrameScrollingEnabled() makes it impossible
+        for a test to enable async frame scrolling via:
+            <!-- webkit-test-runner [ internal:AsyncFrameScrollingEnabled=true ] -->
+        so remove it and have TestController::resetPreferencesToConsistentValues() set the default value.
+        
+        Test: scrollingcoordinator/ios/programmatic-frame-scroll.html
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2019-04-04  Alexey Proskuryakov  <ap@apple.com>
+
+        Use a correct LC_RPATH when building with ASan
+        https://bugs.webkit.org/show_bug.cgi?id=196576
+
+        Reviewed by David Kilzer.
+
+        * asan/asan.xcconfig: As a temporary hack, just force LC_RPATH on all binaries,
+        so that ../Frameworks is checked. This is simpler and more reliable than updating
+        each SPC service xcconfig.
+
+2019-04-04  Aakash Jain  <aakash_jain@apple.com>
+
+        Disable Flaky API Test TestWebKitAPI.WebKit.FocusTextInputContext
+        https://bugs.webkit.org/show_bug.cgi?id=196629
+
+        Reviewed by Lucas Forschler.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/RequestTextInputContext.mm:
+
+2019-04-04  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] while waiting in queue status-bubble for testers queues should display build information from builder queue
+        https://bugs.webkit.org/show_bug.cgi?id=196618
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py:
+        (StatusBubble): Added QUEUE_TRIGGERS.
+        (StatusBubble._build_bubble): Get the build from builder if tester has not started the build yet.
+        (StatusBubble._get_parent_queue): Get the name of the parent (builder) queue.
+        (StatusBubble.get_latest_build_for_queue): If the queue doesn't have any build yet, return build information from
+        its parent(builder).
+
+2019-04-04  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Status-bubble steps are sometimes displayed in reverse order
+        https://bugs.webkit.org/show_bug.cgi?id=196625
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py:
+        (StatusBubble._steps_messages): Explicitly specify order_by('uid').
+
+2019-04-04  Aakash Jain  <aakash_jain@apple.com>
+
+        Disable Flaky API Test TestWebKitAPI.KeyboardInputTests.KeyboardTypeForInput
+        https://bugs.webkit.org/show_bug.cgi?id=196630
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+
+2019-04-04  Youenn Fablet  <youenn@apple.com>
+
+        Pass storage quota parameters from UIProcess to NetworkProcess as part of WebsiteDataStore parameters
+        https://bugs.webkit.org/show_bug.cgi?id=196543
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::generatePageConfiguration):
+
+2019-04-04  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Status bubble should not display skipped buildbot steps
+        https://bugs.webkit.org/show_bug.cgi?id=196584
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py:
+
+2019-04-04  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] configure localhost as BUILDBOT_SERVER_HOST in testing mode
+        https://bugs.webkit.org/show_bug.cgi?id=196620
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/config.py:
+
 2019-04-04  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] DumpRenderTreeWatchDog.py is not checked into source

@@ -2346,6 +2346,7 @@ TEST(ProcessSwap, SessionStorage)
 TEST(ProcessSwap, ReuseSuspendedProcess)
 {
     auto processPoolConfiguration = psonProcessPoolConfiguration();
+    processPoolConfiguration.get().usesWebProcessCache = NO;
     auto processPool = adoptNS([[WKProcessPool alloc] _initWithConfiguration:processPoolConfiguration.get()]);
 
     auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
@@ -2386,6 +2387,55 @@ TEST(ProcessSwap, ReuseSuspendedProcess)
 
     request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.com/main2.html"]];
     [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    // We should have gone back to the apple.com process for this load since we reuse SuspendedPages' process when possible.
+    EXPECT_EQ(applePID, [webView _webProcessIdentifier]);
+}
+
+TEST(ProcessSwap, ReuseSuspendedProcessLoadHTMLString)
+{
+    auto processPoolConfiguration = psonProcessPoolConfiguration();
+    processPoolConfiguration.get().usesWebProcessCache = NO;
+    auto processPool = adoptNS([[WKProcessPool alloc] _initWithConfiguration:processPoolConfiguration.get()]);
+
+    auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [webViewConfiguration setProcessPool:processPool.get()];
+    auto handler = adoptNS([[PSONScheme alloc] init]);
+    [webViewConfiguration setURLSchemeHandler:handler.get() forURLScheme:@"PSON"];
+
+    auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webViewConfiguration.get()]);
+    auto delegate = adoptNS([[PSONNavigationDelegate alloc] init]);
+    [webView setNavigationDelegate:delegate.get()];
+
+    NSString *htmlString = @"<html><body>TEST</body></html>";
+    [webView loadHTMLString:htmlString baseURL:[NSURL URLWithString:@"pson://www.webkit.org/main1.html"]];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    auto webkitPID = [webView _webProcessIdentifier];
+
+    [webView loadHTMLString:htmlString baseURL:[NSURL URLWithString:@"pson://www.apple.com/main1.html"]];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    auto applePID = [webView _webProcessIdentifier];
+
+    EXPECT_NE(webkitPID, applePID);
+
+    [webView loadHTMLString:htmlString baseURL:[NSURL URLWithString:@"pson://www.webkit.org/main2.html"]];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    // We should have gone back to the webkit.org process for this load since we reuse SuspendedPages' process when possible.
+    EXPECT_EQ(webkitPID, [webView _webProcessIdentifier]);
+
+    [webView loadHTMLString:htmlString baseURL:[NSURL URLWithString:@"pson://www.apple.com/main2.html"]];
 
     TestWebKitAPI::Util::run(&done);
     done = false;
@@ -4705,7 +4755,7 @@ TEST(ProcessSwap, SwapOnLoadHTMLString)
     done = false;
 }
 
-TEST(ProcessSwap, EphemeralLocalStorage)
+TEST(ProcessSwap, EphemeralWebStorage)
 {
     auto processPoolConfiguration = psonProcessPoolConfiguration();
     auto processPool = adoptNS([[WKProcessPool alloc] _initWithConfiguration:processPoolConfiguration.get()]);
@@ -4726,6 +4776,12 @@ TEST(ProcessSwap, EphemeralLocalStorage)
 
     done = false;
     [webView evaluateJavaScript:@"window.localStorage.setItem('a','b')" completionHandler:^(id, NSError *) {
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    done = false;
+    [webView evaluateJavaScript:@"window.sessionStorage.setItem('b,'a')" completionHandler:^(id, NSError *) {
         done = true;
     }];
     TestWebKitAPI::Util::run(&done);
@@ -4752,6 +4808,13 @@ TEST(ProcessSwap, EphemeralLocalStorage)
     done = false;
     [webView evaluateJavaScript:@"window.localStorage.getItem('a')" completionHandler:^(id result, NSError *) {
         EXPECT_FALSE([@"b" isEqualToString:result]);
+        done = true;
+    }];
+    TestWebKitAPI::Util::run(&done);
+
+    done = false;
+    [webView evaluateJavaScript:@"window.sessionStorage.getItem('b')" completionHandler:^(id result, NSError *) {
+        EXPECT_FALSE([@"a" isEqualToString:result]);
         done = true;
     }];
     TestWebKitAPI::Util::run(&done);
@@ -5871,6 +5934,59 @@ TEST(ProcessSwap, QuickLookRequestsPasswordAfterSwap)
 
     TestWebKitAPI::Util::run(&didFinishQuickLookLoad);
     didFinishQuickLookLoad = false;
+}
+
+static const char* minimumWidthPageBytes = R"PSONRESOURCE(
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+div {
+    margin: 0;
+    width: 100%;
+    height: 10000px;
+}
+</style>
+</head>
+<body>
+<div>Test</a>
+</body>
+</html>
+)PSONRESOURCE";
+
+TEST(ProcessSwap, PassMinimumDeviceWidthOnNewWebView)
+{
+    auto processPoolConfiguration = psonProcessPoolConfiguration();
+    auto processPool = adoptNS([[WKProcessPool alloc] _initWithConfiguration:processPoolConfiguration.get()]);
+
+    auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [webViewConfiguration setProcessPool:processPool.get()];
+    auto handler = adoptNS([[PSONScheme alloc] init]);
+    [handler addMappingFromURLString:@"pson://www.webkit.org/main.html" toData:minimumWidthPageBytes];
+    [webViewConfiguration setURLSchemeHandler:handler.get() forURLScheme:@"PSON"];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webViewConfiguration.get()]);
+
+    auto navigationDelegate = adoptNS([[PSONNavigationDelegate alloc] init]);
+    [webView setNavigationDelegate:navigationDelegate.get()];
+
+    auto preferences = [[webView configuration] preferences];
+    [preferences _setShouldIgnoreMetaViewport:YES];
+    [webView _setMinimumEffectiveDeviceWidth:1024];
+
+    auto* request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main.html"]];
+    [webView loadRequest:request];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    bool finishedRunningScript = false;
+    [webView evaluateJavaScript:@"window.innerWidth" completionHandler: [&] (id result, NSError *error) {
+        NSNumber *width = (NSNumber *)result;
+        EXPECT_EQ(1024, [width intValue]);
+        finishedRunningScript = true;
+    }];
+    TestWebKitAPI::Util::run(&finishedRunningScript);
 }
 
 #endif

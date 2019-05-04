@@ -26,6 +26,7 @@
 #include "config.h"
 #include "StackVisitor.h"
 
+#include "CallFrameInlines.h"
 #include "ClonedArguments.h"
 #include "DebuggerPrimitives.h"
 #include "InlineCallFrame.h"
@@ -253,12 +254,14 @@ StackVisitor::Frame::CodeType StackVisitor::Frame::codeType() const
     return CodeType::Global;
 }
 
+#if ENABLE(ASSEMBLER)
 Optional<RegisterAtOffsetList> StackVisitor::Frame::calleeSaveRegistersForUnwinding()
 {
-    if (isInlinedFrame())
+    if (!NUMBER_OF_CALLEE_SAVES_REGISTERS)
         return WTF::nullopt;
 
-#if !ENABLE(C_LOOP) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
+    if (isInlinedFrame())
+        return WTF::nullopt;
 
 #if ENABLE(WEBASSEMBLY)
     if (isWasmFrame()) {
@@ -279,10 +282,9 @@ Optional<RegisterAtOffsetList> StackVisitor::Frame::calleeSaveRegistersForUnwind
     if (CodeBlock* codeBlock = this->codeBlock())
         return *codeBlock->calleeSaveRegisters();
 
-#endif // !ENABLE(C_LOOP) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
-
     return WTF::nullopt;
 }
+#endif // ENABLE(ASSEMBLER)
 
 String StackVisitor::Frame::functionName() const
 {

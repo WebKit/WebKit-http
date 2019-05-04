@@ -354,19 +354,21 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 )
 
 WEBKIT_MAKE_FORWARDING_HEADERS(WebCore
+    TARGET_NAME WebCorePrivateFrameworkHeaders
+    DESTINATION ${WebCore_PRIVATE_FRAMEWORK_HEADERS_DIR}/WebCore
     FILES ${WebCore_PRIVATE_FRAMEWORK_HEADERS}
     DIRECTORIES ${WebCore_FORWARDING_HEADERS_DIRECTORIES}
     FLATTENED
 )
 
-add_dependencies(WebCoreForwardingHeaders WebCoreBindings)
+add_dependencies(WebCorePrivateFrameworkHeaders WebCoreBindings)
 
 set(WebCore_OUTPUT_NAME
     WebCore${DEBUG_SUFFIX}
 )
 
-list(APPEND WebCore_LIBRARIES WTFFramework)
+list(APPEND WebCore_LIBRARIES WTF${DEBUG_SUFFIX})
 if (TARGET libEGL)
     list(APPEND WebCore_LIBRARIES libEGL)
 endif ()
-list(APPEND WebCoreTestSupport_LIBRARIES WTFFramework)
+list(APPEND WebCoreTestSupport_LIBRARIES WTF${DEBUG_SUFFIX})

@@ -382,7 +382,6 @@ static Optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayS
     RetainPtr<WKTextFinderClient> _textFinderClient;
 #endif
     _WKSelectionAttributes _selectionAttributes;
-    CGFloat _minimumEffectiveDeviceWidth;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -594,7 +593,7 @@ static void validate(WKWebViewConfiguration *configuration)
 
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldRespectImageOrientationKey(), WebKit::WebPreferencesStore::Value(!![_configuration _respectsImageOrientation]));
 #if !PLATFORM(MAC)
-    // FIXME: Expose WKPreferences._shouldPrintBackgrounds on iOS, adopt it in all iOS clients, and remove this and WKWebViewConfiguration._printsBackgrounds.
+    // FIXME: Expose WKPreferences._shouldPrintBackgrounds on iOS, adopt it in all iOS clients, and remove this and WKWebViewConfiguration._printsBackgrounds.
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldPrintBackgroundsKey(), WebKit::WebPreferencesStore::Value(!![_configuration _printsBackgrounds]));
 #endif
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::incrementalRenderingSuppressionTimeoutKey(), WebKit::WebPreferencesStore::Value([_configuration _incrementalRenderingSuppressionTimeout]));
@@ -1356,12 +1355,19 @@ static _WKSelectionAttributes selectionAttributes(const WebKit::EditorState& edi
         auto strongSelf = weakSelf.get();
         if (!strongSelf)
             return;
-        bool navigatesMainFrame = WTF::switchOn(result,
+        bool navigatesFrame = WTF::switchOn(result,
             [] (WebKit::ContinueUnsafeLoad continueUnsafeLoad) { return continueUnsafeLoad == WebKit::ContinueUnsafeLoad::Yes; },
             [] (const URL&) { return true; }
         );
-        if (navigatesMainFrame && [strongSelf->_safeBrowsingWarning forMainFrameNavigation])
+        bool forMainFrameNavigation = [strongSelf->_safeBrowsingWarning forMainFrameNavigation];
+        if (navigatesFrame && forMainFrameNavigation) {
+            // The safe browsing warning will be hidden once the next page is shown.
             return;
+        }
+        if (!navigatesFrame && strongSelf->_safeBrowsingWarning && !forMainFrameNavigation) {
+            strongSelf->_page->goBack();
+            return;
+        }
         [std::exchange(strongSelf->_safeBrowsingWarning, nullptr) removeFromSuperview];
     }]);
     [self addSubview:_safeBrowsingWarning.get()];
@@ -2837,7 +2843,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         return;
 
     LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView " << _page->pageID() << " _dispatchSetViewLayoutSize:] " << viewLayoutSize << " contentZoomScale " << contentZoomScale(self));
-    _page->setViewportConfigurationViewLayoutSize(viewLayoutSize, _page->layoutSizeScaleFactor(), _minimumEffectiveDeviceWidth);
+    _page->setViewportConfigurationViewLayoutSize(viewLayoutSize, _page->layoutSizeScaleFactor(), _page->minimumEffectiveDeviceWidth());
     _lastSentViewLayoutSize = viewLayoutSize;
 }
 
@@ -4599,10 +4605,18 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 
 - (void)_setEditable:(BOOL)editable
 {
+    bool wasEditable = _page->isEditable();
     _page->setEditable(editable);
 #if PLATFORM(MAC)
     if (editable)
         _impl->didBecomeEditable();
+#endif
+
+    if (wasEditable == editable)
+        return;
+
+#if PLATFORM(IOS_FAMILY)
+    [_contentView _didChangeWebViewEditability];
 #endif
 }
 
@@ -5681,24 +5695,27 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     if (_page->layoutSizeScaleFactor() == viewScale)
         return;
 
-    _page->setViewportConfigurationViewLayoutSize([self activeViewLayoutSize:self.bounds], viewScale, _minimumEffectiveDeviceWidth);
+    _page->setViewportConfigurationViewLayoutSize([self activeViewLayoutSize:self.bounds], viewScale, _page->minimumEffectiveDeviceWidth());
 #endif
 }
 
 - (void)_setMinimumEffectiveDeviceWidth:(CGFloat)minimumEffectiveDeviceWidth
 {
-    if (_minimumEffectiveDeviceWidth == minimumEffectiveDeviceWidth)
+#if PLATFORM(IOS_FAMILY)
+    if (_page->minimumEffectiveDeviceWidth() == minimumEffectiveDeviceWidth)
         return;
 
-    _minimumEffectiveDeviceWidth = minimumEffectiveDeviceWidth;
-#if PLATFORM(IOS_FAMILY)
-    _page->setViewportConfigurationViewLayoutSize([self activeViewLayoutSize:self.bounds], _page->layoutSizeScaleFactor(), _minimumEffectiveDeviceWidth);
+    _page->setViewportConfigurationViewLayoutSize([self activeViewLayoutSize:self.bounds], _page->layoutSizeScaleFactor(), minimumEffectiveDeviceWidth);
 #endif
 }
 
 - (CGFloat)_minimumEffectiveDeviceWidth
 {
-    return _minimumEffectiveDeviceWidth;
+#if PLATFORM(IOS_FAMILY)
+    return _page->minimumEffectiveDeviceWidth();
+#else
+    return 0;
+#endif
 }
 
 #pragma mark scrollperf methods
@@ -5776,16 +5793,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return WebKit::toWKMediaCaptureState(_page->mediaStateFlags());
 }
 
-- (void)_setMediaCaptureMuted:(BOOL)muted
-{
-    _page->setMediaStreamCaptureMuted(muted);
-}
-
-- (void)_muteMediaCapture
-{
-    _page->setMediaStreamCaptureMuted(true);
-}
-
 - (void)_setMediaCaptureEnabled:(BOOL)enabled
 {
     _page->setMediaCaptureEnabled(enabled);
@@ -5803,7 +5810,9 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     if (mutedState & _WKMediaAudioMuted)
         coreState |= WebCore::MediaProducer::AudioIsMuted;
     if (mutedState & _WKMediaCaptureDevicesMuted)
-        coreState |= WebCore::MediaProducer::CaptureDevicesAreMuted;
+        coreState |= WebCore::MediaProducer::AudioAndVideoCaptureIsMuted;
+    if (mutedState & _WKMediaScreenCaptureMuted)
+        coreState |= WebCore::MediaProducer::ScreenCaptureIsMuted;
 
     _page->setMuted(coreState);
 }

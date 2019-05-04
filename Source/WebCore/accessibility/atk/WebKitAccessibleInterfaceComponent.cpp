@@ -36,8 +36,8 @@
 #include "AccessibilityObject.h"
 #include "FrameView.h"
 #include "IntRect.h"
+#include "WebKitAccessible.h"
 #include "WebKitAccessibleUtil.h"
-#include "WebKitAccessibleWrapperAtk.h"
 
 using namespace WebCore;
 
@@ -46,7 +46,7 @@ static AccessibilityObject* core(AtkComponent* component)
     if (!WEBKIT_IS_ACCESSIBLE(component))
         return 0;
 
-    return webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(component));
+    return &webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(component));
 }
 
 static IntPoint atkToContents(AccessibilityObject* coreObject, AtkCoordType coordType, gint x, gint y)
@@ -81,7 +81,7 @@ static AtkObject* webkitAccessibleComponentRefAccessibleAtPoint(AtkComponent* co
     if (!target)
         return 0;
     g_object_ref(target->wrapper());
-    return target->wrapper();
+    return ATK_OBJECT(target->wrapper());
 }
 
 static void webkitAccessibleComponentGetExtents(AtkComponent* component, gint* x, gint* y, gint* width, gint* height, AtkCoordType coordType)

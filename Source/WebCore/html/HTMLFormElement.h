@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -28,6 +28,8 @@
 #include "HTMLElement.h"
 #include "RadioButtonGroups.h"
 #include <memory>
+#include <wtf/IsoMalloc.h>
+#include <wtf/WeakHashSet.h>
 
 #if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
 #include "Autocapitalize.h"
@@ -119,7 +121,7 @@ public:
 
     WEBCORE_EXPORT const Vector<FormAssociatedElement*>& unsafeAssociatedElements() const;
     Vector<Ref<FormAssociatedElement>> copyAssociatedElementsVector() const;
-    const Vector<HTMLImageElement*>& imageElements() const { return m_imageElements; }
+    const Vector<WeakPtr<HTMLImageElement>>& imageElements() const { return m_imageElements; }
 
     StringPairVector textFieldValues() const;
 
@@ -172,13 +174,13 @@ private:
     std::unique_ptr<PastNamesMap> m_pastNamesMap;
 
     RadioButtonGroups m_radioButtonGroups;
-    mutable HTMLFormControlElement* m_defaultButton { nullptr };
+    mutable WeakPtr<HTMLFormControlElement> m_defaultButton;
 
     unsigned m_associatedElementsBeforeIndex { 0 };
     unsigned m_associatedElementsAfterIndex { 0 };
     Vector<FormAssociatedElement*> m_associatedElements;
-    Vector<HTMLImageElement*> m_imageElements;
-    HashSet<const HTMLFormControlElement*> m_invalidAssociatedFormControls;
+    Vector<WeakPtr<HTMLImageElement>> m_imageElements;
+    WeakHashSet<HTMLFormControlElement> m_invalidAssociatedFormControls;
 
     bool m_wasUserSubmitted { false };
     bool m_isSubmittingOrPreparingForSubmission { false };

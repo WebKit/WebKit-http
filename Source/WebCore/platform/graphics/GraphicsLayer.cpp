@@ -411,9 +411,9 @@ void GraphicsLayer::setShapeLayerWindRule(WindRule windRule)
 #endif
 }
 
-void GraphicsLayer::setEventRegion(Region&& eventRegion)
+void GraphicsLayer::setEventRegion(EventRegion&& eventRegion)
 {
-    m_eventRegion = eventRegion;
+    m_eventRegion = WTFMove(eventRegion);
 }
 
 void GraphicsLayer::noteDeviceOrPageScaleFactorChangedIncludingDescendants()
@@ -926,8 +926,10 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
         ts << indent << ")\n";
     }
 
-    if (behavior & LayerTreeAsTextIncludeEventRegion && !m_eventRegion.isEmpty())
-        ts << indent << "(event region" << m_eventRegion << ")\n";
+    if (behavior & LayerTreeAsTextIncludeEventRegion && !m_eventRegion.isEmpty()) {
+        ts << indent << "(event region" << m_eventRegion;
+        ts << indent << ")\n";
+    }
 
     if (behavior & LayerTreeAsTextIncludePaintingPhases && paintingPhase()) {
         ts << indent << "(paintingPhases\n";

@@ -1,3 +1,731 @@
+2019-04-10  Antoine Quint  <graouts@apple.com>
+
+        Enable Pointer Events on watchOS
+        https://bugs.webkit.org/show_bug.cgi?id=196771
+        <rdar://problem/49040909>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-04-09  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build maintenance -- update .xcfilelists.
+
+        * DerivedSources-input.xcfilelist:
+
+2019-04-09  Ross Kirsling  <ross.kirsling@sony.com>
+
+        JSC should build successfully even with -DENABLE_UNIFIED_BUILDS=OFF
+        https://bugs.webkit.org/show_bug.cgi?id=193073
+
+        Reviewed by Keith Miller.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitEqualityOpImpl):
+        (JSC::BytecodeGenerator::emitEqualityOp): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::emitEqualityOp):
+        Factor out the logic that uses the template parameter and keep it in the header.
+
+        * jit/JITPropertyAccess.cpp:
+        List off the template specializations needed by JITOperations.cpp.
+        This is unfortunate but at least there are only two (x2) by definition?
+        Trying to do away with this incurs a severe domino effect...
+
+        * API/JSValueRef.cpp:
+        * b3/B3OptimizeAssociativeExpressionTrees.cpp:
+        * b3/air/AirHandleCalleeSaves.cpp:
+        * builtins/BuiltinNames.cpp:
+        * bytecode/AccessCase.cpp:
+        * bytecode/BytecodeIntrinsicRegistry.cpp:
+        * bytecode/BytecodeIntrinsicRegistry.h:
+        * bytecode/BytecodeRewriter.cpp:
+        * bytecode/BytecodeUseDef.h:
+        * bytecode/CodeBlock.cpp:
+        * bytecode/InstanceOfAccessCase.cpp:
+        * bytecode/MetadataTable.cpp:
+        * bytecode/PolyProtoAccessChain.cpp:
+        * bytecode/StructureSet.cpp:
+        * bytecompiler/NodesCodegen.cpp:
+        * dfg/DFGCFAPhase.cpp:
+        * dfg/DFGPureValue.cpp:
+        * heap/GCSegmentedArray.h:
+        * heap/HeapInlines.h:
+        * heap/IsoSubspace.cpp:
+        * heap/LocalAllocator.cpp:
+        * heap/LocalAllocator.h:
+        * heap/LocalAllocatorInlines.h:
+        * heap/MarkingConstraintSolver.cpp:
+        * inspector/ScriptArguments.cpp:
+        (Inspector::ScriptArguments::isEqual const):
+        * inspector/ScriptCallStackFactory.cpp:
+        * interpreter/CallFrame.h:
+        * interpreter/Interpreter.cpp:
+        * interpreter/StackVisitor.cpp:
+        * llint/LLIntEntrypoint.cpp:
+        * runtime/ArrayIteratorPrototype.cpp:
+        * runtime/BigIntPrototype.cpp:
+        * runtime/CachedTypes.cpp:
+        * runtime/ErrorType.cpp:
+        * runtime/IndexingType.cpp:
+        * runtime/JSCellInlines.h:
+        * runtime/JSImmutableButterfly.h:
+        * runtime/Operations.h:
+        * runtime/RegExpCachedResult.cpp:
+        * runtime/RegExpConstructor.cpp:
+        * runtime/RegExpGlobalData.cpp:
+        * runtime/StackFrame.h:
+        * wasm/WasmSignature.cpp:
+        * wasm/js/JSToWasm.cpp:
+        * wasm/js/JSToWasmICCallee.cpp:
+        * wasm/js/WebAssemblyFunction.h:
+        Fix includes / forward declarations (and a couple of nearby clang warnings).
+
+2019-04-09  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Apple builds should use ICU_INCLUDE_DIRS
+        https://bugs.webkit.org/show_bug.cgi?id=196720
+
+        Reviewed by Konstantin Tokarev.
+
+        * PlatformMac.cmake:
+
+2019-04-09  Saam barati  <sbarati@apple.com>
+
+        Clean up Int52 code and some bugs in it
+        https://bugs.webkit.org/show_bug.cgi?id=196639
+        <rdar://problem/49515757>
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch fixes bugs in our Int52 code. The primary change in this patch is
+        adopting a segregated type lattice for Int52. Previously, for Int52 values,
+        we represented them with SpecInt32Only and SpecInt52Only. For an Int52,
+        SpecInt32Only meant that the value is in int32 range. And SpecInt52Only meant
+        that the is outside of the int32 range.
+        
+        However, this got confusing because we reused SpecInt32Only both for JSValue
+        representations and Int52 representations. This actually lead to some bugs.
+        
+        1. It's possible that roundtripping through Int52 representation would say
+        it produces the wrong type. For example, consider this program and how we
+        used to annotate types in AI:
+        a: JSConstant(10.0) => m_type is SpecAnyIntAsDouble
+        b: Int52Rep(@a) => m_type is SpecInt52Only
+        c: ValueRep(@b) => m_type is SpecAnyIntAsDouble
+        
+        In AI, for the above program, we'd say that @c produces SpecAnyIntAsDouble.
+        However, the execution semantics are such that it'd actually produce a boxed
+        Int32. This patch fixes the bug where we'd say that Int52Rep over SpecAnyIntAsDouble
+        would produce SpecInt52Only. This is clearly wrong, as SpecAnyIntAsDouble can
+        mean an int value in either int32 or int52 range.
+        
+        2. AsbstractValue::validateTypeAcceptingBoxedInt52 was wrong in how it
+        accepted Int52 values. It was wrong in two different ways:
+        a: If the AbstractValue's type was SpecInt52Only, and the incoming value
+        was a boxed double, but represented a value in int32 range, the incoming
+        value would incorrectly validate as being acceptable. However, we should
+        have rejected this value.
+        b: If the AbstractValue's type was SpecInt32Only, and the incoming value
+        was an Int32 boxed in a double, this would not validate, even though
+        it should have validated.
+        
+        Solving 2 was easiest if we segregated out the Int52 type into its own
+        lattice. This patch makes a new Int52 lattice, which is composed of
+        SpecInt32AsInt52 and SpecNonInt32AsInt52.
+        
+        The conversion rules are now really simple.
+        
+        Int52 rep => JSValue rep
+        SpecInt32AsInt52 => SpecInt32Only
+        SpecNonInt32AsInt52 => SpecAnyIntAsDouble
+        
+        JSValue rep => Int52 rep
+        SpecInt32Only => SpecInt32AsInt52
+        SpecAnyIntAsDouble => SpecInt52Any
+        
+        With these rules, the program in (1) will now correctly report that @c
+        returns SpecInt32Only | SpecAnyIntAsDouble.
+
+        * bytecode/SpeculatedType.cpp:
+        (JSC::dumpSpeculation):
+        (JSC::speculationToAbbreviatedString):
+        (JSC::int52AwareSpeculationFromValue):
+        (JSC::leastUpperBoundOfStrictlyEquivalentSpeculations):
+        (JSC::speculationFromString):
+        * bytecode/SpeculatedType.h:
+        (JSC::isInt32SpeculationForArithmetic):
+        (JSC::isInt32OrBooleanSpeculationForArithmetic):
+        (JSC::isAnyInt52Speculation):
+        (JSC::isIntAnyFormat):
+        (JSC::isInt52Speculation): Deleted.
+        (JSC::isAnyIntSpeculation): Deleted.
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::fixTypeForRepresentation):
+        (JSC::DFG::AbstractValue::checkConsistency const):
+        * dfg/DFGAbstractValue.h:
+        (JSC::DFG::AbstractValue::isInt52Any const):
+        (JSC::DFG::AbstractValue::validateTypeAcceptingBoxedInt52 const):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupArithMul):
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::fixupGetPrototypeOf):
+        (JSC::DFG::FixupPhase::fixupToThis):
+        (JSC::DFG::FixupPhase::fixupToStringOrCallStringConstructor):
+        (JSC::DFG::FixupPhase::observeUseKindOnNode):
+        (JSC::DFG::FixupPhase::fixIntConvertingEdge):
+        (JSC::DFG::FixupPhase::attemptToMakeIntegerAdd):
+        (JSC::DFG::FixupPhase::fixupCompareStrictEqAndSameValue):
+        (JSC::DFG::FixupPhase::fixupChecksInBlock):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::addShouldSpeculateInt52):
+        (JSC::DFG::Graph::binaryArithShouldSpeculateInt52):
+        (JSC::DFG::Graph::unaryArithShouldSpeculateInt52):
+        (JSC::DFG::Graph::addShouldSpeculateAnyInt): Deleted.
+        (JSC::DFG::Graph::binaryArithShouldSpeculateAnyInt): Deleted.
+        (JSC::DFG::Graph::unaryArithShouldSpeculateAnyInt): Deleted.
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::shouldSpeculateInt52):
+        (JSC::DFG::Node::shouldSpeculateAnyInt): Deleted.
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::setIntTypedArrayLoadResult):
+        (JSC::DFG::SpeculativeJIT::compileArithAdd):
+        (JSC::DFG::SpeculativeJIT::compileArithSub):
+        (JSC::DFG::SpeculativeJIT::compileArithNegate):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt32Internal):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt52):
+        * dfg/DFGUseKind.h:
+        (JSC::DFG::typeFilterFor):
+        * dfg/DFGVariableAccessData.cpp:
+        (JSC::DFG::VariableAccessData::makePredictionForDoubleFormat):
+        (JSC::DFG::VariableAccessData::couldRepresentInt52Impl):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithAddOrSub):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithNegate):
+        (JSC::FTL::DFG::LowerDFGToB3::setIntTypedArrayLoadResult):
+
+2019-04-09  Tadeu Zagallo  <tzagallo@apple.com>
+
+        ASSERTION FAILED: !scope.exception() || !hasProperty in JSObject::get
+        https://bugs.webkit.org/show_bug.cgi?id=196708
+        <rdar://problem/49556803>
+
+        Reviewed by Yusuke Suzuki.
+
+        `operationPutToScope` needs to return early if an exception is thrown while
+        checking if `hasProperty`.
+
+        * jit/JITOperations.cpp:
+
+2019-04-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DFG should respect node's strict flag
+        https://bugs.webkit.org/show_bug.cgi?id=196617
+
+        Reviewed by Saam Barati.
+
+        We accidentally use codeBlock->isStrictMode() directly in DFG and FTL. But this is wrong since this CodeBlock is the top level DFG/FTL CodeBlock,
+        and this code does not respect the isStrictMode flag for the inlined CodeBlocks. In this patch, we start using isStrictModeFor(CodeOrigin) consistently
+        in DFG and FTL to get the right isStrictMode flag for the DFG node.
+        And we also split compilePutDynamicVar into compilePutDynamicVarStrict and compilePutDynamicVarNonStrict since (1) it is cleaner than accessing inlined
+        callframe in the operation function, and (2) it is aligned to the other functions like operationPutByValDirectNonStrict etc.
+        This bug is discovered by RandomizingFuzzerAgent by expanding the DFG coverage.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupToThis):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileDoublePutByVal):
+        (JSC::DFG::SpeculativeJIT::compilePutByValForIntTypedArray):
+        (JSC::DFG::SpeculativeJIT::compilePutDynamicVar):
+        (JSC::DFG::SpeculativeJIT::compileToThis):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compileContiguousPutByVal):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compilePutByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::compilePutDynamicVar):
+
+2019-04-08  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][WinCairo] Separate copied headers into different directories
+        https://bugs.webkit.org/show_bug.cgi?id=196655
+
+        Reviewed by Michael Catanzaro.
+
+        * CMakeLists.txt:
+        * shell/PlatformWin.cmake:
+
+2019-04-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] isRope jump in StringSlice should not jump over register allocations
+        https://bugs.webkit.org/show_bug.cgi?id=196716
+
+        Reviewed by Saam Barati.
+
+        Jumping over the register allocation code in DFG (like the following) is wrong.
+
+            auto jump = m_jit.branchXXX();
+            {
+                GPRTemporary reg(this);
+                GPRReg regGPR = reg.gpr();
+                ...
+            }
+            jump.link(&m_jit);
+
+        When GPRTemporary::gpr allocates a new register, it can flush the previous register value into the stack and make the register usable.
+        Jumping over this register allocation code skips the flushing code, and makes the DFG's stack and register content tracking inconsistent:
+        DFG thinks that the content is flushed and stored in particular stack slot even while this flushing code is skipped.
+        In this patch, we perform register allocations before jumping to the slow path based on `isRope` condition in StringSlice.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileStringSlice):
+
+2019-04-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] to_index_string should not assume incoming value is Uint32
+        https://bugs.webkit.org/show_bug.cgi?id=196713
+
+        Reviewed by Saam Barati.
+
+        The slow path of to_index_string assumes that incoming value is Uint32. But we should not have
+        this assumption since DFG may decide we should have it double format. This patch removes this
+        assumption, and instead, we should assume that incoming value is AnyInt and the range of this
+        is within Uint32.
+
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+
+2019-04-08  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Fix Web GPU experimental feature on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=196632
+
+        Reviewed by Myles C. Maxfield.
+
+        Properly make Web GPU available on iOS 11+.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2019-04-08  Ross Kirsling  <ross.kirsling@sony.com>
+
+        -f[no-]var-tracking-assignments is GCC-only
+        https://bugs.webkit.org/show_bug.cgi?id=196699
+
+        Reviewed by Don Olmstead.
+
+        * CMakeLists.txt:
+        Just remove the build flag altogether -- it supposedly doesn't solve the problem it was meant to
+        and said problem evidently no longer occurs as of GCC 9.
+
+2019-04-08  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly.RuntimeError missing exception check
+        https://bugs.webkit.org/show_bug.cgi?id=196700
+        <rdar://problem/49693932>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm/js/JSWebAssemblyRuntimeError.h:
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyRuntimeError):
+
+2019-04-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, rolling in r243948 with test fix
+        https://bugs.webkit.org/show_bug.cgi?id=196486
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createString):
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::parseMultilineComment):
+        (JSC::Lexer<T>::lexWithoutClearingLineTerminator):
+        (JSC::Lexer<T>::lex): Deleted.
+        * parser/Lexer.h:
+        (JSC::Lexer::hasLineTerminatorBeforeToken const):
+        (JSC::Lexer::setHasLineTerminatorBeforeToken):
+        (JSC::Lexer<T>::lex):
+        (JSC::Lexer::prevTerminator const): Deleted.
+        (JSC::Lexer::setTerminator): Deleted.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::allowAutomaticSemicolon):
+        (JSC::Parser<LexerType>::parseSingleFunction):
+        (JSC::Parser<LexerType>::parseStatementListItem):
+        (JSC::Parser<LexerType>::maybeParseAsyncFunctionDeclarationStatement):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseExportDeclaration):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parseYieldExpression):
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/Parser.h:
+        (JSC::Parser::nextWithoutClearingLineTerminator):
+        (JSC::Parser::lexCurrentTokenAgainUnderCurrentContext):
+        (JSC::Parser::internalSaveLexerState):
+        (JSC::Parser::restoreLexerState):
+
+2019-04-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r243948.
+
+        Caused inspector/runtime/parse.html to fail
+
+        Reverted changeset:
+
+        "SIGSEGV in JSC::BytecodeGenerator::addStringConstant"
+        https://bugs.webkit.org/show_bug.cgi?id=196486
+        https://trac.webkit.org/changeset/243948
+
+2019-04-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r243943.
+
+        Caused test262 failures.
+
+        Reverted changeset:
+
+        "[JSC] Filter DontEnum properties in
+        ProxyObject::getOwnPropertyNames()"
+        https://bugs.webkit.org/show_bug.cgi?id=176810
+        https://trac.webkit.org/changeset/243943
+
+2019-04-08  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [JSC] Partially fix the build with unified builds disabled
+        https://bugs.webkit.org/show_bug.cgi?id=196647
+
+        Reviewed by Konstantin Tokarev.
+
+        If you disable unified builds you find all kind of build
+        errors. This partially tries to fix them but there's a lot
+        more.
+
+        * API/JSBaseInternal.h:
+        * b3/air/AirAllocateRegistersAndStackAndGenerateCode.cpp:
+        * b3/air/AirHandleCalleeSaves.h:
+        * bytecode/ExecutableToCodeBlockEdge.cpp:
+        * bytecode/ExitFlag.h:
+        * bytecode/ICStatusUtils.h:
+        * bytecode/UnlinkedMetadataTable.h:
+        * dfg/DFGPureValue.h:
+        * heap/IsoAlignedMemoryAllocator.cpp:
+        * heap/IsoAlignedMemoryAllocator.h:
+
+2019-04-08  Guillaume Emont  <guijemont@igalia.com>
+
+        Enable DFG on MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=196689
+
+        Reviewed by Žan Doberšek.
+
+        Since the bytecode change, we enabled the baseline JIT on mips in
+        r240432, but DFG is still missing. With this change, all tests are
+        passing on a ci20 board.
+
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::calleeSaveRegisters):
+        Added s0, which is used in llint.
+
+2019-04-08  Xan Lopez  <xan@igalia.com>
+
+        [CMake] Detect SSE2 at compile time
+        https://bugs.webkit.org/show_bug.cgi?id=196488
+
+        Reviewed by Carlos Garcia Campos.
+
+        * assembler/MacroAssemblerX86Common.cpp: Remove unnecessary (and
+        incorrect) static_assert.
+
+2019-04-07  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r243642): Crash in reddit.com page
+        https://bugs.webkit.org/show_bug.cgi?id=196684
+
+        Reviewed by Geoffrey Garen.
+
+        In r243642, the code that saves and restores the count for non-greedy character classes
+        was inadvertently put inside an if statement.  This code should be generated for all
+        non-greedy character classes.
+
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::generateCharacterClassNonGreedy):
+        (JSC::Yarr::YarrGenerator::backtrackCharacterClassNonGreedy):
+
+2019-04-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] CallLinkInfo should clear Callee or CodeBlock even if it is unlinked by jettison
+        https://bugs.webkit.org/show_bug.cgi?id=196683
+
+        Reviewed by Saam Barati.
+
+        In r243626, we stop repatching CallLinkInfo when the CallLinkInfo is held by jettisoned CodeBlock.
+        But we still need to clear the Callee or CodeBlock since they are now dead. Otherwise, CodeBlock's
+        visitWeak eventually accesses this dead cells and crashes because the owner CodeBlock of CallLinkInfo
+        can be still live.
+
+        We also move all repatching operations from CallLinkInfo.cpp to Repatch.cpp for consistency because the
+        other repatching operations in CallLinkInfo are implemented in Repatch.cpp side.
+
+        * bytecode/CallLinkInfo.cpp:
+        (JSC::CallLinkInfo::setCallee):
+        (JSC::CallLinkInfo::clearCallee):
+        * jit/Repatch.cpp:
+        (JSC::linkFor):
+        (JSC::revertCall):
+
+2019-04-05  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] OSRExit recovery for SpeculativeAdd does not consier "A = A + A" pattern
+        https://bugs.webkit.org/show_bug.cgi?id=196582
+
+        Reviewed by Saam Barati.
+
+        In DFG, our ArithAdd with overflow is executed speculatively, and we recover the value when overflow flag is set.
+        The recovery is subtracting the operand from the destination to get the original two operands. Our recovery code
+        handles A + B = A, A + B = B cases. But it misses A + A = A case (here, A and B are GPRReg). Our recovery code
+        attempts to produce the original operand by performing A - A, and it always produces zero accidentally.
+
+        This patch adds the recovery code for A + A = A case. Because we know that this ArithAdd overflows, and operands were
+        same values, we can calculate the original operand from the destination value by `((int32_t)value >> 1) ^ 0x80000000`.
+
+        We also found that FTL recovery code is dead. We remove them in this patch.
+
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::executeOSRExit):
+        (JSC::DFG::OSRExit::compileExit):
+        * dfg/DFGOSRExit.h:
+        (JSC::DFG::SpeculationRecovery::SpeculationRecovery):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithAdd):
+        * ftl/FTLExitValue.cpp:
+        (JSC::FTL::ExitValue::dataFormat const):
+        (JSC::FTL::ExitValue::dumpInContext const):
+        * ftl/FTLExitValue.h:
+        (JSC::FTL::ExitValue::isArgument const):
+        (JSC::FTL::ExitValue::hasIndexInStackmapLocations const):
+        (JSC::FTL::ExitValue::adjustStackmapLocationsIndexByOffset):
+        (JSC::FTL::ExitValue::recovery): Deleted.
+        (JSC::FTL::ExitValue::isRecovery const): Deleted.
+        (JSC::FTL::ExitValue::leftRecoveryArgument const): Deleted.
+        (JSC::FTL::ExitValue::rightRecoveryArgument const): Deleted.
+        (JSC::FTL::ExitValue::recoveryFormat const): Deleted.
+        (JSC::FTL::ExitValue::recoveryOpcode const): Deleted.
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::preparePatchpointForExceptions):
+        (JSC::FTL::DFG::LowerDFGToB3::appendOSRExit):
+        (JSC::FTL::DFG::LowerDFGToB3::exitValueForNode):
+        (JSC::FTL::DFG::LowerDFGToB3::addAvailableRecovery): Deleted.
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileRecovery):
+
+2019-04-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r243665.
+
+        Caused iOS JSC tests to exit with an exception.
+
+        Reverted changeset:
+
+        "Assertion failed in JSC::createError"
+        https://bugs.webkit.org/show_bug.cgi?id=196305
+        https://trac.webkit.org/changeset/243665
+
+2019-04-05  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        SIGSEGV in JSC::BytecodeGenerator::addStringConstant
+        https://bugs.webkit.org/show_bug.cgi?id=196486
+
+        Reviewed by Saam Barati.
+
+        When parsing a FunctionExpression / FunctionDeclaration etc., we use SyntaxChecker for the body of the function because we do not have any interest on the nodes of the body at that time.
+        The nodes will be parsed with the ASTBuilder when the function itself is parsed for code generation. This works well previously because all the function ends with "}" previously.
+        SyntaxChecker lexes this "}" token, and parser restores the context back to ASTBuilder and continues parsing.
+
+        But now, we have ArrowFunctionExpression without braces `arrow => expr`. Let's consider the following code.
+
+                arrow => expr
+                "string!"
+
+        We parse arrow function's body with SyntaxChecker. At that time, we lex "string!" token under the SyntaxChecker context. But this means that we may not build string content for this token
+        since SyntaxChecker may not have interest on string content itself in certain case. After the parser is back to ASTBuilder, we parse "string!" as ExpressionStatement with string constant,
+        generate StringNode with non-built identifier (nullptr), and we accidentally create StringNode with nullptr.
+
+        This patch fixes this problem. The root cause of this problem is that the last token lexed in the previous context is used. We add lexCurrentTokenAgainUnderCurrentContext which will re-lex
+        the current token under the current context (may be ASTBuilder). This should be done only when the caller's context is different from SyntaxChecker, which avoids unnecessary lexing.
+        We leverage existing SavePoint mechanism to implement lexCurrentTokenAgainUnderCurrentContext cleanly.
+
+        And we also fix the bug in the existing SavePoint mechanism, which is shown in the attached test script. When we save LexerState, we do not save line terminator status. This patch also introduces
+        lexWithoutClearingLineTerminator, which lex the token without clearing line terminator status.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createString):
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::parseMultilineComment):
+        (JSC::Lexer<T>::lexWithoutClearingLineTerminator): EOF token also should record offset information. This offset information is correctly handled in Lexer::setOffset too.
+        (JSC::Lexer<T>::lex): Deleted.
+        * parser/Lexer.h:
+        (JSC::Lexer::hasLineTerminatorBeforeToken const):
+        (JSC::Lexer::setHasLineTerminatorBeforeToken):
+        (JSC::Lexer<T>::lex):
+        (JSC::Lexer::prevTerminator const): Deleted.
+        (JSC::Lexer::setTerminator): Deleted.
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::allowAutomaticSemicolon):
+        (JSC::Parser<LexerType>::parseSingleFunction):
+        (JSC::Parser<LexerType>::parseStatementListItem):
+        (JSC::Parser<LexerType>::maybeParseAsyncFunctionDeclarationStatement):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseExportDeclaration):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parseYieldExpression):
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/Parser.h:
+        (JSC::Parser::nextWithoutClearingLineTerminator):
+        (JSC::Parser::lexCurrentTokenAgainUnderCurrentContext):
+        (JSC::Parser::internalSaveLexerState):
+        (JSC::Parser::restoreLexerState):
+
+2019-04-05  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Filter DontEnum properties in ProxyObject::getOwnPropertyNames()
+        https://bugs.webkit.org/show_bug.cgi?id=176810
+
+        Reviewed by Saam Barati.
+
+        This adds conditional logic following the invariant checks, to perform
+        filtering in common uses of getOwnPropertyNames.
+
+        While this would ideally only be done in JSPropertyNameEnumerator, adding
+        the filtering to ProxyObject::performGetOwnPropertyNames maintains the
+        invariant that the EnumerationMode is properly followed.
+
+        * runtime/PropertyNameArray.h:
+        (JSC::PropertyNameArray::reset):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::performGetOwnPropertyNames):
+
+2019-04-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r243833.
+        https://bugs.webkit.org/show_bug.cgi?id=196645
+
+        This change breaks build of WPE and GTK ports (Requested by
+        annulen on #webkit).
+
+        Reverted changeset:
+
+        "[CMake][WTF] Mirror XCode header directories"
+        https://bugs.webkit.org/show_bug.cgi?id=191662
+        https://trac.webkit.org/changeset/243833
+
+2019-04-05  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] throw if ownKeys Proxy trap result contains duplicate keys
+        https://bugs.webkit.org/show_bug.cgi?id=185211
+
+        Reviewed by Saam Barati.
+
+        Implements the normative spec change in https://github.com/tc39/ecma262/pull/833
+
+        This involves tracking duplicate keys returned from the ownKeys trap in yet
+        another HashTable, and may incur a minor performance penalty in some cases. This
+        is not expected to significantly affect web performance.
+
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::performGetOwnPropertyNames):
+
+2019-04-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] makeBoundFunction should not assume incoming "length" value is Int32 because it performs some calculation in bytecode
+        https://bugs.webkit.org/show_bug.cgi?id=196631
+
+        Reviewed by Saam Barati.
+
+        makeBoundFunction assumes that "length" argument is always Int32. But this should not be done since this "length" value is calculated in builtin JS code.
+        DFG may store this value in Double format so that we should not rely on that this value is Int32. This patch fixes makeBoundFunction function to perform
+        toInt32 operation. We also insert a missing exception check for `JSString::value(ExecState*)` in makeBoundFunction.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * interpreter/CallFrameInlines.h:
+        * runtime/DoublePredictionFuzzerAgent.cpp: Copied from Source/JavaScriptCore/interpreter/CallFrameInlines.h.
+        (JSC::DoublePredictionFuzzerAgent::DoublePredictionFuzzerAgent):
+        (JSC::DoublePredictionFuzzerAgent::getPrediction):
+        * runtime/DoublePredictionFuzzerAgent.h: Copied from Source/JavaScriptCore/interpreter/CallFrameInlines.h.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::makeBoundFunction):
+        * runtime/Options.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+
+2019-04-04  Robin Morisset  <rmorisset@apple.com>
+
+        B3ReduceStrength should know that Mul distributes over Add and Sub
+        https://bugs.webkit.org/show_bug.cgi?id=196325
+        <rdar://problem/49441650>
+
+        Reviewed by Saam Barati.
+
+        Fix some obviously wrong code that was due to an accidental copy-paste.
+        It made the entire optimization dead code that never ran.
+
+        * b3/B3ReduceStrength.cpp:
+
+2019-04-04  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed, build fix for CLoop after r243886
+
+        * interpreter/Interpreter.cpp:
+        (JSC::UnwindFunctor::copyCalleeSavesToEntryFrameCalleeSavesBuffer const):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::calleeSaveRegistersForUnwinding):
+        * interpreter/StackVisitor.h:
+
+2019-04-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r243898.
+        https://bugs.webkit.org/show_bug.cgi?id=196624
+
+        `#if !ENABLE(C_LOOP) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0`
+        does not work well (Requested by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed, build fix for CLoop and Windows after r243886"
+        https://bugs.webkit.org/show_bug.cgi?id=196387
+        https://trac.webkit.org/changeset/243898
+
+2019-04-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, build fix for CLoop and Windows after r243886
+        https://bugs.webkit.org/show_bug.cgi?id=196387
+
+        RegisterAtOffsetList does not exist if ENABLE(ASSEMBLER) is false.
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::calleeSaveRegistersForUnwinding):
+        * interpreter/StackVisitor.h:
+
 2019-04-04  Saam barati  <sbarati@apple.com>
 
         Teach Call ICs how to call Wasm

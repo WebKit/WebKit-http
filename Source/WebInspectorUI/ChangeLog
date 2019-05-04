@@ -1,3 +1,93 @@
+2019-04-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Elements tab: Classes toggle should use accent color on hover
+        https://bugs.webkit.org/show_bug.cgi?id=196266
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle::before):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:matches(.selected, :hover)):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:matches(.selected, :hover)::before):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:not(.selected):hover::before):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle.selected:active::before):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle.selected): Deleted.
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:not(.selected):hover): Deleted.
+
+2019-04-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Audit: default audits aren't added when an existing audit is present
+        https://bugs.webkit.org/show_bug.cgi?id=196663
+        <rdar://problem/49660757>
+
+        Reviewed by Timothy Hatcher.
+
+        Rather than have a button that allows the user to re-add the default audits, prevent them
+        from being deletable in the first place. "Deleting" a default audit will instead mark it as
+        disabled (and beep if it is already disabled).
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.loadStoredTests):
+        (WI.AuditManager.prototype.removeTest):
+        (WI.AuditManager.prototype._addDefaultTests): Added.
+        (WI.AuditManager.prototype.addDefaultTestsIfNeeded): Deleted.
+
+        * UserInterface/Views/AuditNavigationSidebarPanel.js:
+        (WI.AuditNavigationSidebarPanel.prototype._addTest):
+        (WI.AuditNavigationSidebarPanel.prototype._updateStartStopButtonNavigationItemState):
+        (WI.AuditNavigationSidebarPanel.prototype._updateNoAuditsPlaceholder):
+        (WI.AuditNavigationSidebarPanel.prototype._handleAuditTestRemoved):
+        * UserInterface/Views/AuditNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.audit.has-results > .content > .message-text-view.no-enabled-audits): Added.
+        (.sidebar > .panel.navigation.audit.has-results:not(.has-tests) > .content > .message-text-view): Deleted.
+        (.sidebar > .panel.navigation.audit.has-results:not(.has-tests) > .content > .message-text-view > .message): Deleted.
+        (.sidebar > .panel.navigation.audit.has-results:not(.has-tests) > .content > .message-text-view > button): Deleted.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-04-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r237196): Web Inspector: Computed panel shouldn't update when it isn't visible
+        https://bugs.webkit.org/show_bug.cgi?id=196667
+        <rdar://problem/49664912>
+
+        Reviewed by Timothy Hatcher.
+
+        Explicitly define `hidden` and `shown` methods instead of relying on SidebarPanel's `visible` getter.
+
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.visibilityDidChange): Deleted.
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.hidden): Added.
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.shown): Added.
+
+2019-04-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: TestSuite test cases should have their own timeout to ensure tests fail with output instead of timeout by test runner
+        https://bugs.webkit.org/show_bug.cgi?id=162814
+        <rdar://problem/28574102>
+
+        Reviewed by Brian Burg.
+
+        A 10s timer is started for every test case added to an async suite. The timer is cleared
+        when the test finishes, but if the timer fires, the test is forcibly ended with an error.
+
+        This timer can be configured by setting a `timeout` value when adding the test case. Values
+        are expected to be in milliseconds. The value `-1` will prevent a timer from being set.
+
+        This change also relaxes the expectation that any individual test case failure will stop the
+        rest of the suite from running. Since timers are set per test case, it is possible to
+        recover from a "bad" test case to still run the remaining test cases.
+
+        NOTE: there may be unexpected behaviour if a test times out, as the timer doesn't actually
+        stop the execution of the test, so it may still run and log information, which may appear
+        "out of nowhere" in the middle of other tests.
+
+        * UserInterface/Test/TestSuite.js:
+        (TestSuite.prototype.get passCount):
+        (AsyncTestSuite.prototype.runTestCases):
+        (SyncTestSuite.prototype.runTestCases):
+
 2019-04-03  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Single click on links in non-read-only TextEditors should not follow links

@@ -74,7 +74,7 @@ public:
         }
 
     private:
-        template <typename U> friend class WeakHashSet;
+        template <typename> friend class WeakHashSet;
 
         typename WeakReferenceSet::const_iterator m_position;
         typename WeakReferenceSet::const_iterator m_endPosition;
@@ -86,28 +86,42 @@ public:
     const_iterator begin() const { return WeakHashSetConstIterator(m_set, m_set.begin()); }
     const_iterator end() const { return WeakHashSetConstIterator(m_set, m_set.end()); }
 
-    void add(T& value)
+    template <typename U>
+    void add(const U& value)
     {
-        m_set.add(*makeWeakPtr(value).m_ref);
+        m_set.add(*makeWeakPtr<T>(const_cast<U&>(value)).m_ref);
     }
 
-    void remove(const T& value)
+    template <typename U>
+    bool remove(const U& value)
     {
-        auto* weakReference = value.weakPtrFactory().m_ref.get();
+        auto* weakReference = weak_reference_downcast<T>(value.weakPtrFactory().m_ref.get());
         if (!weakReference)
-            return;
-        m_set.remove(weakReference);
+            return false;
+        return m_set.remove(weakReference);
     }
 
-    bool contains(const T& value) const
+    template <typename U>
+    bool contains(const U& value) const
     {
-        auto* weakReference = value.weakPtrFactory().m_ref.get();
+        auto* weakReference = weak_reference_downcast<T>(value.weakPtrFactory().m_ref.get());
         if (!weakReference)
             return false;
         return m_set.contains(weakReference);
     }
 
     unsigned capacity() const { return m_set.capacity(); }
+
+    bool computesEmpty() const
+    {
+        if (m_set.isEmpty())
+            return true;
+        for (auto& value : m_set) {
+            if (value->get())
+                return false;
+        }
+        return true;
+    }
 
     unsigned computeSize() const
     {

@@ -47,6 +47,10 @@
 #include <wtf/RetainPtr.h>
 #endif
 
+#if PLATFORM(GTK)
+#include <wtf/glib/GRefPtr.h>
+#endif
+
 #if PLATFORM(COCOA)
 
 typedef struct _NSRange NSRange;
@@ -292,6 +296,10 @@ struct PlainTextRange {
         : start(s)
         , length(l)
     { }
+    
+#if PLATFORM(COCOA)
+    PlainTextRange(NSRange);
+#endif
     
     bool isNull() const { return !start && !length; }
 };
@@ -697,6 +705,8 @@ public:
     virtual void setSelectedText(const String&) { }
     virtual void setSelectedTextRange(const PlainTextRange&) { }
     virtual void setValue(const String&) { }
+    bool replaceTextInRange(const String&, const PlainTextRange&);
+
     virtual void setValue(float) { }
     virtual void setSelected(bool) { }
     virtual void setSelectedRows(AccessibilityChildrenVector&) { }
@@ -934,20 +944,12 @@ public:
     bool isAXHidden() const;
     bool isDOMHidden() const;
     bool isHidden() const { return isAXHidden() || isDOMHidden(); }
-    
+
 #if HAVE(ACCESSIBILITY)
-#if PLATFORM(GTK)
-    AccessibilityObjectWrapper* wrapper() const override;
-    void setWrapper(AccessibilityObjectWrapper*);
-#else
     AccessibilityObjectWrapper* wrapper() const override { return m_wrapper.get(); }
-    void setWrapper(AccessibilityObjectWrapper* wrapper) 
-    {
-        m_wrapper = wrapper;
-    }
+    void setWrapper(AccessibilityObjectWrapper* wrapper) { m_wrapper = wrapper; }
 #endif
-#endif
-    
+
 #if PLATFORM(COCOA)
     void overrideAttachmentParent(AccessibilityObject* parent);
 #else
@@ -1050,7 +1052,7 @@ protected:
 #elif PLATFORM(WIN)
     COMPtr<AccessibilityObjectWrapper> m_wrapper;
 #elif PLATFORM(GTK)
-    AtkObject* m_wrapper { nullptr };
+    GRefPtr<WebKitAccessible> m_wrapper;
 #elif PLATFORM(WPE)
     RefPtr<AccessibilityObjectWrapper> m_wrapper;
 #endif

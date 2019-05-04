@@ -1,3 +1,253 @@
+2019-04-09  Saam barati  <sbarati@apple.com>
+
+        Clean up Int52 code and some bugs in it
+        https://bugs.webkit.org/show_bug.cgi?id=196639
+        <rdar://problem/49515757>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/spec-any-int-as-double-produces-any-int52-from-int52-rep.js: Added.
+
+2019-04-09  Tadeu Zagallo  <tzagallo@apple.com>
+
+        ASSERTION FAILED: !scope.exception() || !hasProperty in JSObject::get
+        https://bugs.webkit.org/show_bug.cgi?id=196708
+        <rdar://problem/49556803>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/proxy-getter-stack-overflow.js: Added.
+        (const.handler.get target):
+        (const.handler.has):
+        (try.with):
+        (catch):
+
+2019-04-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DFG should respect node's strict flag
+        https://bugs.webkit.org/show_bug.cgi?id=196617
+
+        Reviewed by Saam Barati.
+
+        * stress/put-by-val-direct-should-respect-strict-mode-of-inlining-codeblock.js: Added.
+        (shouldEqual):
+        (makeUnwriteableUnconfigurableObject):
+        (runTest):
+        * stress/put-dynamic-var-strict-and-sloppy.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (with.result):
+        (with.putValueStrict):
+        (with.putValueSloppy):
+
+2019-04-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] isRope jump in StringSlice should not jump over register allocations
+        https://bugs.webkit.org/show_bug.cgi?id=196716
+
+        Reviewed by Saam Barati.
+
+        * stress/is-rope-check-in-string-slice-should-not-jump-over-register-allocations.js: Added.
+        (foo.bar):
+        (foo):
+
+2019-04-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] to_index_string should not assume incoming value is Uint32
+        https://bugs.webkit.org/show_bug.cgi?id=196713
+
+        Reviewed by Saam Barati.
+
+        * stress/to-index-string-should-not-assume-incoming-value-is-uint32.js: Added.
+        (foo):
+
+2019-04-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add more tests for r243966
+        https://bugs.webkit.org/show_bug.cgi?id=196711
+
+        Reviewed by Saam Barati.
+
+        Adding one more test for r243966 fix. The added test will not crash after r243966.
+
+        * stress/stress-cleared-calllinkinfo.js: Added.
+        (runNearStackLimit.t):
+        (runNearStackLimit):
+        (repeat):
+        (cls):
+        (let.item.of.array.runNearStackLimit):
+
+2019-04-08  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly.RuntimeError missing exception check
+        https://bugs.webkit.org/show_bug.cgi?id=196700
+        <rdar://problem/49693932>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm/js-api/runtime-error-should-exception-check.js: Added.
+
+2019-04-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, rolling in r243948 with test fix
+        https://bugs.webkit.org/show_bug.cgi?id=196486
+
+        * stress/arrow-function-and-use-strict-directive.js: Added.
+        * stress/arrow-function-syntax.js: Added.
+        (checkSyntax):
+        (checkSyntaxError):
+
+2019-04-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r243948.
+
+        Caused inspector/runtime/parse.html to fail
+
+        Reverted changeset:
+
+        "SIGSEGV in JSC::BytecodeGenerator::addStringConstant"
+        https://bugs.webkit.org/show_bug.cgi?id=196486
+        https://trac.webkit.org/changeset/243948
+
+2019-04-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r243943.
+
+        Caused test262 failures.
+
+        Reverted changeset:
+
+        "[JSC] Filter DontEnum properties in
+        ProxyObject::getOwnPropertyNames()"
+        https://bugs.webkit.org/show_bug.cgi?id=176810
+        https://trac.webkit.org/changeset/243943
+
+2019-04-07  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r243642): Crash in reddit.com page
+        https://bugs.webkit.org/show_bug.cgi?id=196684
+
+        Reviewed by Geoffrey Garen.
+
+        New regression test.
+
+        * stress/regexp-nongreedy-charclass-backtracks.js: Added.
+
+2019-04-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] CallLinkInfo should clear Callee or CodeBlock even if it is unlinked by jettison
+        https://bugs.webkit.org/show_bug.cgi?id=196683
+
+        Reviewed by Saam Barati.
+
+        * stress/clear-callee-or-codeblock-in-calllinkinfo-even-cleared-by-jettison.js: Added.
+        (foo):
+
+2019-04-05  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] OSRExit recovery for SpeculativeAdd does not consier "A = A + A" pattern
+        https://bugs.webkit.org/show_bug.cgi?id=196582
+
+        Reviewed by Saam Barati.
+
+        * stress/add-overflow-check-with-three-same-registers.js: Added.
+        (foo):
+        (Number.prototype.valueOf):
+        (runWithNumber):
+
+2019-04-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r243665.
+
+        Caused iOS JSC tests to exit with an exception.
+
+        Reverted changeset:
+
+        "Assertion failed in JSC::createError"
+        https://bugs.webkit.org/show_bug.cgi?id=196305
+        https://trac.webkit.org/changeset/243665
+
+2019-04-05  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        SIGSEGV in JSC::BytecodeGenerator::addStringConstant
+        https://bugs.webkit.org/show_bug.cgi?id=196486
+
+        Reviewed by Saam Barati.
+
+        * stress/arrow-function-and-use-strict-directive.js: Added.
+        * stress/arrow-function-syntax.js: Added. Checking EOF token handling.
+        (checkSyntax):
+        (checkSyntaxError): Currently not using it. But it is useful for testing more things related to arrow function syntax.
+
+2019-04-05  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Filter DontEnum properties in ProxyObject::getOwnPropertyNames()
+        https://bugs.webkit.org/show_bug.cgi?id=176810
+
+        Reviewed by Saam Barati.
+
+        Add tests for the DontEnum filtering, and variations of other tests
+        take the DontEnum-filtering path.
+
+        * stress/proxy-own-keys.js:
+        (i.catch):
+        (set assert):
+        (set add):
+        (let.set new):
+        (get let):
+
+2019-04-05  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] throw if 'ownKeys' Proxy trap result contains duplicate keys
+        https://bugs.webkit.org/show_bug.cgi?id=185211
+
+        Reviewed by Saam Barati.
+
+        This is for the normative spec change in https://github.com/tc39/ecma262/pull/833
+
+        This changes several assertions to expect a TypeError to be thrown (in some cases,
+        changing thee expected message).
+
+        * es6/Proxy_ownKeys_duplicates.js:
+        (handler):
+        (shouldThrow):
+        (test):
+        * stress/Object_static_methods_Object.getOwnPropertyDescriptors-proxy.js:
+        (shouldThrow):
+        * stress/proxy-own-keys.js:
+        (i.catch):
+        (assert):
+
+2019-04-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] makeBoundFunction should not assume incoming "length" value is Int32 because it performs some calculation in bytecode
+        https://bugs.webkit.org/show_bug.cgi?id=196631
+
+        Reviewed by Saam Barati.
+
+        * stress/make-bound-function-should-not-assume-int32-length.js: Added.
+        (assert):
+        (test):
+        (foo):
+
+2019-04-04  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Make the test from r243906 catch the thrown exceptions.
+
+        * stress/inferred-types-regex-matches-array.js:
+
+2019-04-04  Saam Barati  <sbarati@apple.com>
+
+        createRegExpMatchesArray does not respect inferred types
+        https://bugs.webkit.org/show_bug.cgi?id=193287
+
+        Reviewed by Yusuke Suzuki.
+
+        This checks in the test case for 193287. This issue was discovered by
+        Samuel Groß of Google Project Zero.
+
+        * stress/inferred-types-regex-matches-array.js: Added.
+
 2019-04-04  Saam barati  <sbarati@apple.com>
 
         Teach Call ICs how to call Wasm

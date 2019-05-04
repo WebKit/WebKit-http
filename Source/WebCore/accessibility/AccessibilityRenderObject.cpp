@@ -38,6 +38,7 @@
 #include "AccessibilityTable.h"
 #include "CachedImage.h"
 #include "Editing.h"
+#include "Editor.h"
 #include "ElementIterator.h"
 #include "FloatRect.h"
 #include "Frame.h"
@@ -56,6 +57,7 @@
 #include "HTMLNames.h"
 #include "HTMLOptionElement.h"
 #include "HTMLOptionsCollection.h"
+#include "HTMLParserIdioms.h"
 #include "HTMLSelectElement.h"
 #include "HTMLSummaryElement.h"
 #include "HTMLTableElement.h"
@@ -640,10 +642,7 @@ String AccessibilityRenderObject::textUnderElement(AccessibilityTextUnderElement
             // defining one based in the two external positions defining the boundaries of the subtree.
             RenderObject* firstChildRenderer = m_renderer->firstChildSlow();
             RenderObject* lastChildRenderer = m_renderer->lastChildSlow();
-            if (firstChildRenderer && lastChildRenderer) {
-                ASSERT(firstChildRenderer->node());
-                ASSERT(lastChildRenderer->node());
-
+            if (firstChildRenderer && firstChildRenderer->node() && lastChildRenderer && lastChildRenderer->node()) {
                 // We define the start and end positions for the range as the ones right before and after
                 // the first and the last nodes in the DOM tree that is wrapped inside the anonymous block.
                 Node* firstNodeInBlock = firstChildRenderer->node();
@@ -1075,6 +1074,42 @@ bool AccessibilityRenderObject::exposesTitleUIElement() const
     
     return true;
 }
+
+#if ENABLE(APPLE_PAY)
+String AccessibilityRenderObject::applePayButtonDescription() const
+{
+    switch (applePayButtonType()) {
+    case ApplePayButtonType::Plain:
+        return AXApplePayPlainLabel();
+    case ApplePayButtonType::Buy:
+        return AXApplePayBuyLabel();
+    case ApplePayButtonType::SetUp:
+        return AXApplePaySetupLabel();
+    case ApplePayButtonType::Donate:
+        return AXApplePayDonateLabel();
+#if ENABLE(APPLE_PAY_SESSION_V4)
+    case ApplePayButtonType::CheckOut:
+        return AXApplePayCheckOutLabel();
+    case ApplePayButtonType::Book:
+        return AXApplePayBookLabel();
+    case ApplePayButtonType::Subscribe:
+        return AXApplePaySubscribeLabel();
+#endif
+    }
+}
+#endif
+
+void AccessibilityRenderObject::titleElementText(Vector<AccessibilityText>& textOrder) const
+{
+#if ENABLE(APPLE_PAY)
+    if (isApplePayButton()) {
+        textOrder.append(AccessibilityText(applePayButtonDescription(), AccessibilityTextSource::Alternative));
+        return;
+    }
+#endif
+
+    AccessibilityNodeObject::titleElementText(textOrder);
+}
     
 AccessibilityObject* AccessibilityRenderObject::titleUIElement() const
 {
@@ -1156,7 +1191,7 @@ AccessibilityObjectInclusion AccessibilityRenderObject::defaultObjectInclusion()
     
 static bool webAreaIsPresentational(RenderObject* renderer)
 {
-    if (!is<RenderView>(*renderer))
+    if (!renderer || !is<RenderView>(*renderer))
         return false;
     
     if (auto ownerElement = renderer->document().ownerElement())
@@ -1445,7 +1480,7 @@ double AccessibilityRenderObject::estimatedLoadingProgress() const
     
 int AccessibilityRenderObject::layoutCount() const
 {
-    if (!is<RenderView>(*m_renderer))
+    if (!m_renderer || !is<RenderView>(*m_renderer))
         return 0;
     return downcast<RenderView>(*m_renderer).frameView().layoutContext().layoutCount();
 }
@@ -1816,7 +1851,7 @@ Document* AccessibilityRenderObject::document() const
 
 Widget* AccessibilityRenderObject::widget() const
 {
-    if (!is<RenderWidget>(*m_renderer))
+    if (!m_renderer || !is<RenderWidget>(*m_renderer))
         return nullptr;
     return downcast<RenderWidget>(*m_renderer).widget();
 }
@@ -2672,6 +2707,11 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (!m_renderer)
         return AccessibilityRole::Unknown;
 
+#if ENABLE(APPLE_PAY)
+    if (isApplePayButton())
+        return AccessibilityRole::Button;
+#endif
+
     // Sometimes we need to ignore the attribute role. Like if a tree is malformed,
     // we want to ignore the treeitem's attribute role.
     if ((m_ariaRole = determineAriaRoleAttribute()) != AccessibilityRole::Unknown && !shouldIgnoreAttributeRole())
@@ -3263,7 +3303,8 @@ void AccessibilityRenderObject::addHiddenChildren()
 void AccessibilityRenderObject::updateRoleAfterChildrenCreation()
 {
     // If a menu does not have valid menuitem children, it should not be exposed as a menu.
-    if (roleValue() == AccessibilityRole::Menu) {
+    auto role = roleValue();
+    if (role == AccessibilityRole::Menu) {
         // Elements marked as menus must have at least one menu item child.
         size_t menuItemCount = 0;
         for (const auto& child : children()) {
@@ -3276,6 +3317,8 @@ void AccessibilityRenderObject::updateRoleAfterChildrenCreation()
         if (!menuItemCount)
             m_role = AccessibilityRole::Group;
     }
+    if (role == AccessibilityRole::SVGRoot && !hasChildren())
+        m_role = AccessibilityRole::Image;
 }
     
 void AccessibilityRenderObject::addChildren()
@@ -3625,6 +3668,22 @@ bool AccessibilityRenderObject::hasSameFont(RenderObject* renderer) const
     
     return m_renderer->style().fontDescription().families() == renderer->style().fontDescription().families();
 }
+
+#if ENABLE(APPLE_PAY)
+bool AccessibilityRenderObject::isApplePayButton() const
+{
+    if (!m_renderer)
+        return false;
+    return m_renderer->style().appearance() == ApplePayButtonPart;
+}
+
+ApplePayButtonType AccessibilityRenderObject::applePayButtonType() const
+{
+    if (!m_renderer)
+        return ApplePayButtonType::Plain;
+    return m_renderer->style().applePayButtonType();
+}
+#endif
 
 bool AccessibilityRenderObject::hasSameFontColor(RenderObject* renderer) const
 {

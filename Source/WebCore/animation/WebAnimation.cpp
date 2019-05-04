@@ -1157,7 +1157,10 @@ const char* WebAnimation::activeDOMObjectName() const
 
 bool WebAnimation::canSuspendForDocumentSuspension() const
 {
-    return !hasPendingActivity();
+    // Use the base class's implementation of hasPendingActivity() since we wouldn't want the custom implementation
+    // in this class designed to keep JS wrappers alive to interfere with the ability for a page using animations
+    // to enter the page cache.
+    return !ActiveDOMObject::hasPendingActivity();
 }
 
 void WebAnimation::stop()
@@ -1169,6 +1172,7 @@ void WebAnimation::stop()
 
 bool WebAnimation::hasPendingActivity() const
 {
+    // Keep the JS wrapper alive if the animation is considered relevant or could become relevant again by virtue of having a timeline.
     return m_timeline || m_isRelevant || ActiveDOMObject::hasPendingActivity();
 }
 

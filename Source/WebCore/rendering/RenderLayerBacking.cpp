@@ -34,6 +34,7 @@
 #include "CachedImage.h"
 #include "Chrome.h"
 #include "DocumentTimeline.h"
+#include "EventRegion.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
@@ -51,7 +52,6 @@
 #include "PerformanceLoggingClient.h"
 #include "PluginViewBase.h"
 #include "ProgressTracker.h"
-#include "Region.h"
 #include "RenderFragmentContainer.h"
 #include "RenderFragmentedFlow.h"
 #include "RenderHTMLCanvas.h"
@@ -765,10 +765,10 @@ bool RenderLayerBacking::updateConfiguration()
     if (!m_owningLayer.isRenderViewLayer()) {
         bool didUpdateContentsRect = false;
         updateDirectlyCompositedBoxDecorations(contentsInfo, didUpdateContentsRect);
-
-        updateEventRegion();
     } else
         updateRootLayerConfiguration();
+
+    updateEventRegion();
     
     // Requires layout.
     if (contentsInfo.isDirectlyCompositedImage())
@@ -1262,7 +1262,7 @@ void RenderLayerBacking::setLocationOfScrolledContents(ScrollOffset scrollOffset
 
 void RenderLayerBacking::updateScrollOffset(ScrollOffset scrollOffset)
 {
-    if (m_owningLayer.isInUserScroll()) {
+    if (m_owningLayer.currentScrollType() == ScrollType::User) {
         // If scrolling is happening externally, we don't want to touch the layer bounds origin here because that will cause jitter.
         setLocationOfScrolledContents(scrollOffset, ScrollingLayerPositionAction::Sync);
         m_owningLayer.setRequiresScrollPositionReconciliation(true);
@@ -1439,18 +1439,26 @@ void RenderLayerBacking::updateEventRegion()
     if (paintsIntoCompositedAncestor())
         return;
 
+    bool hasTouchActionElements = false;
+#if ENABLE(POINTER_EVENTS)
+    hasTouchActionElements = !!renderer().document().touchActionElements();
+#endif
+    if (m_owningLayer.isRenderViewLayer() && !hasTouchActionElements)
+        return;
+
     GraphicsContext nullContext(nullptr);
     RenderLayer::LayerPaintingInfo paintingInfo(&m_owningLayer, compositedBounds(), { }, LayoutSize());
 
-    Region eventRegion;
+    EventRegion eventRegion;
     paintingInfo.eventRegion = &eventRegion;
 
     auto paintFlags = RenderLayer::paintLayerPaintingCompositingAllPhasesFlags() | RenderLayer::PaintLayerCollectingEventRegion;
     m_owningLayer.paintLayerContents(nullContext, paintingInfo, paintFlags);
 
-    eventRegion.translate(roundedIntSize(contentOffsetInCompositingLayer()));
-
+    auto contentOffset = roundedIntSize(contentOffsetInCompositingLayer());
+    eventRegion.translate(contentOffset);
     m_graphicsLayer->setEventRegion(WTFMove(eventRegion));
+
 #endif
 }
 
@@ -2478,6 +2486,8 @@ void RenderLayerBacking::setContentsNeedDisplay(GraphicsLayer::ShouldClipToLayer
     if (!m_owningLayer.isRenderViewLayer())
         m_owningLayer.setNeedsCompositingConfigurationUpdate();
 
+    m_owningLayer.invalidateEventRegion();
+
     auto& frameView = renderer().view().frameView();
     if (m_isMainFrameRenderViewLayer && frameView.isTrackingRepaints())
         frameView.addTrackedRepaintRect(owningLayer().absoluteBoundingBoxForPainting());
@@ -2515,6 +2525,8 @@ void RenderLayerBacking::setContentsNeedDisplayInRect(const LayoutRect& r, Graph
     // Use the repaint as a trigger to re-evaluate direct compositing (which is never used on the root layer).
     if (!m_owningLayer.isRenderViewLayer())
         m_owningLayer.setNeedsCompositingConfigurationUpdate();
+
+    m_owningLayer.invalidateEventRegion();
 
     FloatRect pixelSnappedRectForPainting = snapRectToDevicePixels(r, deviceScaleFactor());
     auto& frameView = renderer().view().frameView();

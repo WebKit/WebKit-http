@@ -1,3 +1,520 @@
+2019-04-10  Youenn Fablet  <youenn@apple.com>
+
+        Delay initialization of quota users until the first quota request
+        https://bugs.webkit.org/show_bug.cgi?id=196467
+
+        Reviewed by Chris Dumez.
+
+        Unflake cache storage tests.
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2019-04-10  Philippe Normand  <pnormand@igalia.com>
+
+        there is no vp8 support in youtube.com/html5 page with libwebkit2gtk 2.24 (MSE enabled)
+        https://bugs.webkit.org/show_bug.cgi?id=196615
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Update WPE baselines and add/unskip the
+        imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/mime-types/canPlayType.html test in GTK.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/mime-types/canPlayType-expected.txt: Copied from LayoutTests/platform/wpe/imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/mime-types/canPlayType-expected.txt.
+        * platform/wpe/imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/mime-types/canPlayType-expected.txt:
+
+2019-04-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [ATK] Defer the emision of AtkObject::children-changed signal after layout is done
+        https://bugs.webkit.org/show_bug.cgi?id=187948
+
+        Reviewed by Michael Catanzaro.
+
+        Remove expectations of accessibility/children-changed-sends-notification.html that passes now.
+
+        * platform/gtk/TestExpectations:
+
+2019-04-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [ATK] Test accessibility/insert-children-assert.html is crashing since added in r216980
+        https://bugs.webkit.org/show_bug.cgi?id=172281
+        <rdar://problem/37030990>
+
+        Reviewed by Joanmarie Diggs.
+
+        Update the test to expect the whole content text on atk and remove the test expectations.
+
+        * accessibility/insert-children-assert.html:
+        * platform/gtk/TestExpectations:
+
+2019-04-09  John Wilander  <wilander@apple.com>
+
+        Add Resource Load Statistics test case for Ping
+        https://bugs.webkit.org/show_bug.cgi?id=196748
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/resourceLoadStatistics/ping-to-prevalent-resource-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/ping-to-prevalent-resource.html: Added.
+
+2019-04-09  Megan Gardner  <megan_gardner@apple.com>
+
+        Turn on editing test that should pass now
+        https://bugs.webkit.org/show_bug.cgi?id=196747
+        <rdar://problem/38779179>
+
+        Reviewed by Tim Horton.
+
+        Just turning on a test that needed to be turns off for a while due to compatibility changes
+        with the system.
+
+        * platform/ios-wk2/TestExpectations:
+
+2019-04-09  Zalan Bujtas  <zalan@apple.com>
+
+        [AutoSizing] Avoid making text paragraphs scroll horizontally when there is a wide table
+        https://bugs.webkit.org/show_bug.cgi?id=196743
+        <rdar://problem/43897551>
+
+        Reviewed by Tim Horton.
+
+        * css3/viewport-percentage-lengths/vh-auto-size-expected.html:
+        * css3/viewport-percentage-lengths/vh-auto-size.html:
+        * fast/dynamic/crash-subtree-layout-when-auto-size-enabled.html:
+        * fast/dynamic/mail-autosize-viewport-unit.html:
+
+2019-04-09  Daniel Bates  <dabates@apple.com>
+
+        [iPad] Should open popover when the spacebar is pressed
+        https://bugs.webkit.org/show_bug.cgi?id=196360
+        <rdar://problem/49389129>
+
+        Reviewed by Brent Fulgham.
+
+        Add an iPad-specific test to ensure that pressing the spacebar opens the popover and scrolls
+        the form control into view.
+
+        * fast/forms/ios/ipad/open-picker-using-keyboard-expected.txt: Added.
+        * fast/forms/ios/ipad/open-picker-using-keyboard.html: Added.
+        * platform/ios/TestExpectations: Skip tests in fast/forms/ios/ipad. We will unskip for iPad below.
+        * platform/ipad/TestExpectations: Mark tests in fast/forms/ios/ipad as PASS so we run them.
+        * resources/ui-helper.js:
+        (window.UIHelper.waitForPopoverToPresent):
+        (window.UIHelper.waitForPopoverToDismiss):
+
+2019-04-09  Youenn Fablet  <youenn@apple.com>
+
+        Refresh WPT service worker expectations
+        https://bugs.webkit.org/show_bug.cgi?id=196732
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+
+2019-04-09  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] GPURenderPassEncoder updates: setBlendColor, setViewport, setScissorRect
+        https://bugs.webkit.org/show_bug.cgi?id=196719
+
+        Reviewed by Myles C. Maxfield.
+
+        Add blend-color-triangle-strip to set and blend with a custom blend color on the renderpass encoder.
+        Add viewport-scissor-rect-triangle-strip to draw a checkerboard by restricting the drawing viewport or scissor rectangle.
+
+        * webgpu/blend-color-triangle-strip.html: Added.
+        * webgpu/js/webgpu-functions.js:
+        (beginBasicRenderPass):
+        * webgpu/viewport-scissor-rect-triangle-strip-expected.html: Added.
+        * webgpu/viewport-scissor-rect-triangle-strip.html: Added.
+
+2019-04-09  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failures after r239698.
+        <rdar://problem/47223615>
+
+        * http/tests/inspector/network/resource-security-connection.html:
+        Security connection information is sent as part of the metrics, not the response.
+
+2019-04-09  John Wilander  <wilander@apple.com>
+
+        Pick up Ad Click Attribution conversions in NetworkResourceLoader::willSendRedirectedRequest()
+        https://bugs.webkit.org/show_bug.cgi?id=196558
+        <rdar://problem/47650245>
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/adClickAttribution/anchor-tag-attributes-validation-expected.txt:
+           Enhanced the use of AdClickAttribution::MaxEntropy.
+        * http/tests/adClickAttribution/attribution-conversion-through-cross-site-image-redirect-expected.txt: Added.
+        * http/tests/adClickAttribution/attribution-conversion-through-cross-site-image-redirect.html: Added.
+        * http/tests/adClickAttribution/attribution-conversion-through-image-redirect-with-priority-expected.txt: Added.
+        * http/tests/adClickAttribution/attribution-conversion-through-image-redirect-with-priority.html: Added.
+        * http/tests/adClickAttribution/attribution-conversion-through-image-redirect-without-priority-expected.txt: Added.
+        * http/tests/adClickAttribution/attribution-conversion-through-image-redirect-without-priority.html: Added.
+        * http/tests/adClickAttribution/resources/redirectToConversion.php: Added.
+        * http/tests/adClickAttribution/resources/redirectToConversionOnIPAddress.php: Added.
+        * platform/ios-wk2/http/tests/adClickAttribution/anchor-tag-attributes-validation-expected.txt:
+           Enhanced the use of AdClickAttribution::MaxEntropy.
+
+2019-04-09  Shawn Roberts  <sroberts@apple.com>
+
+        inspector/canvas/css-canvas-clients.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=174272
+
+        Unreviewed test gardening
+
+        * platform/mac/TestExpectations: Updating expectations to unskip test and just mark as a flaky failure
+
+2019-04-09  Shawn Roberts  <sroberts@apple.com>
+
+        inspector/console/console-time.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=158006
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations: Updating expecations for flaky failure
+
+2019-04-09  Antoine Quint  <graouts@apple.com>
+
+        [ Mac ] REGRESSION (r237587) Layout Test compositing/visible-rect/animated-from-none.html is flaky text diff failure
+        https://bugs.webkit.org/show_bug.cgi?id=194798
+        <rdar://problem/48181898>
+
+        Reviewed by Dean Jackson.
+
+        When using the Web Animations engine, the best way to run code as an animation start is to use the "ready" promise, whereas
+        DOM events are dispatched asynchronously and, in the case of this test, might have an animation progress that is greater
+        than 0 and yield an animated transform that isn't quite the identity matrix.
+
+        * compositing/visible-rect/animated-from-none.html:
+
+2019-04-09  Jer Noble  <jer.noble@apple.com>
+
+        Add test for fix of #196095
+        https://bugs.webkit.org/show_bug.cgi?id=196097
+
+        Reviewed by Eric Carlson.
+
+        * media/track/track-in-band-metadata-display-order-expected.txt: Added.
+        * media/track/track-in-band-metadata-display-order.html: Added.
+
+2019-04-08  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Automatically compute accessibility labels for Apple Pay buttons
+        https://bugs.webkit.org/show_bug.cgi?id=196661
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/mac/apple-pay-labels-expected.txt: Added.
+        * accessibility/mac/apple-pay-labels.html: Added.
+        * accessibility/mac/apple-pay-session-v4-expected.txt: Added.
+        * accessibility/mac/apple-pay-session-v4.html: Added.
+
+2019-04-08  Youenn Fablet  <youenn@apple.com>
+
+        Add a test to check for the service worker process name
+        https://bugs.webkit.org/show_bug.cgi?id=196621
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/service-workers/online-worker.js:
+        (async.doTest):
+
+2019-04-08  Shawn Roberts  <sroberts@apple.com>
+
+        fast/parser/xml-error-adopted.xml is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=186581
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2019-04-08  Shawn Roberts  <sroberts@apple.com>
+
+        Fixed a typo on a test expectation
+        https://bugs.webkit.org/show_bug.cgi?id=187391
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Updating test expectations
+
+2019-04-08  Shawn Roberts  <sroberts@apple.com>
+
+        inspector/canvas/css-canvas-clients.html is a constant timeout/failure
+        https://bugs.webkit.org/show_bug.cgi?id=174272
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations: Updating test expectations to skip test
+
+2019-04-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, rolling in r243948 with test fix
+        https://bugs.webkit.org/show_bug.cgi?id=196486
+
+        The test relied on the wrong EOF token's offset. This patch also fixes the test.
+
+        * inspector/runtime/parse-expected.txt:
+        * inspector/runtime/parse.html:
+
+2019-04-08  Antti Koivisto  <antti@apple.com>
+
+        Update touch-action region on property changes
+        https://bugs.webkit.org/show_bug.cgi?id=196608
+
+        Reviewed by Simon Fraser.
+
+        * pointerevents/ios/touch-action-region-dynamic-expected.txt: Added.
+        * pointerevents/ios/touch-action-region-dynamic.html: Added.
+
+2019-04-08  Javier Fernandez  <jfernandez@igalia.com>
+
+        Implement white-space:break-spaces value
+        https://bugs.webkit.org/show_bug.cgi?id=177327
+
+        Reviewed by Myles Maxfield and Zalan Bujtas.
+
+        Removed many failure expectations of tests that pass now thanks to this change.
+
+        The overflow-wrap-break-word-003.html tests fails in mac and iOS platforms due to an issue related to
+        how we compute widths using 'ch' units and 'monospace' fonts. I filed bug #196169 to report the specific
+        case of this test (break-word+pre-wrap) but the root cause it's probably the bug #196353.
+
+        I have submitted a PR [1] to the Web Platform Tests to change several tests that failed only if the
+        monospace font is used, but pass with the Ahem font. Additionally, I've requested another PR [2] to
+        add new layout tests, with the same case than overflow-wrap-break-word-003.html but using the Ahem
+        font.
+
+        [1] https://github.com/web-platform-tests/wpt/pull/16137
+        [2] https://github.com/web-platform-tests/wpt/pull/16124
+
+        * TestExpectations: Removed many Failure entries on tests that pass now thanks to this change.
+        * platform/mac/TestExpectations: Added one Failure entry and filed the corresponding bug report.
+
+2019-04-08  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] JS wrapper may be deleted while animation is yet to dispatch its finish event
+        https://bugs.webkit.org/show_bug.cgi?id=196118
+        <rdar://problem/46614137>
+
+        Reviewed by Chris Dumez.
+
+        Add a test that starts a short animation, sets a custom property on it, registers a "finish" event listener on it and deletes
+        the sole reference to it in the JS world before triggering garbage collection. Prior to this fix, this test would time out
+        because the JS wrapper would be garbage-collected prior to the animation completing and thus the event listener would not
+        be called. To complete successfully, this test checks that it receives the event and its target is the same animation object
+        that was originally created by checking the custom property is still set.
+
+        We also make sure that a test, which was found to have regressed with a previous version of this patch, uses the animation
+        engine that it is expected to be testing.
+
+        * legacy-animation-engine/animations/resume-after-page-cache.html:
+        * webanimations/js-wrapper-kept-alive-expected.txt: Added.
+        * webanimations/js-wrapper-kept-alive.html: Added.
+
+2019-04-08  Eric Liang  <ericliang@apple.com>
+
+        AX: <svg> elements with labels and no accessible contents are exposed as empty AXGroups
+        https://bugs.webkit.org/show_bug.cgi?id=156774
+
+        Reviewed by Chris Fleizach.
+
+        Added tests that verify svgs shapes that are labelled are exposed as images.
+        * accessibility/resources/apple-logo.svg: Added.
+        * accessibility/svg-shape-labelled-expected.txt: Added.
+        * accessibility/svg-shape-labelled.html: Added.
+
+2019-04-08  Shawn Roberts  <sroberts@apple.com>
+
+        Layout tests imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex7-event_order.html
+        imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex6-event_order.html are flaky failures
+        https://bugs.webkit.org/show_bug.cgi?id=195961
+
+        Unreviewed test gardening
+
+        * platform/mac-wk2/TestExpectations: Updating test expectations for Debug flaky failure
+
+2019-04-06  Antti Koivisto  <antti@apple.com>
+
+        Combine event and touch action regions into a single class
+        https://bugs.webkit.org/show_bug.cgi?id=196644
+        <rdar://problem/49643614>
+
+        Reviewed by Darin Adler.
+
+        * pointerevents/ios/touch-action-region-basic-expected.txt:
+        * pointerevents/ios/touch-action-region-layers-expected.txt:
+        * pointerevents/ios/touch-action-region-pan-x-y-expected.txt:
+
+2019-04-05  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        We should pass minimumEffectiveDeviceWidth to web process on new page creation.
+        https://bugs.webkit.org/show_bug.cgi?id=196077
+        <rdar://problem/49108202>
+
+        Reviewed by Chris Dumez.
+
+        Add a layout test to verify the page shrinks to fit the window width when ignoreMetaViewport
+        flag is turned on.
+
+        * fast/viewport/ios/shrink-to-fit-for-page-without-viewport-meta-expected.txt: Added.
+        * fast/viewport/ios/shrink-to-fit-for-page-without-viewport-meta.html: Added.
+
+2019-04-05  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Deactivate the audio session before the WebProcess suspends.
+        https://bugs.webkit.org/show_bug.cgi?id=196658
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/media/audio-session-deactivated-when-suspended-expected.txt: Added.
+        * platform/mac/media/audio-session-deactivated-when-suspended.html: Added.
+
+2019-04-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: TestSuite test cases should have their own timeout to ensure tests fail with output instead of timeout by test runner
+        https://bugs.webkit.org/show_bug.cgi?id=162814
+        <rdar://problem/28574102>
+
+        Reviewed by Brian Burg.
+
+        * inspector/unit-tests/async-test-suite.html:
+        * inspector/unit-tests/async-test-suite-expected.txt:
+        * inspector/unit-tests/sync-test-suite.html:
+        * inspector/unit-tests/sync-test-suite-expected.txt:
+
+        * http/tests/inspector/network/set-resource-caching-disabled-disk-cache-expected.txt:
+        * inspector/canvas/recording-2d.html:
+        * inspector/canvas/recording-webgl-snapshots.html:
+        * inspector/canvas/recording-webgl.html:
+        * inspector/canvas/resources/shaderProgram-utilities.js:
+        (TestPage.registerInitializer.whenProgramAdded): Added.
+        (TestPage.registerInitializer.whenProgramRemoved): Added.
+        (TestPage.registerInitializer.window.initializeTestSuite):
+        (TestPage.registerInitializer.window.addSimpleTestCase):
+        (TestPage.registerInitializer.window.addParentCanvasRemovedTestCase):
+        (TestPage.registerInitializer.awaitProgramAdded): Added.
+        (TestPage.registerInitializer.awaitProgramRemoved): Added.
+        * inspector/console/command-line-api-expected.txt:
+        * inspector/console/heap-snapshot.html:
+        * inspector/debugger/async-stack-trace-truncate-expected.txt:
+        * inspector/debugger/pause-for-internal-scripts-expected.txt:
+        * inspector/formatting/resources/utilities.js:
+        (TestPage.registerInitializer.window.addFormattingTests):
+
+2019-04-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [Mac WK2 iOS Sim] Layout Test imported/w3c/web-platform-tests/webrtc/RTCRtpReceiver-getSynchronizationSources.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=196633
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations: Mark test as flaky.
+        * platform/mac-wk2/TestExpectations: Ditto.
+
+2019-04-05  Shawn Roberts  <sroberts@apple.com>
+
+        editing/execCommand/print.html is crashing on iOS Debug
+        https://bugs.webkit.org/show_bug.cgi?id=196654
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations: Skipping test on iOS Debug while waiting for a fix
+
+2019-04-05  Diego Pino Garcia  <dpino@igalia.com>
+
+        [WPE] Unreviewed gardening, update unexpected passes
+
+        * platform/wpe/TestExpectations:
+
+2019-04-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Simple iframe scrolling test fails to get a composited scrolling frame in WebKitTestRunnerApp
+        https://bugs.webkit.org/show_bug.cgi?id=196635
+
+        Reviewed by Antti Koivisto.
+
+        * scrollingcoordinator/ios/programmatic-frame-scroll-expected.html: Added.
+        * scrollingcoordinator/ios/programmatic-frame-scroll.html: Added.
+
+2019-04-04  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] REGRESSION (r242687): Programmatic scroll of overflow scroll results in bad rendering
+        https://bugs.webkit.org/show_bug.cgi?id=195584
+
+        Reviewed by Zalan Bujtas.
+
+        Testing of programmatic scrolls in frames is prevented by webkit.org/b/196635.
+
+        * scrollingcoordinator/ios/programmatic-overflow-scroll-expected.html: Added.
+        * scrollingcoordinator/ios/programmatic-overflow-scroll.html: Added.
+        * scrollingcoordinator/ios/programmatic-page-scroll-expected.html: Added.
+        * scrollingcoordinator/ios/programmatic-page-scroll.html: Added.
+
+2019-04-04  Shawn Roberts  <sroberts@apple.com>
+
+        Unreviewed, rolling out r243868.
+
+        Causing timeouts failures on several queues
+
+        Reverted changeset:
+
+        "[Web Animations] JS wrapper may be deleted while animation is
+        yet to dispatch its finish event"
+        https://bugs.webkit.org/show_bug.cgi?id=196118
+        https://trac.webkit.org/changeset/243868
+
+2019-04-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r243807 and r243824.
+        https://bugs.webkit.org/show_bug.cgi?id=196611
+
+        Test added is a flaky timeout on iOS Simulator, 3 tests
+        unskipped are flaky failures (Requested by ShawnRoberts on
+        #webkit).
+
+        Reverted changesets:
+
+        "Blob type cannot be stored correctly in IDB when
+        IDBObjectStore has autoIncrement and keyPath options"
+        https://bugs.webkit.org/show_bug.cgi?id=196128
+        https://trac.webkit.org/changeset/243807
+
+        "Follow up fix for r243807: Use MarkedArgumentBuffer instead
+        of Vector for JSValue"
+        https://bugs.webkit.org/show_bug.cgi?id=196547
+        https://trac.webkit.org/changeset/243824
+
+2019-04-04  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Host should be able to mute screen capture and camera/microphone independently
+        https://bugs.webkit.org/show_bug.cgi?id=196555
+        <rdar://problem/47303865>
+
+        Reviewed by Youenn Fablet.
+
+        * fast/mediastream/media-stream-page-muted-expected.txt: Added.
+        * fast/mediastream/media-stream-page-muted.html: Added.
+        * fast/mediastream/media-stream-track-interrupted.html: Read page muted state before
+        interrupting capture track because the page state now changes immediately.
+        * fast/mediastream/media-stream-track-muted.html: Ditto, for muting.
+
+2019-04-04  Antti Koivisto  <antti@apple.com>
+
+        Compute accurate regions for touch-action
+        https://bugs.webkit.org/show_bug.cgi?id=196536
+        <rdar://problem/49516022>
+
+        Reviewed by Simon Fraser.
+
+        * pointerevents/ios/touch-action-region-basic-expected.txt: Added.
+        * pointerevents/ios/touch-action-region-basic.html: Added.
+        * pointerevents/ios/touch-action-region-layers-expected.txt: Added.
+        * pointerevents/ios/touch-action-region-layers.html: Added.
+        * pointerevents/ios/touch-action-region-pan-x-y-expected.txt: Added.
+        * pointerevents/ios/touch-action-region-pan-x-y.html: Added.
+
 2019-04-04  Manuel Rego Casasnovas  <rego@igalia.com>
 
         [css-grid] Scroll reset position when updating inner html on content

@@ -27,6 +27,7 @@ set(DumpRenderTree_LIBRARIES
 )
 
 set(DumpRenderTree_INCLUDE_DIRECTORIES
+    ${WebKitLegacy_FRAMEWORK_HEADERS_DIR}
     ${DERIVED_SOURCES_DIR}/DumpRenderTree
     ${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}
     ${WEBKIT_TESTRUNNER_SHARED_DIR}/Bindings
@@ -77,7 +78,7 @@ set(TestNetscapePlugIn_SOURCES
 
 set(TestNetscapePlugIn_LIBRARIES
     JavaScriptCore
-    WTFFramework
+    WTF
     WebCoreTestSupport
 )
 

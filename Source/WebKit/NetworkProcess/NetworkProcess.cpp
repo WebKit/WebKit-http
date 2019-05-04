@@ -322,6 +322,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
         m_shouldDisableServiceWorkerProcessTerminationDelay = parameters.shouldDisableServiceWorkerProcessTerminationDelay;
     }
 #endif
+    initializeStorageQuota(parameters.defaultDataStoreParameters);
 
     auto* defaultSession = networkSession(PAL::SessionID::defaultSessionID());
     for (const auto& cookie : parameters.defaultDataStoreParameters.pendingCookies)
@@ -455,7 +456,17 @@ void NetworkProcess::addWebsiteDataStore(WebsiteDataStoreParameters&& parameters
         addServiceWorkerSession(parameters.networkSessionParameters.sessionID, parameters.serviceWorkerRegistrationDirectory, parameters.serviceWorkerRegistrationDirectoryExtensionHandle);
 #endif
 
+    initializeStorageQuota(parameters);
+
     RemoteNetworkingContext::ensureWebsiteDataStoreSession(*this, WTFMove(parameters));
+}
+
+void NetworkProcess::initializeStorageQuota(const WebsiteDataStoreParameters& parameters)
+{
+    auto& managers =  m_storageQuotaManagers.ensure(parameters.networkSessionParameters.sessionID, [] {
+        return StorageQuotaManagers { };
+    }).iterator->value;
+    managers.setDefaultQuotas(parameters.perOriginStorageQuota, parameters.perThirdPartyOriginStorageQuota);
 }
 
 void NetworkProcess::switchToNewTestingSession()
@@ -1972,6 +1983,11 @@ void NetworkProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend 
 
     for (auto& connection : m_webProcessConnections)
         connection->cleanupForSuspension([delayedTaskCounter] { });
+
+#if ENABLE(SERVICE_WORKER)
+    for (auto& server : m_swServers.values())
+        server->startSuspension([delayedTaskCounter] { });
+#endif
 }
 
 void NetworkProcess::processWillSuspendImminently(CompletionHandler<void(bool)>&& completionHandler)
@@ -1993,9 +2009,7 @@ void NetworkProcess::cancelPrepareToSuspend()
     // message. And NetworkProcessProxy expects to receive either a NetworkProcessProxy::ProcessReadyToSuspend-
     // or NetworkProcessProxy::DidCancelProcessSuspension- message, but not both.
     RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::cancelPrepareToSuspend()", this);
-    platformProcessDidResume();
-    for (auto& connection : m_webProcessConnections)
-        connection->endSuspension();
+    resume();
 }
 
 void NetworkProcess::applicationDidEnterBackground()
@@ -2011,9 +2025,19 @@ void NetworkProcess::applicationWillEnterForeground()
 void NetworkProcess::processDidResume()
 {
     RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::processDidResume()", this);
+    resume();
+}
+
+void NetworkProcess::resume()
+{
     platformProcessDidResume();
     for (auto& connection : m_webProcessConnections)
         connection->endSuspension();
+
+#if ENABLE(SERVICE_WORKER)
+    for (auto& server : m_swServers.values())
+        server->endSuspension();
+#endif
 }
 
 void NetworkProcess::prefetchDNS(const String& hostname)
@@ -2029,13 +2053,8 @@ void NetworkProcess::cacheStorageRootPath(PAL::SessionID sessionID, CacheStorage
     }).iterator->value.append(WTFMove(callback));
 }
 
-void NetworkProcess::setCacheStorageParameters(PAL::SessionID sessionID, uint64_t quota, String&& cacheStorageDirectory, SandboxExtension::Handle&& handle)
+void NetworkProcess::setCacheStorageParameters(PAL::SessionID sessionID, String&& cacheStorageDirectory, SandboxExtension::Handle&& handle)
 {
-    auto& managers =  m_storageQuotaManagers.ensure(sessionID, [] {
-        return StorageQuotaManagers { };
-    }).iterator->value;
-    managers.setDefaultQuotas(quota, quota / 10);
-
     auto iterator = m_cacheStorageParametersCallbacks.find(sessionID);
     if (iterator == m_cacheStorageParametersCallbacks.end())
         return;
@@ -2116,10 +2135,6 @@ Ref<IDBServer::IDBServer> NetworkProcess::createIDBServer(PAL::SessionID session
         if (!weakThis)
             return nullptr;
         return &this->storageQuotaManager(sessionID, origin);
-    }, [this, weakThis = makeWeakPtr(this)](bool isHoldingLockedFiles) {
-        if (!weakThis)
-            return;
-        this->notifyHoldingLockedFiles(isHoldingLockedFiles);
     });
     server->setPerOriginQuota(m_idbPerOriginQuota);
     return server;
@@ -2495,11 +2510,6 @@ void NetworkProcess::clearAdClickAttribution(PAL::SessionID sessionID, Completio
         return session->clearAdClickAttribution(WTFMove(completionHandler));
     
     completionHandler();
-}
-
-void NetworkProcess::notifyHoldingLockedFiles(bool isIDBDatabaseHoldingLockedFiles)
-{
-    parentProcessConnection()->send(Messages::NetworkProcessProxy::SetIsIDBDatabaseHoldingLockedFiles(isIDBDatabaseHoldingLockedFiles), 0);
 }
 
 } // namespace WebKit

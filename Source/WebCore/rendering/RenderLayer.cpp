@@ -301,7 +301,6 @@ RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
 #endif
     , m_adjustForIOSCaretWhenScrolling(false)
 #endif
-    , m_inUserScroll(false)
     , m_requiresScrollPositionReconciliation(false)
     , m_containsDirtyOverlayScrollbars(false)
     , m_updatingMarqueePosition(false)
@@ -2321,16 +2320,16 @@ void RenderLayer::applyPostLayoutScrollPositionIfNeeded()
     m_postLayoutScrollPosition = WTF::nullopt;
 }
 
-void RenderLayer::scrollToXPosition(int x, ScrollType, ScrollClamping clamping)
+void RenderLayer::scrollToXPosition(int x, ScrollType scrollType, ScrollClamping clamping)
 {
     ScrollPosition position(x, m_scrollPosition.y());
-    scrollToOffset(scrollOffsetFromPosition(position), clamping);
+    scrollToOffset(scrollOffsetFromPosition(position), scrollType, clamping);
 }
 
-void RenderLayer::scrollToYPosition(int y, ScrollType, ScrollClamping clamping)
+void RenderLayer::scrollToYPosition(int y, ScrollType scrollType, ScrollClamping clamping)
 {
     ScrollPosition position(m_scrollPosition.x(), y);
-    scrollToOffset(scrollOffsetFromPosition(position), clamping);
+    scrollToOffset(scrollOffsetFromPosition(position), scrollType, clamping);
 }
 
 ScrollOffset RenderLayer::clampScrollOffset(const ScrollOffset& scrollOffset) const
@@ -2338,11 +2337,25 @@ ScrollOffset RenderLayer::clampScrollOffset(const ScrollOffset& scrollOffset) co
     return scrollOffset.constrainedBetween(IntPoint(), maximumScrollOffset());
 }
 
-void RenderLayer::scrollToOffset(const ScrollOffset& scrollOffset, ScrollClamping clamping)
+void RenderLayer::scrollToOffset(const ScrollOffset& scrollOffset, ScrollType scrollType, ScrollClamping clamping)
 {
     ScrollOffset newScrollOffset = clamping == ScrollClamping::Clamped ? clampScrollOffset(scrollOffset) : scrollOffset;
-    if (newScrollOffset != this->scrollOffset())
+    if (newScrollOffset == this->scrollOffset())
+        return;
+
+    auto previousScrollType = currentScrollType();
+    setCurrentScrollType(scrollType);
+
+    bool handled = false;
+#if ENABLE(ASYNC_SCROLLING)
+    if (ScrollingCoordinator* scrollingCoordinator = page().scrollingCoordinator())
+        handled = scrollingCoordinator->requestScrollPositionUpdate(*this, scrollPositionFromOffset(scrollOffset));
+#endif
+
+    if (!handled)
         scrollToOffsetWithoutAnimation(newScrollOffset, clamping);
+
+    setCurrentScrollType(previousScrollType);
 }
 
 void RenderLayer::scrollTo(const ScrollPosition& position)
@@ -2351,7 +2364,7 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
     if (!box)
         return;
 
-    LOG_WITH_STREAM(Scrolling, stream << "RenderLayer::scrollTo " << position << " from " << m_scrollPosition << " (in user scroll " << isInUserScroll() << ")");
+    LOG_WITH_STREAM(Scrolling, stream << "RenderLayer::scrollTo " << position << " from " << m_scrollPosition << " (is user scroll " << (currentScrollType() == ScrollType::User) << ")");
 
     ScrollPosition newPosition = position;
     if (!box->isHTMLMarquee()) {
@@ -2796,6 +2809,14 @@ int RenderLayer::scrollOffset(ScrollbarOrientation orientation) const
         return scrollOffset().y();
 
     return 0;
+}
+
+ScrollingNodeID RenderLayer::scrollingNodeID() const
+{
+    if (!isComposited())
+        return 0;
+
+    return backing()->scrollingNodeIDForRole(ScrollCoordinationRole::Scrolling);
 }
 
 IntRect RenderLayer::visibleContentRectInternal(VisibleContentRectIncludesScrollbars scrollbarInclusion, VisibleContentRectBehavior) const
@@ -6664,8 +6685,28 @@ bool RenderLayer::isTransparentOrFullyClippedRespectingParentFrames() const
 
 void RenderLayer::invalidateEventRegion()
 {
-    if (auto* compositingLayer = enclosingCompositingLayerForRepaint())
-        compositingLayer->setNeedsCompositingConfigurationUpdate();
+#if PLATFORM(IOS_FAMILY)
+    auto* compositingLayer = enclosingCompositingLayerForRepaint();
+    if (!compositingLayer)
+        return;
+
+    auto maintainsEventRegion = [&] {
+        // UI side scroll overlap testing.
+        if (!compositingLayer->isRenderViewLayer())
+            return true;
+#if ENABLE(POINTER_EVENTS)
+        // UI side touch-action resolution.
+        if (renderer().document().touchActionElements())
+            return true;
+#endif
+        return false;
+    };
+
+    if (!maintainsEventRegion())
+        return;
+
+    compositingLayer->setNeedsCompositingConfigurationUpdate();
+#endif
 }
 
 TextStream& operator<<(TextStream& ts, const RenderLayer& layer)
@@ -6797,6 +6838,7 @@ static void outputPaintOrderTreeRecursive(TextStream& stream, const WebCore::Ren
                 if (!first)
                     stream << ", ";
                 stream << "vc " << viewportConstrainedNodeID;
+                first = false;
             }
 
             if (positionedNodeID) {

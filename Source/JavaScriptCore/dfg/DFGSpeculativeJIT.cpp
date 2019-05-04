@@ -1547,16 +1547,15 @@ void SpeculativeJIT::compileStringSlice(Node* node)
     }
 
     GPRTemporary temp(this);
-    GPRReg tempGPR = temp.gpr();
-
-    m_jit.loadPtr(CCallHelpers::Address(stringGPR, JSString::offsetOfValue()), tempGPR);
-    auto isRope = m_jit.branchIfRopeStringImpl(tempGPR);
-
     GPRTemporary temp2(this);
     GPRTemporary startIndex(this);
 
+    GPRReg tempGPR = temp.gpr();
     GPRReg temp2GPR = temp2.gpr();
     GPRReg startIndexGPR = startIndex.gpr();
+
+    m_jit.loadPtr(CCallHelpers::Address(stringGPR, JSString::offsetOfValue()), tempGPR);
+    auto isRope = m_jit.branchIfRopeStringImpl(tempGPR);
     {
         m_jit.load32(MacroAssembler::Address(tempGPR, StringImpl::lengthMemoryOffset()), temp2GPR);
 
@@ -2123,7 +2122,7 @@ void SpeculativeJIT::compileDoublePutByVal(Node* node, SpeculateCellOperand& bas
         addSlowPathGenerator(
             slowPathCall(
                 slowCase, this,
-                m_jit.codeBlock()->isStrictMode()
+                m_jit.isStrictModeFor(node->origin.semantic)
                     ? (node->op() == PutByValDirect ? operationPutDoubleByValDirectBeyondArrayBoundsStrict : operationPutDoubleByValBeyondArrayBoundsStrict)
                     : (node->op() == PutByValDirect ? operationPutDoubleByValDirectBeyondArrayBoundsNonStrict : operationPutDoubleByValBeyondArrayBoundsNonStrict),
                 NoResult, baseReg, propertyReg, valueReg));
@@ -2920,7 +2919,8 @@ void SpeculativeJIT::setIntTypedArrayLoadResult(Node* node, GPRReg resultReg, Ty
     }
     
 #if USE(JSVALUE64)
-    if (node->shouldSpeculateAnyInt()) {
+    if (node->shouldSpeculateInt52()) {
+        ASSERT(enableInt52());
         m_jit.zeroExtend32ToPtr(resultReg, resultReg);
         strictInt52Result(resultReg, node);
         return;
@@ -3154,12 +3154,12 @@ void SpeculativeJIT::compilePutByValForIntTypedArray(GPRReg base, GPRReg propert
         if (node->op() == PutByValDirect) {
             addSlowPathGenerator(slowPathCall(
                 slowPathCases, this,
-                m_jit.codeBlock()->isStrictMode() ? operationPutByValDirectCellStrict : operationPutByValDirectCellNonStrict,
+                m_jit.isStrictModeFor(node->origin.semantic) ? operationPutByValDirectCellStrict : operationPutByValDirectCellNonStrict,
                 NoResult, base, JSValueRegs(propertyTagGPR, property), JSValueRegs(valueTagGPR, valueGPR)));
         } else {
             addSlowPathGenerator(slowPathCall(
                 slowPathCases, this,
-                m_jit.codeBlock()->isStrictMode() ? operationPutByValCellStrict : operationPutByValCellNonStrict,
+                m_jit.isStrictModeFor(node->origin.semantic) ? operationPutByValCellStrict : operationPutByValCellNonStrict,
                 NoResult, base, JSValueRegs(propertyTagGPR, property), JSValueRegs(valueTagGPR, valueGPR)));
         }
 #endif
@@ -4306,7 +4306,9 @@ void SpeculativeJIT::compileArithAdd(Node* node)
         else {
             MacroAssembler::Jump check = m_jit.branchAdd32(MacroAssembler::Overflow, gpr1, gpr2, gprResult);
                 
-            if (gpr1 == gprResult)
+            if (gpr1 == gprResult && gpr2 == gprResult)
+                speculationCheck(Overflow, JSValueRegs(), 0, check, SpeculationRecovery(SpeculativeAddSelf, gprResult, gpr2));
+            else if (gpr1 == gprResult)
                 speculationCheck(Overflow, JSValueRegs(), 0, check, SpeculationRecovery(SpeculativeAdd, gprResult, gpr2));
             else if (gpr2 == gprResult)
                 speculationCheck(Overflow, JSValueRegs(), 0, check, SpeculationRecovery(SpeculativeAdd, gprResult, gpr1));
@@ -4325,8 +4327,8 @@ void SpeculativeJIT::compileArithAdd(Node* node)
 
         // Will we need an overflow check? If we can prove that neither input can be
         // Int52 then the overflow check will not be necessary.
-        if (!m_state.forNode(node->child1()).couldBeType(SpecInt52Only)
-            && !m_state.forNode(node->child2()).couldBeType(SpecInt52Only)) {
+        if (!m_state.forNode(node->child1()).couldBeType(SpecNonInt32AsInt52)
+            && !m_state.forNode(node->child2()).couldBeType(SpecNonInt32AsInt52)) {
             SpeculateWhicheverInt52Operand op1(this, node->child1());
             SpeculateWhicheverInt52Operand op2(this, node->child2(), op1);
             GPRTemporary result(this, Reuse, op1);
@@ -4511,8 +4513,8 @@ void SpeculativeJIT::compileArithSub(Node* node)
 
         // Will we need an overflow check? If we can prove that neither input can be
         // Int52 then the overflow check will not be necessary.
-        if (!m_state.forNode(node->child1()).couldBeType(SpecInt52Only)
-            && !m_state.forNode(node->child2()).couldBeType(SpecInt52Only)) {
+        if (!m_state.forNode(node->child1()).couldBeType(SpecNonInt32AsInt52)
+            && !m_state.forNode(node->child2()).couldBeType(SpecNonInt32AsInt52)) {
             SpeculateWhicheverInt52Operand op1(this, node->child1());
             SpeculateWhicheverInt52Operand op2(this, node->child2(), op1);
             GPRTemporary result(this, Reuse, op1);
@@ -4595,7 +4597,7 @@ void SpeculativeJIT::compileArithNegate(Node* node)
     case Int52RepUse: {
         ASSERT(shouldCheckOverflow(node->arithMode()));
         
-        if (!m_state.forNode(node->child1()).couldBeType(SpecInt52Only)) {
+        if (!m_state.forNode(node->child1()).couldBeType(SpecNonInt32AsInt52)) {
             SpeculateWhicheverInt52Operand op1(this, node->child1());
             GPRTemporary result(this);
             GPRReg op1GPR = op1.gpr();
@@ -11059,7 +11061,7 @@ void SpeculativeJIT::compilePutDynamicVar(Node* node)
     JSValueRegs valueRegs = value.jsValueRegs();
 
     flushRegisters();
-    callOperation(operationPutDynamicVar, NoResult, scopeGPR, valueRegs, identifierUID(node->identifierNumber()), node->getPutInfo());
+    callOperation(m_jit.isStrictModeFor(node->origin.semantic) ? operationPutDynamicVarStrict : operationPutDynamicVarNonStrict, NoResult, scopeGPR, valueRegs, identifierUID(node->identifierNumber()), node->getPutInfo());
     m_jit.exceptionCheck();
     noResult(node);
 }
@@ -12328,7 +12330,7 @@ void SpeculativeJIT::compileToThis(Node* node)
     m_jit.moveValueRegs(thisValueRegs, tempRegs);
 
     J_JITOperation_EJ function;
-    if (m_jit.graph().executableFor(node->origin.semantic)->isStrictMode())
+    if (m_jit.isStrictModeFor(node->origin.semantic))
         function = operationToThisStrict;
     else
         function = operationToThis;

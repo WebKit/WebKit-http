@@ -53,10 +53,6 @@
 
 using namespace WebCore;
 
-#if HAVE(AUDIO_TOOLBOX_AUDIO_SESSION)
-#import <AudioToolbox/AudioSession.h>
-#endif
-
 #if PLATFORM(IOS_FAMILY)
 #import <WebCore/Device.h>
 #import <WebCore/GraphicsContext.h>
@@ -2384,27 +2380,26 @@ static NSString *classIBCreatorID = nil;
 
 - (void)setAudioSessionCategoryOverride:(unsigned)override
 {
-#if HAVE(AUDIO_TOOLBOX_AUDIO_SESSION)
     if (override > AudioSession::AudioProcessing) {
         // Clients are passing us OSTypes values from AudioToolbox/AudioSession.h,
         // which need to be translated into AudioSession::CategoryType:
         switch (override) {
-        case kAudioSessionCategory_AmbientSound:
+        case WebKitAudioSessionCategoryAmbientSound:
             override = AudioSession::AmbientSound;
             break;
-        case kAudioSessionCategory_SoloAmbientSound:
+        case WebKitAudioSessionCategorySoloAmbientSound:
             override = AudioSession::SoloAmbientSound;
             break;
-        case kAudioSessionCategory_MediaPlayback:
+        case WebKitAudioSessionCategoryMediaPlayback:
             override = AudioSession::MediaPlayback;
             break;
-        case kAudioSessionCategory_RecordAudio:
+        case WebKitAudioSessionCategoryRecordAudio:
             override = AudioSession::RecordAudio;
             break;
-        case kAudioSessionCategory_PlayAndRecord:
+        case WebKitAudioSessionCategoryPlayAndRecord:
             override = AudioSession::PlayAndRecord;
             break;
-        case kAudioSessionCategory_AudioProcessing:
+        case WebKitAudioSessionCategoryAudioProcessing:
             override = AudioSession::AudioProcessing;
             break;
         default:
@@ -2412,7 +2407,6 @@ static NSString *classIBCreatorID = nil;
             break;
         }
     }
-#endif
 
     [self _setUnsignedIntValue:override forKey:WebKitAudioSessionCategoryOverride];
 }

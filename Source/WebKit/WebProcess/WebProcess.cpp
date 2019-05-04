@@ -137,6 +137,10 @@
 #include "UserMediaCaptureManager.h"
 #endif
 
+#if PLATFORM(IOS_FAMILY)
+#include "WebSQLiteDatabaseTracker.h"
+#endif
+
 #if ENABLE(SEC_ITEM_SHIM)
 #include "SecItemShim.h"
 #endif
@@ -184,7 +188,7 @@ WebProcess::WebProcess()
 #endif
     , m_nonVisibleProcessCleanupTimer(*this, &WebProcess::nonVisibleProcessCleanupTimerFired)
 #if PLATFORM(IOS_FAMILY)
-    , m_webSQLiteDatabaseTracker(*this)
+    , m_webSQLiteDatabaseTracker(std::make_unique<WebSQLiteDatabaseTracker>(*this))
 #endif
 {
     // Initialize our platform strategies.
@@ -1446,9 +1450,11 @@ void WebProcess::resetAllGeolocationPermissions()
 void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shouldAcknowledgeWhenReadyToSuspend)
 {
     SetForScope<bool> suspensionScope(m_isSuspending, true);
+    m_processIsSuspended = true;
 
 #if ENABLE(VIDEO)
     suspendAllMediaBuffering();
+    PlatformMediaSessionManager::sharedManager().processWillSuspend();
 #endif
 
     if (!m_suppressMemoryPressureHandler)
@@ -1461,6 +1467,10 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
 #endif
 
 #if PLATFORM(IOS_FAMILY)
+    m_webSQLiteDatabaseTracker = nullptr;
+    SQLiteDatabase::setIsDatabaseOpeningForbidden(true);
+    if (DatabaseTracker::isInitialized())
+        DatabaseTracker::singleton().closeAllDatabases(CurrentQueryBehavior::Interrupt);
     accessibilityProcessSuspendedNotification(true);
     updateFreezerStatus();
 #endif
@@ -1489,7 +1499,6 @@ void WebProcess::processWillSuspendImminently(CompletionHandler<void(bool)>&& co
     }
 
     RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processWillSuspendImminently()", this);
-    DatabaseTracker::singleton().closeAllDatabases(CurrentQueryBehavior::Interrupt);
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
     completionHandler(true);
 }
@@ -1503,13 +1512,19 @@ void WebProcess::prepareToSuspend()
 void WebProcess::cancelPrepareToSuspend()
 {
     RELEASE_LOG(ProcessSuspension, "%p - WebProcess::cancelPrepareToSuspend()", this);
+
+    m_processIsSuspended = false;
+
     unfreezeAllLayerTrees();
 
 #if PLATFORM(IOS_FAMILY)
+    m_webSQLiteDatabaseTracker = std::make_unique<WebSQLiteDatabaseTracker>(*this);
+    SQLiteDatabase::setIsDatabaseOpeningForbidden(false);
     accessibilityProcessSuspendedNotification(false);
 #endif
 
 #if ENABLE(VIDEO)
+    PlatformMediaSessionManager::sharedManager().processDidResume();
     resumeAllMediaBuffering();
 #endif
 
@@ -1573,14 +1588,19 @@ void WebProcess::processDidResume()
 {
     RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processDidResume()", this);
 
+    m_processIsSuspended = false;
+
     cancelMarkAllLayersVolatile();
     unfreezeAllLayerTrees();
     
 #if PLATFORM(IOS_FAMILY)
+    m_webSQLiteDatabaseTracker = std::make_unique<WebSQLiteDatabaseTracker>(*this);
+    SQLiteDatabase::setIsDatabaseOpeningForbidden(false);
     accessibilityProcessSuspendedNotification(false);
 #endif
 
 #if ENABLE(VIDEO)
+    PlatformMediaSessionManager::sharedManager().processDidResume();
     resumeAllMediaBuffering();
 #endif
 }

@@ -1,3 +1,77 @@
+2019-04-09  Youenn Fablet  <youenn@apple.com>
+
+        Refresh WPT service worker expectations
+        https://bugs.webkit.org/show_bug.cgi?id=196732
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-abort.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-abort.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/worker/cache-abort.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/client-navigate.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall-include-uncontrolled.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-image-cache.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/multipart-image.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/performance-timeline.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/resource-timing.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/respond-with-body-accessed-response.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/sandboxed-iframe-fetch-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update-after-navigation-fetch-event.https-expected.txt:
+
+2019-04-08  Javier Fernandez  <jfernandez@igalia.com>
+
+        Implement white-space:break-spaces value
+        https://bugs.webkit.org/show_bug.cgi?id=177327
+
+        Reviewed by Myles Maxfield and Zalan Bujtas.
+
+        Imoprted a few aditional tests from the CSS Text WPT suite that are relevant for this change.
+
+        * web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-break-word-008-expected.html: Added.
+        * web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-break-word-008.html: Added.
+        * web-platform-tests/css/css-text/overflow-wrap/w3c-import.log:
+        * web-platform-tests/css/css-text/parsing/white-space-valid-expected.txt:
+        * web-platform-tests/css/css-text/white-space/break-spaces-003-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-003.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-009-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-009.html: Added.
+        * web-platform-tests/css/css-text/white-space/w3c-import.log:
+
+2019-04-05  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] throw if 'ownKeys' Proxy trap result contains duplicate keys
+        https://bugs.webkit.org/show_bug.cgi?id=185211
+
+        Reviewed by Saam Barati.
+
+        This is for the normative spec change in https://github.com/tc39/ecma262/pull/833
+
+        Change some test expectations which were previously expected to fail.
+
+        * web-platform-tests/fetch/api/headers/headers-record-expected.txt:
+
+2019-04-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r243807 and r243824.
+        https://bugs.webkit.org/show_bug.cgi?id=196611
+
+        Test added is a flaky timeout on iOS Simulator, 3 tests
+        unskipped are flaky failures (Requested by ShawnRoberts on
+        #webkit).
+
+        Reverted changesets:
+
+        "Blob type cannot be stored correctly in IDB when
+        IDBObjectStore has autoIncrement and keyPath options"
+        https://bugs.webkit.org/show_bug.cgi?id=196128
+        https://trac.webkit.org/changeset/243807
+
+        "Follow up fix for r243807: Use MarkedArgumentBuffer instead
+        of Vector for JSValue"
+        https://bugs.webkit.org/show_bug.cgi?id=196547
+        https://trac.webkit.org/changeset/243824
+
 2019-04-03  Chris Dumez  <cdumez@apple.com>
 
         HTML fragment serialization should not strip whitespace from URL attribute values

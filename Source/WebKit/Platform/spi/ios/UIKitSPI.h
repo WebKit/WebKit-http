@@ -1119,6 +1119,7 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 @end
 
 @interface _UILayerHostView : UIView
+- (instancetype)initWithFrame:(CGRect)frame pid:(pid_t)pid contextID:(uint32_t)contextID;
 @end
 
 @interface _UIRemoteView : _UILayerHostView
@@ -1169,6 +1170,10 @@ static inline bool currentUserInterfaceIdiomIsPad()
     return [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad;
 #endif
 }
+
+@interface UIWebFormAccessory (Staging_49666643)
+- (void)setNextPreviousItemsVisible:(BOOL)visible;
+@end
 
 WTF_EXTERN_C_BEGIN
 

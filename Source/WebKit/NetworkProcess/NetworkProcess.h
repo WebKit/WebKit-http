@@ -181,6 +181,7 @@ public:
     void prepareToSuspend();
     void cancelPrepareToSuspend();
     void processDidResume();
+    void resume();
 
     // Diagnostic messages logging.
     void logDiagnosticMessage(uint64_t webPageID, const String& message, const String& description, WebCore::ShouldSample);
@@ -380,7 +381,7 @@ private:
 
     void clearCachedCredentials();
 
-    void setCacheStorageParameters(PAL::SessionID, uint64_t quota, String&& cacheStorageDirectory, SandboxExtension::Handle&&);
+    void setCacheStorageParameters(PAL::SessionID, String&& cacheStorageDirectory, SandboxExtension::Handle&&);
     void initializeQuotaUsers(WebCore::StorageQuotaManager&, PAL::SessionID, const WebCore::ClientOrigin&);
 
     // FIXME: This should take a session ID so we can identify which disk cache to delete.
@@ -407,7 +408,6 @@ private:
     void syncAllCookies();
     void didSyncAllCookies();
 
-    void notifyHoldingLockedFiles(bool isIDBDatabaseHoldingLockedFiles);
 #if USE(SOUP)
     void setIgnoreTLSErrors(bool);
     void userPreferredLanguagesChanged(const Vector<String>&);
@@ -460,6 +460,7 @@ private:
     void ensurePathExists(const String& path);
 
     void clearStorageQuota(PAL::SessionID);
+    void initializeStorageQuota(const WebsiteDataStoreParameters&);
 
     // Connections to WebProcesses.
     Vector<Ref<NetworkConnectionToWebProcess>> m_webProcessConnections;

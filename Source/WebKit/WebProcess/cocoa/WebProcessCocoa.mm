@@ -31,6 +31,7 @@
 #import "LogInitialization.h"
 #import "Logging.h"
 #import "ObjCObjectGraph.h"
+#import "ProcessAssertion.h"
 #import "SandboxExtension.h"
 #import "SandboxInitializationParameters.h"
 #import "WKAPICast.h"
@@ -171,6 +172,12 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
 
     m_compositingRenderServerPort = WTFMove(parameters.acceleratedCompositingPort);
 
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+    m_contextForVisibilityPropagation = LayerHostingContext::createForExternalHostingProcess();
+    RELEASE_LOG(Process, "Created context with ID %d for visibility propagation from UIProcess", m_contextForVisibilityPropagation->contextID());
+    parentProcessConnection()->send(Messages::WebProcessProxy::DidCreateContextForVisibilityPropagation(m_contextForVisibilityPropagation->contextID()), 0);
+#endif
+
     WebCore::registerMemoryReleaseNotifyCallbacks();
     MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
 
@@ -280,6 +287,31 @@ void WebProcess::updateProcessName()
     });
 #endif // PLATFORM(MAC)
 }
+
+#if PLATFORM(IOS_FAMILY)
+void WebProcess::processTaskStateDidChange(ProcessTaskStateObserver::TaskState taskState)
+{
+    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processTaskStateDidChange() - taskState(%d)", this, taskState);
+    if (taskState == ProcessTaskStateObserver::None)
+        return;
+
+    if (taskState == ProcessTaskStateObserver::Suspended) {
+        if (m_processIsSuspended)
+            return;
+
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processTaskStateChanged() - unexpectedly entered Suspended state", this);
+        return;
+    }
+
+    if (!m_processIsSuspended)
+        return;
+
+    // We were awakened from suspension unexpectedly. Notify the WebProcessProxy, but take a process assertion on our parent PID
+    // to ensure that it too is awakened.
+    auto uiProcessAssertion = std::make_unique<ProcessAssertion>(parentProcessConnection()->remoteProcessID(), "Unexpectedly resumed", AssertionState::Background, AssertionReason::FinishTask);
+    parentProcessConnection()->sendWithAsyncReply(Messages::WebProcessProxy::ProcessWasUnexpectedlyUnsuspended(), [uiProcessAssertion = WTFMove(uiProcessAssertion)] { });
+}
+#endif
 
 static void registerWithAccessibility()
 {

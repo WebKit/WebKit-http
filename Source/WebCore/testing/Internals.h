@@ -91,6 +91,7 @@ class SerializedScriptValue;
 class SourceBuffer;
 class StringCallback;
 class StyleSheet;
+class TextTrackCueGeneric;
 class TimeRanges;
 class TypeConversions;
 class VoidCallback;
@@ -492,7 +493,7 @@ public:
     void forceReload(bool endToEnd);
     void reloadExpiredOnly();
 
-    void enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight);
+    void enableAutoSizeMode(bool enabled, int width, int height);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void initializeMockCDM();
@@ -543,6 +544,7 @@ public:
     ExceptionOr<void> setCaptionsStyleSheetOverride(const String&);
     ExceptionOr<void> setPrimaryAudioTrackLanguageOverride(const String&);
     ExceptionOr<void> setCaptionDisplayMode(const String&);
+    RefPtr<TextTrackCueGeneric> createGenericCue(double startTime, double endTime, String text);
 
 #if ENABLE(VIDEO)
     Ref<TimeRanges> createTimeRanges(Float32Array& startTimes, Float32Array& endTimes);
@@ -803,6 +805,8 @@ public:
     Vector<CookieData> getCookies() const;
 
     void setAlwaysAllowLocalWebarchive(bool);
+    void processWillSuspend();
+    void processDidResume();
 
 private:
     explicit Internals(Document&);

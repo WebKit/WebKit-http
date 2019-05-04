@@ -706,6 +706,8 @@ public:
 
 #if ENABLE(POINTER_EVENTS)
     OptionSet<TouchAction> touchActions() const { return OptionSet<TouchAction>::fromRaw(m_rareNonInheritedData->touchActions); }
+    // 'touch-action' behavior depends on values in ancestors. We use an additional inherited property to implement that.
+    OptionSet<TouchAction> effectiveTouchActions() const { return OptionSet<TouchAction>::fromRaw(m_rareInheritedData->effectiveTouchActions); }
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
@@ -1225,6 +1227,7 @@ public:
     
 #if ENABLE(POINTER_EVENTS)
     void setTouchActions(OptionSet<TouchAction> touchActions) { SET_VAR(m_rareNonInheritedData, touchActions, touchActions.toRaw()); }
+    void setEffectiveTouchActions(OptionSet<TouchAction> touchActions) { SET_VAR(m_rareInheritedData, effectiveTouchActions, touchActions.toRaw()); }
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
@@ -2063,7 +2066,7 @@ inline bool RenderStyle::preserveNewline(WhiteSpace whiteSpace)
 inline bool RenderStyle::collapseWhiteSpace(WhiteSpace ws)
 {
     // Pre and prewrap do not collapse whitespace.
-    return ws != WhiteSpace::Pre && ws != WhiteSpace::PreWrap;
+    return ws != WhiteSpace::Pre && ws != WhiteSpace::PreWrap && ws != WhiteSpace::BreakSpaces;
 }
 
 inline bool RenderStyle::isCollapsibleWhiteSpace(UChar character) const
@@ -2081,7 +2084,7 @@ inline bool RenderStyle::isCollapsibleWhiteSpace(UChar character) const
 
 inline bool RenderStyle::breakOnlyAfterWhiteSpace() const
 {
-    return whiteSpace() == WhiteSpace::PreWrap || lineBreak() == LineBreak::AfterWhiteSpace;
+    return whiteSpace() == WhiteSpace::PreWrap || whiteSpace() == WhiteSpace::BreakSpaces || lineBreak() == LineBreak::AfterWhiteSpace;
 }
 
 inline bool RenderStyle::breakWords() const

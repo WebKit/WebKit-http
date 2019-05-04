@@ -28,6 +28,7 @@
 #include "Document.h"
 #include "Editor.h"
 #include "Element.h"
+#include "EventRegion.h"
 #include "FloatQuad.h"
 #include "Frame.h"
 #include "FrameSelection.h"
@@ -1245,11 +1246,15 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffs
 
         if (visibleToHitTesting()) {
             auto borderRegion = approximateAsRegion(style().getRoundedBorderFor(borderRect));
-            paintInfo.eventRegion->unite(borderRegion);
+            paintInfo.eventRegion->unite(borderRegion, style());
         }
 
         // No need to check descendants if we don't have overflow and the area is already covered.
-        if (!hasVisualOverflow() && paintInfo.eventRegion->contains(enclosingIntRect(borderRect)))
+        bool needsTraverseDescendants = hasVisualOverflow() || !paintInfo.eventRegion->contains(enclosingIntRect(borderRect));
+#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
+        needsTraverseDescendants = needsTraverseDescendants || document().touchActionElements();
+#endif
+        if (!needsTraverseDescendants)
             return;
     }
 

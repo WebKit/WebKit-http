@@ -31,6 +31,7 @@
 #include "UniqueIDBDatabaseConnection.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -50,6 +51,7 @@ struct IDBKeyRangeData;
 
 namespace IDBServer {
 
+class IDBServer;
 class UniqueIDBDatabaseConnection;
 
 class UniqueIDBDatabaseTransaction : public RefCounted<UniqueIDBDatabaseTransaction> {
@@ -93,6 +95,7 @@ private:
 
     Ref<UniqueIDBDatabaseConnection> m_databaseConnection;
     IDBTransactionInfo m_transactionInfo;
+    WeakPtr<IDBServer> m_server;
 
     std::unique_ptr<IDBDatabaseInfo> m_originalDatabaseInfo;
 

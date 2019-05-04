@@ -523,7 +523,7 @@ WKRetainPtr<WKPageConfigurationRef> TestController::generatePageConfiguration(co
         WKContextSetCacheModel(m_context.get(), kWKCacheModelDocumentBrowser);
 
         auto* websiteDataStore = WKContextGetWebsiteDataStore(m_context.get());
-        WKWebsiteDataStoreSetCacheStoragePerOriginQuota(websiteDataStore, 400 * 1024);
+        WKWebsiteDataStoreSetPerOriginStorageQuota(websiteDataStore, 400 * 1024);
 
         platformInitializeContext();
     }
@@ -755,9 +755,13 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
         WKPreferencesSetExperimentalFeatureForKey(preferences, experimentalFeature.value, toWK(experimentalFeature.key).get());
 
     WKPreferencesResetAllInternalDebugFeatures(preferences);
+
     // Set internal features that have different default values for testing.
     static WKStringRef asyncOverflowScrollingFeature = WKStringCreateWithUTF8CString("AsyncOverflowScrollingEnabled");
     WKPreferencesSetInternalDebugFeatureForKey(preferences, false, asyncOverflowScrollingFeature);
+
+    static WKStringRef asyncFrameScrollingFeature = WKStringCreateWithUTF8CString("AsyncFrameScrollingEnabled");
+    WKPreferencesSetInternalDebugFeatureForKey(preferences, false, asyncFrameScrollingFeature);
 
     for (const auto& internalDebugFeature : options.internalDebugFeatures)
         WKPreferencesSetInternalDebugFeatureForKey(preferences, internalDebugFeature.value, toWK(internalDebugFeature.key).get());
@@ -861,6 +865,10 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetServerTimingEnabled(preferences, true);
 
     WKPreferencesSetWebSQLDisabled(preferences, false);
+
+    WKPreferencesSetMediaPlaybackRequiresUserGesture(preferences, false);
+    WKPreferencesSetVideoPlaybackRequiresUserGesture(preferences, false);
+    WKPreferencesSetAudioPlaybackRequiresUserGesture(preferences, false);
 
     platformResetPreferencesToConsistentValues();
 }

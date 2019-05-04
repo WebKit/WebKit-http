@@ -49,8 +49,8 @@
 #include "TextEncoding.h"
 #include "TextIterator.h"
 #include "VisibleUnits.h"
+#include "WebKitAccessible.h"
 #include "WebKitAccessibleUtil.h"
-#include "WebKitAccessibleWrapperAtk.h"
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
@@ -66,7 +66,7 @@ static AccessibilityObject* core(AtkText* text)
     if (!WEBKIT_IS_ACCESSIBLE(text))
         return 0;
 
-    return webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(text));
+    return &webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(text));
 }
 
 static int baselinePositionForRenderObject(RenderObject* renderObject)
@@ -231,7 +231,7 @@ static guint accessibilityObjectLength(const AccessibilityObject* object)
 
     // For those objects implementing the AtkText interface we use the
     // well known API to always get the text in a consistent way
-    AtkObject* atkObj = ATK_OBJECT(object->wrapper());
+    auto* atkObj = ATK_OBJECT(object->wrapper());
     if (ATK_IS_TEXT(atkObj)) {
         GUniquePtr<gchar> text(webkitAccessibleTextGetText(ATK_TEXT(atkObj), 0, -1));
         return g_utf8_strlen(text.get(), -1);

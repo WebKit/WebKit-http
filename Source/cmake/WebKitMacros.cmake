@@ -3,8 +3,10 @@
 # WebCore), then put it there instead.
 
 macro(WEBKIT_COMPUTE_SOURCES _framework)
+    set(_derivedSourcesPath ${${_framework}_DERIVED_SOURCES_DIR})
+
     foreach (_sourcesListFile IN LISTS ${_framework}_UNIFIED_SOURCE_LIST_FILES)
-      configure_file("${CMAKE_CURRENT_SOURCE_DIR}/${_sourcesListFile}" "${DERIVED_SOURCES_DIR}/${_framework}/${_sourcesListFile}" COPYONLY)
+      configure_file("${CMAKE_CURRENT_SOURCE_DIR}/${_sourcesListFile}" "${_derivedSourcesPath}/${_sourcesListFile}" COPYONLY)
       message(STATUS "Using source list file: ${_sourcesListFile}")
 
       list(APPEND _sourceListFileTruePaths "${CMAKE_CURRENT_SOURCE_DIR}/${_sourcesListFile}")
@@ -18,7 +20,7 @@ macro(WEBKIT_COMPUTE_SOURCES _framework)
 
     if (ENABLE_UNIFIED_BUILDS)
         execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
-            "--derived-sources-path" "${DERIVED_SOURCES_DIR}/${_framework}"
+            "--derived-sources-path" "${_derivedSourcesPath}"
             "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
             "--print-bundled-sources"
             "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
@@ -37,7 +39,7 @@ macro(WEBKIT_COMPUTE_SOURCES _framework)
         unset(_sourceFileTmp)
 
         execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
-            "--derived-sources-path" "${DERIVED_SOURCES_DIR}/${_framework}"
+            "--derived-sources-path" "${_derivedSourcesPath}"
             "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
             "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
             ${_sourceListFileTruePaths}
@@ -53,7 +55,7 @@ macro(WEBKIT_COMPUTE_SOURCES _framework)
         unset(_outputTmp)
     else ()
         execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
-            "--derived-sources-path" "${DERIVED_SOURCES_DIR}/${_framework}"
+            "--derived-sources-path" "${_derivedSourcesPath}"
             "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
             "--print-all-sources"
             "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
@@ -242,12 +244,7 @@ function(WEBKIT_MAKE_FORWARDING_HEADERS framework)
     set(multiValueArgs DIRECTORIES FILES)
     cmake_parse_arguments(opt "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     set(headers ${opt_FILES})
-    if (opt_DESTINATION)
-        set(destination ${opt_DESTINATION})
-    else ()
-        set(destination ${FORWARDING_HEADERS_DIR}/${framework})
-    endif ()
-    file(MAKE_DIRECTORY ${destination})
+    file(MAKE_DIRECTORY ${opt_DESTINATION})
     foreach (dir IN LISTS opt_DIRECTORIES)
         file(GLOB files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${dir}/*.h)
         list(APPEND headers ${files})
@@ -261,11 +258,11 @@ function(WEBKIT_MAKE_FORWARDING_HEADERS framework)
         endif ()
         if (opt_FLATTENED)
             get_filename_component(header_filename ${header} NAME)
-            set(fwd_header ${destination}/${header_filename})
+            set(fwd_header ${opt_DESTINATION}/${header_filename})
         else ()
             get_filename_component(header_dir ${header} DIRECTORY)
-            file(MAKE_DIRECTORY ${destination}/${header_dir})
-            set(fwd_header ${destination}/${header})
+            file(MAKE_DIRECTORY ${opt_DESTINATION}/${header_dir})
+            set(fwd_header ${opt_DESTINATION}/${header})
         endif ()
         add_custom_command(OUTPUT ${fwd_header}
             COMMAND ${CMAKE_COMMAND} -E copy ${src_header} ${fwd_header}

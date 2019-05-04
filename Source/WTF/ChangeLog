@@ -1,3 +1,154 @@
+2019-04-10  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [WPE] Avoid async IO starving timers
+        https://bugs.webkit.org/show_bug.cgi?id=196733
+
+        Reviewed by Carlos Garcia Campos.
+
+        If AsyncIONetwork and DiskCacheRead priorities are higher than
+        MainThreadSharedTimer the timers get starved. This causes the NetworkProcess
+        to accumulate MB of data instead of handing it down to the WebProcess (done
+        using a Timer). This eventually causes an Out Of Memory kill on the
+        NetworkProcess on some embedded platforms with low memory limits.
+
+        This patch levels the three priorities to the same value, while still leaving
+        DiskCacheWrite with less priority than DiskCacheRead.
+
+        * wtf/glib/RunLoopSourcePriority.h: Changed RunLoopSourcePriority values for WPE.
+
+2019-04-09  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] WTF derived sources should only be referenced inside WTF
+        https://bugs.webkit.org/show_bug.cgi?id=196706
+
+        Reviewed by Konstantin Tokarev.
+
+        Use ${WTF_DERIVED_SOURCES_DIR} instead of ${DERIVED_SOURCES_DIR} within WTF.
+
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformMac.cmake:
+
+2019-04-09  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Apple builds should use ICU_INCLUDE_DIRS
+        https://bugs.webkit.org/show_bug.cgi?id=196720
+
+        Reviewed by Konstantin Tokarev.
+
+        Copy ICU headers for Apple builds into ICU_INCLUDE_DIRS.
+
+        * CMakeLists.txt:
+        * wtf/PlatformMac.cmake:
+
+2019-04-08  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][WinCairo] Separate copied headers into different directories
+        https://bugs.webkit.org/show_bug.cgi?id=196655
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/CMakeLists.txt:
+
+2019-04-08  Guillaume Emont  <guijemont@igalia.com>
+
+        Enable DFG on MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=196689
+
+        Reviewed by Žan Doberšek.
+
+        Since the bytecode change, we enabled the baseline JIT on mips in
+        r240432, but DFG is still missing. With this change, all tests are
+        passing on a ci20 board.
+
+        * wtf/Platform.h: Enable DFG on MIPS by default.
+
+2019-04-06  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Added tests for WeakHashSet::computesEmpty and WeakHashSet::computeSize
+        https://bugs.webkit.org/show_bug.cgi?id=196669
+
+        Reviewed by Geoffrey Garen.
+
+        Removed the superflous type names from forward declarations, and made WeakHashSet::add
+        take a const object to match other container types in WTF.
+
+        * wtf/WeakHashSet.h:
+        (WTF::WeakHashSet::add):
+        * wtf/WeakPtr.h:
+
+2019-04-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make WeakPtr<Element> possible and deploy it in form associated elements code
+        https://bugs.webkit.org/show_bug.cgi?id=196626
+
+        Reviewed by Antti Koivisto.
+
+        Make it possible to call WeakHashSet::remove and WeakHashSet::contains with
+        a subclass type U of a type T used to define WeakReference<T>.
+
+        Also added computesEmpty, which is slightly more efficient than computeSize
+        when m_set is either empty or when there are non-released weak references in the set.
+
+        * wtf/WeakHashSet.h:
+        (WTF::WeakHashSet::remove):
+        (WTF::WeakHashSet::contains const):
+        (WTF::WeakHashSet::computesEmpty const): Added.
+        * wtf/WeakPtr.h: Added an explicit forward declaration of WeakHashSet to avoid
+        build failures in GTK+ and WPE ports.
+
+2019-04-05  Eric Carlson  <eric.carlson@apple.com>
+
+        Remove AUDIO_TOOLBOX_AUDIO_SESSION
+        https://bugs.webkit.org/show_bug.cgi?id=196653
+        <rdar://problem/49652098>
+
+        Reviewed by Jer Noble.
+
+        * wtf/Platform.h:
+
+2019-04-05  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed manual rollout of r243929
+        https://bugs.webkit.org/show_bug.cgi?id=196626
+
+        * wtf/WeakHashSet.h:
+        (WTF::WeakHashSet::remove):
+        (WTF::WeakHashSet::contains const):
+        (WTF::WeakHashSet::computesEmpty const): Deleted.
+
+2019-04-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r243833.
+        https://bugs.webkit.org/show_bug.cgi?id=196645
+
+        This change breaks build of WPE and GTK ports (Requested by
+        annulen on #webkit).
+
+        Reverted changeset:
+
+        "[CMake][WTF] Mirror XCode header directories"
+        https://bugs.webkit.org/show_bug.cgi?id=191662
+        https://trac.webkit.org/changeset/243833
+
+2019-04-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make WeakPtr<Element> possible and deploy it in form associated elements code
+        https://bugs.webkit.org/show_bug.cgi?id=196626
+
+        Reviewed by Antti Koivisto.
+
+        Make it possible to call WeakHashSet::remove and WeakHashSet::contains with
+        a subclass type U of a type T used to define WeakReference<T>.
+
+        Also added computesEmpty, which is slightly more efficient than computeSize
+        when m_set is either empty or when there are non-released weak references in the set.
+
+        * wtf/WeakHashSet.h:
+        (WTF::WeakHashSet::remove):
+        (WTF::WeakHashSet::contains const):
+        (WTF::WeakHashSet::computesEmpty const): Added.
+
 2019-04-04  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [WebCore] Put most of derived classes of ScriptWrappable into IsoHeap

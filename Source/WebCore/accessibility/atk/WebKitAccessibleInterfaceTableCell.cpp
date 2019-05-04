@@ -25,8 +25,8 @@
 #include "AccessibilityObject.h"
 #include "AccessibilityTable.h"
 #include "AccessibilityTableCell.h"
+#include "WebKitAccessible.h"
 #include "WebKitAccessibleUtil.h"
-#include "WebKitAccessibleWrapperAtk.h"
 
 using namespace WebCore;
 
@@ -34,7 +34,7 @@ static GPtrArray* convertToGPtrArray(const AccessibilityObject::AccessibilityChi
 {
     GPtrArray* array = g_ptr_array_new();
     for (const auto& child : children) {
-        if (AtkObject* atkObject = child->wrapper())
+        if (auto* atkObject = child->wrapper())
             g_ptr_array_add(array, atkObject);
     }
     return array;
@@ -45,7 +45,7 @@ static AccessibilityObject* core(AtkTableCell* cell)
     if (!WEBKIT_IS_ACCESSIBLE(cell))
         return nullptr;
 
-    return webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(cell));
+    return &webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(cell));
 }
 
 GPtrArray* webkitAccessibleTableCellGetColumnHeaderCells(AtkTableCell* cell)
@@ -149,7 +149,7 @@ AtkObject* webkitAccessibleTableCellGetTable(AtkTableCell* cell)
     if (!axObject || !axObject->isTableCell())
         return nullptr;
 
-    AtkObject* table = atk_object_get_parent(axObject->wrapper());
+    auto* table = atk_object_get_parent(ATK_OBJECT(axObject->wrapper()));
     if (!table || !ATK_IS_TABLE(table))
         return nullptr;
 

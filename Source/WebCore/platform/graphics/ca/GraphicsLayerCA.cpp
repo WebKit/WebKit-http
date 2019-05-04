@@ -984,7 +984,7 @@ void GraphicsLayerCA::setShapeLayerWindRule(WindRule windRule)
     noteLayerPropertyChanged(WindRuleChanged);
 }
 
-void GraphicsLayerCA::setEventRegion(Region&& eventRegion)
+void GraphicsLayerCA::setEventRegion(EventRegion&& eventRegion)
 {
     if (eventRegion == m_eventRegion)
         return;

@@ -517,7 +517,7 @@ enum CompositingPolicy {
     void forceReload(boolean endToEnd);
     void reloadExpiredOnly();
 
-    void enableAutoSizeMode(boolean enabled, long minimumWidth, long minimumHeight, long maximumWidth, long maximumHeight);
+    void enableAutoSizeMode(boolean enabled, long width, long height);
 
     [Conditional=VIDEO] sequence<DOMString> mediaResponseSources(HTMLMediaElement media);
     [Conditional=VIDEO] sequence<DOMString> mediaResponseContentRanges(HTMLMediaElement media);
@@ -540,6 +540,7 @@ enum CompositingPolicy {
     [Conditional=VIDEO_TRACK, MayThrowException] void setCaptionsStyleSheetOverride(DOMString override);
     [Conditional=VIDEO_TRACK, MayThrowException] void setPrimaryAudioTrackLanguageOverride(DOMString language);
     [Conditional=VIDEO_TRACK, MayThrowException] void setCaptionDisplayMode(DOMString mode);
+    [Conditional=VIDEO_TRACK] TextTrackCueGeneric createGenericCue(double startTime, double endTime, DOMString text);
 
     [Conditional=VIDEO] TimeRanges createTimeRanges(Float32Array startTimes, Float32Array
      endTimes);
@@ -739,4 +740,7 @@ enum CompositingPolicy {
     sequence<CookieData> getCookies();
 
     void setAlwaysAllowLocalWebarchive(boolean alwaysAllowLocalWebarchive);
+
+    void processWillSuspend();
+    void processDidResume();
 };

@@ -33,9 +33,11 @@ fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 [ Sierra ] http/tests/ssl/applepay/ApplePaySessionV5.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html [ Skip ]
 [ Sierra ] http/tests/ssl/applepay/ApplePayShippingAddressChangeEventErrorsV3.https.html [ Skip ]
+[ Sierra ] accessibility/mac/apple-pay-labels.html [ Skip ]
 [ HighSierra ] http/tests/ssl/applepay/ApplePayButtonV4.html [ Skip ]
 [ HighSierra ] http/tests/ssl/applepay/ApplePaySessionV4.html [ Skip ]
 [ HighSierra ] http/tests/ssl/applepay/ApplePaySessionV5.html [ Skip ]
+[ HighSierra ] accessibility/mac/apple-pay-session-v4.html [ Skip ]
 
 fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
@@ -775,6 +777,8 @@ webkit.org/b/185994 fast/text/user-installed-fonts/shadow-postscript-family.html
 [ Mojave+ ] http/tests/ssl/applepay/ApplePaySessionV5.html [ Pass ]
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html [ Pass ]
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePayShippingAddressChangeEventErrorsV3.https.html [ Pass ]
+[ HighSierra+ ] accessibility/mac/apple-pay-labels.html [ Pass ]
+[ Mojave+ ] accessibility/mac/apple-pay-session-v4.html [ Pass ]
 # <rdar://problem/31634451>
 [ HighSierra+ ] http/tests/resourceLoadStatistics/cookies-with-and-without-user-interaction.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/cookie-deletion.html [ Pass ]
@@ -850,8 +854,6 @@ webkit.org/b/183860 [ Sierra Release ] http/wpt/service-workers/third-party-regi
 
 webkit.org/b/184245 http/tests/workers/service/service-worker-cache-api.https.html [ Pass Failure ]
 
-webkit.org/b/177380 http/tests/cache-storage/cache-records-persistency.https.html [ Pass Failure ]
-
 webkit.org/b/184937 transitions/opacity-transition-zindex.html [ Skip ]
 
 webkit.org/b/186362 [ Release ] http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Skip ]
@@ -921,8 +923,6 @@ webkit.org/b/194253 scrollingcoordinator/scrolling-tree/fixed-inside-frame.html 
 
 webkit.org/b/194916 fast/mediastream/MediaStream-video-element.html [ Pass Failure ]
 
-webkit.org/b/196228 http/tests/cache-storage/cache-clearing-origin.https.html [ Pass Failure ]
-
 webkit.org/b/195719 fast/events/wheel-event-destroys-overflow.html [ Pass Timeout ]
 webkit.org/b/195719 fast/events/wheelevent-mousewheel-interaction.html  [ Pass Timeout ]
 webkit.org/b/195719 fast/events/wheel-event-destroys-frame.html  [ Pass Timeout ]
@@ -940,8 +940,13 @@ webkit.org/b/196400 fast/mediastream/MediaStreamTrack-getSettings.html [ Pass Fa
 
 webkit.org/b/196403 imported/w3c/web-platform-tests/mediacapture-record/MediaRecorder-stop.html [ Pass Failure ]
 
-webkit.org/b/187391 accessibility/Mac/async-increment-decrement-action.html [ Skip ]
+webkit.org/b/187391 accessibility/mac/async-increment-decrement-action.html [ Skip ]
 
 webkit.org/b/196448 [ Debug ] inspector/audit/basic.html [ Pass Timeout ]
 
 webkit.org/b/194164 http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-but-access-from-wrong-frame.html [ Pass Timeout ]
+
+webkit.org/b/196633 imported/w3c/web-platform-tests/webrtc/RTCRtpReceiver-getSynchronizationSources.https.html [ Pass Failure ]
+
+webkit.org/b/195961 [ Debug ] imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex7-event_order.html [ Pass Failure ]
+webkit.org/b/195961 [ Debug ] imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex6-event_order.html [ Pass Failure ]

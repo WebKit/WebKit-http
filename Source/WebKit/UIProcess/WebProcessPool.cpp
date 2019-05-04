@@ -589,6 +589,9 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
             enableResourceLoadStatisticsDebugMode = networkSessionParameters.enableResourceLoadStatisticsDebugMode;
             manualPrevalentResource = networkSessionParameters.resourceLoadStatisticsManualPrevalentResource;
         }
+
+        parameters.defaultDataStoreParameters.perOriginStorageQuota = withWebsiteDataStore->perOriginStorageQuota();
+        parameters.defaultDataStoreParameters.perThirdPartyOriginStorageQuota = withWebsiteDataStore->perThirdPartyOriginStorageQuota();
     } else if (m_websiteDataStore) {
         enableResourceLoadStatistics = m_websiteDataStore->resourceLoadStatisticsEnabled();
         if (enableResourceLoadStatistics) {
@@ -597,6 +600,9 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
             enableResourceLoadStatisticsDebugMode = networkSessionParameters.enableResourceLoadStatisticsDebugMode;
             manualPrevalentResource = networkSessionParameters.resourceLoadStatisticsManualPrevalentResource;
         }
+
+        parameters.defaultDataStoreParameters.perOriginStorageQuota = m_websiteDataStore->websiteDataStore().perOriginStorageQuota();
+        parameters.defaultDataStoreParameters.perThirdPartyOriginStorageQuota = m_websiteDataStore->websiteDataStore().perThirdPartyOriginStorageQuota();
     }
 
     parameters.defaultDataStoreParameters.networkSessionParameters.enableResourceLoadStatistics = enableResourceLoadStatistics;
@@ -1743,6 +1749,18 @@ void WebProcessPool::terminateNetworkProcess()
     m_didNetworkProcessCrash = true;
 }
 
+void WebProcessPool::sendNetworkProcessWillSuspendImminently()
+{
+    if (m_networkProcess)
+        m_networkProcess->sendProcessWillSuspendImminently();
+}
+
+void WebProcessPool::sendNetworkProcessDidResume()
+{
+    if (m_networkProcess)
+        m_networkProcess->sendProcessDidResume();
+}
+
 void WebProcessPool::terminateServiceWorkerProcesses()
 {
 #if ENABLE(SERVICE_WORKER)
@@ -2350,7 +2368,7 @@ void WebProcessPool::processForNavigationInternal(WebPageProxy& page, const API:
 RefPtr<WebProcessProxy> WebProcessPool::findReusableSuspendedPageProcess(const WebCore::RegistrableDomain& registrableDomain, WebPageProxy& page, WebsiteDataStore& dataStore)
 {
     auto it = m_suspendedPages.findIf([&](auto& suspendedPage) {
-        return suspendedPage->registrableDomain() == registrableDomain && &suspendedPage->process().websiteDataStore() == &dataStore;
+        return suspendedPage->process().registrableDomain() == registrableDomain && &suspendedPage->process().websiteDataStore() == &dataStore;
     });
     if (it == m_suspendedPages.end())
         return nullptr;

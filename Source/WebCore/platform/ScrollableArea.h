@@ -95,7 +95,6 @@ public:
     virtual void didEndScroll() { }
     virtual void didUpdateScroll() { }
 #endif
-    virtual void setIsUserScroll(bool) { }
 
     // Functions for controlling if you can scroll past the end of the document.
     bool constrainsScrollingToContentEdge() const { return m_constrainsScrollingToContentEdge; }
@@ -228,8 +227,11 @@ public:
     WEBCORE_EXPORT virtual bool scrolledToLeft() const;
     WEBCORE_EXPORT virtual bool scrolledToRight() const;
 
-    bool isScrolledProgrammatically() const { return m_scrolledProgrammatically; }
-    void setScrolledProgrammatically(bool state) { m_scrolledProgrammatically = state; }
+    ScrollType currentScrollType() const { return static_cast<ScrollType>(m_currentScrollType); }
+    void setCurrentScrollType(ScrollType scrollType) { m_currentScrollType = static_cast<unsigned>(scrollType); }
+
+    bool scrollShouldClearLatchedState() const { return m_scrollShouldClearLatchedState; }
+    void setScrollShouldClearLatchedState(bool shouldClear) { m_scrollShouldClearLatchedState = shouldClear; }
 
     enum VisibleContentRectIncludesScrollbars { ExcludeScrollbars, IncludeScrollbars };
     enum VisibleContentRectBehavior {
@@ -391,7 +393,8 @@ private:
     unsigned m_scrollbarOverlayStyle : 2; // ScrollbarOverlayStyle
 
     unsigned m_scrollOriginChanged : 1;
-    unsigned m_scrolledProgrammatically : 1;
+    unsigned m_currentScrollType : 1; // ScrollType
+    unsigned m_scrollShouldClearLatchedState : 1;
 };
 
 } // namespace WebCore

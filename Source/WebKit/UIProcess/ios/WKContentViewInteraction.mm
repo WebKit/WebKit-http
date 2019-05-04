@@ -2053,9 +2053,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (![self ensurePositionInformationIsUpToDate:request])
         return NO;
 
-#if ENABLE(DATA_INTERACTION)
-    if (_positionInformation.hasSelectionAtPosition) {
-        // If the position might initiate a data interaction, we don't want to consider the content at this position to be selectable.
+#if ENABLE(DRAG_SUPPORT)
+    if (_positionInformation.hasSelectionAtPosition && self._allowedDragSourceActions & WebCore::DragSourceActionSelection) {
+        // If the position might initiate a drag, we don't want to consider the content at this position to be selectable.
         // FIXME: This should be renamed to something more precise, such as textSelectionShouldRecognizeGestureAtPoint:
         return NO;
     }
@@ -2093,9 +2093,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (![self ensurePositionInformationIsUpToDate:request])
         return NO;
 
-#if ENABLE(DATA_INTERACTION)
-    if (_positionInformation.hasSelectionAtPosition && gesture == UIWKGestureLoupe) {
-        // If the position might initiate data interaction, we don't want to change the selection.
+#if ENABLE(DRAG_SUPPORT)
+    if (_positionInformation.hasSelectionAtPosition && gesture == UIWKGestureLoupe && self._allowedDragSourceActions & WebCore::DragSourceActionSelection) {
+        // If the position might initiate a drag, we don't want to change the selection.
         return NO;
     }
 #endif
@@ -3807,9 +3807,21 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     return _formAccessoryView.get();
 }
 
+- (void)accessoryOpen
+{
+    if (!_inputPeripheral)
+        return;
+    [self _zoomToRevealFocusedElement];
+    [self _updateAccessory];
+    [_inputPeripheral beginEditing];
+}
+
 - (void)_updateAccessory
 {
     auto* accessoryView = self.formAccessoryView; // Creates one, if needed.
+
+    if ([accessoryView respondsToSelector:@selector(setNextPreviousItemsVisible:)])
+        [accessoryView setNextPreviousItemsVisible:!_webView._editable];
 
     [accessoryView setNextEnabled:_focusedElementInformation.hasNextNode];
     [accessoryView setPreviousEnabled:_focusedElementInformation.hasPreviousNode];
@@ -3848,6 +3860,12 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 - (void)endSelectionChange
 {
     [self.inputDelegate selectionDidChange:self];
+}
+
+- (void)_didChangeWebViewEditability
+{
+    if ([_formAccessoryView respondsToSelector:@selector(setNextPreviousItemsVisible:)])
+        [_formAccessoryView setNextPreviousItemsVisible:!_webView._editable];
 }
 
 - (void)insertTextSuggestion:(UITextSuggestion *)textSuggestion
@@ -4990,9 +5008,7 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
         if (_inputPeripheral) {
             if (!self.isFirstResponder)
                 [self becomeFirstResponder];
-            [self _zoomToRevealFocusedElement];
-            [self _updateAccessory];
-            [_inputPeripheral beginEditing];
+            [self accessoryOpen];
         }
         return;
     }
@@ -6280,6 +6296,16 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     return WKDragDestinationActionAny & ~WKDragDestinationActionLoad;
 }
 
+- (WebCore::DragSourceAction)_allowedDragSourceActions
+{
+    auto allowedActions = WebCore::DragSourceActionAny;
+    if (!self.isFirstResponder || !_suppressSelectionAssistantReasons.isEmpty()) {
+        // Don't allow starting a drag on a selection when selection views are not visible.
+        allowedActions = static_cast<WebCore::DragSourceAction>(allowedActions & ~WebCore::DragSourceActionSelection);
+    }
+    return allowedActions;
+}
+
 - (id <UIDragDropSession>)currentDragOrDropSession
 {
     if (_dragDropInteractionState.dropSession())
@@ -6439,7 +6465,7 @@ static WebKit::DocumentEditingContextRequest toWebRequest(UIWKDocumentRequest *r
     }
 
     _dragDropInteractionState.dragSessionWillRequestAdditionalItem(completion);
-    _page->requestAdditionalItemsForDragSession(WebCore::roundedIntPoint(point), WebCore::roundedIntPoint(point));
+    _page->requestAdditionalItemsForDragSession(WebCore::roundedIntPoint(point), WebCore::roundedIntPoint(point), self._allowedDragSourceActions);
 }
 
 - (void)_dragInteraction:(UIDragInteraction *)interaction prepareForSession:(id <UIDragSession>)session completion:(dispatch_block_t)completion
@@ -6459,7 +6485,7 @@ static WebKit::DocumentEditingContextRequest toWebRequest(UIWKDocumentRequest *r
     _dragDropInteractionState.prepareForDragSession(session, completion);
 
     auto dragOrigin = WebCore::roundedIntPoint([session locationInView:self]);
-    _page->requestDragStart(dragOrigin, WebCore::roundedIntPoint([self convertPoint:dragOrigin toView:self.window]));
+    _page->requestDragStart(dragOrigin, WebCore::roundedIntPoint([self convertPoint:dragOrigin toView:self.window]), self._allowedDragSourceActions);
 
     RELEASE_LOG(DragAndDrop, "Drag session requested: %p at origin: {%d, %d}", session, dragOrigin.x(), dragOrigin.y());
 }

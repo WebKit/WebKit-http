@@ -2834,15 +2834,12 @@ bool RenderLayerCompositor::isAsyncScrollableStickyLayer(const RenderLayer& laye
 
     auto* enclosingOverflowLayer = layer.enclosingOverflowClipLayer(ExcludeSelf);
 
-#if PLATFORM(IOS_FAMILY)
     if (enclosingOverflowLayer && enclosingOverflowLayer->hasCompositedScrollableOverflow()) {
         if (enclosingAcceleratedOverflowLayer)
             *enclosingAcceleratedOverflowLayer = enclosingOverflowLayer;
         return true;
     }
-#else
-    UNUSED_PARAM(enclosingAcceleratedOverflowLayer);
-#endif
+
     // If the layer is inside normal overflow, it's not async-scrollable.
     if (enclosingOverflowLayer)
         return false;
@@ -2987,11 +2984,11 @@ static Vector<ScrollingNodeID> collectRelatedCoordinatedScrollingNodes(const Ren
         auto* compositedAncestor = layer.ancestorCompositingLayer();
         for (const auto* currLayer = layer.parent(); currLayer != compositedAncestor; currLayer = currLayer->parent()) {
             if (currLayer->hasCompositedScrollableOverflow()) {
-                auto scrollingNodeID = currLayer->backing()->scrollingNodeIDForRole(ScrollCoordinationRole::Scrolling);
+                auto scrollingNodeID = currLayer->isComposited() ? currLayer->backing()->scrollingNodeIDForRole(ScrollCoordinationRole::Scrolling) : 0;
                 if (scrollingNodeID)
                     overflowNodeData.append(scrollingNodeID);
                 else
-                    LOG(Scrolling, "Layer %p doesn't have scrolling node ID yet", &layer);
+                    LOG(Scrolling, "Layer %p isn't composited or doesn't have scrolling node ID yet", &layer);
             }
         }
         break;
@@ -3888,11 +3885,6 @@ FixedPositionViewportConstraints RenderLayerCompositor::computeFixedViewportCons
 StickyPositionViewportConstraints RenderLayerCompositor::computeStickyViewportConstraints(RenderLayer& layer) const
 {
     ASSERT(layer.isComposited());
-#if !PLATFORM(IOS_FAMILY)
-    // We should never get here for stickies constrained by an enclosing clipping layer.
-    // FIXME: Why does this assertion fail on iOS?
-    ASSERT(!layer.enclosingOverflowClipLayer(ExcludeSelf));
-#endif
 
     auto& renderer = downcast<RenderBoxModelObject>(layer.renderer());
 

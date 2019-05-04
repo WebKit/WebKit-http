@@ -1,3 +1,83 @@
+2019-04-10  Antoine Quint  <graouts@apple.com>
+
+        Enable Pointer Events on watchOS
+        https://bugs.webkit.org/show_bug.cgi?id=196771
+        <rdar://problem/49040909>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-04-08  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Fix Web GPU experimental feature on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=196632
+
+        Reviewed by Myles C. Maxfield.
+
+        Add feature conditionals for iOS 11.
+        Properly make Web GPU available on iOS 11+.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2019-04-05  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(AppleWebKit/605.1.15): WebDownloadDelegate delegate methods called on non-main thread
+        https://bugs.webkit.org/show_bug.cgi?id=190918
+        <rdar://problem/45603890>
+
+        Reviewed by Darin Adler.
+
+        Since we not doing networking on the main thread but WebView is to be used on the main thread,
+        we need to hop delegate calls to the main thread similarly to how we do it in the non-download
+        delegate calls in WebCoreResourceHandleAsOperationQueueDelegate.
+
+        * Misc/WebDownload.mm:
+        (-[WebDownloadInternal downloadDidBegin:]):
+        (-[WebDownloadInternal download:willSendRequest:redirectResponse:]):
+        (-[WebDownloadInternal download:didReceiveAuthenticationChallenge:]):
+        (-[WebDownloadInternal download:didReceiveResponse:]):
+        (-[WebDownloadInternal download:didReceiveDataOfLength:]):
+        (-[WebDownloadInternal download:shouldDecodeSourceDataOfMIMEType:]):
+        (-[WebDownloadInternal download:decideDestinationWithSuggestedFilename:]):
+        (-[WebDownloadInternal download:didCreateDestination:]):
+        (-[WebDownloadInternal downloadDidFinish:]):
+        (-[WebDownloadInternal download:didFailWithError:]):
+
+2019-04-05  Eric Carlson  <eric.carlson@apple.com>
+
+        Remove AUDIO_TOOLBOX_AUDIO_SESSION
+        https://bugs.webkit.org/show_bug.cgi?id=196653
+        <rdar://problem/49652098>
+
+        Reviewed by Jer Noble.
+
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences setAudioSessionCategoryOverride:]):
+
+2019-04-05  Eric Carlson  <eric.carlson@apple.com>
+
+        Stop including <AudioToolbox/AudioSession.h>
+        https://bugs.webkit.org/show_bug.cgi?id=196648
+        <rdar://problem/39665771>
+
+        Reviewed by Jer Noble.
+
+        * WebView/WebPreferencesPrivate.h:
+
+2019-04-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Have ScrollableArea store a ScrollType for the current scroll
+        https://bugs.webkit.org/show_bug.cgi?id=196627
+
+        Reviewed by Zalan Bujtas.
+
+        Send the programmatic scroll type.
+
+        * DOM/DOMHTML.mm:
+        (-[DOMHTMLElement setScrollXOffset:scrollYOffset:adjustForIOSCaret:]):
+
 2019-04-03  Myles C. Maxfield  <mmaxfield@apple.com>
 
         -apple-trailing-word is needed for browser detection

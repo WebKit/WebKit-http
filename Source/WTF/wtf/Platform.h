@@ -796,18 +796,11 @@
 #endif
 
 #if USE(JSVALUE32_64)
-#if CPU(ARM_THUMB2) && OS(LINUX)
-/* On ARMv7/Linux the JIT is enabled unless explicitly disabled. */
+#if (CPU(ARM_THUMB2) || CPU(MIPS)) && OS(LINUX)
+/* On ARMv7 and MIPS on Linux the JIT is enabled unless explicitly disabled. */
 #if !defined(ENABLE_JIT)
 #define ENABLE_JIT 1
 #endif
-#elif CPU(MIPS) && OS(LINUX)
-/* Same on MIPS/Linux, but DFG is disabled for now. */
-#if !defined(ENABLE_JIT)
-#define ENABLE_JIT 1
-#endif
-#undef ENABLE_DFG_JIT
-#define ENABLE_DFG_JIT 0
 #else
 /* Disable JIT and force C_LOOP on all other 32bit architectures. */
 #undef ENABLE_JIT
@@ -1104,7 +1097,6 @@
 #endif
 
 #if PLATFORM(IOS_FAMILY) && !PLATFORM(IOSMAC)
-#define HAVE_AUDIO_TOOLBOX_AUDIO_SESSION 1
 #define HAVE_CELESTIAL 1
 #define HAVE_CORE_ANIMATION_RENDER_SERVER 1
 #endif

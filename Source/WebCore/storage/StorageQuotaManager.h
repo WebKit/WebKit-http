@@ -28,6 +28,7 @@
 #include "ClientOrigin.h"
 #include <wtf/CompletionHandler.h>
 #include <wtf/Deque.h>
+#include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/WeakPtr.h>
 
@@ -46,8 +47,10 @@ public:
     }
     WEBCORE_EXPORT ~StorageQuotaManager();
 
+    static constexpr uint64_t defaultThirdPartyQuotaFromPerOriginQuota(uint64_t quota) { return quota / 10; }
+
     static constexpr uint64_t defaultQuota() { return 1000 * MB; }
-    static constexpr uint64_t defaultThirdPartyQuota() { return 100 * MB; }
+    static constexpr uint64_t defaultThirdPartyQuota() { return defaultThirdPartyQuotaFromPerOriginQuota(defaultQuota()); }
 
     WEBCORE_EXPORT void addUser(StorageQuotaUser&);
     WEBCORE_EXPORT void removeUser(StorageQuotaUser&);
@@ -64,6 +67,9 @@ private:
     bool shouldAskForMoreSpace(uint64_t spaceIncrease) const;
     void askForMoreSpace(uint64_t spaceIncrease);
 
+    void initializeUsersIfNeeded();
+    void askUserToInitialize(StorageQuotaUser&);
+
     enum class ShouldDequeueFirstPendingRequest { No, Yes };
     void processPendingRequests(Optional<uint64_t>, ShouldDequeueFirstPendingRequest);
 
@@ -71,7 +77,9 @@ private:
 
     bool m_isWaitingForSpaceIncreaseResponse { false };
     SpaceIncreaseRequester m_spaceIncreaseRequester;
-    HashSet<const StorageQuotaUser*> m_pendingInitializationUsers;
+
+    enum class WhenInitializedCalled { No, Yes };
+    HashMap<StorageQuotaUser*, WhenInitializedCalled> m_pendingInitializationUsers;
     HashSet<const StorageQuotaUser*> m_users;
 
     struct PendingRequest {

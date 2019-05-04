@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 2.8.12)
 
 include(WebKitCommon)
 include(WebCoreMacros.cmake)
-include(frameworks/WTF)
 
 set_property(DIRECTORY . PROPERTY FOLDER "WebCore")
 
@@ -18,6 +17,8 @@ list(APPEND WebCore_UNIFIED_SOURCE_LIST_FILES
 
 set(WebCore_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
+    "${JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS_DIR}"
+    "${PAL_FRAMEWORK_HEADERS_DIR}"
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/airplay"
     "${WEBCORE_DIR}/Modules/applepay"
@@ -1375,6 +1376,7 @@ if (ENABLE_VIDEO_TRACK)
         html/track/DataCue.idl
         html/track/TextTrack.idl
         html/track/TextTrackCue.idl
+        html/track/TextTrackCueGeneric.idl
         html/track/TextTrackCueList.idl
         html/track/TextTrackList.idl
         html/track/TrackEvent.idl

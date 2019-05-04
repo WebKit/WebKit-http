@@ -40,14 +40,19 @@ class StatusBubble(View):
     ALL_QUEUES = ['api-ios', 'api-mac', 'bindings', 'gtk', 'ios', 'ios-sim', 'ios-wk2', 'jsc', 'mac', 'mac-32bit', 'mac-32bit-wk2',
                     'mac-debug', 'mac-debug-wk1', 'mac-wk1', 'mac-wk2', 'style', 'webkitperl', 'webkitpy', 'win', 'wincairo', 'wpe']
     ENABLED_QUEUES = ['api-ios', 'api-mac', 'webkitperl']
+    # FIXME: Auto-generate the queue's trigger relationship
+    QUEUE_TRIGGERS = {
+        'api-ios': 'ios-sim',
+        'api-mac': 'mac',
+    }
 
-    STEPS_TO_HIDE = ['Killed old processes', 'Configured build', '^OS:.*Xcode:']
+    STEPS_TO_HIDE = ['Killed old processes', 'Configured build', '^OS:.*Xcode:', '(skipped)']
 
     def _build_bubble(self, patch, queue):
         bubble = {
             'name': queue,
         }
-        build = self.get_latest_build_for_queue(patch, queue)
+        build, is_parent_build = self.get_latest_build_for_queue(patch, queue, self._get_parent_queue(queue))
         if not self._should_show_bubble_for_build(build):
             return None
 
@@ -63,8 +68,12 @@ class StatusBubble(View):
             bubble['state'] = 'started'
             bubble['details_message'] = 'Build is in-progress. Recent messages:\n\n' + self._steps_messages(build)
         elif build.result == Buildbot.SUCCESS:
-            bubble['state'] = 'pass'
-            bubble['details_message'] = 'Pass'
+            if is_parent_build:
+                bubble['state'] = 'started'
+                bubble['details_message'] = 'Build is in-progress. Recent messages:\n\n' + self._steps_messages(build) + '\n\nWaiting to run tests.'
+            else:
+                bubble['state'] = 'pass'
+                bubble['details_message'] = 'Pass'
         elif build.result == Buildbot.WARNINGS:
             bubble['state'] = 'pass'
             bubble['details_message'] = 'Warning\n\n' + self._steps_messages(build)
@@ -107,6 +116,9 @@ class StatusBubble(View):
 
         return bubble
 
+    def _get_parent_queue(self, queue):
+        return StatusBubble.QUEUE_TRIGGERS.get(queue)
+
     def get_os_details(self, build):
         for step in build.step_set.all():
             if step.state_string.startswith('OS:'):
@@ -122,7 +134,7 @@ class StatusBubble(View):
         return '[[' + datetime.datetime.fromtimestamp(time).isoformat() + 'Z]]'
 
     def _steps_messages(self, build):
-        return '\n'.join([step.state_string for step in build.step_set.all() if self._should_display_step(step)])
+        return '\n'.join([step.state_string for step in build.step_set.all().order_by('uid') if self._should_display_step(step)])
 
     def _should_display_step(self, step):
         return not filter(lambda step_to_hide: re.search(step_to_hide, step.state_string), StatusBubble.STEPS_TO_HIDE)
@@ -133,12 +145,16 @@ class StatusBubble(View):
             return ''
         return recent_step.state_string
 
-    def get_latest_build_for_queue(self, patch, queue):
+    def get_latest_build_for_queue(self, patch, queue, parent_queue=None):
         builds = self.get_builds_for_queue(patch, queue)
+        is_parent_build = False
+        if not builds and parent_queue:
+            builds = self.get_builds_for_queue(patch, parent_queue)
+            is_parent_build = True
         if not builds:
-            return None
+            return (None, None)
         builds.sort(key=lambda build: build.started_at, reverse=True)
-        return builds[0]
+        return (builds[0], is_parent_build)
 
     def get_builds_for_queue(self, patch, queue):
         return [build for build in patch.build_set.all() if build.builder_display_name == queue]

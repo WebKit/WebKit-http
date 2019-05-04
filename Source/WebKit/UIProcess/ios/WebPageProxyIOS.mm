@@ -81,6 +81,13 @@ String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent
     return standardUserAgentWithApplicationName(applicationNameForUserAgent);
 }
 
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+void WebPageProxy::didCreateContextForVisibilityPropagation(LayerHostingContextID contextID)
+{
+    pageClient().didCreateContextForVisibilityPropagation(contextID);
+}
+#endif
+
 void WebPageProxy::getIsSpeaking(CompletionHandler<void(bool)>&& completionHandler)
 {
     notImplemented();
@@ -329,6 +336,7 @@ void WebPageProxy::setViewportConfigurationViewLayoutSize(const WebCore::FloatSi
 {
     m_viewportConfigurationViewLayoutSize = size;
     m_viewportConfigurationLayoutSizeScaleFactor = scaleFactor;
+    m_viewportConfigurationMinimumEffectiveDeviceWidth = minimumEffectiveDeviceWidth;
 
     if (hasRunningProcess())
         m_process->send(Messages::WebPage::SetViewportConfigurationViewLayoutSize(size, scaleFactor, minimumEffectiveDeviceWidth), m_pageID);
@@ -1176,16 +1184,16 @@ void WebPageProxy::didHandleAdditionalDragItemsRequest(bool added)
     pageClient().didHandleAdditionalDragItemsRequest(added);
 }
 
-void WebPageProxy::requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition)
+void WebPageProxy::requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, WebCore::DragSourceAction allowedActions)
 {
     if (hasRunningProcess())
-        m_process->send(Messages::WebPage::RequestDragStart(clientPosition, globalPosition), m_pageID);
+        m_process->send(Messages::WebPage::RequestDragStart(clientPosition, globalPosition, allowedActions), m_pageID);
 }
 
-void WebPageProxy::requestAdditionalItemsForDragSession(const IntPoint& clientPosition, const IntPoint& globalPosition)
+void WebPageProxy::requestAdditionalItemsForDragSession(const IntPoint& clientPosition, const IntPoint& globalPosition, WebCore::DragSourceAction allowedActions)
 {
     if (hasRunningProcess())
-        m_process->send(Messages::WebPage::RequestAdditionalItemsForDragSession(clientPosition, globalPosition), m_pageID);
+        m_process->send(Messages::WebPage::RequestAdditionalItemsForDragSession(clientPosition, globalPosition, allowedActions), m_pageID);
 }
 
 void WebPageProxy::didConcludeEditDrag(Optional<TextIndicatorData> data)

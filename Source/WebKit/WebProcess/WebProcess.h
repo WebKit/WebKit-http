@@ -58,7 +58,7 @@
 #endif
 
 #if PLATFORM(IOS_FAMILY)
-#include "WebSQLiteDatabaseTracker.h"
+#include "ProcessTaskStateObserver.h"
 #endif
 
 namespace API {
@@ -112,10 +112,20 @@ enum class WebsiteDataType;
 struct WebPageCreationParameters;
 struct WebPageGroupData;
 struct WebPreferencesStore;
+class WebSQLiteDatabaseTracker;
 struct WebsiteData;
 struct WebsiteDataStoreParameters;
 
-class WebProcess : public AuxiliaryProcess {
+#if PLATFORM(IOS_FAMILY)
+class LayerHostingContext;
+#endif
+
+class WebProcess
+    : public AuxiliaryProcess
+#if PLATFORM(IOS_FAMILY)
+    , ProcessTaskStateObserver::Client
+#endif
+{
 public:
     static WebProcess& singleton();
     static constexpr ProcessType processType = ProcessType::WebContent;
@@ -428,6 +438,7 @@ private:
 #endif
 
 #if PLATFORM(IOS_FAMILY)
+    void processTaskStateDidChange(ProcessTaskStateObserver::TaskState) final;
     bool shouldFreezeOnSuspension() const;
     void updateFreezerStatus();
 #endif
@@ -493,13 +504,19 @@ private:
     bool m_hasRichContentServices { false };
 #endif
 
+    bool m_processIsSuspended { false };
+
     HashSet<uint64_t> m_pagesInWindows;
     WebCore::Timer m_nonVisibleProcessCleanupTimer;
 
     RefPtr<WebCore::ApplicationCacheStorage> m_applicationCacheStorage;
 
 #if PLATFORM(IOS_FAMILY)
-    WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
+    std::unique_ptr<WebSQLiteDatabaseTracker> m_webSQLiteDatabaseTracker;
+    ProcessTaskStateObserver m_taskStateObserver { *this };
+#endif
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+    std::unique_ptr<LayerHostingContext> m_contextForVisibilityPropagation;
 #endif
 
     enum PageMarkingLayersAsVolatileCounterType { };

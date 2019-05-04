@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.8.12)
 include(WebKitCommon)
-include(frameworks/WTF)
 set_property(DIRECTORY . PROPERTY FOLDER "JavaScriptCore")
 
 list(APPEND JavaScriptCore_UNIFIED_SOURCE_LIST_FILES
@@ -8,7 +7,8 @@ list(APPEND JavaScriptCore_UNIFIED_SOURCE_LIST_FILES
 )
 
 set(JavaScriptCore_INCLUDE_DIRECTORIES
-    "${FORWARDING_HEADERS_DIR}"
+    "${WTF_FRAMEWORK_HEADERS_DIR}"
+    "${JavaScriptCore_FRAMEWORK_HEADERS_DIR}"
 )
 
 set(JavaScriptCore_PRIVATE_INCLUDE_DIRECTORIES
@@ -120,7 +120,7 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
 )
 
 set(JavaScriptCore_LIBRARIES
-    WTFFramework
+    WTF${DEBUG_SUFFIX}
     ${ICU_I18N_LIBRARIES}
 )
 
@@ -300,10 +300,10 @@ add_executable(LLIntOffsetsExtractor
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
 )
 
-target_link_libraries(LLIntSettingsExtractor WTFFramework)
-add_dependencies(LLIntSettingsExtractor JavaScriptCoreForwardingHeaders)
-target_link_libraries(LLIntOffsetsExtractor WTFFramework)
-add_dependencies(LLIntOffsetsExtractor JavaScriptCoreForwardingHeaders)
+target_link_libraries(LLIntSettingsExtractor WTF)
+add_dependencies(LLIntSettingsExtractor JavaScriptCoreFrameworkHeaders)
+target_link_libraries(LLIntOffsetsExtractor WTF)
+add_dependencies(LLIntOffsetsExtractor JavaScriptCoreFrameworkHeaders)
 
 # The build system will execute asm.rb every time LLIntOffsetsExtractor's mtime is newer than
 # LLIntAssembly.h's mtime. The problem we have here is: asm.rb has some built-in optimization
@@ -1272,18 +1272,18 @@ if (COMPILER_IS_GCC_OR_CLANG)
     # Avoid using fused multiply-add instructions since this could give different results
     # for e.g. parseInt depending on the platform and compilation flags.
     WEBKIT_ADD_TARGET_CXX_FLAGS(JavaScriptCore -ffp-contract=off)
-
-    # Avoid "variable tracking size limit exceeded"
-    set_source_files_properties(builtins/BuiltinNames.cpp PROPERTIES COMPILE_FLAGS -fno-var-tracking-assignments)
 endif ()
 
 WEBKIT_MAKE_FORWARDING_HEADERS(JavaScriptCore
+    TARGET_NAME JavaScriptCoreFrameworkHeaders
+    DESTINATION ${JavaScriptCore_FRAMEWORK_HEADERS_DIR}/JavaScriptCore
     FILES ${JavaScriptCore_PUBLIC_FRAMEWORK_HEADERS}
     FLATTENED
 )
 
 WEBKIT_MAKE_FORWARDING_HEADERS(JavaScriptCore
-    TARGET_NAME JavaScriptCorePrivateForwardingHeaders
+    TARGET_NAME JavaScriptCorePrivateFrameworkHeaders
+    DESTINATION ${JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS_DIR}/JavaScriptCore
     FILES ${JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS}
     FLATTENED
 )

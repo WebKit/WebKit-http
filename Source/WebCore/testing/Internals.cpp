@@ -213,6 +213,7 @@
 #if ENABLE(VIDEO_TRACK)
 #include "CaptionUserPreferences.h"
 #include "PageGroup.h"
+#include "TextTrackCueGeneric.h"
 #endif
 
 #if ENABLE(VIDEO)
@@ -3383,12 +3384,12 @@ void Internals::reloadExpiredOnly()
     frame()->loader().reload(ReloadOption::ExpiredOnly);
 }
 
-void Internals::enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight)
+void Internals::enableAutoSizeMode(bool enabled, int width, int height)
 {
     auto* document = contextDocument();
     if (!document || !document->view())
         return;
-    document->view()->enableAutoSizeMode(enabled, IntSize(minimumWidth, minimumHeight), IntSize(maximumWidth, maximumHeight));
+    document->view()->enableAutoSizeMode(enabled, { width, height });
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -3573,6 +3574,21 @@ ExceptionOr<void> Internals::setCaptionDisplayMode(const String& mode)
     UNUSED_PARAM(mode);
 #endif
     return { };
+}
+
+RefPtr<TextTrackCueGeneric> Internals::createGenericCue(double startTime, double endTime, String text)
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return nullptr;
+#if ENABLE(VIDEO_TRACK)
+    return TextTrackCueGeneric::create(*document, MediaTime::createWithDouble(startTime), MediaTime::createWithDouble(endTime), text);
+#else
+    UNUSED_PARAM(startTime);
+    UNUSED_PARAM(endTime);
+    UNUSED_PARAM(text);
+    return nullptr;
+#endif
 }
 
 #if ENABLE(VIDEO)
@@ -4052,7 +4068,9 @@ void Internals::setPageMuted(StringView statesString)
         if (equalLettersIgnoringASCIICase(stateString, "audio"))
             state |= MediaProducer::AudioIsMuted;
         if (equalLettersIgnoringASCIICase(stateString, "capturedevices"))
-            state |= MediaProducer::CaptureDevicesAreMuted;
+            state |= MediaProducer::AudioAndVideoCaptureIsMuted;
+        if (equalLettersIgnoringASCIICase(stateString, "screencapture"))
+            state |= MediaProducer::ScreenCaptureIsMuted;
     }
 
     if (Page* page = document->page())
@@ -4967,6 +4985,16 @@ void Internals::setAlwaysAllowLocalWebarchive(bool alwaysAllowLocalWebarchive)
     if (!localFrame)
         return;
     localFrame->loader().setAlwaysAllowLocalWebarchive(alwaysAllowLocalWebarchive);
+}
+
+void Internals::processWillSuspend()
+{
+    PlatformMediaSessionManager::sharedManager().processWillSuspend();
+}
+
+void Internals::processDidResume()
+{
+    PlatformMediaSessionManager::sharedManager().processDidResume();
 }
 
 } // namespace WebCore

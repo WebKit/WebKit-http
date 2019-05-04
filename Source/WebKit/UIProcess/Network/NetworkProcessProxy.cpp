@@ -279,7 +279,6 @@ void NetworkProcessProxy::didClose(IPC::Connection&)
 #endif
 
     m_tokenForHoldingLockedFiles = nullptr;
-    m_tokenForIDBDatabaseHoldingLockedFiles = nullptr;
     
     m_syncAllCookiesToken = nullptr;
     m_syncAllCookiesCounter = 0;
@@ -1058,19 +1057,6 @@ void NetworkProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
     }
 }
 
-void NetworkProcessProxy::setIsIDBDatabaseHoldingLockedFiles(bool isIDBDatabaseHoldingLockedFiles)
-{
-    if (!isIDBDatabaseHoldingLockedFiles) {
-        RELEASE_LOG(ProcessSuspension, "UIProcess is releasing a background assertion because the Network process is no longer holding locked files for IDBDatabase");
-        m_tokenForIDBDatabaseHoldingLockedFiles = nullptr;
-        return;
-    }
-    if (!m_tokenForIDBDatabaseHoldingLockedFiles) {
-        RELEASE_LOG(ProcessSuspension, "UIProcess is taking a background assertion because the Network process is holding locked files for IDBDatabase");
-        m_tokenForIDBDatabaseHoldingLockedFiles = m_throttler.backgroundActivityToken();
-    }
-}
-
 void NetworkProcessProxy::syncAllCookies()
 {
     send(Messages::NetworkProcess::SyncAllCookies(), 0);
@@ -1138,8 +1124,7 @@ void NetworkProcessProxy::retrieveCacheStorageParameters(PAL::SessionID sessionI
 
     if (!store) {
         RELEASE_LOG_ERROR(CacheStorage, "%p - NetworkProcessProxy is unable to retrieve CacheStorage parameters from the given session ID %" PRIu64, this, sessionID.sessionID());
-        auto quota = m_processPool.websiteDataStore() ? m_processPool.websiteDataStore()->websiteDataStore().cacheStoragePerOriginQuota() : WebsiteDataStoreConfiguration::defaultCacheStoragePerOriginQuota;
-        send(Messages::NetworkProcess::SetCacheStorageParameters { sessionID, quota, { }, { } }, 0);
+        send(Messages::NetworkProcess::SetCacheStorageParameters { sessionID, { }, { } }, 0);
         return;
     }
 
@@ -1148,7 +1133,7 @@ void NetworkProcessProxy::retrieveCacheStorageParameters(PAL::SessionID sessionI
     if (!cacheStorageDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(cacheStorageDirectory, cacheStorageDirectoryExtensionHandle);
 
-    send(Messages::NetworkProcess::SetCacheStorageParameters { sessionID, store->cacheStoragePerOriginQuota(), cacheStorageDirectory, cacheStorageDirectoryExtensionHandle }, 0);
+    send(Messages::NetworkProcess::SetCacheStorageParameters { sessionID, cacheStorageDirectory, cacheStorageDirectoryExtensionHandle }, 0);
 }
 
 #if ENABLE(CONTENT_EXTENSIONS)

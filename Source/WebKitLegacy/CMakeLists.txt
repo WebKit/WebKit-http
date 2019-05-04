@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.8.12)
 include(WebKitCommon)
-include(frameworks/WTF)
 set_property(DIRECTORY . PROPERTY FOLDER "WebKitLegacy")
 
 set(WebKitLegacy_SOURCES
@@ -22,7 +21,7 @@ set(WebKitLegacy_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${WEBKITLEGACY_DIR}/Storage"
     "${WEBKITLEGACY_DIR}/WebCoreSupport"
-    "${FORWARDING_HEADERS_DIR}"
+    "${WebCore_PRIVATE_FRAMEWORK_HEADERS_DIR}"
 )
 
 set(WebKitLegacy_SYSTEM_INCLUDE_DIRECTORIES

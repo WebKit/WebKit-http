@@ -302,6 +302,10 @@ typedef GenericCallback<const String&> StringCallback;
 typedef GenericCallback<API::SerializedScriptValue*, bool, const WebCore::ExceptionDetails&> ScriptValueCallback;
 typedef GenericCallback<const WebCore::FontAttributes&> FontAttributesCallback;
 
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+using LayerHostingContextID = uint32_t;
+#endif
+
 #if PLATFORM(GTK)
 typedef GenericCallback<API::Error*> PrintFinishedCallback;
 #endif
@@ -614,7 +618,7 @@ public:
     bool isEditable() const { return m_isEditable; }
 
     void activateMediaStreamCaptureInPage();
-    bool isMediaStreamCaptureMuted() const { return m_mutedState & WebCore::MediaProducer::CaptureDevicesAreMuted; }
+    bool isMediaStreamCaptureMuted() const { return m_mutedState & WebCore::MediaProducer::MediaStreamCaptureIsMuted; }
     void setMediaStreamCaptureMuted(bool);
     void executeEditCommand(const String& commandName, const String& argument, WTF::Function<void(CallbackBase::Error)>&&);
         
@@ -700,6 +704,7 @@ public:
     void setForceAlwaysUserScalable(bool);
     bool forceAlwaysUserScalable() const { return m_forceAlwaysUserScalable; }
     double layoutSizeScaleFactor() const { return m_viewportConfigurationLayoutSizeScaleFactor; }
+    double minimumEffectiveDeviceWidth() const { return m_viewportConfigurationMinimumEffectiveDeviceWidth; }
     void setIsScrollingOrZooming(bool);
     void requestRectsForGranularityWithSelectionOffset(WebCore::TextGranularity, uint32_t offset, WTF::Function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)>&&);
     void requestRectsAtSelectionOffsetWithText(int32_t offset, const String&, WTF::Function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)>&&);
@@ -715,8 +720,8 @@ public:
 #if ENABLE(DATA_INTERACTION)
     void didHandleDragStartRequest(bool started);
     void didHandleAdditionalDragItemsRequest(bool added);
-    void requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
-    void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
+    void requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, WebCore::DragSourceAction allowedActions);
+    void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, WebCore::DragSourceAction allowedActions);
     void didConcludeEditDrag(Optional<WebCore::TextIndicatorData>);
 #endif
 #endif
@@ -1051,6 +1056,10 @@ public:
 #if PLATFORM(IOS_FAMILY)
     void processWillBecomeSuspended();
     void processWillBecomeForeground();
+#endif
+
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+    void didCreateContextForVisibilityPropagation(LayerHostingContextID);
 #endif
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
@@ -2420,6 +2429,7 @@ WEBPAGEPROXY_LOADOPTIMIZER_ADDITIONS_2
     bool m_forceAlwaysUserScalable { false };
     WebCore::FloatSize m_viewportConfigurationViewLayoutSize;
     double m_viewportConfigurationLayoutSizeScaleFactor { 1 };
+    double m_viewportConfigurationMinimumEffectiveDeviceWidth { 0 };
     WebCore::FloatSize m_maximumUnobscuredSize;
 #endif
 
