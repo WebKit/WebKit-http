@@ -67,10 +67,10 @@ public:
     void setOrder(float orderX, float orderY);
     void setKernelUnitLength(float kernelUnitLengthX, float kernelUnitLengthY);
 
-    String in1() const { return m_in1.currentValue(attributeOwnerProxy()); }
+    String in1() const { return m_in1->currentValue(); }
     int orderX() const { return m_orderX->currentValue(); }
     int orderY() const { return m_orderY->currentValue(); }
-    const SVGNumberListValues& kernelMatrix() const { return m_kernelMatrix.currentValue(attributeOwnerProxy()); }
+    const SVGNumberList& kernelMatrix() const { return m_kernelMatrix->currentValue(); }
     float divisor() const { return m_divisor->currentValue(); }
     float bias() const { return m_bias->currentValue(); }
     int targetX() const { return m_targetX->currentValue(); }
@@ -80,10 +80,10 @@ public:
     float kernelUnitLengthY() const { return m_kernelUnitLengthY->currentValue(); }
     bool preserveAlpha() const { return m_preserveAlpha->currentValue(); }
 
-    RefPtr<SVGAnimatedString> in1Animated() { return m_in1.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedString& in1Animated() { return m_in1; }
     SVGAnimatedInteger& orderXAnimated() { return m_orderX; }
     SVGAnimatedInteger& orderYAnimated() { return m_orderY; }
-    RefPtr<SVGAnimatedNumberList> kernelMatrixAnimated() { return m_kernelMatrix.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedNumberList& kernelMatrixAnimated() { return m_kernelMatrix; }
     SVGAnimatedNumber& divisorAnimated() { return m_divisor; }
     SVGAnimatedNumber& biasAnimated() { return m_bias; }
     SVGAnimatedInteger& targetXAnimated() { return m_targetX; }
@@ -117,10 +117,10 @@ private:
 
     AttributeOwnerProxy m_attributeOwnerProxy { *this };
     PropertyRegistry m_propertyRegistry { *this };
-    SVGAnimatedStringAttribute m_in1;
+    Ref<SVGAnimatedString> m_in1 { SVGAnimatedString::create(this) };
     Ref<SVGAnimatedInteger> m_orderX { SVGAnimatedInteger::create(this) };
     Ref<SVGAnimatedInteger> m_orderY { SVGAnimatedInteger::create(this) };
-    SVGAnimatedNumberListAttribute m_kernelMatrix;
+    Ref<SVGAnimatedNumberList> m_kernelMatrix { SVGAnimatedNumberList::create(this) };
     Ref<SVGAnimatedNumber> m_divisor { SVGAnimatedNumber::create(this) };
     Ref<SVGAnimatedNumber> m_bias { SVGAnimatedNumber::create(this) };
     Ref<SVGAnimatedInteger> m_targetX { SVGAnimatedInteger::create(this) };

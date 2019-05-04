@@ -1,3 +1,593 @@
+2019-03-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up some TiledCoreAnimationDrawingArea members
+        https://bugs.webkit.org/show_bug.cgi?id=196124
+
+        Reviewed by Tim Horton.
+
+        The giant m_transform was unused.
+        
+        Group the bools etc.
+
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.h:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea):
+        (WebKit::TiledCoreAnimationDrawingArea::setRootCompositingLayer):
+
+2019-03-21  Brady Eidson  <beidson@apple.com>
+
+        Certain WebProcesses should opt-out of the freezer.
+        <rdar://problem/42846139> and https://bugs.webkit.org/show_bug.cgi?id=196062
+
+        Reviewed by Andy Estes.
+
+        WebProcesses should opt-in and opt-out of the freezer as is appropriate.
+        By default a WebProcess is freezer eligible.
+        If any of the following become true then it should become ineligible:
+        - The WebProcess is a pre-warmed process.
+        - The WebProcess is in the process cache.
+        - The WebProcess is not actively hosting any web pages (e.g. it only has suspending web pages)
+
+        The most complicated part of the above is guaranteeing that any operation that changes
+        the active pages hosted by the process causes a recalculation of the freezer opt-in state.
+
+        To do that this replaces the basic WebPageProxyMap with a custom class.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::globalPageMap):
+        (WebKit::WebProcessProxy::WebProcessProxy):
+        (WebKit::WebProcessProxy::validateFreezerStatus):
+        (WebKit::WebProcessProxy::setIsInProcessCache):
+        (WebKit::WebProcessProxy::markIsNoLongerInPrewarmedPool):
+        (WebKit::WebProcessProxy::didFinishLaunching):
+        * UIProcess/WebProcessProxy.h:
+        (WebKit::WebProcessProxy::WebPageProxyMap::WebPageProxyMap):
+        (WebKit::WebProcessProxy::WebPageProxyMap::size const):
+        (WebKit::WebProcessProxy::WebPageProxyMap::values):
+        (WebKit::WebProcessProxy::WebPageProxyMap::values const):
+        (WebKit::WebProcessProxy::WebPageProxyMap::begin):
+        (WebKit::WebProcessProxy::WebPageProxyMap::end):
+        (WebKit::WebProcessProxy::WebPageProxyMap::get):
+        (WebKit::WebProcessProxy::WebPageProxyMap::contains const):
+        (WebKit::WebProcessProxy::WebPageProxyMap::isEmpty const):
+        (WebKit::WebProcessProxy::WebPageProxyMap::set):
+        (WebKit::WebProcessProxy::WebPageProxyMap::take):
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::setFreezable):
+        * WebProcess/WebProcess.h:
+        * WebProcess/WebProcess.messages.in:
+
+2019-03-21  Tim Horton  <timothy_horton@apple.com>
+
+        Adopt UIWKDocumentContext
+        https://bugs.webkit.org/show_bug.cgi?id=196040
+        <rdar://problem/48642440>
+
+        Reviewed by Ryosuke Niwa.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * Scripts/webkit/messages.py:
+        * Shared/DocumentEditingContext.h: Added.
+        * Shared/DocumentEditingContext.mm: Added.
+        (WebKit::toNSRange):
+        (WebKit::DocumentEditingContext::toPlatformContext):
+        (IPC::ArgumentCoder<WebKit::DocumentEditingContext::Range>::encode):
+        (IPC::ArgumentCoder<WebKit::DocumentEditingContext::Range>::decode):
+        (IPC::ArgumentCoder<WebKit::DocumentEditingContext::TextRect>::encode):
+        (IPC::ArgumentCoder<WebKit::DocumentEditingContext::TextRect>::decode):
+        (IPC::ArgumentCoder<WebKit::DocumentEditingContext>::encode):
+        (IPC::ArgumentCoder<WebKit::DocumentEditingContext>::decode):
+        (IPC::ArgumentCoder<WebKit::DocumentEditingContextRequest>::encode):
+        (IPC::ArgumentCoder<WebKit::DocumentEditingContextRequest>::decode):
+        Add DocumentEditingContext(Request), and coders.
+        Also expose DocumentEditingContext::toPlatformContext, which populates
+        a UIWKDocumentContext with the relevant values.
+
+        * SourcesCocoa.txt:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (toWebDocumentRequestOptions):
+        (toWebRequest):
+        (-[WKContentView adjustSelectionWithDelta:completionHandler:]):
+        (-[WKContentView requestDocumentContext:completionHandler:]):
+        (-[WKContentView selectPositionAtPoint:withContextRequest:completionHandler:]):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::adjustSelectionWithDelta):
+        (WebKit::WebPageProxy::requestDocumentEditingContext):
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        Plumb DocumentEditingContext(Request) around.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::adjustSelectionWithDelta):
+        Adjust the current selection given deltas to apply to the location and length.
+
+        (WebKit::visiblePositionAdjacentToVisiblePosition):
+        (WebKit::visiblePositionForPointInRootViewCoordinates):
+        (WebKit::WebPage::requestDocumentEditingContext):
+        Retrieve the relevant part of the selection, as well as the context,
+        given either the selection, or a rect.
+        If we're collecting context for a rect, we split the context between
+        before and after (except for the part that intersects the selection).
+        The three strings will always be directly adjacent, and any of the three
+        can sometimes be null.
+
+2019-03-21  James Magahern  <jmagahern@apple.com>
+
+        Long press gesture recognizers in WKWebView are conflicting with internal scroll view long press gesture recognizers
+        https://bugs.webkit.org/show_bug.cgi?id=195726
+        rdar://problem/48582449
+
+        Reviewed by Megan Gardner.
+
+        We just need to add another clause to WKContentViewInteraction's
+        canPreventGestureRecognizer whitelist. 
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView gestureRecognizer:canPreventGestureRecognizer:]):
+
+2019-03-21  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Turn on async overflow scrolling by default
+        https://bugs.webkit.org/show_bug.cgi?id=196011
+        rdar://problem/48453859
+
+        Reviewed by Antti Koivisto.
+
+        * Shared/WebPreferences.yaml:
+        * Shared/WebPreferencesDefaultValues.h:
+
+2019-03-21  Alex Christensen  <achristensen@webkit.org>
+
+        Remove last use of LegacySync IPC messages
+        https://bugs.webkit.org/show_bug.cgi?id=196113
+
+        Reviewed by Chris Dumez.
+
+        Also rename "Delayed" to "Synchronous" now that there's only one type of synchronous message.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.messages.in:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * NetworkProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::syncTerminateWorkerFromClient):
+        * NetworkProcess/ServiceWorker/WebSWServerConnection.h:
+        * NetworkProcess/ServiceWorker/WebSWServerConnection.messages.in:
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::dispatchMessage):
+        * Platform/IPC/HandleMessage.h:
+        (IPC::handleMessageSynchronous):
+        (IPC::handleMessageSynchronousWantsConnection):
+        (IPC::handleMessageLegacySync): Deleted.
+        (IPC::handleMessageDelayed): Deleted.
+        (IPC::handleMessageDelayedWantsConnection): Deleted.
+        * PluginProcess/PluginControllerProxy.messages.in:
+        * PluginProcess/WebProcessConnection.messages.in:
+        * Scripts/webkit/LegacyMessageReceiver-expected.cpp:
+        (WebKit::WebPage::didReceiveSyncWebPageMessage):
+        * Scripts/webkit/MessageReceiver-expected.cpp:
+        (WebKit::WebPage::didReceiveSyncMessage):
+        * Scripts/webkit/MessageReceiverSuperclass-expected.cpp:
+        (Messages::WebPage::TestSyncMessage::send):
+        (Messages::WebPage::TestSynchronousMessage::send):
+        (WebKit::WebPage::didReceiveSyncMessage):
+        (Messages::WebPage::TestDelayedMessage::send): Deleted.
+        * Scripts/webkit/MessagesSuperclass-expected.h:
+        (Messages::WebPage::TestSynchronousMessage::name):
+        (Messages::WebPage::TestSynchronousMessage::TestSynchronousMessage):
+        (Messages::WebPage::TestDelayedMessage::receiverName): Deleted.
+        (Messages::WebPage::TestDelayedMessage::name): Deleted.
+        (Messages::WebPage::TestDelayedMessage::TestDelayedMessage): Deleted.
+        (Messages::WebPage::TestDelayedMessage::arguments const): Deleted.
+        * Scripts/webkit/messages.py:
+        * Scripts/webkit/messages_unittest.py:
+        * Scripts/webkit/test-legacy-messages.in:
+        * Scripts/webkit/test-messages.in:
+        * Scripts/webkit/test-superclass-messages.in:
+        * Shared/ApplePay/WebPaymentCoordinatorProxy.messages.in:
+        * Shared/Plugins/NPObjectMessageReceiver.messages.in:
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.messages.in:
+        * UIProcess/Plugins/PluginProcessProxy.messages.in:
+        * UIProcess/WebFullScreenManagerProxy.messages.in:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/WebPasteboardProxy.messages.in:
+        * UIProcess/WebProcessPool.messages.in:
+        * UIProcess/WebProcessProxy.messages.in:
+        * UIProcess/WebStorage/StorageManager.messages.in:
+        * UIProcess/mac/SecItemShimProxy.messages.in:
+        * WebProcess/Plugins/PluginProcessConnection.messages.in:
+        * WebProcess/Plugins/PluginProxy.messages.in:
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::syncTerminateWorker):
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebProcess.messages.in:
+
+2019-03-21  Brian Burg  <bburg@apple.com>
+
+        Web Automation: support uploading non-local file paths
+        https://bugs.webkit.org/show_bug.cgi?id=196081
+        <rdar://problem/45819897>
+
+        Reviewed by Devin Rousso and Joseph Pecoraro.
+
+        To support cases where supplied file paths do not exist on the session host, add support for
+        receiving file contents via Automation.setFilesToSelectForFileUpload.
+
+        * UIProcess/Automation/Automation.json: Add new parameter.
+
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::setFilesToSelectForFileUpload):
+        Add support for receiving and saving file contents to a temporary directory. Rewrite the used paths so
+        that WebCore knows to look at the revised paths where the file contents have been saved.
+
+        (WebKit::WebAutomationSession::platformGenerateLocalFilePathForRemoteFile):
+        Since WebKit does not have usable FileSystem implementations for all ports, shell out the actual
+        saving of base64-encoded file data. Provide a Cocoa implementation, since that's what I can test.
+
+        * UIProcess/Automation/cocoa/WebAutomationSessionCocoa.mm:
+        (WebKit::WebAutomationSession::platformGenerateLocalFilePathForRemoteFile):
+        Use WTF::FileSystem to create a temporary directory, and use Cocoa methods to actually write the file.
+
+2019-03-21  Youenn Fablet  <youenn@apple.com>
+
+        Cache API and IDB space usages should be initialized on first quota check
+        https://bugs.webkit.org/show_bug.cgi?id=195707
+
+        Reviewed by Chris Dumez.
+
+        When the quota manager is created, make sure it delays quota check decisions until IDB and Cache API quota users are initialized.
+        For IDB, the creation is synchronous but it may not be synchronous for Cache API.
+        For that purpose, add a temporary quota user that will stay uninitialized until these two quota users are added.
+        Once added, the temporary quota user is removed.
+        The addition of the real users is made asynchronously as this is triggered by the creation of one of the two quota users.
+
+        In the case of a Cache API caches being cleared, make sure to reset the size to zero and to redo the quota user initialization dance.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::QuotaUserInitializer::initialize):
+        (WebKit::QuotaUserInitializer::~QuotaUserInitializer):
+        (WebKit::QuotaUserInitializer::QuotaUserInitializer):
+        (WebKit::NetworkProcess::storageQuotaManager):
+        * NetworkProcess/cache/CacheStorageEngine.cpp:
+        (WebKit::CacheStorage::Engine::initializeQuotaUser):
+        * NetworkProcess/cache/CacheStorageEngine.h:
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::Caches::clear):
+
+2019-03-21  Per Arne Vollan  <pvollan@apple.com>
+
+        [iOS][macOS] Fix sandbox call violations
+        https://bugs.webkit.org/show_bug.cgi?id=195809
+        <rdar://problem/48829655>
+
+        Reviewed by Brent Fulgham.
+
+        An additional syscall needs to be added to the sandbox allow list.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2019-03-21  Eric Carlson  <eric.carlson@apple.com>
+
+        Add UI process WebRTC runtime logging.
+        https://bugs.webkit.org/show_bug.cgi?id=196020
+        <rdar://problem/49071443>
+
+        Reviewed by Youenn Fablet.
+
+        * Platform/Logging.cpp:
+        (WebKit::getLogChannel): New.
+        * Platform/Logging.h:
+        * Shared/WebCoreArgumentCoders.h: Add coders for WTFLogChannelState and WTFLogLevel.
+
+        Add runtime logging.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::UserMediaPermissionRequestManagerProxy):
+        (WebKit::UserMediaPermissionRequestManagerProxy::stopCapture):
+        (WebKit::UserMediaPermissionRequestManagerProxy::captureDevicesChanged):
+        (WebKit::UserMediaPermissionRequestManagerProxy::clearCachedState):
+        (WebKit::UserMediaPermissionRequestManagerProxy::userMediaAccessWasDenied):
+        (WebKit::UserMediaPermissionRequestManagerProxy::denyRequest):
+        (WebKit::UserMediaPermissionRequestManagerProxy::userMediaAccessWasGranted):
+        (WebKit::UserMediaPermissionRequestManagerProxy::resetAccess):
+        (WebKit::UserMediaPermissionRequestManagerProxy::grantAccess):
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame):
+        (WebKit::UserMediaPermissionRequestManagerProxy::processUserMediaPermissionRequest):
+        (WebKit::UserMediaPermissionRequestManagerProxy::processUserMediaPermissionInvalidRequest):
+        (WebKit::UserMediaPermissionRequestManagerProxy::processUserMediaPermissionValidRequest):
+        (WebKit::UserMediaPermissionRequestManagerProxy::computeFilteredDeviceList):
+        (WebKit::UserMediaPermissionRequestManagerProxy::enumerateMediaDevicesForFrame):
+        (WebKit::UserMediaPermissionRequestManagerProxy::captureStateChanged):
+        (WebKit::UserMediaPermissionRequestManagerProxy::watchdogTimerFired):
+        (WebKit::UserMediaPermissionRequestManagerProxy::logChannel const):
+        (WebKit::convertEnumerationToString):
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+        (WTF::LogArgument<WebKit::UserMediaPermissionRequestManagerProxy::RequestAction>::toString):
+        * UIProcess/UserMediaPermissionRequestProxy.cpp:
+        (WebKit::convertEnumerationToString): Add an enum specialization for logging.
+
+        * UIProcess/UserMediaPermissionRequestProxy.h:
+        (WTF::LogArgument<WebKit::UserMediaPermissionRequestProxy::UserMediaAccessDenialReason>::toString): Ditto.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::logger):
+        (WebKit::WebPageProxy::configureLoggingChannel):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::configureLoggingChannel):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::configureLoggingChannel):
+        * WebProcess/WebPage/WebPage.h:
+
+2019-03-21  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using LegacySync messages in WebPageProxy
+        https://bugs.webkit.org/show_bug.cgi?id=196056
+
+        Reviewed by Chris Dumez.
+
+        * UIProcess/Cocoa/WebPageProxyCocoa.mm:
+        (WebKit::WebPageProxy::loadRecentSearches):
+        * UIProcess/ProvisionalPageProxy.cpp:
+        (WebKit::ProvisionalPageProxy::backForwardGoToItem):
+        (WebKit::ProvisionalPageProxy::didReceiveSyncMessage):
+        * UIProcess/ProvisionalPageProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::handleSynchronousMessage):
+        (WebKit::WebPageProxy::hasInsecureContent):
+        (WebKit::WebPageProxy::accessibilityScreenToRootView):
+        (WebKit::WebPageProxy::rootViewToAccessibilityScreen):
+        (WebKit::WebPageProxy::printFrame):
+        (WebKit::WebPageProxy::backForwardGoToItem):
+        (WebKit::WebPageProxy::backForwardGoToItemShared):
+        (WebKit::WebPageProxy::backForwardItemAtIndex):
+        (WebKit::WebPageProxy::backForwardBackListCount):
+        (WebKit::WebPageProxy::backForwardForwardListCount):
+        (WebKit::WebPageProxy::canUndoRedo):
+        (WebKit::WebPageProxy::executeUndoRedo):
+        (WebKit::WebPageProxy::checkTextOfParagraph):
+        (WebKit::WebPageProxy::checkSpellingOfString):
+        (WebKit::WebPageProxy::checkGrammarOfString):
+        (WebKit::WebPageProxy::spellingUIIsShowing):
+        (WebKit::WebPageProxy::getGuessesForWord):
+        (WebKit::WebPageProxy::substitutionsPanelIsShowing):
+        (WebKit::WebPageProxy::showCorrectionPanel):
+        (WebKit::WebPageProxy::dismissCorrectionPanel):
+        (WebKit::WebPageProxy::dismissCorrectionPanelSoon):
+        (WebKit::WebPageProxy::recordAutocorrectionResponse):
+        (WebKit::WebPageProxy::dictationAlternatives):
+        (WebKit::WebPageProxy::wrapCryptoKey):
+        (WebKit::WebPageProxy::unwrapCryptoKey):
+        (WebKit::WebPageProxy::signedPublicKeyAndChallengeString):
+        (WebKit::WebPageProxy::serializedAttachmentDataForIdentifiers):
+        (WebKit::WebPageProxy::speechSynthesisVoiceList):
+        (WebKit::WebPageProxy::printMainFrame): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/gtk/WebPageProxyGtk.cpp:
+        (WebKit::WebPageProxy::createPluginContainer):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::interpretKeyEvent):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::getIsSpeaking):
+        (WebKit::WebPageProxy::executeSavedCommandBySelector):
+        (WebKit::WebPageProxy::showPDFContextMenu):
+
+2019-03-21  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using LegacySync messages in WebPage
+        https://bugs.webkit.org/show_bug.cgi?id=196057
+
+        Reviewed by Chris Dumez.
+
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::markLayersVolatile):
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/gtk/WebPageGtk.cpp:
+        (WebKit::WebPage::getCenterForZoomGesture):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::readSelectionFromPasteboard):
+        (WebKit::WebPage::getStringSelectionForPasteboard):
+        (WebKit::WebPage::getDataSelectionForPasteboard):
+        (WebKit::WebPage::shouldDelayWindowOrderingEvent):
+        (WebKit::WebPage::acceptsFirstMouse):
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::replaceSelectionWithPasteboardData):
+        (WebKit::WebPage::readSelectionFromPasteboard):
+        (WebKit::WebPage::getStringSelectionForPasteboard):
+        (WebKit::WebPage::getDataSelectionForPasteboard):
+        (WebKit::WebPage::shouldDelayWindowOrderingEvent):
+        (WebKit::WebPage::acceptsFirstMouse):
+
+2019-03-21  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using LegacySync messages in WebPasteboardProxy
+        https://bugs.webkit.org/show_bug.cgi?id=196060
+
+        Reviewed by Chris Dumez.
+
+        * UIProcess/Cocoa/WebPasteboardProxyCocoa.mm:
+        (WebKit::WebPasteboardProxy::getPasteboardTypes):
+        (WebKit::WebPasteboardProxy::getPasteboardPathnamesForType):
+        (WebKit::WebPasteboardProxy::getPasteboardStringForType):
+        (WebKit::WebPasteboardProxy::getPasteboardStringsForType):
+        (WebKit::WebPasteboardProxy::getPasteboardBufferForType):
+        (WebKit::WebPasteboardProxy::pasteboardCopy):
+        (WebKit::WebPasteboardProxy::getPasteboardChangeCount):
+        (WebKit::WebPasteboardProxy::getPasteboardUniqueName):
+        (WebKit::WebPasteboardProxy::getPasteboardColor):
+        (WebKit::WebPasteboardProxy::getPasteboardURL):
+        (WebKit::WebPasteboardProxy::addPasteboardTypes):
+        (WebKit::WebPasteboardProxy::setPasteboardTypes):
+        (WebKit::WebPasteboardProxy::setPasteboardURL):
+        (WebKit::WebPasteboardProxy::setPasteboardColor):
+        (WebKit::WebPasteboardProxy::setPasteboardStringForType):
+        (WebKit::WebPasteboardProxy::setPasteboardBufferForType):
+        (WebKit::WebPasteboardProxy::getNumberOfFiles):
+        (WebKit::WebPasteboardProxy::typesSafeForDOMToReadAndWrite):
+        (WebKit::WebPasteboardProxy::writeCustomData):
+        (WebKit::WebPasteboardProxy::readStringFromPasteboard):
+        (WebKit::WebPasteboardProxy::readURLFromPasteboard):
+        (WebKit::WebPasteboardProxy::readBufferFromPasteboard):
+        (WebKit::WebPasteboardProxy::getPasteboardItemsCount):
+        (WebKit::WebPasteboardProxy::allPasteboardItemInfo):
+        (WebKit::WebPasteboardProxy::informationForItemAtIndex):
+        * UIProcess/WebPasteboardProxy.cpp:
+        (WebKit::WebPasteboardProxy::typesSafeForDOMToReadAndWrite):
+        (WebKit::WebPasteboardProxy::writeCustomData):
+        * UIProcess/WebPasteboardProxy.h:
+        * UIProcess/WebPasteboardProxy.messages.in:
+        * UIProcess/gtk/WebPasteboardProxyGtk.cpp:
+        (WebKit::WebPasteboardProxy::writeToClipboard):
+        (WebKit::WebPasteboardProxy::readFromClipboard):
+        * UIProcess/wpe/WebPasteboardProxyWPE.cpp:
+        (WebKit::WebPasteboardProxy::getPasteboardTypes):
+        (WebKit::WebPasteboardProxy::readStringFromPasteboard):
+        (WebKit::WebPasteboardProxy::writeWebContentToPasteboard):
+        (WebKit::WebPasteboardProxy::writeStringToPasteboard):
+
+2019-03-21  Andy Estes  <aestes@apple.com>
+
+        [iOS] Apple Pay should be available in documents with no user agent scripts
+        https://bugs.webkit.org/show_bug.cgi?id=196061
+        <rdar://problem/48649391>
+
+        Reviewed by Brady Eidson.
+
+        * Shared/AuxiliaryProcess.h:
+        * Shared/Cocoa/AuxiliaryProcessCocoa.mm:
+        (WebKit::AuxiliaryProcess::parentProcessHasEntitlement):
+
+        Added a convenience function for checking parent process entitlements.
+
+        * Shared/WebPreferences.yaml:
+        * Shared/WebPreferencesDefaultValues.h:
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]):
+
+        Enabled Apple Pay by default on platforms that enable APPLE_PAY_REMOTE_UI.
+
+        * WebProcess/ApplePay/WebPaymentCoordinator.cpp:
+        (WebKit::WebPaymentCoordinator::supportsUnrestrictedApplePay const):
+        * WebProcess/ApplePay/WebPaymentCoordinator.h:
+
+        Implemented supportsUnrestrictedApplePay by checking for the
+        com.apple.private.WebKit.UnrestrictedApplePay entitlement on platforms that enable
+        APPLE_PAY_REMOTE_UI.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInLoadDelegate.h:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (didClearWindowObjectForFrame):
+        (setUpPageLoaderClient):
+
+        Added injected bundle SPI that TestWebKitAPI uses to inject the WebCore Internals interface.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::runJavaScript):
+
+        Changed to call ScriptController::executeUserAgentScriptInWorld.
+
+2019-03-21  Chris Dumez  <cdumez@apple.com>
+
+        WebKit should throw when trying to create a WKWebView with a related view that is using a different data store
+        https://bugs.webkit.org/show_bug.cgi?id=196041
+        <rdar://problem/49083230>
+
+        Reviewed by Alex Christensen.
+
+        WebKit should throw when trying to create a WKWebView with a related view that is using a different data store.
+        We do not support having several WebsiteDataStores sharing the same WebProcess.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createWebPage):
+
+2019-03-21  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to inform applications of WKContentRuleList actions
+        https://bugs.webkit.org/show_bug.cgi?id=195965
+        <rdar://problem/42664365>
+
+        Reviewed by Geoff Garen.
+
+        * NetworkProcess/NetworkLoadChecker.cpp:
+        (WebKit::NetworkLoadChecker::checkRequest):
+        (WebKit::NetworkLoadChecker::processContentRuleListsForLoad):
+        (WebKit::NetworkLoadChecker::processContentExtensionRulesForLoad): Deleted.
+        * NetworkProcess/NetworkLoadChecker.h:
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::contentRuleListNotification):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageNavigationClient):
+        * UIProcess/API/Cocoa/WKNavigationDelegatePrivate.h:
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::setNavigationDelegate):
+        (WebKit::NavigationState::NavigationClient::contentRuleListNotification):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::contentRuleListNotification):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::contentRuleListNotification):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+
+2019-03-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Add an internal feature flag to disable the -webkit-overflow-scrolling CSS property
+        https://bugs.webkit.org/show_bug.cgi?id=196058
+        rdar://problem/49078202
+
+        Reviewed by Antti Koivisto.
+
+        Add an internal feature flag called "LegacyOverflowScrollingTouchEnabled", initially
+        on by default.
+
+        * Shared/WebPreferences.yaml:
+
+2019-03-21  Antti Koivisto  <antti@apple.com>
+
+        UI-process hit-testing needs to know about containing block relationships
+        https://bugs.webkit.org/show_bug.cgi?id=195845
+        <rdar://problem/48949633>
+
+        Reviewed by Simon Fraser.
+
+        Test: fast/scrolling/ios/overflow-scroll-overlap-5.html
+
+        When an overflow scroller contains a positioned element the element may not be on a descendant layer of the scroller,
+        yet should move along with it. This needs to be taken into account in UI-side hit testing.
+
+        * UIProcess/RemoteLayerTree/RemoteLayerTreeNode.h:
+        (WebKit::RemoteLayerTreeNode::nonAncestorScrollContainerIDs const):
+        (WebKit::RemoteLayerTreeNode::addNonAncestorScrollContainerID):
+        (WebKit::RemoteLayerTreeNode::clearNonAncestorScrollContainerIDs):
+
+        Maintain non-ancestor scrolling relationships for layers.
+
+        * UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.cpp:
+        (WebKit::RemoteScrollingCoordinatorProxy::commitScrollingTreeState):
+        (WebKit::RemoteScrollingCoordinatorProxy::establishLayerTreeScrollingRelations):
+        * UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.h:
+        * UIProcess/RemoteLayerTree/ios/RemoteLayerTreeViews.mm:
+        (WebKit::isScrolledBy):
+
+        Helper to figure out who scrolls who.
+
+        (-[UIView _web_findDescendantViewAtPoint:withEvent:]):
+        * UIProcess/RemoteLayerTree/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::establishLayerTreeScrollingRelations):
+
+        After commit, pull the non-ancestor scrolling relationships from the scrolling tree and update the layer tree.
+
 2019-03-21  Daniel Bates  <dabates@apple.com>
 
         [iOS] Inline -_ensureFormAccessoryView into -formAccessoryView and have -_updateAccessory ensure we have a form accessory

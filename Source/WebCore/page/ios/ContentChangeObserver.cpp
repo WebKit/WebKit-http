@@ -141,7 +141,7 @@ void ContentChangeObserver::didAddTransition(const Element& element, const Anima
     LOG_WITH_STREAM(ContentObservation, stream << "didAddTransition: transition created on " << &element << " (" << transitionEnd.milliseconds() << "ms).");
 
     m_elementsWithTransition.add(&element);
-    // FIXME: report state change.
+    adjustObservedState(Event::AddedTransition);
 }
 
 void ContentChangeObserver::didFinishTransition(const Element& element, CSSPropertyID propertyID)
@@ -151,7 +151,8 @@ void ContentChangeObserver::didFinishTransition(const Element& element, CSSPrope
     if (!m_elementsWithTransition.take(&element))
         return;
     LOG_WITH_STREAM(ContentObservation, stream << "didFinishTransition: transition finished (" << &element << ").");
-    // FIXME: report state change.
+
+    adjustObservedState(Event::EndedTransition);
 }
 
 void ContentChangeObserver::didRemoveTransition(const Element& element, CSSPropertyID propertyID)
@@ -161,7 +162,8 @@ void ContentChangeObserver::didRemoveTransition(const Element& element, CSSPrope
     if (!m_elementsWithTransition.take(&element))
         return;
     LOG_WITH_STREAM(ContentObservation, stream << "didRemoveTransition: transition got interrupted (" << &element << ").");
-    // FIXME: report state change.
+
+    adjustObservedState(Event::CanceledTransition);
 }
 
 void ContentChangeObserver::didInstallDOMTimer(const DOMTimer& timer, Seconds timeout, bool singleShot)
@@ -196,7 +198,6 @@ void ContentChangeObserver::willNotProceedWithClick()
 {
     LOG(ContentObservation, "willNotProceedWithClick: click will not happen.");
     adjustObservedState(Event::WillNotProceedWithClick);
-    // FIXME: Add support for preventDefault().
 }
 
 void ContentChangeObserver::domTimerExecuteDidStart(const DOMTimer& timer)
@@ -240,22 +241,39 @@ void ContentChangeObserver::styleRecalcDidFinish()
     adjustObservedState(Event::EndedStyleRecalc);
 }
 
-void ContentChangeObserver::cancelPendingActivities()
+void ContentChangeObserver::stopObservingPendingActivities()
 {
+    setShouldObserveNextStyleRecalc(false);
+    setShouldObserveDOMTimerScheduling(false);
+    setShouldObserveTransitions(false);
     clearObservedDOMTimers();
+    clearObservedTransitions();
+}
+
+void ContentChangeObserver::reset()
+{
+    stopObservingPendingActivities();
+    setHasNoChangeState();
+    setIsBetweenTouchEndAndMouseMoved(false);
+
+    m_touchEventIsBeingDispatched = false;
+    m_isInObservedStyleRecalc = false;
+    m_observedDomTimerIsBeingExecuted = false;
+    m_mouseMovedEventIsBeingDispatched = false;
+
     m_contentObservationTimer.stop();
 }
 
 void ContentChangeObserver::didSuspendActiveDOMObjects()
 {
     LOG(ContentObservation, "didSuspendActiveDOMObjects");
-    cancelPendingActivities();
+    reset();
 }
 
 void ContentChangeObserver::willDetachPage()
 {
     LOG(ContentObservation, "willDetachPage");
-    cancelPendingActivities();
+    reset();
 }
 
 void ContentChangeObserver::contentVisibilityDidChange()
@@ -331,12 +349,14 @@ bool ContentChangeObserver::hasDeterminateState() const
 
 void ContentChangeObserver::adjustObservedState(Event event)
 {
-    auto reset = [&] {
+    auto resetToStartObserving = [&] {
         setHasNoChangeState();
         clearObservedDOMTimers();
+        clearObservedTransitions();
         setIsBetweenTouchEndAndMouseMoved(false);
-        ASSERT(!m_isObservingDOMTimerScheduling);
-        ASSERT(!m_isWaitingForStyleRecalc);
+        setShouldObserveNextStyleRecalc(false);
+        setShouldObserveDOMTimerScheduling(false);
+        setShouldObserveTransitions(false);
         ASSERT(!m_isInObservedStyleRecalc);
         ASSERT(!m_observedDomTimerIsBeingExecuted);
     };
@@ -351,6 +371,10 @@ void ContentChangeObserver::adjustObservedState(Event event)
             LOG(ContentObservation, "adjustStateAndNotifyContentChangeIfNeeded: in mouseMoved call. No need to notify the client.");
             return;
         }
+        if (isBetweenTouchEndAndMouseMoved()) {
+            LOG(ContentObservation, "adjustStateAndNotifyContentChangeIfNeeded: Not reached mouseMoved yet. No need to notify the client.");
+            return;
+        }
         if (!hasDeterminateState()) {
             LOG(ContentObservation, "adjustStateAndNotifyContentChangeIfNeeded: not in a determined state yet.");
             return;
@@ -363,11 +387,13 @@ void ContentChangeObserver::adjustObservedState(Event event)
 
     switch (event) {
     case Event::StartedTouchStartEventDispatching:
-        reset();
+        resetToStartObserving();
         setShouldObserveDOMTimerScheduling(true);
+        setShouldObserveTransitions(true);
         break;
     case Event::EndedTouchStartEventDispatching:
         setShouldObserveDOMTimerScheduling(false);
+        setShouldObserveTransitions(false);
         setIsBetweenTouchEndAndMouseMoved(true);
         break;
     case Event::WillNotProceedWithClick:
@@ -375,16 +401,15 @@ void ContentChangeObserver::adjustObservedState(Event event)
         break;
     case Event::StartedMouseMovedEventDispatching:
         ASSERT(!m_document.hasPendingStyleRecalc());
-        if (!isBetweenTouchEndAndMouseMoved()) {
-            setHasNoChangeState();
-            clearObservedDOMTimers();
-            setShouldObserveDOMTimerScheduling(true);
-        } else
-            setShouldObserveDOMTimerScheduling(!hasVisibleChangeState());
+        if (!isBetweenTouchEndAndMouseMoved())
+            resetToStartObserving();
         setIsBetweenTouchEndAndMouseMoved(false);
+        setShouldObserveDOMTimerScheduling(!hasVisibleChangeState());
+        setShouldObserveTransitions(!hasVisibleChangeState());
         break;
     case Event::EndedMouseMovedEventDispatching:
         setShouldObserveDOMTimerScheduling(false);
+        setShouldObserveTransitions(false);
         break;
     case Event::StartedStyleRecalc:
         setShouldObserveNextStyleRecalc(false);
@@ -394,6 +419,7 @@ void ContentChangeObserver::adjustObservedState(Event event)
         break;
     case Event::InstalledDOMTimer:
     case Event::StartedFixedObservationTimeWindow:
+    case Event::AddedTransition:
         ASSERT(!hasVisibleChangeState());
         setHasIndeterminateState();
         break;
@@ -402,17 +428,26 @@ void ContentChangeObserver::adjustObservedState(Event event)
         FALLTHROUGH;
     case Event::EndedStyleRecalc:
     case Event::RemovedDOMTimer:
+    case Event::CanceledTransition:
         if (!isObservationTimeWindowActive())
             adjustStateAndNotifyContentChangeIfNeeded();
+        break;
+    case Event::EndedTransition:
+        // onAnimationEnd can be called while in the middle of resolving the document (synchronously) or
+        // asynchronously right before the style update is issued.
+        if (m_document.inStyleRecalc()) {
+            // We need to start observing this style change synchronously.
+            m_isInObservedStyleRecalc = true;
+        } else
+            setShouldObserveNextStyleRecalc(true);
         break;
     case Event::EndedFixedObservationTimeWindow:
         adjustStateAndNotifyContentChangeIfNeeded();
         break;
     case Event::ContentVisibilityChanged:
         setHasVisibleChangeState();
-        // Remove pending activities. We don't need to observe them anymore.
-        setShouldObserveNextStyleRecalc(false);
-        clearObservedDOMTimers();
+        // Stop pending activities. We don't need to observe them anymore.
+        stopObservingPendingActivities();
         break;
     }
 }

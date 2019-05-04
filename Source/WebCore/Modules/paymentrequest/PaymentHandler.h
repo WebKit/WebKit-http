@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,9 +49,9 @@ public:
     static bool hasActiveSession(Document&);
 
     virtual ExceptionOr<void> convertData(JSC::JSValue&&) = 0;
-    virtual ExceptionOr<void> show() = 0;
+    virtual ExceptionOr<void> show(Document&) = 0;
     virtual void hide() = 0;
-    virtual void canMakePayment(WTF::Function<void(bool)>&& completionHandler) = 0;
+    virtual void canMakePayment(Document&, WTF::Function<void(bool)>&& completionHandler) = 0;
     virtual ExceptionOr<void> detailsUpdated(PaymentRequest::UpdateReason, String&& error, AddressErrors&&, PayerErrorFields&&, JSC::JSObject* paymentMethodErrors) = 0;
     virtual ExceptionOr<void> merchantValidationCompleted(JSC::JSValue&&) = 0;
     virtual void complete(Optional<PaymentComplete>&&) = 0;

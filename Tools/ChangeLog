@@ -1,3 +1,181 @@
+2019-03-21  Tim Horton  <timothy_horton@apple.com>
+
+        Adopt UIWKDocumentContext
+        https://bugs.webkit.org/show_bug.cgi?id=196040
+        <rdar://problem/48642440>
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/DocumentEditingContext.mm: Added.
+        (makeRequest):
+        (-[TestWKWebView synchronouslyRequestDocumentContext:]):
+        (-[TestWKWebView synchronouslyAdjustSelectionWithDelta:]):
+        (applyStyle):
+        (TEST):
+        Add tests for UIWKDocumentContext.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKContentViewEditingActions.mm:
+        (TEST):
+        (recursiveFindWKContentView): Deleted.
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (recursiveFindWKContentView):
+        (-[TestWKWebView wkContentView]):
+        * TestWebKitAPI/ios/UIKitSPI.h:
+        Share the WKContentView finding code between tests.
+
+2019-03-21  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Turn on async overflow scrolling by default
+        https://bugs.webkit.org/show_bug.cgi?id=196011
+        rdar://problem/48453859
+
+        Reviewed by Antti Koivisto.
+        
+        Explicitly turn off the async overflow scrolling internal feature for tests by default,
+        since so many basic layout tests have different results when compositing is triggered for
+        overflow.
+        
+        Individual tests will re-enable with <!-- webkit-test-runner [ internal:AsyncOverflowScrollingEnabled=true ] -->.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2019-03-21  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Retry API test in case of failures
+        https://bugs.webkit.org/show_bug.cgi?id=196004
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (UnApplyPatchIfRequired.doStepIf): Updated doStepIf to include patchFailedAPITests.
+        (CompileWebKitToT.doStepIf): Ditto.
+        (RunAPITests.evaluateCommand): Check if tests failed and retry them if required.
+        (ReRunAPITests): Re-run API tests.
+        (ReRunAPITests.evaluateCommand): Check if tests failed and retry on clean build if required.
+        (RunAPITestsWithoutPatch): Run API tests without patch.
+        (RunAPITestsWithoutPatch.doStepIf):
+        (RunAPITestsWithoutPatch.hideStepIf):
+        (RunAPITestsWithoutPatch.evaluateCommand):
+        (AnalyzeAPITestsResults): Analyze API test results from previous runs.
+        (AnalyzeAPITestsResults.start):
+        (AnalyzeAPITestsResults.analyzeResults): Analyze API test results.
+        (AnalyzeAPITestsResults.getBuildStepByName): Search for a build step by name.
+        (AnalyzeAPITestsResults.getTestsResults): Get the test results from previous API tesst steps.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Monkey patched FakeBuild.
+
+2019-03-21  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Update queues configurations
+        https://bugs.webkit.org/show_bug.cgi?id=196074
+
+        Reviewed by Dewei Zhu.
+
+        * BuildSlaveSupport/ews-build/config.json: Updated queues from iOS11 to iOS12,
+        added new bots, reassigned bots for various builders, moved few builders to another scheduler.
+
+2019-03-21  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Generate status-bubble hover-over messages (Follow-up fix)
+        https://bugs.webkit.org/show_bug.cgi?id=195680
+        <rdar://problem/48903534>
+
+        Unreviewed infrastructure fix.
+
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py:
+        (StatusBubble._build_bubble): Do not append to details_message in the cases in which it wasn't defined earlier.
+
+2019-03-21  Andy Estes  <aestes@apple.com>
+
+        [iOS] Apple Pay should be available in documents with no user agent scripts
+        https://bugs.webkit.org/show_bug.cgi?id=196061
+        <rdar://problem/48649391>
+
+        Reviewed by Brady Eidson.
+
+        Added API tests and related infrastructure.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/ApplePay.mm: Added.
+        (-[TestApplePayScriptMessageHandler initWithExpectation:]):
+        (-[TestApplePayScriptMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/apple-pay-active-session.html: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/apple-pay-availability-in-iframe.html: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/apple-pay-availability.html: Added.
+        * TestWebKitAPI/cocoa/TestProtocol.mm:
+        (-[TestProtocol startLoading]):
+        * TestWebKitAPI/cocoa/WebProcessPlugIn/WebProcessPlugInWithInternals.h: Added.
+        * TestWebKitAPI/cocoa/WebProcessPlugIn/WebProcessPlugInWithInternals.mm: Added.
+        (-[WebProcessPlugInWithInternals webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[WebProcessPlugInWithInternals webProcessPlugInBrowserContextController:didClearWindowObjectForFrame:inScriptWorld:]):
+
+2019-03-21  Jonathan Bedard  <jbedard@apple.com>
+
+        REGRESSSION (r243297): webkitpy tests broken
+        https://bugs.webkit.org/show_bug.cgi?id=196108
+
+        Reviewed by Aakash Jain.
+
+        r243297 updated contributors.json, which broke a few unit tests.
+
+        * Scripts/webkitpy/tool/bot/irc_command_unittest.py:
+        (IRCCommandTest.test_whois):
+        * Scripts/webkitpy/tool/commands/suggestnominations_unittest.py:
+
+2019-03-21  Chris Dumez  <cdumez@apple.com>
+
+        WebKit should throw when trying to create a WKWebView with a related view that is using a different data store
+        https://bugs.webkit.org/show_bug.cgi?id=196041
+        <rdar://problem/49083230>
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewConfiguration.mm:
+        (TEST):
+
+2019-03-21  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to inform applications of WKContentRuleList actions
+        https://bugs.webkit.org/show_bug.cgi?id=195965
+        <rdar://problem/42664365>
+
+        Reviewed by Geoff Garen.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::allActionsForResourceLoad):
+        (TestWebKitAPI::testRequest):
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebKitCocoa/ContentRuleListNotification.mm:
+        (Notification::description):
+        (Notification::operator== const):
+        (toVector):
+        (-[ContentRuleListNotificationDelegate _webView:URL:contentRuleListIdentifiers:notifications:]):
+        (-[ContentRuleListNotificationDelegate _webView:contentRuleListWithIdentifier:performedActionOnURL:blockedLoad:blockedCookies:madeHTTPS:notifications:]):
+        (makeContentRuleList):
+        (TEST):
+        (makeWarnContentRuleList): Deleted.
+
+2019-03-21  Timothy Hatcher  <timothy@apple.com>
+
+        Style check error "WK_MAC_TBA is neither a version number nor WK_IOS_TBA" is confusing.
+        https://bugs.webkit.org/show_bug.cgi?id=196088
+
+        Reviewed by Brian Burg.
+
+        Fix the error messages used when looking for macos(WK_IOS_TBA) or ios(WK_MAC_TBA).
+        Support checks when only one platform is specified. Also deprecate macosx() and
+        force the use of macos() instead.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_min_versions_of_wk_api_available):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (WebKitStyleTest.test_min_versions_of_wk_api_available):
+
 2019-03-21  Alexey Proskuryakov  <ap@apple.com>
 
         Update status inactive committers' status to 'contributor'.

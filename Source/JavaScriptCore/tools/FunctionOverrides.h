@@ -33,18 +33,20 @@ namespace JSC {
 
 class ScriptExecutable;
 
+struct FunctionOverrideInfo {
+    SourceCode sourceCode;
+    unsigned firstLine;
+    unsigned lineCount;
+    unsigned startColumn;
+    unsigned endColumn;
+    unsigned parametersStartOffset;
+    unsigned typeProfilingStartOffset;
+    unsigned typeProfilingEndOffset;
+};
+
 class FunctionOverrides {
 public:
-    struct OverrideInfo {
-        SourceCode sourceCode;
-        unsigned firstLine;
-        unsigned lineCount;
-        unsigned startColumn;
-        unsigned endColumn;
-        unsigned parametersStartOffset;
-        unsigned typeProfilingStartOffset;
-        unsigned typeProfilingEndOffset;
-    };
+    using OverrideInfo = FunctionOverrideInfo;
 
     static FunctionOverrides& overrides();
     FunctionOverrides(const char* functionOverridesFileName);

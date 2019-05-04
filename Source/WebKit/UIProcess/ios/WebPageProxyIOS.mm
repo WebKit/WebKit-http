@@ -31,6 +31,7 @@
 #import "APIUIClient.h"
 #import "Connection.h"
 #import "DataReference.h"
+#import "DocumentEditingContext.h"
 #import "EditingRange.h"
 #import "GlobalFindInPageState.h"
 #import "InteractionInformationAtPosition.h"
@@ -78,9 +79,10 @@ String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent
     return standardUserAgentWithApplicationName(applicationNameForUserAgent);
 }
 
-void WebPageProxy::getIsSpeaking(bool&)
+void WebPageProxy::getIsSpeaking(CompletionHandler<void(bool)>&& completionHandler)
 {
     notImplemented();
+    completionHandler(false);
 }
 
 void WebPageProxy::speak(const String&)
@@ -741,10 +743,10 @@ void WebPageProxy::moveSelectionByOffset(int32_t offset, WTF::Function<void (Cal
     m_process->send(Messages::WebPage::MoveSelectionByOffset(offset, callbackID), m_pageID);
 }
 
-void WebPageProxy::interpretKeyEvent(const EditorState& state, bool isCharEvent, bool& handled)
+void WebPageProxy::interpretKeyEvent(const EditorState& state, bool isCharEvent, CompletionHandler<void(bool)>&& completionHandler)
 {
     m_editorState = state;
-    handled = pageClient().interpretKeyEvent(m_keyEventQueue.first(), isCharEvent);
+    completionHandler(pageClient().interpretKeyEvent(m_keyEventQueue.first(), isCharEvent));
 }
 
 // Complex text input support for plug-ins.
@@ -791,9 +793,10 @@ void WebPageProxy::setPluginComplexTextInputState(uint64_t, uint64_t)
     notImplemented();
 }
 
-void WebPageProxy::executeSavedCommandBySelector(const String&, bool&)
+void WebPageProxy::executeSavedCommandBySelector(const String&, CompletionHandler<void(bool)>&& completionHandler)
 {
     notImplemented();
+    completionHandler(false);
 }
 
 bool WebPageProxy::shouldDelayWindowOrderingForEvent(const WebKit::WebMouseEvent&)
@@ -1133,6 +1136,26 @@ void WebPageProxy::requestEvasionRectsAboveSelection(CompletionHandler<void(cons
     }
 
     m_process->connection()->sendWithAsyncReply(Messages::WebPage::RequestEvasionRectsAboveSelection(), WTFMove(callback), m_pageID);
+}
+
+void WebPageProxy::updateSelectionWithDelta(int64_t locationDelta, int64_t lengthDelta, CompletionHandler<void()>&& completionHandler)
+{
+    if (!hasRunningProcess()) {
+        completionHandler();
+        return;
+    }
+
+    m_process->connection()->sendWithAsyncReply(Messages::WebPage::UpdateSelectionWithDelta(locationDelta, lengthDelta), WTFMove(completionHandler), m_pageID);
+}
+
+void WebPageProxy::requestDocumentEditingContext(WebKit::DocumentEditingContextRequest request, CompletionHandler<void(WebKit::DocumentEditingContext)>&& completionHandler)
+{
+    if (!hasRunningProcess()) {
+        completionHandler({ });
+        return;
+    }
+
+    m_process->connection()->sendWithAsyncReply(Messages::WebPage::RequestDocumentEditingContext(request), WTFMove(completionHandler), m_pageID);
 }
 
 #if ENABLE(DATA_INTERACTION)

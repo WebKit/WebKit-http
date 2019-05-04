@@ -1,3 +1,267 @@
+2019-03-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, build fix for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=196122
+
+        * runtime/FunctionExecutable.cpp:
+
+2019-03-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Shrink sizeof(FunctionExecutable) by 16bytes
+        https://bugs.webkit.org/show_bug.cgi?id=196122
+
+        Reviewed by Saam Barati.
+
+        This patch reduces sizeof(FunctionExecutable) by 16 bytes.
+
+        1. ScriptExecutable::m_numParametersForCall and ScriptExecutable::m_numParametersForConstruct are not used in a meaningful way. Removed them.
+        2. ScriptExecutable::m_lastLine and ScriptExecutable::m_endColumn can be calculated from UnlinkedFunctionExecutable. So FunctionExecutable does not need to hold it.
+           This patch adds GlobalExecutable, which are non-function ScriptExecutables, and move m_lastLine and m_endColumn to this class.
+        3. FunctionExecutable still needs to have the feature overriding m_lastLine and m_endColumn. We move overridden data in FunctionExecutable::RareData.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::link):
+        * runtime/EvalExecutable.cpp:
+        (JSC::EvalExecutable::EvalExecutable):
+        * runtime/EvalExecutable.h:
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::FunctionExecutable):
+        (JSC::FunctionExecutable::ensureRareDataSlow):
+        (JSC::FunctionExecutable::overrideInfo):
+        * runtime/FunctionExecutable.h:
+        * runtime/GlobalExecutable.cpp: Copied from Source/JavaScriptCore/tools/FunctionOverrides.h.
+        * runtime/GlobalExecutable.h: Copied from Source/JavaScriptCore/tools/FunctionOverrides.h.
+        (JSC::GlobalExecutable::lastLine const):
+        (JSC::GlobalExecutable::endColumn const):
+        (JSC::GlobalExecutable::recordParse):
+        (JSC::GlobalExecutable::GlobalExecutable):
+        * runtime/ModuleProgramExecutable.cpp:
+        (JSC::ModuleProgramExecutable::ModuleProgramExecutable):
+        * runtime/ModuleProgramExecutable.h:
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::ProgramExecutable):
+        * runtime/ProgramExecutable.h:
+        * runtime/ScriptExecutable.cpp:
+        (JSC::ScriptExecutable::clearCode):
+        (JSC::ScriptExecutable::installCode):
+        (JSC::ScriptExecutable::hasClearableCode const):
+        (JSC::ScriptExecutable::newCodeBlockFor):
+        (JSC::ScriptExecutable::typeProfilingEndOffset const):
+        (JSC::ScriptExecutable::recordParse):
+        (JSC::ScriptExecutable::lastLine const):
+        (JSC::ScriptExecutable::endColumn const):
+        * runtime/ScriptExecutable.h:
+        (JSC::ScriptExecutable::hasJITCodeForCall const):
+        (JSC::ScriptExecutable::hasJITCodeForConstruct const):
+        (JSC::ScriptExecutable::recordParse):
+        (JSC::ScriptExecutable::lastLine const): Deleted.
+        (JSC::ScriptExecutable::endColumn const): Deleted.
+        * tools/FunctionOverrides.h:
+
+2019-03-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Shrink sizeof(RegExpObject)
+        https://bugs.webkit.org/show_bug.cgi?id=196130
+
+        Reviewed by Saam Barati.
+
+        sizeof(RegExpObject) is 48B due to one bool flag. We should compress this flag into lower bit of RegExp* field so that we can make RegExpObject 32B.
+        It saves memory footprint 1.3% in RAMification's regexp.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewRegexp):
+        (JSC::DFG::SpeculativeJIT::compileSetRegExpObjectLastIndex):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewRegexp):
+        (JSC::FTL::DFG::LowerDFGToB3::compileSetRegExpObjectLastIndex):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::RegExpObject):
+        (JSC::RegExpObject::visitChildren):
+        (JSC::RegExpObject::getOwnPropertySlot):
+        (JSC::RegExpObject::defineOwnProperty):
+        * runtime/RegExpObject.h:
+
+2019-03-21  Tomas Popela  <tpopela@redhat.com>
+
+        [JSC] Fix build after r243232 on unsupported 64bit architectures
+        https://bugs.webkit.org/show_bug.cgi?id=196072
+
+        Reviewed by Keith Miller.
+
+        As Keith suggested we already expect 16 free bits at the top of any
+        pointer for JSValue even for the unsupported 64 bit arches.
+
+        * bytecode/CodeOrigin.h:
+
+2019-03-21  Mark Lam  <mark.lam@apple.com>
+
+        Remove an invalid assertion in DFG::SpeculativeJIT::nonSpeculativeNonPeepholeCompareNullOrUndefined().
+        https://bugs.webkit.org/show_bug.cgi?id=196116
+        <rdar://problem/48976951>
+
+        Reviewed by Filip Pizlo.
+
+        The DFG backend should not make assumptions about what optimizations the front end
+        will or will not do.  The assertion asserts that the operand cannot be known to be
+        a cell.  However, it is not guaranteed that the front end will fold away this case.
+        Also, the DFG backend is perfectly capable of generating code to handle the case
+        where the operand is a cell.
+
+        The attached test case demonstrates a case where the operand can be a known cell.
+        The test needs to be run with the concurrent JIT and GC, and is racy.  It used to
+        trip up this assertion about once every 10 runs or so.
+
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::nonSpeculativeNonPeepholeCompareNullOrUndefined):
+
+2019-03-21  Tadeu Zagallo  <tzagallo@apple.com>
+
+        JSC::createError should clear exception thrown by errorDescriptionForValue
+        https://bugs.webkit.org/show_bug.cgi?id=196089
+
+        Reviewed by Mark Lam.
+
+        errorDescriptionForValue returns a nullString in case of failure, but it
+        might also throw an OOM exception when resolving a rope string. We need
+        to clear any potential exceptions thrown by errorDescriptionForValue
+        before returning the OOM from JSC::createError.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::createError):
+
+2019-03-21  Robin Morisset  <rmorisset@apple.com>
+
+        B3::Opcode can fit in a single byte, shrinking B3Value by 8 bytes
+        https://bugs.webkit.org/show_bug.cgi?id=196014
+
+        Reviewed by Keith Miller.
+
+        B3::Opcode has less than one hundred cases, so it can easily fit in one byte (from two currently)
+        This shrinks B3::Kind from 4 bytes to 2 (by removing the byte of padding at the end).
+        This in turns eliminate padding from B3::Value, shrinking it by 8 bytes (out of 80).
+
+        * b3/B3Opcode.h:
+
+2019-03-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, more clang 3.8 build fixes
+        https://bugs.webkit.org/show_bug.cgi?id=195947
+        <rdar://problem/49069219>
+
+        In the spirit of making our code worse to please old compilers....
+
+        * bindings/ScriptValue.cpp:
+        (Inspector::jsToInspectorValue):
+        * bytecode/GetterSetterAccessCase.cpp:
+        (JSC::GetterSetterAccessCase::create):
+        (JSC::GetterSetterAccessCase::clone const):
+        * bytecode/InstanceOfAccessCase.cpp:
+        (JSC::InstanceOfAccessCase::clone const):
+        * bytecode/IntrinsicGetterAccessCase.cpp:
+        (JSC::IntrinsicGetterAccessCase::clone const):
+        * bytecode/ModuleNamespaceAccessCase.cpp:
+        (JSC::ModuleNamespaceAccessCase::clone const):
+        * bytecode/ProxyableAccessCase.cpp:
+        (JSC::ProxyableAccessCase::clone const):
+
+2019-03-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Do not create JIT related data under non-JIT mode
+        https://bugs.webkit.org/show_bug.cgi?id=195982
+
+        Reviewed by Mark Lam.
+
+        We avoid creations of JIT related data structures under non-JIT mode.
+        This patch removes the following allocations.
+
+        1. JITThunks
+        2. FTLThunks
+        3. FixedVMPoolExecutableAllocator
+        4. noJITValueProfileSingleton since it is no longer used
+        5. ARM disassembler should be initialized when it is used
+        6. Wasm related data structures are accidentally allocated if VM::canUseJIT() == false &&
+           Options::useWebAssembly() == true. Add Wasm::isSupported() function to check the both conditions.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/Heap.cpp:
+        (JSC::Heap::runEndPhase):
+        * jit/ExecutableAllocator.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::~FixedVMPoolExecutableAllocator):
+        (JSC::ExecutableAllocator::initializeUnderlyingAllocator):
+        (JSC::ExecutableAllocator::isValid const):
+        (JSC::ExecutableAllocator::underMemoryPressure):
+        (JSC::ExecutableAllocator::memoryPressureMultiplier):
+        (JSC::ExecutableAllocator::allocate):
+        (JSC::ExecutableAllocator::isValidExecutableMemory):
+        (JSC::ExecutableAllocator::getLock const):
+        (JSC::ExecutableAllocator::committedByteCount):
+        (JSC::ExecutableAllocator::dumpProfile):
+        (JSC::startOfFixedExecutableMemoryPoolImpl):
+        (JSC::endOfFixedExecutableMemoryPoolImpl):
+        (JSC::ExecutableAllocator::initialize):
+        (JSC::ExecutableAllocator::initializeAllocator): Deleted.
+        (JSC::ExecutableAllocator::ExecutableAllocator): Deleted.
+        (JSC::ExecutableAllocator::~ExecutableAllocator): Deleted.
+        * jit/ExecutableAllocator.h:
+        (JSC::ExecutableAllocatorBase::isValid const):
+        (JSC::ExecutableAllocatorBase::underMemoryPressure):
+        (JSC::ExecutableAllocatorBase::memoryPressureMultiplier):
+        (JSC::ExecutableAllocatorBase::dumpProfile):
+        (JSC::ExecutableAllocatorBase::allocate):
+        (JSC::ExecutableAllocatorBase::setJITEnabled):
+        (JSC::ExecutableAllocatorBase::isValidExecutableMemory):
+        (JSC::ExecutableAllocatorBase::committedByteCount):
+        (JSC::ExecutableAllocatorBase::getLock const):
+        (JSC::ExecutableAllocator::isValid const): Deleted.
+        (JSC::ExecutableAllocator::underMemoryPressure): Deleted.
+        (JSC::ExecutableAllocator::memoryPressureMultiplier): Deleted.
+        (JSC::ExecutableAllocator::allocate): Deleted.
+        (JSC::ExecutableAllocator::setJITEnabled): Deleted.
+        (JSC::ExecutableAllocator::isValidExecutableMemory): Deleted.
+        (JSC::ExecutableAllocator::committedByteCount): Deleted.
+        (JSC::ExecutableAllocator::getLock const): Deleted.
+        * jsc.cpp:
+        (functionWebAssemblyMemoryMode):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::didAcquireLock):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/VM.cpp:
+        (JSC::enableAssembler):
+        (JSC::VM::canUseAssembler):
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * wasm/WasmCapabilities.h: Added.
+        (JSC::Wasm::isSupported):
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::enableFastMemory):
+
+2019-03-21  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Fix JSC build with newer ICU
+        https://bugs.webkit.org/show_bug.cgi?id=196098
+
+        Reviewed by Keith Miller.
+
+        IntlDateTimeFormat and IntlNumberFormat have switch statement over ICU's enums. However it lacks "default" clause so that
+        the compile error occurs when a new enum value is added in ICU side. We should have "default" clause which just fallbacks
+        "unknown"_s case. The behavior is not changed since we already have `return "unknown"_s;` statement anyway after the
+        switch statement. This patch just suppresses a compile error.
+
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::partTypeString):
+        * runtime/IntlNumberFormat.cpp:
+        (JSC::IntlNumberFormat::partTypeString):
+
 2019-03-21  Tadeu Zagallo  <tzagallo@apple.com>
 
         JSObject::putDirectIndexSlowOrBeyondVectorLength should check if indexIsSufficientlyBeyondLengthForSparseMap

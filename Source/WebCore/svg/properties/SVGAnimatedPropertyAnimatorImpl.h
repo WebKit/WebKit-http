@@ -27,6 +27,7 @@
 
 #include "SVGAnimatedPropertyAnimator.h"
 #include "SVGAnimatedPropertyImpl.h"
+#include "SVGAnimationAdditiveListFunctionImpl.h"
 #include "SVGAnimationAdditiveValueFunctionImpl.h"
 #include "SVGAnimationDiscreteFunctionImpl.h"
 
@@ -95,6 +96,40 @@ private:
     }
 };
 
+class SVGAnimatedNumberListAnimator final : public SVGAnimatedPropertyAnimator<SVGAnimatedNumberList, SVGAnimationNumberListFunction> {
+    using Base = SVGAnimatedPropertyAnimator<SVGAnimatedNumberList, SVGAnimationNumberListFunction>;
+    using Base::Base;
+    
+public:
+    static auto create(const QualifiedName& attributeName, Ref<SVGAnimatedNumberList>& animated, AnimationMode animationMode, CalcMode calcMode, bool isAccumulated, bool isAdditive)
+    {
+        return std::unique_ptr<SVGAnimatedNumberListAnimator>(new SVGAnimatedNumberListAnimator(attributeName, animated, animationMode, calcMode, isAccumulated, isAdditive));
+    }
+    
+private:
+    void progress(SVGElement* targetElement, float percentage, unsigned repeatCount) final
+    {
+        m_function.progress(targetElement, percentage, repeatCount, m_animated->animVal());
+    }
+};
+    
+class SVGAnimatedPointListAnimator final : public SVGAnimatedPropertyAnimator<SVGAnimatedPointList, SVGAnimationPointListFunction> {
+    using Base = SVGAnimatedPropertyAnimator<SVGAnimatedPointList, SVGAnimationPointListFunction>;
+    using Base::Base;
+    
+public:
+    static auto create(const QualifiedName& attributeName, Ref<SVGAnimatedPointList>& animated, AnimationMode animationMode, CalcMode calcMode, bool isAccumulated, bool isAdditive)
+    {
+        return std::unique_ptr<SVGAnimatedPointListAnimator>(new SVGAnimatedPointListAnimator(attributeName, animated, animationMode, calcMode, isAccumulated, isAdditive));
+    }
+    
+private:
+    void progress(SVGElement* targetElement, float percentage, unsigned repeatCount) final
+    {
+        m_function.progress(targetElement, percentage, repeatCount, m_animated->animVal());
+    }
+};
+
 class SVGAnimatedPreserveAspectRatioAnimator final : public SVGAnimatedPropertyAnimator<SVGAnimatedPreserveAspectRatio, SVGAnimationPreserveAspectRatioFunction> {
     using Base = SVGAnimatedPropertyAnimator<SVGAnimatedPreserveAspectRatio, SVGAnimationPreserveAspectRatioFunction>;
     using Base::Base;
@@ -128,6 +163,24 @@ private:
     void progress(SVGElement* targetElement, float percentage, unsigned repeatCount) final
     {
         m_function.progress(targetElement, percentage, repeatCount, m_animated->animVal()->value());
+    }
+};
+
+class SVGAnimatedStringAnimator final : public SVGAnimatedPropertyAnimator<SVGAnimatedString, SVGAnimationStringFunction> {
+    using Base = SVGAnimatedPropertyAnimator<SVGAnimatedString, SVGAnimationStringFunction>;
+    using Base::Base;
+
+public:
+    static auto create(const QualifiedName& attributeName, Ref<SVGAnimatedString>& animated, AnimationMode animationMode, CalcMode calcMode, bool isAccumulated, bool isAdditive)
+    {
+        return std::make_unique<SVGAnimatedStringAnimator>(attributeName, animated, animationMode, calcMode, isAccumulated, isAdditive);
+    }
+
+private:
+    void progress(SVGElement* targetElement, float percentage, unsigned repeatCount) final
+    {
+        String& animated = m_animated->animVal();
+        m_function.progress(targetElement, percentage, repeatCount, animated);
     }
 };
 

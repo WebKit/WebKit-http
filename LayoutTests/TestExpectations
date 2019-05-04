@@ -2236,6 +2236,7 @@ webkit.org/b/182311 imported/w3c/web-platform-tests/service-workers/service-work
 webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Timeout ]
 
 webkit.org/b/182928 http/tests/cache-storage/cache-representation.https.html [ Pass Failure ]
+webkit.org/b/193976 http/tests/cache-storage/cache-clearing-origin.https.html [ Pass Failure ]
 
 webkit.org/b/116621 fast/replaced/preferred-widths.html [ Pass Failure ]
 
@@ -3059,3 +3060,5 @@ imported/w3c/web-platform-tests/css/css-lists/counter-increment-inside-display-c
 imported/w3c/web-platform-tests/css/css-lists/counter-reset-inside-display-contents.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-lists/list-marker-with-lineheight-and-overflow-hidden-001.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-lists/list-with-image-display-changed-001.html [ ImageOnlyFailure ]
+
+[ Debug ] fast/css/first-letter-and-float-crash.html [ Skip ]

@@ -30,6 +30,7 @@
 
 #import "AccessibilityIOS.h"
 #import "DataReference.h"
+#import "DocumentEditingContext.h"
 #import "DrawingArea.h"
 #import "EditingRange.h"
 #import "EditorState.h"
@@ -479,19 +480,22 @@ void WebPage::registerUIProcessAccessibilityTokens(const IPC::DataReference& ele
     [m_mockAccessibilityElement setRemoteTokenData:elementTokenData];
 }
 
-void WebPage::readSelectionFromPasteboard(const String&, bool&)
+void WebPage::readSelectionFromPasteboard(const String&, CompletionHandler<void(bool&&)>&& completionHandler)
 {
     notImplemented();
+    completionHandler(false);
 }
 
-void WebPage::getStringSelectionForPasteboard(String&)
+void WebPage::getStringSelectionForPasteboard(CompletionHandler<void(String&&)>&& completionHandler)
 {
     notImplemented();
+    completionHandler({ });
 }
 
-void WebPage::getDataSelectionForPasteboard(const String, SharedMemory::Handle&, uint64_t&)
+void WebPage::getDataSelectionForPasteboard(const String, CompletionHandler<void(SharedMemory::Handle&&, uint64_t)>&& completionHandler)
 {
     notImplemented();
+    completionHandler({ }, 0);
 }
 
 WKAccessibilityWebPageObject* WebPage::accessibilityRemoteObject()
@@ -506,14 +510,16 @@ bool WebPage::platformCanHandleRequest(const WebCore::ResourceRequest&)
     return false;
 }
 
-void WebPage::shouldDelayWindowOrderingEvent(const WebKit::WebMouseEvent&, bool&)
+void WebPage::shouldDelayWindowOrderingEvent(const WebKit::WebMouseEvent&, CompletionHandler<void(bool)>&& completionHandler)
 {
     notImplemented();
+    completionHandler(false);
 }
 
-void WebPage::acceptsFirstMouse(int, const WebKit::WebMouseEvent&, bool&)
+void WebPage::acceptsFirstMouse(int, const WebKit::WebMouseEvent&, CompletionHandler<void(bool)>&& completionHandler)
 {
     notImplemented();
+    completionHandler(false);
 }
 
 void WebPage::computePagesForPrintingPDFDocument(uint64_t, const PrintInfo&, Vector<IntRect>&)
@@ -3305,6 +3311,222 @@ bool WebPage::platformPrefersTextLegibilityBasedZoomScaling() const
 #else
     return false;
 #endif
+}
+
+void WebPage::updateSelectionWithDelta(int64_t locationDelta, int64_t lengthDelta, CompletionHandler<void()>&& completionHandler)
+{
+    Ref<Frame> frame = corePage()->focusController().focusedOrMainFrame();
+    VisibleSelection selection = frame->selection().selection();
+    if (selection.isNone()) {
+        completionHandler();
+        return;
+    }
+
+    auto root = frame->selection().rootEditableElementOrDocumentElement();
+    auto range = selection.toNormalizedRange();
+    if (!root || !range) {
+        completionHandler();
+        return;
+    }
+
+    size_t selectionLocation;
+    size_t selectionLength;
+    TextIterator::getLocationAndLengthFromRange(root, range.get(), selectionLocation, selectionLength);
+
+    CheckedInt64 newSelectionLocation { selectionLocation };
+    CheckedInt64 newSelectionLength { selectionLength };
+    newSelectionLocation += locationDelta;
+    newSelectionLength += lengthDelta;
+
+    if (newSelectionLocation.hasOverflowed() || newSelectionLength.hasOverflowed()) {
+        completionHandler();
+        return;
+    }
+
+    if (auto range = TextIterator::rangeFromLocationAndLength(root, newSelectionLocation.unsafeGet(), newSelectionLength.unsafeGet()))
+        frame->selection().setSelectedRange(range.get(), DOWNSTREAM, WebCore::FrameSelection::ShouldCloseTyping::Yes, UserTriggered);
+
+    completionHandler();
+}
+
+static VisiblePosition moveByGranularityRespectingWordBoundary(Frame& frame, VisiblePosition& position, TextGranularity granularity, uint64_t granularityCount, SelectionDirection direction)
+{
+    bool backwards = direction == DirectionBackward;
+    auto farthestPositionInDirection = backwards ? startOfEditableContent(position) : endOfEditableContent(position);
+    if (position == farthestPositionInDirection)
+        return { };
+
+    VisiblePosition currentPosition = position;
+    VisiblePosition nextPosition;
+    for (unsigned i = 0; i < granularityCount + 1; ++i) {
+        nextPosition = positionOfNextBoundaryOfGranularity(currentPosition, granularity, direction);
+        // FIXME (196127): We shouldn't need to do this, but have seen previousParagraphPosition go forwards.
+        if ((backwards && nextPosition > currentPosition) || (!backwards && nextPosition < currentPosition))
+            break;
+        if (nextPosition.isNull())
+            break;
+        currentPosition = nextPosition;
+    }
+
+    return backwards ? startOfWord(currentPosition) : endOfWord(currentPosition);
+}
+
+static VisiblePosition visiblePositionForPointInRootViewCoordinates(Frame& frame, FloatPoint pointInRootViewCoordinates)
+{
+    auto pointInDocument = frame.view()->rootViewToContents(roundedIntPoint(pointInRootViewCoordinates));
+    return frame.visiblePositionForPoint(pointInDocument);
+}
+
+void WebPage::requestDocumentEditingContext(DocumentEditingContextRequest request, CompletionHandler<void(DocumentEditingContext)>&& completionHandler)
+{
+    if (!request.options.contains(DocumentEditingContextRequest::Options::Text) && !request.options.contains(DocumentEditingContextRequest::Options::AttributedText)) {
+        completionHandler({ });
+        return;
+    }
+
+    m_page->focusController().focusedOrMainFrame().document()->updateLayoutIgnorePendingStylesheets();
+
+    Ref<Frame> frame = m_page->focusController().focusedOrMainFrame();
+    VisibleSelection selection = frame->selection().selection();
+
+    VisiblePosition rangeOfInterestStart;
+    VisiblePosition rangeOfInterestEnd;
+    VisiblePosition selectionStart = selection.visibleStart();
+    VisiblePosition selectionEnd = selection.visibleEnd();
+
+    bool isSpatialRequest = request.options.contains(DocumentEditingContextRequest::Options::Spatial);
+    bool wantsRects = request.options.contains(DocumentEditingContextRequest::Options::Rects);
+
+    if (auto textInputContext = request.textInputContext) {
+        RefPtr<Element> element = elementForTextInputContext(*textInputContext);
+        if (!element) {
+            completionHandler({ });
+            return;
+        }
+        if (is<HTMLTextFormControlElement>(element)) {
+            auto& textFormControlElement = downcast<HTMLTextFormControlElement>(*element);
+            rangeOfInterestStart = textFormControlElement.visiblePositionForIndex(0);
+            rangeOfInterestEnd = textFormControlElement.visiblePositionForIndex(textFormControlElement.value().length());
+        } else {
+            rangeOfInterestStart = firstPositionInOrBeforeNode(element.get());
+            rangeOfInterestEnd = lastPositionInOrAfterNode(element.get());
+        }
+    } else if (isSpatialRequest) {
+        // FIXME: We might need to be a bit more careful that we get something useful (test the other corners?).
+        rangeOfInterestStart = visiblePositionForPointInRootViewCoordinates(frame.get(), request.rect.minXMinYCorner());
+        rangeOfInterestEnd = visiblePositionForPointInRootViewCoordinates(frame.get(), request.rect.maxXMaxYCorner());
+        if (rangeOfInterestEnd < rangeOfInterestStart)
+            std::exchange(rangeOfInterestStart, rangeOfInterestEnd);
+    } else if (!selection.isNone()) {
+        rangeOfInterestStart = selectionStart;
+        rangeOfInterestEnd = selectionEnd;
+    }
+
+    if (rangeOfInterestStart.isNull() || rangeOfInterestStart.isOrphan() || rangeOfInterestEnd.isNull() || rangeOfInterestEnd.isOrphan()) {
+        completionHandler({ });
+        return;
+    }
+
+    DocumentEditingContext context;
+
+    // The subset of the selection that is inside the range of interest.
+    VisiblePosition startOfRangeOfInterestInSelection;
+    VisiblePosition endOfRangeOfInterestInSelection;
+
+    auto selectionRange = selection.toNormalizedRange();
+    auto rangeOfInterest = makeRange(rangeOfInterestStart, rangeOfInterestEnd);
+    if (selectionRange && rangesOverlap(rangeOfInterest.get(), selectionRange.get())) {
+        startOfRangeOfInterestInSelection = rangeOfInterestStart > selectionStart ? rangeOfInterestStart : selectionStart;
+        endOfRangeOfInterestInSelection = rangeOfInterestEnd < selectionEnd ? rangeOfInterestEnd : selectionEnd;
+    } else {
+        size_t rangeOfInterestLocation;
+        size_t rangeOfInterestLength;
+        RefPtr<Node> rootNode = rangeOfInterest->commonAncestorContainer();
+        if (!rootNode) {
+            completionHandler({ });
+            return;
+        }
+
+        RefPtr<ContainerNode> rootContainerNode = rootNode->isContainerNode() ? downcast<ContainerNode>(rootNode.get()) : rootNode->parentNode();
+        TextIterator::getLocationAndLengthFromRange(rootContainerNode.get(), rangeOfInterest.get(), rangeOfInterestLocation, rangeOfInterestLength);
+
+        CheckedSize midpointLocation { rangeOfInterestLocation };
+        midpointLocation += rangeOfInterestLength / 2;
+        if (midpointLocation.hasOverflowed()) {
+            completionHandler({ });
+            return;
+        }
+
+        auto midpointRange = TextIterator::rangeFromLocationAndLength(rootContainerNode.get(), midpointLocation.unsafeGet(), 0);
+
+        auto midpoint = midpointRange->startPosition();
+        startOfRangeOfInterestInSelection = startOfWord(midpoint);
+        if (startOfRangeOfInterestInSelection < rangeOfInterestStart) {
+            startOfRangeOfInterestInSelection = endOfWord(midpoint);
+            if (startOfRangeOfInterestInSelection > rangeOfInterestEnd)
+                startOfRangeOfInterestInSelection = midpoint;
+        }
+
+        endOfRangeOfInterestInSelection = startOfRangeOfInterestInSelection;
+    }
+
+    VisiblePosition contextBeforeStart;
+    VisiblePosition contextAfterEnd;
+    if (request.granularityCount) {
+        contextBeforeStart = moveByGranularityRespectingWordBoundary(frame.get(), rangeOfInterestStart, request.surroundingGranularity, request.granularityCount, DirectionBackward);
+        contextAfterEnd = moveByGranularityRespectingWordBoundary(frame.get(), rangeOfInterestEnd, request.surroundingGranularity, request.granularityCount, DirectionForward);
+    } else {
+        contextBeforeStart = rangeOfInterestStart;
+        contextAfterEnd = rangeOfInterestEnd;
+    }
+
+    auto makeString = [&](VisiblePosition& start, VisiblePosition& end) -> NSAttributedString * {
+        if (start.isNull() || end.isNull() || start == end)
+            return nil;
+        // FIXME: This should return editing-offset-compatible attributed strings if that option is requested.
+        return adoptNS([[NSAttributedString alloc] initWithString:plainTextReplacingNoBreakSpace(start.deepEquivalent(), end.deepEquivalent())]).autorelease();
+    };
+
+    context.contextBefore = makeString(contextBeforeStart, startOfRangeOfInterestInSelection);
+    context.selectedText = makeString(startOfRangeOfInterestInSelection, endOfRangeOfInterestInSelection);
+    context.contextAfter = makeString(endOfRangeOfInterestInSelection, contextAfterEnd);
+
+    auto compositionRange = frame->editor().compositionRange();
+    if (compositionRange && rangesOverlap(rangeOfInterest.get(), compositionRange.get())) {
+        VisiblePosition compositionStart(compositionRange->startPosition());
+        VisiblePosition compositionEnd(compositionRange->endPosition());
+
+        VisiblePosition relevantCompositionStart = rangeOfInterestStart > compositionStart ? rangeOfInterestStart : compositionStart;
+        VisiblePosition relevantCompositionEnd = rangeOfInterestEnd < compositionEnd ? rangeOfInterestEnd : compositionEnd;
+
+        context.markedText = makeString(relevantCompositionStart, relevantCompositionEnd);
+        context.selectedRangeInMarkedText.location = distanceBetweenPositions(relevantCompositionStart, startOfRangeOfInterestInSelection);
+        context.selectedRangeInMarkedText.length = [context.selectedText.string length];
+    }
+
+    if (wantsRects) {
+        TextIterator contextIterator(contextBeforeStart.deepEquivalent(), contextAfterEnd.deepEquivalent());
+        unsigned currentLocation = 0;
+        while (!contextIterator.atEnd()) {
+            unsigned length = contextIterator.text().length();
+            if (!length) {
+                contextIterator.advance();
+                continue;
+            }
+
+            DocumentEditingContext::TextRectAndRange rect;
+            rect.rect = contextIterator.range()->absoluteBoundingBox();
+            rect.range = { currentLocation, length };
+            context.textRects.append(rect);
+
+            currentLocation += length;
+            contextIterator.advance();
+        }
+    }
+
+    // FIXME: Support Annotation option.
+
+    completionHandler(context);
 }
 
 } // namespace WebKit

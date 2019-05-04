@@ -214,7 +214,7 @@ private:
     void scheduleCompositingLayerFlush() final;
     bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) final;
 
-    void contentRuleListNotification(const URL&, const HashSet<std::pair<String, String>>&) final;
+    void contentRuleListNotification(const URL&, const WebCore::ContentRuleListResults&) final;
 
 #if PLATFORM(WIN)
     void setLastSetCursorToCurrentCursor() final { }
@@ -369,6 +369,8 @@ private:
 #if ENABLE(DEVICE_ORIENTATION)
     void shouldAllowDeviceOrientationAndMotionAccess(WebCore::Frame&, CompletionHandler<void(bool)>&&) final;
 #endif
+
+    void configureLoggingChannel(const String&, WTFLogChannelState, WTFLogLevel) final;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

@@ -23,10 +23,7 @@
 #include "SVGAnimatedEnumeration.h"
 #include "SVGAnimatedLength.h"
 #include "SVGAnimatedLengthList.h"
-#include "SVGAnimatedNumberList.h"
 #include "SVGAnimatedPath.h"
-#include "SVGAnimatedPointList.h"
-#include "SVGAnimatedString.h"
 #include "SVGAnimatedTransformList.h"
 
 namespace WebCore {
@@ -46,9 +43,12 @@ public:
         case AnimatedInteger:
         case AnimatedIntegerOptionalInteger:
         case AnimatedNumber:
+        case AnimatedNumberList:
         case AnimatedNumberOptionalNumber:
+        case AnimatedPoints:
         case AnimatedPreserveAspectRatio:
         case AnimatedRect:
+        case AnimatedString:
             return nullptr;
 
         case AnimatedAngle:
@@ -59,14 +59,8 @@ public:
             return std::make_unique<SVGAnimatedLengthAnimator>(animationElement, contextElement);
         case AnimatedLengthList:
             return std::make_unique<SVGAnimatedLengthListAnimator>(animationElement, contextElement);
-        case AnimatedNumberList:
-            return std::make_unique<SVGAnimatedNumberListAnimator>(animationElement, contextElement);
         case AnimatedPath:
             return std::make_unique<SVGAnimatedPathAnimator>(animationElement, contextElement);
-        case AnimatedPoints:
-            return std::make_unique<SVGAnimatedPointListAnimator>(animationElement, contextElement);
-        case AnimatedString:
-            return std::make_unique<SVGAnimatedStringAnimator>(animationElement, contextElement);
         case AnimatedTransformList:
             return std::make_unique<SVGAnimatedTransformListAnimator>(animationElement, contextElement);
         case AnimatedUnknown:

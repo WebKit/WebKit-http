@@ -3289,7 +3289,7 @@ void WebPage::runJavaScript(const String& script, bool forceUserGesture, Optiona
     ExceptionDetails details;
     auto* world = worldName ? InjectedBundleScriptWorld::find(worldName.value()) : &InjectedBundleScriptWorld::normalWorld();
     if (world) {
-        if (JSValue resultValue = m_mainFrame->coreFrame()->script().executeScriptInWorld(world->coreWorld(), script, forceUserGesture, &details)) {
+        if (JSValue resultValue = m_mainFrame->coreFrame()->script().executeUserAgentScriptInWorld(world->coreWorld(), script, forceUserGesture, &details)) {
             hadException = false;
             serializedResultValue = SerializedScriptValue::create(m_mainFrame->jsContextForWorld(world),
                 toRef(m_mainFrame->coreFrame()->script().globalObject(world->coreWorld())->globalExec(), resultValue), nullptr);
@@ -6587,25 +6587,32 @@ void WebPage::textInputContextsInRect(WebCore::FloatRect searchRect, CompletionH
 
 void WebPage::focusTextInputContext(const TextInputContext& textInputContext, CompletionHandler<void(bool)>&& completionHandler)
 {
-    completionHandler([&] {
-        if (textInputContext.webPageIdentifier != m_pageID)
-            return false;
+    RefPtr<Element> element = elementForTextInputContext(textInputContext);
 
-        auto* document = Document::allDocumentsMap().get(textInputContext.documentIdentifier);
-        if (!document)
-            return false;
-
-        if (document->page() != m_page.get())
-            return false;
-
-        auto* element = document->searchForElementByIdentifier(textInputContext.elementIdentifier);
-        if (!element)
-            return false;
-
+    if (element)
         element->focus();
 
-        return true;
-    }());
+    completionHandler(element);
+}
+
+Element* WebPage::elementForTextInputContext(const TextInputContext& textInputContext)
+{
+    if (textInputContext.webPageIdentifier != m_pageID)
+        return nullptr;
+
+    auto* document = Document::allDocumentsMap().get(textInputContext.documentIdentifier);
+    if (!document)
+        return nullptr;
+
+    if (document->page() != m_page.get())
+        return nullptr;
+
+    return document->searchForElementByIdentifier(textInputContext.elementIdentifier);
+}
+
+void WebPage::configureLoggingChannel(const String& channelName, WTFLogChannelState state, WTFLogLevel level)
+{
+    send(Messages::WebPageProxy::ConfigureLoggingChannel(channelName, state, level));
 }
 
 } // namespace WebKit

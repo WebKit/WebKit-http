@@ -45,6 +45,7 @@
 #include "SearchPopupMenu.h"
 #include "WebCoreKeyboardUIMode.h"
 #include <JavaScriptCore/ConsoleTypes.h>
+#include <wtf/Assertions.h>
 #include <wtf/CompletionHandler.h>
 #include <wtf/Forward.h>
 #include <wtf/Seconds.h>
@@ -101,6 +102,7 @@ class Widget;
 class MediaPlayerRequestInstallMissingPluginsCallback;
 #endif
 
+struct ContentRuleListResults;
 struct DateTimeChooserParameters;
 struct GraphicsDeviceAdapter;
 struct ShareDataWithParsedURL;
@@ -383,7 +385,7 @@ public:
     virtual void enableSuddenTermination() { }
     virtual void disableSuddenTermination() { }
 
-    virtual void contentRuleListNotification(const URL&, const HashSet<std::pair<String, String>>&) { };
+    virtual void contentRuleListNotification(const URL&, const ContentRuleListResults&) { };
 
 #if PLATFORM(WIN)
     virtual void setLastSetCursorToCurrentCursor() = 0;
@@ -496,6 +498,8 @@ public:
     virtual void associateEditableImageWithAttachment(GraphicsLayer::EmbeddedViewID, const String&) { }
     virtual void didCreateEditableImage(GraphicsLayer::EmbeddedViewID) { }
     virtual void didDestroyEditableImage(GraphicsLayer::EmbeddedViewID) { }
+
+    virtual void configureLoggingChannel(const String&, WTFLogChannelState, WTFLogLevel) { }
 
 protected:
     virtual ~ChromeClient() = default;

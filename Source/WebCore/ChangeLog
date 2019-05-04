@@ -1,3 +1,1039 @@
+2019-03-21  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove the SVG tear off objects for SVGNumber, SVGNumberList and SVGAnimatedNumberList
+        https://bugs.webkit.org/show_bug.cgi?id=196084
+
+        Reviewed by Simon Fraser.
+
+        To remove the tear off objects for these interfaces, we need to do the
+        following:
+
+        -- SVGNumber will be a superclass of SVGValueProperty<float>. It provides
+           the DOM interface functions.
+
+        -- SVGNumberList will be a superclass of SVGValuePropertyList<SVGNumber>.
+           It provides creation, parsing and converting to string functions.
+
+        -- SVGAnimatedNumberList will be defined as SVGAnimatedPropertyList<SVGNumberList>.
+
+        To make things work as expected:
+
+        -- Properties of type SVGAnimatedNumberList have to be registered with
+           SVGPropertyOwnerRegistry.
+        -- An accessor, an animator and an animation function should be defined
+           for SVGAnimatedNumberList.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * rendering/svg/SVGTextLayoutAttributesBuilder.cpp:
+        (WebCore::updateCharacterData):
+        (WebCore::SVGTextLayoutAttributesBuilder::fillCharacterDataMap):
+        * svg/SVGAnimatedNumberList.cpp: Removed.
+        * svg/SVGAnimatedNumberList.h: Removed.
+        * svg/SVGAnimatedPointList.cpp: Removed.
+        * svg/SVGAnimatedPointList.h: Removed.
+        * svg/SVGAnimatedType.h:
+        (WebCore::SVGAnimatedType::type const):
+        * svg/SVGAnimatorFactory.h:
+        (WebCore::SVGAnimatorFactory::create):
+        * svg/SVGComponentTransferFunctionElement.cpp:
+        (WebCore::SVGComponentTransferFunctionElement::SVGComponentTransferFunctionElement):
+        (WebCore::SVGComponentTransferFunctionElement::registerAttributes):
+        (WebCore::SVGComponentTransferFunctionElement::parseAttribute):
+        * svg/SVGComponentTransferFunctionElement.h:
+        (WebCore::SVGComponentTransferFunctionElement::tableValues const):
+        (WebCore::SVGComponentTransferFunctionElement::tableValuesAnimated):
+        * svg/SVGFEColorMatrixElement.cpp:
+        (WebCore::SVGFEColorMatrixElement::SVGFEColorMatrixElement):
+        (WebCore::SVGFEColorMatrixElement::registerAttributes):
+        (WebCore::SVGFEColorMatrixElement::parseAttribute):
+        (WebCore::SVGFEColorMatrixElement::build const):
+        * svg/SVGFEColorMatrixElement.h:
+        * svg/SVGFEConvolveMatrixElement.cpp:
+        (WebCore::SVGFEConvolveMatrixElement::SVGFEConvolveMatrixElement):
+        (WebCore::SVGFEConvolveMatrixElement::registerAttributes):
+        (WebCore::SVGFEConvolveMatrixElement::parseAttribute):
+        (WebCore::SVGFEConvolveMatrixElement::build const):
+        * svg/SVGFEConvolveMatrixElement.h:
+        * svg/SVGNumber.h:
+        (WebCore::SVGNumber::create):
+        (WebCore::SVGNumber::clone const):
+        (WebCore::SVGNumber::valueForBindings):
+        (WebCore::SVGNumber::setValueForBindings):
+        (WebCore::SVGNumber::SVGNumber): Deleted.
+        * svg/SVGNumberList.h:
+        (WebCore::SVGNumberList::create):
+        (WebCore::SVGNumberList::parse):
+        (WebCore::SVGNumberList::SVGNumberList): Deleted.
+        * svg/SVGNumberListValues.cpp: Removed.
+        * svg/SVGNumberListValues.h: Removed.
+        * svg/SVGTextPositioningElement.cpp:
+        (WebCore::SVGTextPositioningElement::SVGTextPositioningElement):
+        (WebCore::SVGTextPositioningElement::registerAttributes):
+        (WebCore::SVGTextPositioningElement::parseAttribute):
+        * svg/SVGTextPositioningElement.h:
+        (WebCore::SVGTextPositioningElement::rotate const):
+        (WebCore::SVGTextPositioningElement::rotateAnimated):
+        * svg/SVGValue.h:
+        * svg/properties/SVGAnimatedPropertyAccessorImpl.h:
+        * svg/properties/SVGAnimatedPropertyAnimatorImpl.h:
+        * svg/properties/SVGAnimatedPropertyImpl.h:
+        * svg/properties/SVGAnimationAdditiveListFunctionImpl.h:
+        (WebCore::SVGAnimationNumberListFunction::progress):
+        * svg/properties/SVGAttributeRegistry.h:
+        * svg/properties/SVGPropertyOwnerRegistry.h:
+        (WebCore::SVGPropertyOwnerRegistry::registerProperty):
+
+2019-03-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Safari Canvas Inspector seems to show the canvas being rendered twice per frame.
+        https://bugs.webkit.org/show_bug.cgi?id=196082
+        <rdar://problem/49113496>
+
+        Reviewed by Dean Jackson.
+
+        Tests: inspector/canvas/recording-2d.html
+               inspector/canvas/recording-bitmaprenderer.html
+               inspector/canvas/recording-html-2d.html
+               inspector/canvas/recording-webgl.html
+               inspector/canvas/setRecordingAutoCaptureFrameCount.html
+
+        WebGL `<canvas>` follow a different "rendering" path such that `HTMLCanvasElement::paint`
+        isn't called. Previously, there was a 0s timer that was started after the first action of a
+        frame was recorded (for the case that the `<canvas>` isn't attached to the DOM) that would
+        automatically stop the recording. It was possible that actions in two different "frame"s
+        were recorded as part of the same frame, because the WebGL `<canvas>` would instead fall
+        back to the timer to know when the "frame" had ended.
+
+        Now, there is additional instrumentation for the WebGL specific rendering path.
+        Additionally, replace the 0s timer with a microtask for more "immediate" calling.
+
+        * html/HTMLCanvasElement.cpp:
+        (WebCore::HTMLCanvasElement::paint):
+        Ensure that the `InspectorInstrumentation` call is last. This matches what we expect, as
+        before we were instrumenting right before is it about to paint.
+
+        * platform/graphics/GraphicsContext3D.h:
+        (WebCore::GraphicsContext3D::Client::~Client): Added.
+        (WebCore::GraphicsContext3D::addClient): Added.
+        (WebCore::GraphicsContext3D::removeClient): Added.
+        (WebCore::GraphicsContext3D::setWebGLContext): Deleted.
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        (WebCore::GraphicsContext3D::markLayerComposited):
+        (WebCore::GraphicsContext3D::forceContextLost):
+        (WebCore::GraphicsContext3D::recycleContext):
+        (WebCore::GraphicsContext3D::dispatchContextChangedNotification):
+        * html/canvas/WebGLRenderingContextBase.h:
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::WebGLRenderingContextBase):
+        (WebCore::WebGLRenderingContextBase::destroyGraphicsContext3D):
+        (WebCore::WebGLRenderingContextBase::didComposite): Added.
+        (WebCore::WebGLRenderingContextBase::forceContextLost):
+        (WebCore::WebGLRenderingContextBase::recycleContext):
+        (WebCore::WebGLRenderingContextBase::dispatchContextChangedNotification): Added.
+        (WebCore::WebGLRenderingContextBase::dispatchContextChangedEvent): Deleted.
+        Introduce a `GraphicsContext3DClient` abstract class, rather than passing the
+        `WebGLRenderingContextBase` directly to the `GraphicsContext3D` (layering violation).
+        Notify the client whenever the `GraphicsContext3D` composites, which will in turn notify the
+        `InspectorCanvasAgent` so that it knows that the "frame" is over.
+
+        * inspector/agents/InspectorCanvasAgent.h:
+        * inspector/agents/InspectorCanvasAgent.cpp:
+        (WebCore::InspectorCanvasAgent::InspectorCanvasAgent):
+        (WebCore::InspectorCanvasAgent::requestNode):
+        (WebCore::InspectorCanvasAgent::requestContent):
+        (WebCore::InspectorCanvasAgent::requestCSSCanvasClientNodes):
+        (WebCore::InspectorCanvasAgent::resolveCanvasContext):
+        (WebCore::InspectorCanvasAgent::startRecording):
+        (WebCore::InspectorCanvasAgent::stopRecording):
+        (WebCore::InspectorCanvasAgent::requestShaderSource):
+        (WebCore::InspectorCanvasAgent::updateShader):
+        (WebCore::InspectorCanvasAgent::setShaderProgramDisabled):
+        (WebCore::InspectorCanvasAgent::setShaderProgramHighlighted):
+        (WebCore::InspectorCanvasAgent::didChangeCSSCanvasClientNodes):
+        (WebCore::InspectorCanvasAgent::didChangeCanvasMemory):
+        (WebCore::InspectorCanvasAgent::recordCanvasAction):
+        (WebCore::InspectorCanvasAgent::canvasDestroyed):
+        (WebCore::InspectorCanvasAgent::didFinishRecordingCanvasFrame):
+        (WebCore::InspectorCanvasAgent::consoleStartRecordingCanvas):
+        (WebCore::InspectorCanvasAgent::didEnableExtension):
+        (WebCore::InspectorCanvasAgent::didCreateProgram):
+        (WebCore::InspectorCanvasAgent::willDeleteProgram):
+        (WebCore::InspectorCanvasAgent::isShaderProgramDisabled):
+        (WebCore::InspectorCanvasAgent::isShaderProgramHighlighted):
+        (WebCore::InspectorCanvasAgent::clearCanvasData):
+        (WebCore::InspectorCanvasAgent::assertInspectorCanvas):
+        (WebCore::InspectorCanvasAgent::findInspectorCanvas):
+        (WebCore::InspectorCanvasAgent::assertInspectorProgram):
+        (WebCore::InspectorCanvasAgent::findInspectorProgram):
+        (WebCore::InspectorCanvasAgent::canvasRecordingTimerFired): Deleted.
+        Replace raw pointers with `RefPtr`s. This is primarily used so that the microtask (instead
+        of a timer) that is enqueued after the first action of each frame  is recorded can access a
+        ref-counted instance of an `InspectorCanvas`, ensuring that it isn't destructed.
+
+        * inspector/InspectorCanvas.h:
+        * inspector/InspectorCanvas.cpp:
+        (WebCore::InspectorCanvas::canvasElement):
+        (WebCore::InspectorCanvas::recordAction):
+        (WebCore::InspectorCanvas::finalizeFrame):
+        (WebCore::InspectorCanvas::releaseObjectForRecording): Added.
+        (WebCore::InspectorCanvas::getCanvasContentAsDataURL):
+        (WebCore::InspectorCanvas::appendActionSnapshotIfNeeded):
+        (WebCore::InspectorCanvas::buildInitialState):
+        (WebCore::InspectorCanvas::releaseInitialState): Deleted.
+        (WebCore::InspectorCanvas::releaseFrames): Deleted.
+        (WebCore::InspectorCanvas::releaseData): Deleted.
+        Move the recording payload construction logic to `InspectorCanvas` so the actual data
+        doesn't need to leave that class.
+        Drive-by: unify the logic for getting the contents of a canvas from `InspectorCanvasAgent`.
+
+2019-03-21  Tim Horton  <timothy_horton@apple.com>
+
+        Adopt UIWKDocumentContext
+        https://bugs.webkit.org/show_bug.cgi?id=196040
+        <rdar://problem/48642440>
+
+        Reviewed by Ryosuke Niwa.
+
+        New API test: WebKit.DocumentEditingContext
+
+        * dom/Range.h:
+        * editing/TextGranularity.h:
+        Make TextGranularity encodable by providing EnumTraits.
+
+        * editing/TextIterator.cpp:
+        (WebCore::plainTextReplacingNoBreakSpace):
+        * editing/TextIterator.h:
+        Expose an nbsp-replacing variant of plainText that takes Positions instead of Ranges.
+
+2019-03-21  Sihui Liu  <sihui_liu@apple.com>
+
+        Fix key path extraction code in IndexedDB to check own property
+        https://bugs.webkit.org/show_bug.cgi?id=196099
+
+        Reviewed by Ryosuke Niwa.
+
+        Covered by existing tests.
+
+        * Modules/indexeddb/IDBFactory.cpp:
+        (WebCore::IDBFactory::cmp):
+        We don't need to check the second parameters if the first is already invalid.
+
+        * Modules/indexeddb/IDBKeyRange.cpp:
+        (WebCore::IDBKeyRange::bound):
+        Ditto.
+
+        * Modules/indexeddb/IDBObjectStore.cpp:
+        (WebCore::IDBObjectStore::putOrAdd):
+        we should not clear the exception during serialization because the execeptions may be explicitly thrown by parameters.
+
+        * bindings/js/IDBBindingUtilities.cpp:
+        (WebCore::get):
+        Fix implementation according to https://www.w3.org/TR/IndexedDB-2/#extract-key-from-value.
+
+        (WebCore::canInjectNthValueOnKeyPath):
+        Check the last identifier.
+
+2019-03-21  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] JS wrapper may be deleted while animation is yet to dispatch its finish event
+        https://bugs.webkit.org/show_bug.cgi?id=196118
+        <rdar://problem/46614137>
+
+        Reviewed by Ryosuke Niwa.
+
+        Test: webanimations/js-wrapper-kept-alive.html
+
+        We need to teach WebAnimation to keep its JS wrapper alive if it's relevant or could become relevant again by virtue of having a timeline.
+
+        * animation/WebAnimation.cpp:
+        (WebCore::WebAnimation::stop): Drive-by fix for the missing superclass method call.
+        (WebCore::WebAnimation::hasPendingActivity const):
+        * animation/WebAnimation.h:
+
+2019-03-21  Jer Noble  <jer.noble@apple.com>
+
+        Inband Text Track cues interspersed with Data cues can display out of order.
+        https://bugs.webkit.org/show_bug.cgi?id=196095
+
+        Reviewed by Eric Carlson.
+
+        The compareCueIntervalForDisplay() comparator depends on a virtual function, isPositionedAbove(TextTrackCue* other),
+        but this comparison returns inconsistent results for cueA->isPositionedAbove(cueB) and cueB->isPositionedAbove(cueA)
+        if the two cues are different subclasses of TextTrackCue.
+
+        The underlying algorithm should be fixed in a future patch, but for now, remove all non-displaying cues from the array
+        of activeCues before sorting, rather than after when iterating over the sorted list of activeCues.
+
+        * html/shadow/MediaControlElements.cpp:
+        (WebCore::MediaControlTextTrackContainerElement::updateDisplay):
+
+2019-03-21  Youenn Fablet  <youenn@apple.com>
+
+        Cache API and IDB space usages should be initialized on first quota check
+        https://bugs.webkit.org/show_bug.cgi?id=195707
+
+        Reviewed by Chris Dumez.
+
+        Add a way to require IDBServer to create a quota user for a given origin.
+        Make sure that removing a user might kick-in processing of pending requests.
+        In the case of processing pending requests, we should not decide on the first task
+        except if it is triggered by a request space response.
+        Update processPendingRequests accordingly.
+
+        Tests: http/tests/IndexedDB/storage-limit-1.https.html
+               http/tests/IndexedDB/storage-limit-2.https.html
+
+        * Modules/indexeddb/server/IDBServer.h:
+        (WebCore::IDBServer::IDBServer::initializeQuotaUser):
+        * storage/StorageQuotaManager.cpp:
+        (WebCore::StorageQuotaManager::removeUser):
+        (WebCore::StorageQuotaManager::askForMoreSpace):
+        (WebCore::StorageQuotaManager::processPendingRequests):
+        * storage/StorageQuotaManager.h:
+
+2019-03-21  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS build after r243337
+        https://bugs.webkit.org/show_bug.cgi?id=195935
+
+        * platform/ios/PlaybackSessionInterfaceAVKit.mm:
+        (WebCore::PlaybackSessionInterfaceAVKit::playbackSessionModel const):
+        (WebCore::playbackSessionModel const): Deleted.
+
+2019-03-21  Brent Fulgham  <bfulgham@apple.com>
+
+        Hardening: Use WeakPtrs in PlaybackSessionInterface{Mac,AVKit}
+        https://bugs.webkit.org/show_bug.cgi?id=195935
+        <rdar://problem/49007015>
+
+        Reviewed by Eric Carlson.
+
+        The PlaybackSessionInterface{Mac,AVKit} implementations store their playback session model
+        and playback controls manager members as bare pointers, something we've been working
+        to eliminate.
+        
+        This patch corrects this oversight.
+
+        No new tests since no changes in behavior.
+
+        * platform/cocoa/PlaybackSessionModel.h:
+        * platform/ios/PlaybackSessionInterfaceAVKit.h:
+        * platform/ios/PlaybackSessionInterfaceAVKit.mm:
+        (WebCore::PlaybackSessionInterfaceAVKit::PlaybackSessionInterfaceAVKit):
+        (WebCore::playbackSessionModel const): Moved to implementation since WEBCORE_EXPORT is not
+        supposed to be used with inline methods.
+        * platform/mac/PlaybackSessionInterfaceMac.h:
+        * platform/mac/PlaybackSessionInterfaceMac.mm:
+        (WebCore::PlaybackSessionInterfaceMac::PlaybackSessionInterfaceMac):
+        (WebCore::PlaybackSessionInterfaceMac::playbackSessionModel const):
+        (WebCore::PlaybackSessionInterfaceMac::beginScrubbing):
+        (WebCore::PlaybackSessionInterfaceMac::endScrubbing):
+        (WebCore::PlaybackSessionInterfaceMac::playBackControlsManager):
+        * platform/mac/VideoFullscreenInterfaceMac.mm:
+        (WebCore::VideoFullscreenInterfaceMac::~VideoFullscreenInterfaceMac):
+        * platform/mac/WebPlaybackControlsManager.mm:
+        (-[WebPlaybackControlsManager seekToTime:toleranceBefore:toleranceAfter:]):
+        (-[WebPlaybackControlsManager setCurrentAudioTouchBarMediaSelectionOption:]):
+        (-[WebPlaybackControlsManager setCurrentLegibleTouchBarMediaSelectionOption:]):
+
+2019-03-21  Said Abou-Hallawa  <said@apple.com>
+
+        Remove the SVG tear off objects for SVGPoint, SVGPointList and SVGAnimatedPointList
+        https://bugs.webkit.org/show_bug.cgi?id=195905
+
+        Reviewed by Simon Fraser.
+
+        To remove the SVG tear off objects for SVGPoint, SVGPointList and 
+        SVGAnimatedPointList, these changes are needed:
+
+        -- Define SVGPoint to be a superclass of SVGValueProperty<FloatPoint>.
+
+        -- Define SVGAnimatedPointList to be a superclass of SVGAnimatedPropertyList<SVGPointList>
+
+        -- Add SVGPropertyList which is a superclass of SVGList. Its items are
+           defined to RefCounted. It is the base class of SVGValuePropertyList
+           and it will be  the base class of SVGPathSegList in a later patch.
+
+        -- Add SVGValuePropertyList which is the base class of all the lists whose
+           items are backed by a value objects like SVGPoint. The difference between
+           SVGPropertyList and SVGValuePropertyList is the former class can store
+           a Ref pointer of the base class like SVGPathSeg while the later type
+           has to store the same type for all the items.
+
+        -- Add SVGAnimatedPropertyList which is the base class for all the animated
+           lists. Note that:
+           1) SVGElement owns SVGAnimatedPropertyList
+           2) SVGAnimatedPropertyList owns m_baseVal whose type is SVGList
+           3) m_baseVal owns the items whose type is a superclass of SVGProperty.
+           When changing an item, it calls its owner which is an SVGList.
+           SVGList calls its owner which is SVGAnimatedPropertyList.
+           SVGAnimatedPropertyList calls its owner which SVGElement to commit
+           the change. Later SVGAnimatedPropertyList::synchronize() is called 
+           which returns the property valueAsString() to update the reflecting
+           attribute.
+
+        -- New accessor, animator and animation function are added to access
+           and animate a member of type SVGAnimatedPropertyList.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * rendering/svg/SVGPathData.cpp:
+        (WebCore::pathFromCircleElement):
+        (WebCore::pathFromEllipseElement):
+        (WebCore::pathFromLineElement):
+        (WebCore::pathFromPathElement):
+        (WebCore::pathFromPolygonElement):
+        (WebCore::pathFromPolylineElement):
+        (WebCore::pathFromRectElement):
+        (WebCore::pathFromGraphicsElement):
+        * rendering/svg/SVGPathData.h:
+        The IDL of SVGPolyElement interface requires the following attribute:
+            readonly attribute SVGPointList points;
+        For which we return:
+            SVGPointList& points() { return m_points->baseVal(); }
+        But for all the other properties we return the currentValue(). So to have
+        the two functions with the same name, the following function is added:
+            const SVGPointList& points() const { return m_points->currentValue(); }
+        This definition requires changing all callers to be const.
+
+        * rendering/svg/SVGRenderTreeAsText.cpp:
+        (WebCore::operator<<):
+        * svg/SVGAnimatedPointList.cpp: Removed.
+        * svg/SVGAnimatedPointList.h: Removed.
+        * svg/SVGAnimatedType.h:
+        (WebCore::SVGAnimatedType::type const):
+        This function had a bad design. It was designed to use the index of the
+        variant as the AnimatedPropertyType. But when some of the types are removed
+        from SVGValueVariant, this broke things. This fix is temporary till the 
+        class SVGValueVariant is removed.
+
+        * svg/SVGAnimatorFactory.h:
+        (WebCore::SVGAnimatorFactory::create):
+        * svg/SVGExternalResourcesRequired.cpp:
+        * svg/SVGParserUtilities.cpp:
+        (WebCore::pointsListFromSVGData): Deleted.
+        * svg/SVGParserUtilities.h:
+        * svg/SVGPoint.h:
+        (WebCore::SVGPoint::create):
+        (WebCore::SVGPoint::clone const):
+        (WebCore::SVGPoint::x):
+        (WebCore::SVGPoint::setX):
+        (WebCore::SVGPoint::y):
+        (WebCore::SVGPoint::setY):
+        (WebCore::SVGPoint::matrixTransform const):
+        (WebCore::SVGPoint::matrixTransform): Deleted.
+        (WebCore::SVGPoint::SVGPoint): Deleted.
+        * svg/SVGPoint.idl:
+        matrixTransform() should not throw an exception.
+
+        * svg/SVGPointList.h:
+        (WebCore::SVGPointList::create):
+        (WebCore::SVGPointList::parse):
+        (WebCore::SVGPointList::SVGPointList): Deleted.
+        Move the parse() and valueAsString() methods to SVGPointList. It is now
+        a superclass of SVGValuePropertyList. Its items are of type Ref<SVGPoint>.
+
+        * svg/SVGPointListValues.cpp: Removed.
+        * svg/SVGPointListValues.h: Removed.
+        * svg/SVGPolyElement.cpp:
+        (WebCore::SVGPolyElement::SVGPolyElement):
+        (WebCore::SVGPolyElement::parseAttribute):
+        (WebCore::SVGPolyElement::approximateMemoryCost const):
+        (WebCore::SVGPolyElement::registerAttributes): Deleted.
+        (WebCore::SVGPolyElement::points): Deleted.
+        (WebCore::SVGPolyElement::animatedPoints): Deleted.
+        * svg/SVGPolyElement.h:
+        (WebCore::SVGPolyElement::points const):
+        (WebCore::SVGPolyElement::points):
+        (WebCore::SVGPolyElement::animatedPoints):
+        (WebCore::SVGPolyElement::pointList const): Deleted.
+        (WebCore::SVGPolyElement::attributeRegistry): Deleted.
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::setCurrentTranslate):
+        (WebCore::SVGSVGElement::currentTranslate): Deleted.
+        * svg/SVGSVGElement.h:
+        * svg/SVGSVGElement.idl:
+        Define currentTranslate property to be of type Ref<SVGPoint>. When requesting
+        it just return a reference to it.
+
+        * svg/SVGValue.h:
+        * svg/properties/SVGAnimatedPropertyAccessorImpl.h:
+        * svg/properties/SVGAnimatedPropertyAnimatorImpl.h:
+        * svg/properties/SVGAnimatedPropertyImpl.h:
+        * svg/properties/SVGAnimatedPropertyList.h: Added.
+        Define the accessor, the animator and the animated type of SVGPointList.
+
+        (WebCore::SVGAnimatedPropertyList::create):
+        (WebCore::SVGAnimatedPropertyList::~SVGAnimatedPropertyList):
+        (WebCore::SVGAnimatedPropertyList::baseVal const):
+        (WebCore::SVGAnimatedPropertyList::baseVal):
+        (WebCore::SVGAnimatedPropertyList::animVal const):
+        (WebCore::SVGAnimatedPropertyList::animVal):
+        (WebCore::SVGAnimatedPropertyList::currentValue const):
+        (WebCore::SVGAnimatedPropertyList::SVGAnimatedPropertyList):
+        (WebCore::SVGAnimatedPropertyList::ensureAnimVal):
+        * svg/properties/SVGAnimationAdditiveListFunction.h: Added.
+        (WebCore::SVGAnimationAdditiveListFunction::SVGAnimationAdditiveListFunction):
+        (WebCore::SVGAnimationAdditiveListFunction::toAtEndOfDuration const):
+        (WebCore::SVGAnimationAdditiveListFunction::adjustAnimatedList):
+        * svg/properties/SVGAnimationAdditiveListFunctionImpl.h: Added.
+        (WebCore::SVGAnimationPointListFunction::progress):
+        Define the animation function for animating SVGPointList.
+
+        * svg/properties/SVGAttributeRegistry.h:
+        * svg/properties/SVGPropertyList.h: Added.
+        (WebCore::SVGPropertyList::SVGPropertyList):
+        (WebCore::SVGPropertyList::~SVGPropertyList):
+        * svg/properties/SVGPropertyOwnerRegistry.h:
+        (WebCore::SVGPropertyOwnerRegistry::registerProperty):
+        * svg/properties/SVGValuePropertyList.h: Added.
+        (WebCore::SVGValuePropertyList::operator=):
+        (WebCore::SVGValuePropertyList::operator Vector<typename PropertyType::ValueType> const):
+        (WebCore::SVGValuePropertyList::resize):
+        (WebCore::SVGValuePropertyList::SVGValuePropertyList):
+
+2019-03-21  Said Abou-Hallawa  <said@apple.com>
+
+        Remove the SVG property tear off objects for SVGAnimatedString
+        https://bugs.webkit.org/show_bug.cgi?id=196065
+
+        Reviewed by Simon Fraser.
+
+        -- Define SVGAnimatedString to be SVGAnimatedPrimitiveProperty<String>.
+
+        -- Add SVGAnimatedStringAccessor to associate an attribute name with a 
+           pointer to an SVGAnimatedString member of an SVGElement. Given a 
+           pointer to an SVGElement, this accessor will and create an animator
+           for the animated property.
+
+        -- Add SVGAnimatedStringAnimator to animated an SVGAnimatedString.
+
+        -- Add SVGAnimationStringFunction which is a discrete function and is 
+           responsible for progressing an animated String over a period of time.
+
+        -- Define SVGStringAnimator to be SVGPrimitivePropertyAnimator<String,
+           SVGAnimationStringFunction>. SVGStringAnimator is responsible for
+           animating attributes with no reflecting animated properties, e.g.
+           "font-family".
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * svg/SVGAElement.cpp:
+        (WebCore::SVGAElement::SVGAElement):
+        (WebCore::SVGAElement::parseAttribute):
+        (WebCore::SVGAElement::registerAttributes): Deleted.
+        * svg/SVGAElement.h:
+        * svg/SVGAnimateElementBase.cpp:
+        (WebCore::SVGAnimateElementBase::hasValidAttributeType const):
+        (WebCore::SVGAnimateElementBase::isDiscreteAnimator const):
+        * svg/SVGAnimateElementBase.h:
+        * svg/SVGAnimatedString.cpp: Removed.
+        * svg/SVGAnimatedString.h: Removed.
+        * svg/SVGAnimationElement.cpp:
+        (WebCore::SVGAnimationElement::currentValuesForValuesAnimation):
+        The animation controller has to tell whether the animator is discrete or
+        not. The properties are now registered either in SVGAttributeRegistry which
+        relies on the tear off objects to know the AnimatedPropertyType of the
+        property. Or it is registered in SVGPropertyOwnerRegistry which creates
+        the animators through the accessors. Each animator knows whether it is
+        discrete or not.
+
+        * svg/SVGAnimatorFactory.h:
+        (WebCore::SVGAnimatorFactory::create):
+        * svg/SVGAttributeAnimationController.cpp:
+        (WebCore::SVGAttributeAnimationController::isDiscreteAnimator const):
+        * svg/SVGAttributeAnimationController.h:
+        * svg/SVGAttributeAnimationControllerBase.h:
+        * svg/SVGCursorElement.h:
+        * svg/SVGElement.cpp:
+        (WebCore::SVGElement::SVGElement):
+        (WebCore::SVGElement::parseAttribute):
+        (WebCore::SVGElement::registerAttributes): Deleted.
+        * svg/SVGElement.h:
+        (WebCore::SVGElement::isKnownAttribute):
+        (WebCore::SVGElement::className const):
+        (WebCore::SVGElement::classNameAnimated):
+        (WebCore::SVGElement::attributeRegistry): Deleted.
+        * svg/SVGExternalResourcesRequired.cpp:
+        * svg/SVGFEBlendElement.cpp:
+        (WebCore::SVGFEBlendElement::SVGFEBlendElement):
+        (WebCore::SVGFEBlendElement::registerAttributes):
+        (WebCore::SVGFEBlendElement::parseAttribute):
+        * svg/SVGFEBlendElement.h:
+        * svg/SVGFEColorMatrixElement.cpp:
+        (WebCore::SVGFEColorMatrixElement::SVGFEColorMatrixElement):
+        (WebCore::SVGFEColorMatrixElement::registerAttributes):
+        (WebCore::SVGFEColorMatrixElement::parseAttribute):
+        * svg/SVGFEColorMatrixElement.h:
+        * svg/SVGFEComponentTransferElement.cpp:
+        (WebCore::SVGFEComponentTransferElement::SVGFEComponentTransferElement):
+        (WebCore::SVGFEComponentTransferElement::parseAttribute):
+        (WebCore::SVGFEComponentTransferElement::registerAttributes): Deleted.
+        * svg/SVGFEComponentTransferElement.h:
+        * svg/SVGFECompositeElement.cpp:
+        (WebCore::SVGFECompositeElement::SVGFECompositeElement):
+        (WebCore::SVGFECompositeElement::registerAttributes):
+        (WebCore::SVGFECompositeElement::parseAttribute):
+        * svg/SVGFECompositeElement.h:
+        * svg/SVGFEConvolveMatrixElement.cpp:
+        (WebCore::SVGFEConvolveMatrixElement::SVGFEConvolveMatrixElement):
+        (WebCore::SVGFEConvolveMatrixElement::registerAttributes):
+        (WebCore::SVGFEConvolveMatrixElement::parseAttribute):
+        * svg/SVGFEConvolveMatrixElement.h:
+        * svg/SVGFEDiffuseLightingElement.cpp:
+        (WebCore::SVGFEDiffuseLightingElement::SVGFEDiffuseLightingElement):
+        (WebCore::SVGFEDiffuseLightingElement::parseAttribute):
+        (WebCore::SVGFEDiffuseLightingElement::registerAttributes): Deleted.
+        * svg/SVGFEDiffuseLightingElement.h:
+        * svg/SVGFEDisplacementMapElement.cpp:
+        (WebCore::SVGFEDisplacementMapElement::SVGFEDisplacementMapElement):
+        (WebCore::SVGFEDisplacementMapElement::registerAttributes):
+        (WebCore::SVGFEDisplacementMapElement::parseAttribute):
+        * svg/SVGFEDisplacementMapElement.h:
+        * svg/SVGFEDropShadowElement.cpp:
+        (WebCore::SVGFEDropShadowElement::SVGFEDropShadowElement):
+        (WebCore::SVGFEDropShadowElement::parseAttribute):
+        (WebCore::SVGFEDropShadowElement::svgAttributeChanged):
+        (WebCore::SVGFEDropShadowElement::registerAttributes): Deleted.
+        * svg/SVGFEDropShadowElement.h:
+        * svg/SVGFEGaussianBlurElement.cpp:
+        (WebCore::SVGFEGaussianBlurElement::SVGFEGaussianBlurElement):
+        (WebCore::SVGFEGaussianBlurElement::registerAttributes):
+        (WebCore::SVGFEGaussianBlurElement::parseAttribute):
+        * svg/SVGFEGaussianBlurElement.h:
+        * svg/SVGFEMergeNodeElement.cpp:
+        (WebCore::SVGFEMergeNodeElement::SVGFEMergeNodeElement):
+        (WebCore::SVGFEMergeNodeElement::parseAttribute):
+        (WebCore::SVGFEMergeNodeElement::registerAttributes): Deleted.
+        * svg/SVGFEMergeNodeElement.h:
+        * svg/SVGFEMorphologyElement.cpp:
+        (WebCore::SVGFEMorphologyElement::SVGFEMorphologyElement):
+        (WebCore::SVGFEMorphologyElement::registerAttributes):
+        (WebCore::SVGFEMorphologyElement::parseAttribute):
+        * svg/SVGFEMorphologyElement.h:
+        * svg/SVGFEOffsetElement.cpp:
+        (WebCore::SVGFEOffsetElement::SVGFEOffsetElement):
+        (WebCore::SVGFEOffsetElement::parseAttribute):
+        (WebCore::SVGFEOffsetElement::svgAttributeChanged):
+        (WebCore::SVGFEOffsetElement::registerAttributes): Deleted.
+        * svg/SVGFEOffsetElement.h:
+        * svg/SVGFESpecularLightingElement.cpp:
+        (WebCore::SVGFESpecularLightingElement::SVGFESpecularLightingElement):
+        (WebCore::SVGFESpecularLightingElement::parseAttribute):
+        (WebCore::SVGFESpecularLightingElement::registerAttributes): Deleted.
+        * svg/SVGFESpecularLightingElement.h:
+        * svg/SVGFETileElement.cpp:
+        (WebCore::SVGFETileElement::SVGFETileElement):
+        (WebCore::SVGFETileElement::parseAttribute):
+        (WebCore::SVGFETileElement::registerAttributes): Deleted.
+        * svg/SVGFETileElement.h:
+        * svg/SVGFilterPrimitiveStandardAttributes.cpp:
+        (WebCore::SVGFilterPrimitiveStandardAttributes::SVGFilterPrimitiveStandardAttributes):
+        (WebCore::SVGFilterPrimitiveStandardAttributes::registerAttributes):
+        (WebCore::SVGFilterPrimitiveStandardAttributes::parseAttribute):
+        * svg/SVGFilterPrimitiveStandardAttributes.h:
+        (WebCore::SVGFilterPrimitiveStandardAttributes::result const):
+        (WebCore::SVGFilterPrimitiveStandardAttributes::resultAnimated):
+        * svg/SVGLegacyAttributeAnimationController.cpp:
+        (WebCore::SVGLegacyAttributeAnimationController::isDiscreteAnimator const):
+        * svg/SVGLegacyAttributeAnimationController.h:
+        * svg/SVGMPathElement.h:
+        * svg/SVGScriptElement.h:
+        * svg/SVGURIReference.cpp:
+        (WebCore::SVGURIReference::SVGURIReference):
+        (WebCore::SVGURIReference::isKnownAttribute):
+        (WebCore::SVGURIReference::parseAttribute):
+        (WebCore::SVGURIReference::registerAttributes): Deleted.
+        (WebCore::SVGURIReference::href const): Deleted.
+        (WebCore::SVGURIReference::hrefAnimated): Deleted.
+        * svg/SVGURIReference.h:
+        (WebCore::SVGURIReference::href const):
+        (WebCore::SVGURIReference::hrefAnimated):
+        * svg/properties/SVGAnimatedPropertyAccessorImpl.h:
+        * svg/properties/SVGAnimatedPropertyAnimatorImpl.h:
+        * svg/properties/SVGAnimatedPropertyImpl.h:
+        * svg/properties/SVGAttributeRegistry.h:
+        * svg/properties/SVGPrimitivePropertyAnimatorImpl.h:
+        * svg/properties/SVGPropertyAnimatorFactory.h:
+        (WebCore::SVGPropertyAnimatorFactory::createStringAnimator):
+        (WebCore::SVGPropertyAnimatorFactory::attributeAnimatorCreator):
+        * svg/properties/SVGPropertyOwnerRegistry.h:
+        (WebCore::SVGPropertyOwnerRegistry::registerProperty):
+
+2019-03-21  Zalan Bujtas  <zalan@apple.com>
+
+        Do not insert the first-letter anonymous container until after we've constructed the first-letter renderer.
+        https://bugs.webkit.org/show_bug.cgi?id=195919
+        <rdar://problem/48573434>
+
+        Reviewed by Brent Fulgham.
+
+        When the container is injected too early, we might end up removing it as part of the collapsing logic
+        while the text renderer is being removed (replaced with the first letter + remaining text).
+
+        Test: fast/css/first-letter-and-float-crash.html
+
+        * rendering/updating/RenderTreeBuilderFirstLetter.cpp:
+        (WebCore::RenderTreeBuilder::FirstLetter::createRenderers):
+
+2019-03-21  Eric Carlson  <eric.carlson@apple.com>
+
+        Add UI process WebRTC runtime logging.
+        https://bugs.webkit.org/show_bug.cgi?id=196020
+        <rdar://problem/49071443>
+
+        Reviewed by Youenn Fablet.
+
+        * inspector/agents/WebConsoleAgent.cpp:
+        (WebCore::WebConsoleAgent::getLoggingChannels): Deleted.
+        (WebCore::channelConfigurationForString): Deleted.
+        (WebCore::WebConsoleAgent::setLoggingChannelLevel): Deleted.
+        * inspector/agents/WebConsoleAgent.h:
+        * inspector/agents/page/PageConsoleAgent.cpp:
+        (WebCore::PageConsoleAgent::PageConsoleAgent): Change 'context' parameter from 
+        WebAgentContext to PageAgentContext. Store the inspected page for later use.
+        (WebCore::PageConsoleAgent::getLoggingChannels): Moved from WebConsoleAgent.
+        (WebCore::channelConfigurationForString): Ditto.
+        (WebCore::PageConsoleAgent::setLoggingChannelLevel): Moved from WebConsoleAgent.
+        Call the inspected page to actually change the log channel configuration.
+        * inspector/agents/page/PageConsoleAgent.h:
+        * page/ChromeClient.h:
+        * page/Page.cpp:
+        (WebCore::Page::configureLoggingChannel): New.
+        * page/Page.h:
+
+2019-03-21  Andy Estes  <aestes@apple.com>
+
+        [iOS] Apple Pay should be available in documents with no user agent scripts
+        https://bugs.webkit.org/show_bug.cgi?id=196061
+        <rdar://problem/48649391>
+
+        Reviewed by Brady Eidson.
+
+        On platforms that support APPLE_PAY_REMOTE_UI, we can enable Apple Pay JS and Payment Request
+        by default in all WebKit clients.
+
+        In order to protect the privacy of Apple Pay transactions, this patch implements the
+        following restrictions on API usage:
+
+        1. If user agent scripts have been evaluated in a document, Apple Pay APIs will no longer be
+        available for the duration of the document's lifetime.
+        2. If an Apple Pay transaction has started in a document, user agent scripts will no longer
+        be evaluated for the duration of the document's lifetime.
+
+        These restrictions are disabled for clients with the
+        com.apple.private.WebKit.UnrestrictedApplePay entitlement and platforms that do support
+        Apple Pay but don't support APPLE_PAY_REMOTE_UI.
+
+        Added new API tests.
+
+        * Modules/applepay/ApplePayRequestBase.cpp:
+        (WebCore::convertAndValidate):
+        * Modules/applepay/ApplePayRequestBase.h:
+        * Modules/applepay/ApplePaySession.cpp:
+        (WebCore::convertAndValidate):
+        (WebCore::ApplePaySession::create):
+        (WebCore::ApplePaySession::supportsVersion):
+        (WebCore::ApplePaySession::canMakePayments):
+        (WebCore::ApplePaySession::canMakePaymentsWithActiveCard):
+        (WebCore::ApplePaySession::openPaymentSetup):
+        (WebCore::ApplePaySession::begin):
+        * Modules/applepay/ApplePaySession.h:
+        * Modules/applepay/ApplePaySession.idl:
+        * Modules/applepay/PaymentCoordinator.cpp:
+        (WebCore::PaymentCoordinator::supportsVersion const):
+        (WebCore::PaymentCoordinator::canMakePayments):
+        (WebCore::PaymentCoordinator::canMakePaymentsWithActiveCard):
+        (WebCore::PaymentCoordinator::openPaymentSetup):
+        (WebCore::PaymentCoordinator::beginPaymentSession):
+        (WebCore::PaymentCoordinator::validatedPaymentNetwork const):
+        (WebCore::PaymentCoordinator::shouldAllowApplePay const):
+        (WebCore::PaymentCoordinator::shouldAllowUserAgentScripts const):
+        * Modules/applepay/PaymentCoordinator.h:
+        * Modules/applepay/PaymentCoordinatorClient.h:
+        (WebCore::PaymentCoordinatorClient::supportsUnrestrictedApplePay const):
+        * Modules/applepay/paymentrequest/ApplePayPaymentHandler.cpp:
+        (WebCore::ApplePayPaymentHandler::show):
+        (WebCore::ApplePayPaymentHandler::canMakePayment):
+        (WebCore::ApplePayPaymentHandler::version const):
+        * Modules/applepay/paymentrequest/ApplePayPaymentHandler.h:
+        * Modules/paymentrequest/PaymentHandler.h:
+        * Modules/paymentrequest/PaymentRequest.cpp:
+        (WebCore::PaymentRequest::show):
+        (WebCore::PaymentRequest::canMakePayment):
+
+        Plumbed a Document& through to the various places that call into PaymentCoordinator for use
+        by shouldAllowApplePay and shouldAllowUserAgentScripts.
+
+        * bindings/js/ScriptController.cpp:
+        (WebCore::ScriptController::executeUserAgentScriptInWorld):
+        (WebCore::ScriptController::shouldAllowUserAgentScripts const):
+        * bindings/js/ScriptController.h:
+
+        Added executeUserAgentScriptInWorld, which calls executeScriptInWorld if allowed.
+
+        * dom/Document.cpp:
+        (WebCore::Document::ensurePlugInsInjectedScript):
+
+        Changed to only evaluate the chrome client's plug-in extra script if allowed, and to mark
+        the document as having evaluated user agent scripts.
+
+        (WebCore::Document::hasEvaluatedUserAgentScripts const):
+        (WebCore::Document::isRunningUserScripts const):
+        (WebCore::Document::setAsRunningUserScripts):
+        (WebCore::Document::setHasEvaluatedUserAgentScripts):
+        (WebCore::Document::hasStartedApplePaySession const):
+        (WebCore::Document::setHasStartedApplePaySession):
+        * dom/Document.h:
+
+        Added helper functions to set state on the top document.
+
+        * loader/DocumentThreadableLoader.cpp:
+        (WebCore::DocumentThreadableLoader::DocumentThreadableLoader):
+
+        Removed call to topDocument() now that isRunningUserScripts() always checks the top document.
+
+        * page/Frame.cpp:
+        (WebCore::Frame::injectUserScriptImmediately):
+
+        Changed to only inject the user script if allowed.
+
+        * page/Settings.yaml:
+        * page/SettingsDefaultValues.h:
+
+        Enabled Apple Pay by default on platforms that enable APPLE_PAY_REMOTE_UI.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::setAsRunningUserScripts):
+        (WebCore::Internals::setHasStartedApplePaySession):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+        * testing/MockPaymentCoordinator.h:
+        * testing/MockPaymentCoordinator.idl:
+
+        Added some internal interfaces for use by TestWebKitAPI.
+
+2019-03-21  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to inform applications of WKContentRuleList actions
+        https://bugs.webkit.org/show_bug.cgi?id=195965
+        <rdar://problem/42664365>
+
+        Reviewed by Geoff Garen.
+
+        We already had SPI to inform the application of notifications.
+        In order to inform it about other actions, I needed to put them in a different structure.
+        Basically, instead of a Vector<Action> I use a Vector<Vector<Action>> that contains the same actions.
+        That way we can give one callback per WKContentRuleList.
+
+        * Modules/websockets/WebSocketChannel.cpp:
+        (WebCore::WebSocketChannel::connect):
+        * WebCore.xcodeproj/project.pbxproj:
+        * contentextensions/ContentExtensionActions.h:
+        * contentextensions/ContentExtensionParser.cpp:
+        (WebCore::ContentExtensions::loadEncodedRules):
+        * contentextensions/ContentExtensionRule.cpp:
+        (WebCore::ContentExtensions::Action::isolatedCopy const):
+        * contentextensions/ContentExtensionRule.h:
+        (WebCore::ContentExtensions::Action::operator== const):
+        (WebCore::ContentExtensions::Action::setExtensionIdentifier): Deleted.
+        (WebCore::ContentExtensions::Action::extensionIdentifier const): Deleted.
+        * contentextensions/ContentExtensionsBackend.cpp:
+        (WebCore::ContentExtensions::ContentExtensionsBackend::actionsForResourceLoad const):
+        (WebCore::ContentExtensions::ContentExtensionsBackend::processContentRuleListsForLoad):
+        (WebCore::ContentExtensions::ContentExtensionsBackend::processContentRuleListsForPingLoad):
+        (WebCore::ContentExtensions::applyResultsToRequest):
+        (WebCore::ContentExtensions::ContentExtensionsBackend::processContentExtensionRulesForLoad): Deleted.
+        (WebCore::ContentExtensions::ContentExtensionsBackend::processContentExtensionRulesForPingLoad): Deleted.
+        (WebCore::ContentExtensions::applyBlockedStatusToRequest): Deleted.
+        * contentextensions/ContentExtensionsBackend.h:
+        * contentextensions/ContentRuleListResults.h: Added.
+        (WebCore::ContentRuleListResults::Result::shouldNotifyApplication const):
+        (WebCore::ContentRuleListResults::shouldNotifyApplication const):
+        (WebCore::ContentRuleListResults::encode const):
+        (WebCore::ContentRuleListResults::decode):
+        (WebCore::ContentRuleListResults::Result::encode const):
+        (WebCore::ContentRuleListResults::Result::decode):
+        (WebCore::ContentRuleListResults::Summary::encode const):
+        (WebCore::ContentRuleListResults::Summary::decode):
+        * css/StyleSheetContents.cpp:
+        (WebCore::StyleSheetContents::subresourcesAllowReuse const):
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::loadResource):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::loadResourceSynchronously):
+        * loader/PingLoader.cpp:
+        (WebCore::processContentRuleListsForLoad):
+        (WebCore::PingLoader::loadImage):
+        (WebCore::PingLoader::sendPing):
+        (WebCore::PingLoader::sendViolationReport):
+        (WebCore::processContentExtensionRulesForLoad): Deleted.
+        * loader/ResourceLoader.cpp:
+        (WebCore::ResourceLoader::willSendRequestInternal):
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::requestResource):
+        * loader/cache/CachedResourceRequest.cpp:
+        (WebCore::CachedResourceRequest::applyResults):
+        (WebCore::CachedResourceRequest::applyBlockedStatus): Deleted.
+        * loader/cache/CachedResourceRequest.h:
+        * page/ChromeClient.h:
+        (WebCore::ChromeClient::contentRuleListNotification):
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::open):
+        * page/UserContentProvider.cpp:
+        (WebCore::UserContentProvider::processContentRuleListsForLoad):
+        (WebCore::UserContentProvider::actionsForResourceLoad):
+        (WebCore::UserContentProvider::processContentExtensionRulesForLoad): Deleted.
+        * page/UserContentProvider.h:
+
+2019-03-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Add an internal feature flag to disable the -webkit-overflow-scrolling CSS property
+        https://bugs.webkit.org/show_bug.cgi?id=196058
+        rdar://problem/49078202
+
+        Reviewed by Antti Koivisto.
+
+        Add an internal setting called "legacyOverflowScrollingTouchEnabled", initially
+        on by default.
+
+        When disabled, it makes the -webkit-overflow-scrolling property be unsupported.
+
+        Tests: fast/scrolling/ios/overflow-scrolling-touch-disabled-stacking.html
+               fast/scrolling/ios/overflow-scrolling-touch-enabled-stacking.html
+
+        * css/parser/CSSParserContext.cpp:
+        (WebCore::CSSParserContext::CSSParserContext):
+        (WebCore::operator==):
+        * css/parser/CSSParserContext.h:
+        (WebCore::CSSParserContextHash::hash):
+        * css/parser/CSSParserFastPaths.cpp:
+        (WebCore::CSSParserFastPaths::isValidKeywordPropertyAndValue):
+        * css/parser/CSSParserFastPaths.h:
+        * css/parser/CSSPropertyParser.cpp:
+        (WebCore::CSSPropertyParser::parseSingleValue):
+        * page/Settings.yaml:
+
+2019-03-21  Antti Koivisto  <antti@apple.com>
+
+        UI-process hit-testing needs to know about containing block relationships
+        https://bugs.webkit.org/show_bug.cgi?id=195845
+        <rdar://problem/48949633>
+
+        Reviewed by Simon Fraser.
+
+        Test: fast/scrolling/ios/overflow-scroll-overlap-5.html
+
+        * page/scrolling/ScrollingTree.h:
+        * page/scrolling/ScrollingTreeScrollingNode.h:
+        * page/scrolling/cocoa/ScrollingTreePositionedNode.h:
+        (WebCore::ScrollingTreePositionedNode::layer const):
+
+2019-03-21  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Cleanup reset state.
+        https://bugs.webkit.org/show_bug.cgi?id=196076
+        <rdar://problem/49107931>
+
+        Reviewed by Simon Fraser.
+
+        stopObservingPendingActivities() is a subset of reset() and call it when we've observed a visible change.
+
+        * page/ios/ContentChangeObserver.cpp:
+        (WebCore::ContentChangeObserver::willNotProceedWithClick):
+        (WebCore::ContentChangeObserver::stopObservingPendingActivities):
+        (WebCore::ContentChangeObserver::reset):
+        (WebCore::ContentChangeObserver::didSuspendActiveDOMObjects):
+        (WebCore::ContentChangeObserver::willDetachPage):
+        (WebCore::ContentChangeObserver::adjustObservedState):
+        (WebCore::ContentChangeObserver::cancelPendingActivities): Deleted.
+        * page/ios/ContentChangeObserver.h:
+
+2019-03-21  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed build fix.
+
+        * page/ios/ContentChangeObserver.h:
+
+2019-03-21  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Start tracking implicit transitions at mousemove
+        https://bugs.webkit.org/show_bug.cgi?id=196054
+        <rdar://problem/49093840>
+
+        Reviewed by Simon Fraser.
+
+        This patch fixes the hover menu issue on seriouseats.com. After tapping on the menu items, the submenus show up now.
+
+        1. Start observing at mousemove
+        2. Check if the style change is synchronous or not and start observing it accordingly.
+
+        Tests: fast/events/touch/ios/content-observation/0ms-delay-0ms-transition-on-mousemove.html
+               fast/events/touch/ios/content-observation/100ms-delay-10ms-transition-on-mousemove.html
+               fast/events/touch/ios/content-observation/10ms-delay-0ms-transition-on-mousemove.html
+               fast/events/touch/ios/content-observation/10ms-delay-0ms-transition-on-touch-start.html
+
+        * page/ios/ContentChangeObserver.cpp:
+        (WebCore::ContentChangeObserver::adjustObservedState):
+
+2019-03-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Absolute in stacking-context scroller jiggles when scrolled
+        https://bugs.webkit.org/show_bug.cgi?id=196010
+
+        Reviewed by Zalan Bujtas.
+
+        Updating compositing layers after a scroll (in a compositing update on the main thread)
+        failed to traverse to an absolute layer inside a stacking-context overflow:scroll,
+        because the overflow's layer didn't have the "hasCompositingAncestor" bit set on it.
+
+        This happened because childState.subtreeIsCompositing wasn't being set when indirect
+        reasons trigger compositing. So clean up RenderLayerCompositor::computeCompositingRequirements()
+        to set childState.subtreeIsCompositing for "late" compositing decisions, and move the
+        "Subsequent layers in the parent stacking context also need to composite" chunk
+        down to after the last compositing decision has been made.
+
+        Test: compositing/overflow/absolute-in-overflow.html
+
+        * page/scrolling/ScrollingTreeScrollingNode.cpp:
+        (WebCore::ScrollingTreeScrollingNode::scrollTo):
+        * page/scrolling/cocoa/ScrollingTreePositionedNode.mm:
+        (WebCore::ScrollingTreePositionedNode::applyLayerPositions):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::computeCompositingRequirements):
+
+2019-03-21  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Start tracking implicit transitions at touchStart
+        https://bugs.webkit.org/show_bug.cgi?id=196051
+        <rdar://problem/49092952>
+
+        Reviewed by Simon Fraser.
+
+        This patch enables transition tracking on touchStart.
+
+        1. Start observing for new transitions at touchStart
+        2. Stop observing at touchEnd
+        3. Check the next style recalc when the transition is finished (at onAnimationEnd we don't yet have the final computed style).
+        4. Remove the tracked transition when it is canceled.
+
+        Tests: fast/events/touch/ios/content-observation/0ms-transition-on-touch-start.html
+               fast/events/touch/ios/content-observation/100ms-transition-on-touch-start.html
+               fast/events/touch/ios/content-observation/10ms-delay-transition-on-touch-start.html
+               fast/events/touch/ios/content-observation/transition-on-touch-start-and-remove.html
+
+        * page/ios/ContentChangeObserver.cpp:
+        (WebCore::ContentChangeObserver::didAddTransition):
+        (WebCore::ContentChangeObserver::didFinishTransition):
+        (WebCore::ContentChangeObserver::didRemoveTransition):
+        (WebCore::ContentChangeObserver::adjustObservedState):
+        * page/ios/ContentChangeObserver.h:
+        (WebCore::ContentChangeObserver::setShouldObserveTransitions):
+        (WebCore::ContentChangeObserver::clearObservedTransitions):
+        (WebCore::ContentChangeObserver::hasObservedTransition const):
+        (WebCore::ContentChangeObserver::hasPendingActivity const):
+
 2019-03-21  Zalan Bujtas  <zalan@apple.com>
 
         [ContentChangeObserver] Track hidden elements only while transitioning.

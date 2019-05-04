@@ -27,6 +27,7 @@
 
 #if PLATFORM(IOS_FAMILY)
 
+#include "CSSPropertyNames.h"
 #include "PlatformEvent.h"
 #include "Timer.h"
 #include "WKContentObservation.h"
@@ -120,6 +121,7 @@ private:
 
     void setShouldObserveDOMTimerScheduling(bool observe) { m_isObservingDOMTimerScheduling = observe; }
     bool isObservingDOMTimerScheduling() const { return m_isObservingDOMTimerScheduling; }
+    void setShouldObserveTransitions(bool observe) { m_isObservingTransitions = observe; }
     bool isObservingTransitions() const { return m_isObservingTransitions; }
     bool isObservedPropertyForTransition(CSSPropertyID propertyId) const { return propertyId == CSSPropertyLeft; }
     void domTimerExecuteDidStart(const DOMTimer&);
@@ -127,6 +129,7 @@ private:
     void registerDOMTimer(const DOMTimer& timer) { m_DOMTimerList.add(&timer); }
     void unregisterDOMTimer(const DOMTimer& timer) { m_DOMTimerList.remove(&timer); }
     void clearObservedDOMTimers() { m_DOMTimerList.clear(); }
+    void clearObservedTransitions() { m_elementsWithTransition.clear(); }
     bool containsObservedDOMTimer(const DOMTimer& timer) const { return m_DOMTimerList.contains(&timer); }
 
     void styleRecalcDidStart();
@@ -136,7 +139,8 @@ private:
 
     bool isObservingContentChanges() const;
 
-    void cancelPendingActivities();
+    void stopObservingPendingActivities();
+    void reset();
 
     void setHasIndeterminateState();
     void setHasVisibleChangeState();
@@ -144,12 +148,13 @@ private:
 
     bool hasVisibleChangeState() const { return observedContentChange() == WKContentVisibilityChange; }
     bool hasObservedDOMTimer() const { return !m_DOMTimerList.isEmpty(); }
+    bool hasObservedTransition() const { return !m_elementsWithTransition.isEmpty(); }
     bool hasDeterminateState() const;
 
     void setIsBetweenTouchEndAndMouseMoved(bool isBetween) { m_isBetweenTouchEndAndMouseMoved = isBetween; }
     bool isBetweenTouchEndAndMouseMoved() const { return m_isBetweenTouchEndAndMouseMoved; }
 
-    bool hasPendingActivity() const { return hasObservedDOMTimer() || m_isWaitingForStyleRecalc || isObservationTimeWindowActive(); }
+    bool hasPendingActivity() const { return hasObservedDOMTimer() || hasObservedTransition() || m_isWaitingForStyleRecalc || isObservationTimeWindowActive(); }
     bool isObservationTimeWindowActive() const { return m_contentObservationTimer.isActive(); }
 
     void completeDurationBasedContentObservation();
@@ -166,6 +171,9 @@ private:
         EndedDOMTimerExecution,
         StartedStyleRecalc,
         EndedStyleRecalc,
+        AddedTransition,
+        EndedTransition,
+        CanceledTransition,
         StartedFixedObservationTimeWindow,
         EndedFixedObservationTimeWindow,
         ContentVisibilityChanged
