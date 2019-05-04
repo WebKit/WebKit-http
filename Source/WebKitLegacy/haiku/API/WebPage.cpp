@@ -153,13 +153,13 @@ enum {
     HANDLE_SEND_PAGE_SOURCE = 'spsc'
 };
 
+using namespace WebCore;
+
 class EmptyPluginInfoProvider final : public PluginInfoProvider {
     void refreshPlugins() final { };
     Vector<PluginInfo> pluginInfo(Page&, WTF::Optional<Vector<SupportedPluginIdentifier>>&) final { return { }; }
 	Vector<PluginInfo> webVisiblePluginInfo(Page&, const URL&) final { return { }; }
 };
-
-using namespace WebCore;
 
 BMessenger BWebPage::sDownloadListener;
 
