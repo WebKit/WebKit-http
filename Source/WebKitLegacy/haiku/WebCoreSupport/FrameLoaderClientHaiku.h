@@ -205,7 +205,6 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
         const String& referrer) override;
     RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&,
         const Vector<String>&, const String&, bool) override;
-    void recreatePlugin(Widget*) override { }
     void redirectDataToPlugin(Widget& pluginWidget) override;
 
     RefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const URL& baseURL,
