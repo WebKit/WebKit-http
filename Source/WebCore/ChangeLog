@@ -1,3 +1,1764 @@
+2019-03-21  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Track hidden elements only while transitioning.
+        https://bugs.webkit.org/show_bug.cgi?id=196050
+        <rdar://problem/49092037>
+
+        Reviewed by Simon Fraser.
+
+        Use the existing isConsideredHidden() logic to decide whether the current transition should be tracked.
+
+        * page/ios/ContentChangeObserver.cpp:
+        (WebCore::isConsideredHidden):
+        (WebCore::ContentChangeObserver::didAddTransition):
+        (WebCore::ContentChangeObserver::StyleChangeScope::StyleChangeScope):
+        (WebCore::ContentChangeObserver::StyleChangeScope::~StyleChangeScope):
+        (WebCore::ContentChangeObserver::StyleChangeScope::isConsideredHidden const): Deleted.
+        * page/ios/ContentChangeObserver.h:
+
+2019-03-21  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Add support for observing implicit transitions
+        https://bugs.webkit.org/show_bug.cgi?id=195914
+        <rdar://problem/49091959>
+
+        Reviewed by Simon Fraser.
+
+        This patch is in preparation for observing elements with property "left" implicit transitions.
+
+        This is not a continuous tracking, we are only interested in the start and the end state.
+        The idea here is to register hidden elements only and check if they become visible by
+        the end of the transition (and ignore if the transition gets "canceled").
+
+        * page/animation/AnimationBase.h:
+        * page/animation/ImplicitAnimation.cpp:
+        (WebCore::ImplicitAnimation::ImplicitAnimation):
+        (WebCore::ImplicitAnimation::~ImplicitAnimation):
+        (WebCore::ImplicitAnimation::clear):
+        (WebCore::ImplicitAnimation::onAnimationEnd):
+        * page/animation/ImplicitAnimation.h:
+        * page/ios/ContentChangeObserver.cpp:
+        (WebCore::ContentChangeObserver::didAddTransition):
+        (WebCore::ContentChangeObserver::removeTransitionIfNeeded):
+        (WebCore::ContentChangeObserver::didFinishTransition):
+        (WebCore::ContentChangeObserver::didRemoveTransition):
+        (WebCore::ContentChangeObserver::didInstallDOMTimer):
+        * page/ios/ContentChangeObserver.h:
+        (WebCore::ContentChangeObserver::isObservingTransitions const):
+        (WebCore::ContentChangeObserver::isObservedPropertyForTransition const):
+
+2019-03-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Page: lazily create the agent
+        https://bugs.webkit.org/show_bug.cgi?id=195592
+        <rdar://problem/48791916>
+
+        Reviewed by Timothy Hatcher.
+
+        No change in functionality.
+
+        Have more agents save the inspected `Page` so they don't need to access it via the
+        `InspectorPageAgent`. Make some of `InspectorPageAgent`'s functions `static` so other
+        agents can use them without needing to have access to an enabled `InspectorPageAgent`.
+
+        * inspector/InspectorController.cpp:
+        (WebCore::InspectorController::InspectorController):
+        (WebCore::InspectorController::createLazyAgents):
+
+        * inspector/agents/InspectorPageAgent.h:
+        (WebCore::InspectorPageAgent::page): Deleted.
+        * inspector/agents/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::InspectorPageAgent):
+        (WebCore::InspectorPageAgent::enable):
+        (WebCore::InspectorPageAgent::disable):
+        (WebCore::InspectorPageAgent::reload):
+        (WebCore::InspectorPageAgent::navigate):
+        (WebCore::InspectorPageAgent::overrideSetting):
+        (WebCore::InspectorPageAgent::getCookies):
+        (WebCore::InspectorPageAgent::deleteCookie):
+        (WebCore::InspectorPageAgent::getResourceTree):
+        (WebCore::InspectorPageAgent::searchInResources):
+        (WebCore::InspectorPageAgent::didPaint):
+        (WebCore::InspectorPageAgent::didLayout):
+        (WebCore::InspectorPageAgent::didScroll):
+        (WebCore::InspectorPageAgent::didRecalculateStyle):
+        (WebCore::InspectorPageAgent::setEmulatedMedia):
+        (WebCore::InspectorPageAgent::setForcedAppearance):
+        (WebCore::InspectorPageAgent::getCompositingBordersVisible):
+        (WebCore::InspectorPageAgent::setCompositingBordersVisible):
+        (WebCore::InspectorPageAgent::snapshotNode):
+        (WebCore::InspectorPageAgent::snapshotRect):
+        (WebCore::InspectorPageAgent::archive):
+        (WebCore::InspectorPageAgent::mainFrame): Deleted.
+        (WebCore::InspectorPageAgent::hasIdForFrame const): Deleted.
+
+        * inspector/agents/InspectorApplicationCacheAgent.h:
+        * inspector/agents/InspectorApplicationCacheAgent.cpp:
+        (WebCore::InspectorApplicationCacheAgent::InspectorApplicationCacheAgent):
+        (WebCore::InspectorApplicationCacheAgent::updateApplicationCacheStatus):
+        (WebCore::InspectorApplicationCacheAgent::getFramesWithManifests):
+        (WebCore::InspectorApplicationCacheAgent::assertFrameWithDocumentLoader):
+
+        * inspector/agents/InspectorCanvasAgent.h:
+        * inspector/agents/InspectorCanvasAgent.cpp:
+        (WebCore::InspectorCanvasAgent::InspectorCanvasAgent):
+        (WebCore::InspectorCanvasAgent::enable):
+
+        * inspector/agents/InspectorDOMStorageAgent.h:
+        * inspector/agents/InspectorDOMStorageAgent.cpp:
+        (WebCore::InspectorDOMStorageAgent::InspectorDOMStorageAgent):
+        (WebCore::InspectorDOMStorageAgent::findStorageArea):
+
+        * inspector/agents/InspectorIndexedDBAgent.h:
+        * inspector/agents/InspectorIndexedDBAgent.cpp:
+        (WebCore::InspectorIndexedDBAgent::InspectorIndexedDBAgent):
+        (WebCore::InspectorIndexedDBAgent::requestDatabaseNames):
+        (WebCore::InspectorIndexedDBAgent::requestDatabase):
+        (WebCore::InspectorIndexedDBAgent::requestData):
+        (WebCore::InspectorIndexedDBAgent::clearObjectStore):
+
+        * inspector/agents/page/PageDebuggerAgent.h:
+        * inspector/agents/page/PageDebuggerAgent.cpp:
+        (WebCore::PageDebuggerAgent::PageDebuggerAgent):
+        (WebCore::PageDebuggerAgent::sourceMapURLForScript):
+        (WebCore::PageDebuggerAgent::breakpointActionLog):
+        (WebCore::PageDebuggerAgent::injectedScriptForEval):
+
+        * inspector/agents/page/PageNetworkAgent.h:
+        * inspector/agents/page/PageNetworkAgent.cpp:
+        (WebCore::PageNetworkAgent::PageNetworkAgent):
+        (WebCore::PageNetworkAgent::loaderIdentifier):
+        (WebCore::PageNetworkAgent::frameIdentifier):
+        (WebCore::PageNetworkAgent::setResourceCachingDisabled):
+        (WebCore::PageNetworkAgent::scriptExecutionContext):
+
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::didClearWindowObjectInWorldImpl):
+
+2019-03-21  Brent Fulgham  <bfulgham@apple.com>
+
+        Hardening: Use WeakPtrs in VideoFullscreenInterface{Mac,AVKit}
+        https://bugs.webkit.org/show_bug.cgi?id=196052
+        <rdar://problem/48778571>
+
+        Reviewed by Eric Carlson.
+
+        The VideoFullscreenInterface{Mac,AVKit} implementations store their fullscreen model
+        and fullscreen change observer members as bare pointers, something we've been working
+        to eliminate.
+        
+        This patch corrects this oversight.
+
+        No new tests since no changes in behavior.
+
+        * platform/cocoa/VideoFullscreenChangeObserver.h:
+        * platform/cocoa/VideoFullscreenModel.h:
+        * platform/ios/VideoFullscreenInterfaceAVKit.h:
+        * platform/ios/VideoFullscreenInterfaceAVKit.mm:
+        (VideoFullscreenInterfaceAVKit::setVideoFullscreenModel):
+        (VideoFullscreenInterfaceAVKit::setVideoFullscreenChangeObserver):
+        (VideoFullscreenInterfaceAVKit::presentingViewController):
+        (VideoFullscreenInterfaceAVKit::invalidate):
+        (VideoFullscreenInterfaceAVKit::preparedToExitFullscreen):
+        (VideoFullscreenInterfaceAVKit::shouldExitFullscreenWithReason):
+        (VideoFullscreenInterfaceAVKit::doSetup):
+        * platform/mac/VideoFullscreenInterfaceMac.h:
+        (WebCore::VideoFullscreenInterfaceMac::videoFullscreenModel const):
+        (WebCore::VideoFullscreenInterfaceMac::videoFullscreenChangeObserver const):
+        * platform/mac/VideoFullscreenInterfaceMac.mm:
+        (WebCore::VideoFullscreenInterfaceMac::setVideoFullscreenModel):
+        (WebCore::VideoFullscreenInterfaceMac::setVideoFullscreenChangeObserver):
+        (WebCore::VideoFullscreenInterfaceMac::enterFullscreen):
+        (WebCore::VideoFullscreenInterfaceMac::invalidate):
+
+2019-03-21  Megan Gardner  <megan_gardner@apple.com>
+
+        Smart delete for paragraphs.
+        https://bugs.webkit.org/show_bug.cgi?id=195837
+
+        Reviewed by Ryosuke Niwa.
+
+        Remove additional newlines to maintain spacing around paragraphs.
+
+        Tests: editing/pasteboard/smart-delete-paragraph-001.html
+               editing/pasteboard/smart-delete-paragraph-002.html
+               editing/pasteboard/smart-delete-paragraph-003.html
+               editing/pasteboard/smart-delete-paragraph-004.html
+
+        * editing/DeleteSelectionCommand.cpp:
+        (WebCore::isBlankLine):
+        (WebCore::DeleteSelectionCommand::initializePositionData):
+
+2019-03-21  Cathie Chen  <cathiechen@igalia.com>
+
+        Fixed ContentChangeObserver build error.
+        https://bugs.webkit.org/show_bug.cgi?id=195993
+
+        Reviewed by Rob Buis.
+
+        EWS IOS compiler complains after adding new files in Bug 157743.
+        ContentChangeObserver.h should have forward declaration for Element.
+
+        * page/ios/ContentChangeObserver.cpp:
+        * page/ios/ContentChangeObserver.h:
+
+2019-03-21  Charlie Turner  <cturner@igalia.com>
+
+        [GStreamer][EME][Clearkey] Take a lock in keys() method
+        https://bugs.webkit.org/show_bug.cgi?id=195900
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        This isn't ideal, since we're taking a lock for every frame to
+        decode. But there's no good way around it when keys can be
+        made unavailable at any time via an update() call, so we can't
+        cache key IDs in the decryptor.
+
+        Covered by test imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey.https.html
+
+        * platform/encryptedmedia/clearkey/CDMClearKey.cpp:
+        (WebCore::CDMInstanceClearKey::keys const): This method is called
+        from GStreamer's decode() method, which runs off the main thread,
+        therefore we need to take a lock.
+        * platform/encryptedmedia/clearkey/CDMClearKey.h:
+
+2019-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to provide geolocation information
+        https://bugs.webkit.org/show_bug.cgi?id=195940
+
+        Reviewed by Michael Catanzaro.
+
+        Replace ENABLE(GEOLOCATION) with USE(GEOCLUE).
+
+        * PlatformGTK.cmake:
+        * platform/geoclue/GeolocationProviderGeoclue.cpp:
+        * platform/geoclue/GeolocationProviderGeoclue.h:
+        * platform/geoclue/GeolocationProviderGeoclueClient.h:
+
+2019-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Confusing messages in stderr when surfaceless context is not supported
+        https://bugs.webkit.org/show_bug.cgi?id=195742
+
+        Reviewed by Žan Doberšek.
+
+        The messages shown are:
+
+        Cannot create EGL surfaceless context: missing EGL_KHR_surfaceless_{context,opengl} extension.
+        Cannot create EGL WPE context: EGL_SUCCESS
+
+        It seems like there's anything wrong, while there isn't. It's also confusing an error message where the error is
+        EGL_SUCCESS. I think we should not show those messages at all, not suporting surfaceless contexts is not an
+        error and it's correctly handled. Failing to get a native window handle from render backend offscreen egl target
+        is not an error either, since most of the backends don't implement the interface (they actually have an empty
+        implementation).
+
+        * platform/graphics/egl/GLContextEGL.cpp:
+        (WebCore::GLContextEGL::createSurfacelessContext): Remove the message when extensions are not present
+        * platform/graphics/egl/GLContextEGLLibWPE.cpp:
+        (WebCore::GLContextEGL::createWPEContext): Handle the case of wpe_renderer_backend_egl_offscreen_target_create()
+        returning nullptr, which can happen if the backend doesn't implement the interface. Move the context creation
+        after the target initialization, to avoid leaking the context when the target doesn't have a native window.
+
+2019-03-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Use finalizer in JSGlobalLexicalEnvironment and JSGlobalObject
+        https://bugs.webkit.org/show_bug.cgi?id=195992
+
+        Reviewed by Keith Miller and Mark Lam.
+
+        Use cellHeapCellType since JSSegmentedVariableObject already set finalizer.
+
+        * bindings/js/WebCoreJSClientData.cpp:
+        (WebCore::JSVMClientData::JSVMClientData):
+
+2019-03-20  Youenn Fablet  <youenn@apple.com>
+
+        Compute quota after network process restart based on default quota and space used
+        https://bugs.webkit.org/show_bug.cgi?id=195804
+
+        Reviewed by Chris Dumez.
+
+        At creation of quota manager, a default quota will be assigned.
+        This value is the same for all origins.
+        Some origins may have been granted a bigger quota by the user.
+        In that case, the space used might be greater for these origins.
+        Update at initialization time the quota according the space used as follows:
+        - If space used is below default quota, stick with default quota.
+        - If space used is above, set quota to space used rounded by one tenth of the default quota.
+        The rounding ensures that quota requests will not happen too quickly after a page is loaded.
+
+        Test: http/wpt/cache-storage/cache-quota-after-restart.any.html
+
+        * Modules/cache/CacheStorageConnection.h:
+        (WebCore::CacheStorageConnection::setQuotaBasedOnSpaceUsage):
+        * storage/StorageQuotaManager.cpp:
+        (WebCore::StorageQuotaManager::setQuotaBasedOnSpaceUsage):
+        (WebCore::StorageQuotaManager::addUser):
+        * storage/StorageQuotaManager.h:
+        * testing/Internals.cpp:
+        (WebCore::Internals::updateQuotaBasedOnSpaceUsage):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2019-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename ENABLE_ACCELERATED_OVERFLOW_SCROLLING macro to ENABLE_OVERFLOW_SCROLLING_TOUCH
+        https://bugs.webkit.org/show_bug.cgi?id=196049
+
+        Reviewed by Tim Horton.
+
+        This macro is about the -webkit-overflow-scrolling CSS property, not accelerated
+        overflow scrolling in general, so rename it.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::ComputedStyleExtractor::valueForPropertyinStyle):
+        * css/CSSProperties.json:
+        * css/CSSValueKeywords.in:
+        * css/StyleBuilderConverter.h:
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::adjustRenderStyle):
+        * css/parser/CSSParserFastPaths.cpp:
+        (WebCore::CSSParserFastPaths::isValidKeywordPropertyAndValue):
+        (WebCore::CSSParserFastPaths::isKeywordPropertyID):
+        * dom/Element.cpp:
+        * dom/Element.h:
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::canUseCompositedScrolling const):
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::rareInheritedDataChangeRequiresLayout):
+        * rendering/style/RenderStyle.h:
+        * rendering/style/StyleRareInheritedData.cpp:
+        (WebCore::StyleRareInheritedData::StyleRareInheritedData):
+        (WebCore::StyleRareInheritedData::operator== const):
+        * rendering/style/StyleRareInheritedData.h:
+        * rendering/style/WillChangeData.cpp:
+        (WebCore::WillChangeData::propertyCreatesStackingContext):
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: lazily create the agent
+        https://bugs.webkit.org/show_bug.cgi?id=195589
+        <rdar://problem/48791742>
+
+        Reviewed by Timothy Hatcher.
+
+        No change in functionality.
+
+        * inspector/agents/InspectorDOMAgent.h:
+        (WebCore::InspectorDOMAgent::DOMListener): Deleted.
+        (WebCore::InspectorDOMAgent::pageAgent): Deleted.
+        * inspector/agents/InspectorDOMAgent.cpp:
+        (WebCore::InspectorDOMAgent):
+        (WebCore::InspectorDOMAgent::unbind):
+        (WebCore::InspectorDOMAgent::setSearchingForNode):
+        (WebCore::InspectorDOMAgent::highlightSelector):
+        (WebCore::InspectorDOMAgent::highlightFrame):
+        (WebCore::InspectorDOMAgent::buildObjectForNode):
+        (WebCore::InspectorDOMAgent::didModifyDOMAttr):
+        (WebCore::InspectorDOMAgent::didRemoveDOMAttr):
+        (WebCore::InspectorDOMAgent::styleAttributeInvalidated):
+        (WebCore::InspectorDOMAgent::didInvalidateStyleAttr):
+        (WebCore::InspectorDOMAgent::setDOMListener): Deleted.
+
+        * inspector/agents/InspectorCSSAgent.h:
+        * inspector/agents/InspectorCSSAgent.cpp:
+        (WebCore::InspectorCSSAgent::InspectorCSSAgent):
+        (WebCore::InspectorCSSAgent::willDestroyFrontendAndBackend):
+        (WebCore::InspectorCSSAgent::reset):
+        (WebCore::InspectorCSSAgent::enable):
+        (WebCore::InspectorCSSAgent::disable):
+        (WebCore::InspectorCSSAgent::forcePseudoState):
+        (WebCore::InspectorCSSAgent::collectAllStyleSheets):
+        (WebCore::InspectorCSSAgent::setStyleSheetText):
+        (WebCore::InspectorCSSAgent::setStyleText):
+        (WebCore::InspectorCSSAgent::setRuleSelector):
+        (WebCore::InspectorCSSAgent::createStyleSheet):
+        (WebCore::InspectorCSSAgent::addRule):
+        (WebCore::InspectorCSSAgent::asInspectorStyleSheet):
+        (WebCore::InspectorCSSAgent::elementForId):
+        (WebCore::InspectorCSSAgent::bindStyleSheet):
+        (WebCore::InspectorCSSAgent::~InspectorCSSAgent): Deleted.
+        (WebCore::InspectorCSSAgent::discardAgent): Deleted.
+        (WebCore::InspectorCSSAgent::resetNonPersistentData): Deleted.
+        * inspector/InspectorStyleSheet.cpp:
+
+        * inspector/agents/InspectorDOMDebuggerAgent.h:
+        * inspector/agents/InspectorDOMDebuggerAgent.cpp:
+        (WebCore::InspectorDOMDebuggerAgent::InspectorDOMDebuggerAgent):
+        (WebCore::InspectorDOMDebuggerAgent::setDOMBreakpoint):
+        (WebCore::InspectorDOMDebuggerAgent::removeDOMBreakpoint):
+        (WebCore::InspectorDOMDebuggerAgent::descriptionForDOMEvent):
+        (WebCore::InspectorDOMDebuggerAgent::willHandleEvent):
+
+        * inspector/agents/page/PageConsoleAgent.h:
+        * inspector/agents/page/PageConsoleAgent.cpp:
+        (WebCore::PageConsoleAgent::PageConsoleAgent):
+        (WebCore::PageConsoleAgent::clearMessages):
+
+        * inspector/InspectorController.h:
+        * inspector/InspectorController.cpp:
+        (WebCore::InspectorController::InspectorController):
+        (WebCore::InspectorController::createLazyAgents):
+        (WebCore::InspectorController::inspect):
+        (WebCore::InspectorController::hideHighlight):
+
+2019-03-20  Youenn Fablet  <youenn@apple.com>
+
+        Include WAL and SHM file size in IDB database size computation
+        https://bugs.webkit.org/show_bug.cgi?id=195688
+
+        Reviewed by Brady Eidson.
+
+        Count WAL and SHM files as part of IDB quota checks.
+        This makes some IDB tests go over the testing quota which then
+        triggers some IDB tasks to happen sooner than other write IDB tasks.
+        The IDB implementation requires these tasks to remain ordered.
+        In case a write task is pending quota check, queue all tasks,
+        write or read, to keep the order.
+
+        This patch specials case aborting a transaction.
+        In case it is called as part of clearing a database,
+        the task should not be queued and all pending tasks are errored.
+        When transaction is aborted by the web page, queue the task.
+
+        When we can make a decision to run tasks with size 0,
+        do not check quota. This ensures that read operations
+        succeed even if we are above quota.
+
+        Covered by existing tests.
+
+        * Modules/indexeddb/server/UniqueIDBDatabase.cpp:
+        (WebCore::IDBServer::UniqueIDBDatabase::waitForRequestSpaceCompletion):
+        (WebCore::IDBServer::UniqueIDBDatabase::deleteObjectStore):
+        (WebCore::IDBServer::UniqueIDBDatabase::clearObjectStore):
+        (WebCore::IDBServer::UniqueIDBDatabase::deleteIndex):
+        (WebCore::IDBServer::UniqueIDBDatabase::getRecord):
+        (WebCore::IDBServer::UniqueIDBDatabase::getAllRecords):
+        (WebCore::IDBServer::UniqueIDBDatabase::getCount):
+        (WebCore::IDBServer::UniqueIDBDatabase::deleteRecord):
+        (WebCore::IDBServer::UniqueIDBDatabase::openCursor):
+        (WebCore::IDBServer::UniqueIDBDatabase::iterateCursor):
+        (WebCore::IDBServer::UniqueIDBDatabase::commitTransaction):
+        * Modules/indexeddb/server/UniqueIDBDatabase.h:
+        * Modules/webdatabase/DatabaseTracker.cpp:
+        (WebCore::DatabaseTracker::usage):
+        * platform/sql/SQLiteFileSystem.cpp:
+        (WebCore::SQLiteFileSystem::getDatabaseFileSize):
+        * storage/StorageQuotaManager.h:
+        * storage/StorageQuotaManager.cpp:
+        (WebCore::StorageQuotaManager::requestSpace):
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timeline should show when events preventDefault() was called on an event or not
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        <rdar://problem/34290931>
+
+        Reviewed by Timothy Hatcher.
+
+        Original patch by Joseph Pecoraro <pecoraro@apple.com>.
+
+        Tests: inspector/timeline/timeline-event-CancelAnimationFrame.html
+               inspector/timeline/timeline-event-EventDispatch.html
+               inspector/timeline/timeline-event-FireAnimationFrame.html
+               inspector/timeline/timeline-event-RequestAnimationFrame.html
+               inspector/timeline/timeline-event-TimerFire.html
+               inspector/timeline/timeline-event-TimerInstall.html
+               inspector/timeline/timeline-event-TimerRemove.html
+
+        * dom/EventTarget.cpp:
+        (WebCore::EventTarget::innerInvokeEventListeners):
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::dispatchEvent):
+        Include `defaultPrevented` when notifying inspector.
+
+        * inspector/InspectorInstrumentation.h:
+        (WebCore::InspectorInstrumentation::didDispatchEvent):
+        (WebCore::InspectorInstrumentation::didDispatchEventOnWindow):
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::didDispatchEventImpl):
+        (WebCore::InspectorInstrumentation::didDispatchEventOnWindowImpl):
+        Pass `defaultPrevented` on to agent.
+
+        * inspector/agents/InspectorTimelineAgent.h:
+        * inspector/agents/InspectorTimelineAgent.cpp:
+        (WebCore::InspectorTimelineAgent::didDispatchEvent):
+        Append a boolean `defaultPrevented` property on the `EventDispatch` timeline record's data.
+
+2019-03-20  Antoine Quint  <graouts@apple.com>
+
+        DumpRenderTree crashes under WebAnimation::isRelevant when running imported/mozilla/css-transitions/test_document-get-animations.html in GuardMalloc
+        https://bugs.webkit.org/show_bug.cgi?id=196028
+        <rdar://problem/46842707>
+
+        Reviewed by Dean Jackson.
+
+        Instead of keeping a ListHashSet of raw pointers, we are now using a Vector of WeakPtrs.
+
+        * animation/AnimationTimeline.cpp:
+        (WebCore::AnimationTimeline::forgetAnimation):
+        (WebCore::AnimationTimeline::animationTimingDidChange):
+        (WebCore::AnimationTimeline::cancelDeclarativeAnimation):
+        * animation/AnimationTimeline.h:
+        * animation/DocumentTimeline.cpp:
+        (WebCore::DocumentTimeline::getAnimations const):
+
+2019-03-20  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove the SVG property tear off objects for SVGAnimatedNumber
+        https://bugs.webkit.org/show_bug.cgi?id=196037
+
+        Reviewed by Simon Fraser.
+
+        -- Define SVGAnimatedNumber to be SVGAnimatedPrimitiveProperty<float>.
+
+        -- Add SVGAnimatedNumberAccessor to associate an attribute name with a 
+           pointer to an SVGAnimatedNumber. Given a pointer to an SVGElement,
+           this accessor will and create an animator for the animated property.
+
+        -- Add SVGAnimatedNumberPairAccessor to associate an attribute name
+           with a pair of pointers to SVGAnimatedNumbers. Given a pointer to an
+           SVGElement, this accessor will and create an animator for these
+           animated properties.
+
+        -- Add SVGAnimatedNumberAnimator to animated an SVGAnimatedNumber.
+
+        -- Add SVGAnimatedNumberPairAnimator to animated a pair of SVGAnimatedNumbers.
+
+        -- Add SVGAnimationNumberFunction which will be responsible for progressing
+           a float over a period of time.
+
+        -- Define SVGNumberAnimator to be SVGPrimitivePropertyAnimator<float,
+           SVGAnimationNumberFunction>. SVGNumberAnimator will be responsible 
+           for animating attributes with no reflecting animated properties, e.g.
+           "fill-opacity".
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * svg/SVGAnimatedLength.cpp:
+        * svg/SVGAnimatedLengthList.cpp:
+        * svg/SVGAnimatedNumber.cpp: Removed.
+        * svg/SVGAnimatedNumber.h: Removed.
+        * svg/SVGAnimatedNumberList.cpp:
+        * svg/SVGAnimatedNumberOptionalNumber.cpp: Removed.
+        * svg/SVGAnimatedNumberOptionalNumber.h: Removed.
+        * svg/SVGAnimatedTransformList.cpp:
+        * svg/SVGAnimatorFactory.h:
+        (WebCore::SVGAnimatorFactory::create):
+        * svg/SVGComponentTransferFunctionElement.cpp:
+        (WebCore::SVGComponentTransferFunctionElement::SVGComponentTransferFunctionElement):
+        (WebCore::SVGComponentTransferFunctionElement::registerAttributes):
+        (WebCore::SVGComponentTransferFunctionElement::parseAttribute):
+        * svg/SVGComponentTransferFunctionElement.h:
+        (WebCore::SVGComponentTransferFunctionElement::slope const):
+        (WebCore::SVGComponentTransferFunctionElement::intercept const):
+        (WebCore::SVGComponentTransferFunctionElement::amplitude const):
+        (WebCore::SVGComponentTransferFunctionElement::exponent const):
+        (WebCore::SVGComponentTransferFunctionElement::offset const):
+        (WebCore::SVGComponentTransferFunctionElement::slopeAnimated):
+        (WebCore::SVGComponentTransferFunctionElement::interceptAnimated):
+        (WebCore::SVGComponentTransferFunctionElement::amplitudeAnimated):
+        (WebCore::SVGComponentTransferFunctionElement::exponentAnimated):
+        (WebCore::SVGComponentTransferFunctionElement::offsetAnimated):
+        * svg/SVGFECompositeElement.cpp:
+        (WebCore::SVGFECompositeElement::SVGFECompositeElement):
+        (WebCore::SVGFECompositeElement::registerAttributes):
+        (WebCore::SVGFECompositeElement::parseAttribute):
+        * svg/SVGFECompositeElement.h:
+        * svg/SVGFEConvolveMatrixElement.cpp:
+        (WebCore::SVGFEConvolveMatrixElement::SVGFEConvolveMatrixElement):
+        (WebCore::SVGFEConvolveMatrixElement::registerAttributes):
+        (WebCore::SVGFEConvolveMatrixElement::parseAttribute):
+        (WebCore::SVGFEConvolveMatrixElement::setKernelUnitLength):
+        (WebCore::SVGFEConvolveMatrixElement::kernelUnitLengthXIdentifier): Deleted.
+        (WebCore::SVGFEConvolveMatrixElement::kernelUnitLengthYIdentifier): Deleted.
+        * svg/SVGFEConvolveMatrixElement.h:
+        * svg/SVGFEDiffuseLightingElement.cpp:
+        (WebCore::SVGFEDiffuseLightingElement::SVGFEDiffuseLightingElement):
+        (WebCore::SVGFEDiffuseLightingElement::registerAttributes):
+        (WebCore::SVGFEDiffuseLightingElement::parseAttribute):
+        (WebCore::SVGFEDiffuseLightingElement::kernelUnitLengthXIdentifier): Deleted.
+        (WebCore::SVGFEDiffuseLightingElement::kernelUnitLengthYIdentifier): Deleted.
+        * svg/SVGFEDiffuseLightingElement.h:
+        * svg/SVGFEDisplacementMapElement.cpp:
+        (WebCore::SVGFEDisplacementMapElement::SVGFEDisplacementMapElement):
+        (WebCore::SVGFEDisplacementMapElement::registerAttributes):
+        (WebCore::SVGFEDisplacementMapElement::parseAttribute):
+        * svg/SVGFEDisplacementMapElement.h:
+        * svg/SVGFEDropShadowElement.cpp:
+        (WebCore::SVGFEDropShadowElement::SVGFEDropShadowElement):
+        (WebCore::SVGFEDropShadowElement::setStdDeviation):
+        (WebCore::SVGFEDropShadowElement::registerAttributes):
+        (WebCore::SVGFEDropShadowElement::parseAttribute):
+        (WebCore::SVGFEDropShadowElement::stdDeviationXIdentifier): Deleted.
+        (WebCore::SVGFEDropShadowElement::stdDeviationYIdentifier): Deleted.
+        * svg/SVGFEDropShadowElement.h:
+        * svg/SVGFEGaussianBlurElement.cpp:
+        (WebCore::SVGFEGaussianBlurElement::SVGFEGaussianBlurElement):
+        (WebCore::SVGFEGaussianBlurElement::setStdDeviation):
+        (WebCore::SVGFEGaussianBlurElement::registerAttributes):
+        (WebCore::SVGFEGaussianBlurElement::parseAttribute):
+        (WebCore::SVGFEGaussianBlurElement::stdDeviationXIdentifier): Deleted.
+        (WebCore::SVGFEGaussianBlurElement::stdDeviationYIdentifier): Deleted.
+        * svg/SVGFEGaussianBlurElement.h:
+        * svg/SVGFELightElement.cpp:
+        (WebCore::SVGFELightElement::SVGFELightElement):
+        (WebCore::SVGFELightElement::parseAttribute):
+        (WebCore::SVGFELightElement::svgAttributeChanged):
+        (WebCore::SVGFELightElement::registerAttributes): Deleted.
+        * svg/SVGFELightElement.h:
+        (WebCore::SVGFELightElement::azimuth const):
+        (WebCore::SVGFELightElement::elevation const):
+        (WebCore::SVGFELightElement::x const):
+        (WebCore::SVGFELightElement::y const):
+        (WebCore::SVGFELightElement::z const):
+        (WebCore::SVGFELightElement::pointsAtX const):
+        (WebCore::SVGFELightElement::pointsAtY const):
+        (WebCore::SVGFELightElement::pointsAtZ const):
+        (WebCore::SVGFELightElement::specularExponent const):
+        (WebCore::SVGFELightElement::limitingConeAngle const):
+        (WebCore::SVGFELightElement::azimuthAnimated):
+        (WebCore::SVGFELightElement::elevationAnimated):
+        (WebCore::SVGFELightElement::xAnimated):
+        (WebCore::SVGFELightElement::yAnimated):
+        (WebCore::SVGFELightElement::zAnimated):
+        (WebCore::SVGFELightElement::pointsAtXAnimated):
+        (WebCore::SVGFELightElement::pointsAtYAnimated):
+        (WebCore::SVGFELightElement::pointsAtZAnimated):
+        (WebCore::SVGFELightElement::specularExponentAnimated):
+        (WebCore::SVGFELightElement::limitingConeAngleAnimated):
+        (WebCore::SVGFELightElement::attributeRegistry): Deleted.
+        (WebCore::SVGFELightElement::isKnownAttribute): Deleted.
+        * svg/SVGFEMorphologyElement.cpp:
+        (WebCore::SVGFEMorphologyElement::SVGFEMorphologyElement):
+        (WebCore::SVGFEMorphologyElement::setRadius):
+        (WebCore::SVGFEMorphologyElement::registerAttributes):
+        (WebCore::SVGFEMorphologyElement::parseAttribute):
+        (WebCore::SVGFEMorphologyElement::radiusXIdentifier): Deleted.
+        (WebCore::SVGFEMorphologyElement::radiusYIdentifier): Deleted.
+        * svg/SVGFEMorphologyElement.h:
+        * svg/SVGFEOffsetElement.cpp:
+        (WebCore::SVGFEOffsetElement::SVGFEOffsetElement):
+        (WebCore::SVGFEOffsetElement::registerAttributes):
+        (WebCore::SVGFEOffsetElement::parseAttribute):
+        * svg/SVGFEOffsetElement.h:
+        * svg/SVGFESpecularLightingElement.cpp:
+        (WebCore::SVGFESpecularLightingElement::SVGFESpecularLightingElement):
+        (WebCore::SVGFESpecularLightingElement::registerAttributes):
+        (WebCore::SVGFESpecularLightingElement::parseAttribute):
+        (WebCore::SVGFESpecularLightingElement::kernelUnitLengthXIdentifier): Deleted.
+        (WebCore::SVGFESpecularLightingElement::kernelUnitLengthYIdentifier): Deleted.
+        * svg/SVGFESpecularLightingElement.h:
+        * svg/SVGFETurbulenceElement.cpp:
+        (WebCore::SVGFETurbulenceElement::SVGFETurbulenceElement):
+        (WebCore::SVGFETurbulenceElement::registerAttributes):
+        (WebCore::SVGFETurbulenceElement::parseAttribute):
+        (WebCore::SVGFETurbulenceElement::baseFrequencyXIdentifier): Deleted.
+        (WebCore::SVGFETurbulenceElement::baseFrequencyYIdentifier): Deleted.
+        * svg/SVGFETurbulenceElement.h:
+        * svg/SVGGeometryElement.cpp:
+        (WebCore::SVGGeometryElement::SVGGeometryElement):
+        (WebCore::SVGGeometryElement::parseAttribute):
+        (WebCore::SVGGeometryElement::registerAttributes): Deleted.
+        * svg/SVGGeometryElement.h:
+        (WebCore::SVGGeometryElement::pathLength const):
+        (WebCore::SVGGeometryElement::pathLengthAnimated):
+        (WebCore::SVGGeometryElement::attributeRegistry): Deleted.
+        (WebCore::SVGGeometryElement::isKnownAttribute): Deleted.
+        * svg/SVGPathElement.h:
+        * svg/SVGStopElement.cpp:
+        (WebCore::SVGStopElement::SVGStopElement):
+        (WebCore::SVGStopElement::parseAttribute):
+        (WebCore::SVGStopElement::registerAttributes): Deleted.
+        * svg/SVGStopElement.h:
+        * svg/properties/SVGAnimatedPropertyAccessorImpl.h:
+        * svg/properties/SVGAnimatedPropertyAnimatorImpl.h:
+        * svg/properties/SVGAnimatedPropertyImpl.h:
+        * svg/properties/SVGAnimatedPropertyPairAccessorImpl.h:
+        * svg/properties/SVGAnimatedPropertyPairAnimatorImpl.h:
+        * svg/properties/SVGAnimationAdditiveValueFunctionImpl.h:
+        (WebCore::SVGAnimationNumberFunction::progress):
+        * svg/properties/SVGAttributeRegistry.h:
+        * svg/properties/SVGPrimitivePropertyAnimatorImpl.h:
+        * svg/properties/SVGPropertyAnimatorCreator.h:
+        (WebCore::SVGPropertyAnimatorCreator::createNumberAnimator):
+        (WebCore::SVGPropertyAnimatorCreator::attributeAnimatorCreator):
+        * svg/properties/SVGPropertyOwnerRegistry.h:
+        (WebCore::SVGPropertyOwnerRegistry::registerProperty):
+
+2019-03-20  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove the SVG tear off objects for SVGColorAnimator
+        https://bugs.webkit.org/show_bug.cgi?id=196025
+
+        Reviewed by Simon Fraser.
+
+        SVG attributes like "fill" and "stroke" do not have reflecting properties
+        in SVGElement but they are animatable by SMIL. Animating such attributes
+        is different from animating the SVG animated properties. These new classes
+        will be added to handle the first type of this kind of attribute: the Color:
+
+        -- SVGPropertyAnimatorCreator is added to SVGElement. It is responsible 
+           for creating SVGPropertyAnimators for the attribute which do not have
+           reflecting animated properties stored by SVGElement. It will maintain
+           a HashMap for the animated values for these attributes which is indexed
+           by the attribute name. The animated values has to be RefCounted because
+           the same attribute can be animated by multiple animators. So the values
+           of this HashMap will be of type Ref<SVGProperty>, e.g.
+            <circle cx="80" cy="120" r="35">
+                <animate attributeName="fill" values="#080" begin="2s" />
+                <animate attributeName="fill" values="#602;#004" begin="4s" dur="5s"/>
+            </circle>
+
+        -- SVGPropertyAnimator is the a new type which animates an attribute with
+           no reflecting animated property.
+
+        -- SVGPrimitivePropertyAnimator is a template class which is responsible
+           for animating attributes with primitive types, e.g. Color, string and 
+           float. It is derived form SVGPropertyAnimator and it is initialized 
+           with a Ref<SVGValueProperty<PropertyType>> which is created and maintained
+           by SVGPropertyAnimatorFactory.
+
+        -- SVGAnimationColorFunction is the animation function that animates the
+           attributes whose type are Color. Note the conversion form String to 
+           Color in this class has to handle the case when its value is "attributeName="
+           e.g. <animate attributeName="fill" from="attributeName="r"/>
+
+        -- SVGColorAnimator will be defined to be
+           SVGPrimitivePropertyAnimator<Color, SVGAnimationColorFunction>.
+
+        The life cycle of the RefCounted properties can be explained as follows:
+
+        -- SVGPropertyAnimatorFactory checks whether its HashMap has an entry
+           for the given attribute name. If it does not have, it will create a
+           new value through the value creation method for this attribute.
+
+        -- SVGPropertyAnimatorFactory passes the shared animated value to the
+           animator creation method. So multiple animators will be accessing the
+           same value through their RefCounted pointers.
+
+        -- When the animator is about to be deleted, it will notify the target
+           SVGElement which will notify its SVGPropertyAnimatorFactory.
+           SVGPropertyAnimatorFactory will check its HashMap and retrieves the
+           entry for the given attribute name. If the refCount is 2, it is going
+           to remove the entry form the HashMap.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * svg/SVGAnimateColorElement.cpp:
+        (WebCore::attributeValueIsCurrentColor): Deleted.
+        (WebCore::SVGAnimateColorElement::determinePropertyValueTypes): Deleted.
+        * svg/SVGAnimateColorElement.h:
+        * svg/SVGAnimateElementBase.cpp:
+        (WebCore::SVGAnimateElementBase::attributeAnimationController):
+        * svg/SVGAnimatedColor.cpp: Removed.
+        * svg/SVGAnimatedColor.h: Removed.
+        * svg/SVGAnimatorFactory.h:
+        (WebCore::SVGAnimatorFactory::create):
+        * svg/SVGAttributeAnimationController.cpp:
+        (WebCore::SVGAttributeAnimationController::~SVGAttributeAnimationController):
+        * svg/SVGAttributeAnimationController.h:
+        * svg/SVGElement.cpp:
+        (WebCore::SVGElement::SVGElement):
+        (WebCore::SVGElement::isAnimatedAttribute const):
+        (WebCore::SVGElement::createAnimator):
+        (WebCore::SVGElement::animatorWillBeDeleted):
+        * svg/SVGElement.h:
+        (WebCore::SVGElement::propertyAnimatorFactory):
+        * svg/SVGFitToViewBox.h:
+        * svg/SVGMPathElement.cpp:
+        * svg/graphics/filters/SVGFEImage.h:
+        * svg/properties/SVGAnimationAdditiveValueFunctionImpl.cpp: Added.
+        (WebCore::SVGAnimationColorFunction::colorFromString):
+        * svg/properties/SVGAnimationAdditiveValueFunctionImpl.h:
+        (WebCore::SVGAnimationColorFunction::progress):
+        * svg/properties/SVGAnimationFunction.h:
+        * svg/properties/SVGAttributeAnimator.cpp:
+        (WebCore::SVGAttributeAnimator::applyAnimatedStylePropertyChange):
+        (WebCore::SVGAttributeAnimator::removeAnimatedStyleProperty):
+        * svg/properties/SVGAttributeAnimator.h:
+        * svg/properties/SVGPrimitivePropertyAnimator.h: Added.
+        (WebCore::SVGPrimitivePropertyAnimator::create):
+        (WebCore::SVGPrimitivePropertyAnimator::SVGPrimitivePropertyAnimator):
+        * svg/properties/SVGPrimitivePropertyAnimatorImpl.h: Added.
+        * svg/properties/SVGPropertyAnimator.h: Added.
+        (WebCore::SVGPropertyAnimator::SVGPropertyAnimator):
+        (WebCore::SVGPropertyAnimator::adjustForInheritance const):
+        (WebCore::SVGPropertyAnimator::computeCSSPropertyValue const):
+        (WebCore::SVGPropertyAnimator::computeInheritedCSSPropertyValue const):
+        * svg/properties/SVGPropertyAnimatorFactory.h: Added.
+        (WebCore::SVGPropertyAnimatorFactory::isKnownAttribute):
+        (WebCore::SVGPropertyAnimatorFactory::createAnimator):
+        (WebCore::SVGPropertyAnimatorFactory::animatorWillBeDeleted):
+        (WebCore::SVGPropertyAnimatorFactory::createColorAnimator):
+        (WebCore::SVGPropertyAnimatorFactory::attributeAnimatorCreator):
+
+2019-03-20  Alex Christensen  <achristensen@webkit.org>
+
+        Use WeakPtr instead of storing raw pointers in WebSocket code
+        https://bugs.webkit.org/show_bug.cgi?id=196034
+
+        Reviewed by Geoff Garen.
+
+        This could prevent using freed memory if we forget to reset a pointer somewhere.
+
+        * Modules/websockets/WebSocketChannel.cpp:
+        (WebCore::WebSocketChannel::WebSocketChannel):
+        (WebCore::WebSocketChannel::connect):
+        (WebCore::WebSocketChannel::fail):
+        (WebCore::WebSocketChannel::disconnect):
+        (WebCore::WebSocketChannel::didOpenSocketStream):
+        (WebCore::WebSocketChannel::didCloseSocketStream):
+        (WebCore::WebSocketChannel::didFailSocketStream):
+        (WebCore::WebSocketChannel::processBuffer):
+        (WebCore::WebSocketChannel::processFrame):
+        (WebCore::WebSocketChannel::processOutgoingFrameQueue):
+        (WebCore::WebSocketChannel::sendFrame):
+        * Modules/websockets/WebSocketChannel.h:
+        * Modules/websockets/WebSocketChannelClient.h:
+        * Modules/websockets/WebSocketHandshake.cpp:
+        (WebCore::WebSocketHandshake::WebSocketHandshake):
+        * Modules/websockets/WebSocketHandshake.h:
+
+2019-03-20  Dean Jackson  <dino@apple.com>
+
+        [iOS] Crash in WebCore::Node::renderRect
+        https://bugs.webkit.org/show_bug.cgi?id=196035
+        <rdar://problem/49076783>
+
+        Reviewed by Antoine Quint.
+
+        When renderRect was called on an HTMLAreaElement, it would
+        ASSERT because it doesn't have a renderer. We hadn't noticed
+        this before because none of our tests were hitting this in
+        debug mode.
+
+        The fix is to ask the corresponding HTMLImageElement for
+        its renderer, and use that for the returned rectangle.
+
+        Covered by these tests that had become flakey:
+            fast/images/imagemap-in-shadow-tree.html
+            http/tests/download/area-download.html
+
+        * dom/Node.cpp:
+        (WebCore::Node::renderRect):
+
+2019-03-20  Youenn Fablet  <youenn@apple.com>
+
+        Have smaller default quotas for third party frames
+        https://bugs.webkit.org/show_bug.cgi?id=195841
+
+        Reviewed by Geoffrey Garen.
+
+        Test: http/wpt/cache-storage/quota-third-party.https.html
+
+        * storage/StorageQuotaManager.h:
+        (WebCore::StorageQuotaManager::defaultQuota):
+        Change default quota to 1GB.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: include window as part of any event listener chain
+        https://bugs.webkit.org/show_bug.cgi?id=195730
+        <rdar://problem/48916872>
+
+        Reviewed by Timothy Hatcher.
+
+        Test: inspector/dom/getEventListenersForNode.html
+
+        * inspector/agents/InspectorDOMAgent.h:
+        (WebCore::EventListenerInfo::EventListenerInfo): Deleted.
+        * inspector/agents/InspectorDOMAgent.cpp:
+        (WebCore::InspectorDOMAgent::getEventListenersForNode):
+        (WebCore::InspectorDOMAgent::buildObjectForEventListener):
+        (WebCore::InspectorDOMAgent::getEventListeners): Deleted.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Runtime: lazily create the agent
+        https://bugs.webkit.org/show_bug.cgi?id=195972
+        <rdar://problem/49039655>
+
+        Reviewed by Timothy Hatcher.
+
+        No change in functionality.
+
+        * inspector/InspectorController.cpp:
+        (WebCore::InspectorController::InspectorController):
+        (WebCore::InspectorController::createLazyAgents):
+
+        * inspector/WorkerInspectorController.cpp:
+        (WebCore::WorkerInspectorController::WorkerInspectorController):
+        (WebCore::WorkerInspectorController::createLazyAgents):
+
+        * inspector/agents/page/PageRuntimeAgent.h:
+        * inspector/agents/page/PageRuntimeAgent.cpp:
+        (WebCore::PageRuntimeAgent::PageRuntimeAgent):
+        (WebCore::PageRuntimeAgent::enable):
+        (WebCore::PageRuntimeAgent::disable):
+        (WebCore::PageRuntimeAgent::didCreateMainWorldContext):
+        (WebCore::PageRuntimeAgent::reportExecutionContextCreation):
+        (WebCore::PageRuntimeAgent::didCreateFrontendAndBackend): Deleted.
+        (WebCore::PageRuntimeAgent::willDestroyFrontendAndBackend): Deleted.
+
+        * inspector/agents/worker/WorkerRuntimeAgent.h:
+        * inspector/agents/worker/WorkerRuntimeAgent.cpp:
+        (WebCore::WorkerRuntimeAgent::didCreateFrontendAndBackend): Deleted.
+        (WebCore::WorkerRuntimeAgent::willDestroyFrontendAndBackend): Deleted.
+
+2019-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [CSS OM] StyledElementInlineStylePropertyMap creates a Ref cycle with its owner element
+        https://bugs.webkit.org/show_bug.cgi?id=195987
+
+        Reviewed by Simon Fraser.
+
+        StyledElementInlineStylePropertyMap was leaking every element for which it was created because due to
+        a reference cycle. The StyledElementInlineStylePropertyMap holds onto its element using Ref and
+        the element also stores StyledElementInlineStylePropertyMap in ElementRareData using RefPtr.
+
+        Fixed the cycle by making the reference from StyledElementInlineStylePropertyMap weak. For now we use
+        a raw pointer because we can't create a WeakPtr of an element yet.
+
+        Test: css-typedom/attribute-style-map-should-not-leak-every-element.html
+
+        * css/typedom/StylePropertyMap.h:
+        (WebCore::StylePropertyMap): Added clearElement as a virtual function.
+        * dom/Element.cpp:
+        (WebCore::Element::~Element): Clear the element pointer in StyledElementInlineStylePropertyMap.
+        * dom/StyledElement.cpp:
+        (WebCore::StyledElementInlineStylePropertyMap::get): Added a null check for m_element.
+        (WebCore::StyledElementInlineStylePropertyMap::StyledElementInlineStylePropertyMap):
+        (WebCore::StyledElementInlineStylePropertyMap::clearElement): Added.
+        (WebCore::StyledElementInlineStylePropertyMap): Use a raw pointer instead of Ref to StyledElement
+        to avoid the leak.
+        * platform/graphics/CustomPaintImage.cpp:
+        (WebCore::HashMapStylePropertyMap::clearElement): Added.
+
+2019-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        appendChild should throw when inserting an ancestor of a template into its content adopted to another document
+        https://bugs.webkit.org/show_bug.cgi?id=195984
+
+        Reviewed by Darin Adler.
+
+        The WPT test caught a bug that appendChild and other DOM insertion functions were incorrectly assuming that
+        any node that's in a HTML template element has the current document's template document as its owner.
+        The assumption is wrong when the template element's content DocumentFragment is adopted to another document.
+
+        Fixed the bug by always checking the ancestor host elements in checkAcceptChild. Also
+
+        Test: fast/dom/insert-template-parent-into-adopted-content.html
+
+        * dom/ContainerNode.cpp:
+        (WebCore::isInTemplateContent): Deleted. This code is simply wrong.
+        (WebCore::containsConsideringHostElements): Deleted. Call sites are updated to use containsIncludingHostElements.
+        (WebCore::containsIncludingHostElements): Moved from Node.cpp and optimized this code a bit. It's more efficient
+        to get the parent node and check for ShadowRoot and DocumentFragment only when the parent is null than to check
+        for those two node types before getting the parent node.
+        (WebCore::checkAcceptChild): Merged two code paths to call containsIncludingHostElements. The early return for
+        a pseudo element is there only to prevent tree corruption in release build even in the presence of a major bug
+        so it shouldn't be an spec compliance issue.
+        * dom/Node.cpp:
+        (WebCore::Node::containsIncludingHostElements const): Deleted.
+        * dom/Node.h:
+
+2019-03-20  Timothy Hatcher  <timothy@apple.com>
+
+        Unreviewed followup to r243169 to fix test failures.
+
+        * DerivedSources.make: Add HAVE_OS_DARK_MODE_SUPPORT to FEATURE_AND_PLATFORM_DEFINES.
+
+2019-03-20  Keith Rollin  <krollin@apple.com>
+
+        Update the location for XProtect.meta.plist file
+        https://bugs.webkit.org/show_bug.cgi?id=195764
+
+        Reviewed by Alexey Proskuryakov.
+
+        The location of this file is changing in the future, so adjust for
+        that.
+
+        No new tests since there should be no observable behavior difference.
+
+        * platform/mac/BlacklistUpdater.mm:
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Database: lazily create the agent
+        https://bugs.webkit.org/show_bug.cgi?id=195587
+        <rdar://problem/48791735>
+
+        Reviewed by Timothy Hatcher.
+
+        No change in functionality.
+
+        * inspector/agents/InspectorDatabaseAgent.h:
+        * inspector/agents/InspectorDatabaseAgent.cpp:
+        (WebCore::InspectorDatabaseAgent::didCommitLoad): Added.
+        (WebCore::InspectorDatabaseAgent::didOpenDatabase):
+        (WebCore::InspectorDatabaseAgent::InspectorDatabaseAgent):
+        (WebCore::InspectorDatabaseAgent::enable):
+        (WebCore::InspectorDatabaseAgent::disable):
+        (WebCore::InspectorDatabaseAgent::getDatabaseTableNames):
+        (WebCore::InspectorDatabaseAgent::executeSQL):
+        (WebCore::InspectorDatabaseAgent::databaseId):
+        (WebCore::InspectorDatabaseAgent::findByFileName):
+        (WebCore::InspectorDatabaseAgent::databaseForId):
+        (WebCore::InspectorDatabaseAgent::clearResources): Deleted.
+        (WebCore::InspectorDatabaseAgent::~InspectorDatabaseAgent): Deleted.
+        * inspector/InspectorDatabaseResource.h:
+        (WebCore::InspectorDatabaseResource::database const):
+        (WebCore::InspectorDatabaseResource::setDatabase):
+        (WebCore::InspectorDatabaseResource::database): Deleted.
+        * inspector/InspectorDatabaseResource.cpp:
+        (WebCore::InspectorDatabaseResource::create):
+        (WebCore::InspectorDatabaseResource::InspectorDatabaseResource):
+        (WebCore::InspectorDatabaseResource::bind):
+        * inspector/InspectorInstrumentation.h:
+        (WebCore::InspectorInstrumentation::didOpenDatabase):
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::didCommitLoadImpl):
+        (WebCore::InspectorInstrumentation::didOpenDatabaseImpl):
+        Pass the `Database` as a reference instead of a pointer. Retrieve any information directly
+        from the `Database`, rather than using the arguments that were used to create it.
+
+        * Modules/webdatabase/Database.h:
+        (WebCore::Database::expectedVersion const): Deleted.
+        * Modules/webdatabase/Database.cpp:
+        (WebCore::Database::expectedVersion const): Added.
+        * Modules/webdatabase/DatabaseManager.cpp:
+        (WebCore::DatabaseManager::openDatabase):
+        * Modules/webdatabase/DatabaseTracker.h:
+        * Modules/webdatabase/DatabaseTracker.cpp:
+        (WebCore::DatabaseTracker::closeAllDatabases):
+        (WebCore::DatabaseTracker::openDatabases): Added.
+        Expose various values used by `InspectorDatabaseAgent` and `InspectorDatabaseResource`.
+
+        * inspector/InspectorController.cpp:
+        (WebCore::InspectorController::InspectorController):
+        (WebCore::InspectorController::createLazyAgents):
+        * inspector/WorkerInspectorController.cpp:
+        (WebCore::WorkerInspectorController::WorkerInspectorController):
+
+        * inspector/CommandLineAPIHost.h:
+        (WebCore::CommandLineAPIHost::init):
+        * inspector/CommandLineAPIHost.cpp:
+        (WebCore::CommandLineAPIHost::disconnect):
+        (WebCore::CommandLineAPIHost::inspect):
+        (WebCore::CommandLineAPIHost::clearConsoleMessages):
+        (WebCore::CommandLineAPIHost::databaseId):
+        (WebCore::CommandLineAPIHost::storageId):
+        Rather than pass each agent individually, pass the entire `InstrumentingAgents` so that the
+        current agent can be used instead of whatever was initially created.
+
+2019-03-20  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-grid] Always consider baseline shim for the minimum contribution
+        https://bugs.webkit.org/show_bug.cgi?id=195964
+
+        Reviewed by Javier Fernandez.
+
+        Tests: imported/w3c/web-platform-tests/css/css-grid/layout-algorithm/grid-minimum-contribution-baseline-shim-vertical-lr.html
+               imported/w3c/web-platform-tests/css/css-grid/layout-algorithm/grid-minimum-contribution-baseline-shim-vertical-rl.html
+               imported/w3c/web-platform-tests/css/css-grid/layout-algorithm/grid-minimum-contribution-baseline-shim.html
+
+        Before this patch, the shim used for baseline alignment is not taken
+        into consideration when calculating the minimum contribution of a grid
+        item if its preferred size is auto, its minimum size is auto, and the
+        max track sizing function is a fixed small value. In this case, the
+        auto minimum size can produce a smaller track than if it was 0.
+
+        The specification needs to clarify how baseline shims interact with
+        minimum contributions (https://github.com/w3c/csswg-drafts/issues/3660),
+        but the above doesn't make sense.
+
+        * rendering/GridTrackSizingAlgorithm.cpp:
+        (WebCore::GridTrackSizingAlgorithmStrategy::minSizeForChild const):
+
+2019-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Some elements lag behind async overflow scrolling on palace-games.com
+        https://bugs.webkit.org/show_bug.cgi?id=195934
+
+        Reviewed by Zalan Bujtas.
+
+        The logic added in r242997 was wrong for an absolutely-positioned layer whose containig block was
+        inside an overflow:scroll, but whose compositing ancestor was outside. This is a case where
+        we need to make a Positioning node for the absolute layer, because it needs to move along
+        with the scrolled content.
+        
+        There are six permutations of overflow, containing block and compositing ancestor that we care about.
+        Showing renderer (aka DOM) order, they are (where <- indicates child <- parent):
+        
+        layer <- cb <- ca <- os -- no positioned node required
+        layer <- cb <- os <- ca -- compositing parent skips overflow, need a "Moved" Positioned node.
+        layer <- ov <- cb <- ca -- no positioned node required
+        layer <- ov <- ca <- cb -- no positioned node required
+        layer <- ca <- cb <- ov -- no positioned node required
+        layer <- ca <- ov <- cb -- containing block skips overflow, need a "Stationary" Positioned node.
+        
+        [cb = containing block, ca = compositing ancestor, ov = overflow scroll]
+
+        Test: scrollingcoordinator/scrolling-tree/positioned-nodes-complex.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::outputPaintOrderTreeRecursive):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::layerParentedAcrossCoordinatedScrollingBoundary):
+        (WebCore::RenderLayerCompositor::computeCoordinatedPositioningForLayer const):
+
+2019-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Explicitly trigger compositing for layers that need to be moved by ScrollingTreePositionedNodes
+        https://bugs.webkit.org/show_bug.cgi?id=195710
+        <rdar://problem/48867502>
+
+        Reviewed by Zalan Bujtas.
+
+        A position:absolute layer whose containing block is outside an enclosing overflow:scroll, but
+        whose compositing ancestor is the overflow or is inside it, needs to be composited so that
+        we can make a Positioning scrolling tree node for it.
+
+        Handle this case as a "OverflowScrollPositioning" indirect compositing reason.
+
+        Test: compositing/layer-creation/absolute-in-async-overflow-scroll.html
+
+        * inspector/agents/InspectorLayerTreeAgent.cpp:
+        (WebCore::InspectorLayerTreeAgent::reasonsForCompositingLayer):
+        * rendering/RenderLayer.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::computeCompositingRequirements):
+        (WebCore::RenderLayerCompositor::requiresOwnBackingStore const):
+        (WebCore::RenderLayerCompositor::reasonsForCompositing const):
+        (WebCore::RenderLayerCompositor::logReasonsForCompositing):
+        (WebCore::RenderLayerCompositor::requiresCompositingForIndirectReason const):
+        (WebCore::RenderLayerCompositor::layerContainingBlockCrossesCoordinatedScrollingBoundary):
+        (WebCore::layerContainingBlockCrossesCoordinatedScrollingBoundary): Deleted.
+        * rendering/RenderLayerCompositor.h: Generalize OverflowScrollingTouch to OverflowScrolling.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Search: allow DOM searches to be case sensitive
+        https://bugs.webkit.org/show_bug.cgi?id=194673
+        <rdar://problem/48087577>
+
+        Reviewed by Timothy Hatcher.
+
+        Tests: inspector/dom/dom-search.html
+               inspector/dom/dom-search-caseSensitive.html
+
+        Since `DOM.performSearch` also searches by selector and XPath, some results may appear
+        as unexpected. As an example, searching for "BoDy" will still return the <body> as a result,
+        as although the literal node name ("BODY") didn't match, it did match via selector/XPath.
+
+        * inspector/agents/InspectorDOMAgent.h:
+        * inspector/agents/InspectorDOMAgent.cpp:
+        (WebCore::InspectorDOMAgent::performSearch):
+
+        * inspector/InspectorNodeFinder.h:
+        * inspector/InspectorNodeFinder.cpp:
+        (WebCore::InspectorNodeFinder::InspectorNodeFinder):
+        (WebCore::InspectorNodeFinder::searchUsingDOMTreeTraversal):
+        (WebCore::InspectorNodeFinder::checkEquals): Added.
+        (WebCore::InspectorNodeFinder::checkContains): Added.
+        (WebCore::InspectorNodeFinder::checkStartsWith): Added.
+        (WebCore::InspectorNodeFinder::checkEndsWith): Added.
+        (WebCore::InspectorNodeFinder::matchesAttribute):
+        (WebCore::InspectorNodeFinder::matchesElement):
+        (WebCore::InspectorNodeFinder::searchUsingXPath):
+        (WebCore::InspectorNodeFinder::searchUsingCSSSelectors):
+
+2019-03-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove copyRef() calls added in r243163
+        https://bugs.webkit.org/show_bug.cgi?id=195962
+
+        Reviewed by Chris Dumez.
+
+        The first two cases here can just directly return the RefPtr.
+
+        In the third case, we have to work around a GCC 6 bug because GCC 6 is unable to pick the
+        right constructor to use, unlike modern compilers.
+
+        * Modules/fetch/FetchBody.cpp:
+        (WebCore::FetchBody::bodyAsFormData const):
+        (WebCore::FetchBody::take):
+
+2019-03-20  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] Fix handling of resolution changes in AppendPipeline
+        https://bugs.webkit.org/show_bug.cgi?id=195855
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        MediaSample instances produced by the AppendPipeline were not
+        accounting for resolution changes. The causes of this are twofold:
+
+        1) m_presentationSize is set by connectDemuxerSrcPadToAppsink() (by
+        calling parseDemuxerSrcPadCaps()), but not by appsinkCapsChanged().
+
+        2) appsinkCapsChanged() was being called in the main thread as an
+        asynchronous task. In consequence, even if m_presentationSize is set
+        there, many samples with the new resolution would still be wrapped in
+        a MediaSampleGStreamer using the old resolution by the main thread
+        running consumeAppsinkAvailableSamples() before appsinkCapsChanged()
+        is dispatched.
+
+        This patch fixes these problems by updating m_presentationSize in
+        appsinkCapsChanged() and making the streaming thread block until the
+        main thread has dispatched appsinkCapsChanged(). This way the handling
+        of caps changes is serialized with the handling of frames.
+
+        Test: media/media-source/media-source-samples-resolution-change.html
+
+        * platform/graphics/gstreamer/mse/AppendPipeline.cpp:
+        (WebCore::AppendPipeline::AppendPipeline):
+        (WebCore::AppendPipeline::appsinkCapsChanged):
+
+2019-03-20  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for new meter ARIA role
+        https://bugs.webkit.org/show_bug.cgi?id=195966
+
+        Reviewed by Chris Fleizach.
+
+        Add the new ARIA role to the internal rolemap so that it is treated
+        in the same fashion as its HTML element counterpart.
+
+        No new tests. Instead add the role to the existing role-exposure tests.
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::isMeter const):
+        (WebCore::initializeRoleMap):
+        (WebCore::AccessibilityObject::computedRoleString const):
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (atkRole):
+
+2019-03-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Switch back to webkitwebsrc for adaptive streaming fragments downloading
+        https://bugs.webkit.org/show_bug.cgi?id=195948
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        The webkitwebsrc element now behaves much better when used through
+        GStreamer's adaptivedemux, so use it for all WebKit media
+        downloads. The MediaPlayer needed by the webkitwebsrc element now
+        travels through GstContext messages and queries so that it can be
+        shared by multiple elements, typically the first webkitwebsrc
+        element downloads the HLS manifest and then adaptivedemux, through
+        uridownloader, will create new webkitwebsrc elements for fragments
+        downloading. Those new elements will query the first webkitwebsrc
+        element for its context.
+
+        The previous hack used to check SecurityOrigins can
+        also be cleaned-up. The origins are now cached upon reception of
+        the HTTP headers message from webkitwebsrc.
+
+        No new tests, existing http/tests/media/hls tests cover this change.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::setPlaybinURL):
+        (WebCore::MediaPlayerPrivateGStreamer::loadFull):
+        (WebCore::MediaPlayerPrivateGStreamer::handleMessage):
+        (WebCore::MediaPlayerPrivateGStreamer::loadNextLocation):
+        (WebCore::MediaPlayerPrivateGStreamer::wouldTaintOrigin const):
+        (WebCore::convertToInternalProtocol): Deleted.
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.h:
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::handleSyncMessage):
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (webkit_web_src_class_init):
+        (webKitWebSrcSetContext):
+        (webKitWebSrcStart):
+        (webKitWebSrcGetProtocols):
+        (webKitWebSrcSetUri):
+        (CachedResourceStreamingClient::responseReceived):
+        (convertPlaybinURI): Deleted.
+        (webKitSrcWouldTaintOrigin): Deleted.
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.h:
+
+2019-03-20  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer][WebRTC]: Refactor to make the encoding happen synchronously
+        https://bugs.webkit.org/show_bug.cgi?id=195674
+
+        This simplifies the code and make sure that everything is called from the right
+        thread. It also makes it so we follow the same way of doing things as other libwebrtc
+        encoders.
+
+        Also "s/codecSpecifiInfos/codecSpecificInfos/"
+
+        Reviewed by Philippe Normand.
+
+        No new test as this is just a refactoring
+
+        * platform/mediastream/libwebrtc/GStreamerVideoEncoderFactory.cpp:
+        (WebCore::GStreamerVideoEncoder::InitEncode):
+        (WebCore::GStreamerVideoEncoder::returnFromFlowReturn):
+
+2019-03-20  Tim Horton  <timothy_horton@apple.com>
+
+        Add an platform-driven spell-checking mechanism
+        https://bugs.webkit.org/show_bug.cgi?id=195795
+
+        Reviewed by Ryosuke Niwa.
+
+        * dom/Document.cpp:
+        (WebCore::Document::textInserted):
+        PlatformTextChecking markers are not expected
+        to propagate to newly inserted text, so remove them.
+
+        * dom/DocumentMarker.h:
+        (WebCore::DocumentMarker::allMarkers):
+        Add a new type of DocumentMarker, PlatformTextChecking,
+        and a new data variant that stores a key value pair of strings.
+
+        * dom/DocumentMarkerController.cpp:
+        (WebCore::DocumentMarkerController::addPlatformTextCheckingMarker):
+        (WebCore::DocumentMarkerController::removeMarkers):
+        (WebCore::DocumentMarkerController::filterMarkers):
+        (WebCore::shouldInsertAsSeparateMarker):
+        * dom/DocumentMarkerController.h:
+        Export some things.
+        Add addPlatformTextCheckingMarker, like the others.
+        Make it possible to filter out markers of a particular type
+        in a range with a predicate function.
+
+        * editing/CompositeEditCommand.cpp:
+        (WebCore::CompositeEditCommand::replaceTextInNodePreservingMarkers):
+        Propagate PlatformTextChecking data.
+        A future change should probably make it possible for
+        any DocumentMarker to copy its data here, instead of
+        special-casing each type that is important.
+
+        * editing/Editor.cpp:
+        (WebCore::Editor::markMisspellingsAfterTypingToWord):
+        (WebCore::Editor::markAllMisspellingsAndBadGrammarInRanges):
+        (WebCore::Editor::markMisspellingsAndBadGrammar):
+        * editing/TextCheckingHelper.cpp:
+        (WebCore::TextCheckingHelper::findFirstMisspellingOrBadGrammar):
+        (WebCore::TextCheckingHelper::guessesForMisspelledOrUngrammaticalRange const):
+        (WebCore::platformDrivenTextCheckerEnabled):
+        * editing/TextCheckingHelper.h:
+        Bail from traditional spell checking if this mechanism is
+        enabled. (I wrote it this way to make it runtime switchable
+        in the near future, and to be similar to unifiedTextCheckerEnabled).
+
+2019-03-19  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Implement FIDO AppID extension
+        https://bugs.webkit.org/show_bug.cgi?id=143491
+        <rdar://problem/48298273>
+
+        Reviewed by Brent Fulgham.
+
+        This patch adds support for FIDO AppID extension: https://www.w3.org/TR/webauthn/#sctn-appid-extension.
+        To be noticed, this implementation follows what spec suggested in the 'Note' session and what Chrome/Firefox
+        do in practice to avoid some unnecessary steps of
+        https://fidoalliance.org/specs/fido-v2.0-id-20180227/fido-appid-and-facets-v2.0-id-20180227.html#determining-if-a-caller-s-facetid-is-authorized-for-an-appid.
+
+        In fido::convertToU2fSignCommand, the checkOnly flag is deleted as it is never used.
+
+        Covered by new tests in existing files.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * Modules/webauthn/AuthenticationExtensionsClientInputs.h: Copied from Source/WebCore/Modules/webauthn/PublicKeyCredential.idl.
+        (WebCore::AuthenticationExtensionsClientInputs::encode const):
+        (WebCore::AuthenticationExtensionsClientInputs::decode):
+        * Modules/webauthn/AuthenticationExtensionsClientInputs.idl: Copied from Source/WebCore/Modules/webauthn/PublicKeyCredentialRequestOptions.idl.
+        * Modules/webauthn/AuthenticatorCoordinator.cpp:
+        (WebCore::AuthenticatorCoordinatorInternal::processAppIdExtension):
+        (WebCore::AuthenticatorCoordinator::create const):
+        (WebCore::AuthenticatorCoordinator::discoverFromExternalSource const):
+        * Modules/webauthn/PublicKeyCredential.cpp:
+        (WebCore::PublicKeyCredential::tryCreate):
+        (WebCore::PublicKeyCredential::PublicKeyCredential):
+        (WebCore::PublicKeyCredential::getClientExtensionResults const):
+        (WebCore::PublicKeyCredential::create): Deleted.
+        * Modules/webauthn/PublicKeyCredential.h:
+        * Modules/webauthn/PublicKeyCredential.idl:
+        * Modules/webauthn/PublicKeyCredentialCreationOptions.h:
+        * Modules/webauthn/PublicKeyCredentialCreationOptions.idl:
+        * Modules/webauthn/PublicKeyCredentialData.h:
+        (WebCore::PublicKeyCredentialData::encode const):
+        (WebCore::PublicKeyCredentialData::decode):
+        * Modules/webauthn/PublicKeyCredentialRequestOptions.h:
+        (WebCore::PublicKeyCredentialRequestOptions::encode const):
+        (WebCore::PublicKeyCredentialRequestOptions::decode):
+        * Modules/webauthn/PublicKeyCredentialRequestOptions.idl:
+        * Modules/webauthn/fido/DeviceResponseConverter.cpp:
+        (fido::readCTAPMakeCredentialResponse):
+        (fido::readCTAPGetAssertionResponse):
+        * Modules/webauthn/fido/U2fCommandConstructor.cpp:
+        (fido::convertToU2fSignCommand):
+        * Modules/webauthn/fido/U2fCommandConstructor.h:
+        * Modules/webauthn/fido/U2fResponseConverter.cpp:
+        (fido::readU2fRegisterResponse):
+        (fido::readU2fSignResponse):
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+
+2019-03-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: lazily create the agent
+        https://bugs.webkit.org/show_bug.cgi?id=195973
+        <rdar://problem/49039674>
+
+        Reviewed by Joseph Pecoraro.
+
+        No change in functionality.
+
+        * inspector/WorkerInspectorController.cpp:
+        (WebCore::WorkerInspectorController::WorkerInspectorController):
+        (WebCore::WorkerInspectorController::createLazyAgents):
+
+        * inspector/agents/WebDebuggerAgent.cpp:
+        (WebCore::WebDebuggerAgent::disable):
+
+        * inspector/agents/InspectorDOMDebuggerAgent.cpp:
+        (WebCore::InspectorDOMDebuggerAgent::InspectorDOMDebuggerAgent):
+        (WebCore::InspectorDOMDebuggerAgent::discardAgent):
+
+2019-03-18  Maciej Stachowiak  <mjs@apple.com>
+
+        Simplify Cocoa platform user agent logic by using string constants instead of function calls for the frozen parts
+        https://bugs.webkit.org/show_bug.cgi?id=195936
+
+        Reviewed by Dean Jackson.
+
+        No new tests because no behavior changes. Existing behavior is tested by fast/dom/navigator-userAgent-frozen.html
+
+        * platform/UserAgent.h: Remove prototype of removed function.
+        * platform/cocoa/UserAgentCocoa.mm:
+        (WebCore::userAgentBundleVersion): Deleted.
+        * platform/ios/UserAgentIOS.mm:
+        * platform/ios/UserAgentIOS.mm:
+        (WebCore::osNameForUserAgent): Use WTF String instead of NSString
+        (WebCore::deviceNameForUserAgent): dutto
+        (WebCore::standardUserAgentWithApplicationName): Simplify this
+        function to account for WebKit version now being frozen. Also
+        use String instead of NSString.
+        * platform/mac/UserAgentMac.mm:
+        (WebCore::standardUserAgentWithApplicationName): Simplify this
+        function to account for CPU and WEbKit version now being
+        frozen. Also avoid two separate but very similar calls to
+        makeString().
+
+2019-03-19  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed adjustment to r242842 per Darin's request.
+
+        * platform/win/LoggingWin.cpp:
+        (WebCore::logLevelString):
+
+2019-03-19  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove the SVG property tear off objects of SVGAnimatedPreserveAspectRatio
+        https://bugs.webkit.org/show_bug.cgi?id=195960
+
+        Reviewed by Simon Fraser.
+
+        -- Define SVGAnimatedPreserveAspectRatio to be SVGAnimatedValueProperty<
+           SVGPreserveAspectRatio>.
+
+        -- Make SVGPreserveAspectRatio be derived form SVGValueProperty<
+           SVGPreserveAspectRatioValue>.
+
+        -- Add SVGAnimatedPreserveAspectRatioAccessor to access the animated 
+           property.
+
+        -- Add SVGAnimatedPreserveAspectRatioAnimator to animate the animated
+           property of the target element and all its instances.
+
+        -- Add SVGAnimationPreserveAspectRatioFunction to progress animVal of
+           animated property in a period of time.
+
+        SVGFilterPrimitiveStandardAttributes::build() should be const function.
+        This is required for this patch because SVGFEImageElement::build() calls
+        SVGFEImageElement::preserveAspectRatio() which is const.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * svg/SVGAnimatedPreserveAspectRatio.cpp: Removed.
+        * svg/SVGAnimatedPreserveAspectRatio.h: Removed.
+        * svg/SVGAnimatorFactory.h:
+        (WebCore::SVGAnimatorFactory::create):
+        * svg/SVGFEBlendElement.cpp:
+        (WebCore::SVGFEBlendElement::build const):
+        (WebCore::SVGFEBlendElement::build): Deleted.
+        * svg/SVGFEBlendElement.h:
+        * svg/SVGFEColorMatrixElement.cpp:
+        (WebCore::SVGFEColorMatrixElement::build const):
+        (WebCore::SVGFEColorMatrixElement::build): Deleted.
+        * svg/SVGFEColorMatrixElement.h:
+        * svg/SVGFEComponentTransferElement.cpp:
+        (WebCore::SVGFEComponentTransferElement::build const):
+        (WebCore::SVGFEComponentTransferElement::build): Deleted.
+        * svg/SVGFEComponentTransferElement.h:
+        * svg/SVGFECompositeElement.cpp:
+        (WebCore::SVGFECompositeElement::build const):
+        (WebCore::SVGFECompositeElement::build): Deleted.
+        * svg/SVGFECompositeElement.h:
+        * svg/SVGFEConvolveMatrixElement.cpp:
+        (WebCore::SVGFEConvolveMatrixElement::build const):
+        (WebCore::SVGFEConvolveMatrixElement::build): Deleted.
+        * svg/SVGFEConvolveMatrixElement.h:
+        * svg/SVGFEDiffuseLightingElement.cpp:
+        (WebCore::SVGFEDiffuseLightingElement::build const):
+        (WebCore::SVGFEDiffuseLightingElement::build): Deleted.
+        * svg/SVGFEDiffuseLightingElement.h:
+        * svg/SVGFEDisplacementMapElement.cpp:
+        (WebCore::SVGFEDisplacementMapElement::build const):
+        (WebCore::SVGFEDisplacementMapElement::build): Deleted.
+        * svg/SVGFEDisplacementMapElement.h:
+        * svg/SVGFEDropShadowElement.cpp:
+        (WebCore::SVGFEDropShadowElement::build const):
+        (WebCore::SVGFEDropShadowElement::build): Deleted.
+        * svg/SVGFEDropShadowElement.h:
+        * svg/SVGFEFloodElement.cpp:
+        (WebCore::SVGFEFloodElement::build const):
+        (WebCore::SVGFEFloodElement::build): Deleted.
+        * svg/SVGFEFloodElement.h:
+        * svg/SVGFEGaussianBlurElement.cpp:
+        (WebCore::SVGFEGaussianBlurElement::build const):
+        (WebCore::SVGFEGaussianBlurElement::build): Deleted.
+        * svg/SVGFEGaussianBlurElement.h:
+        * svg/SVGFEImageElement.cpp:
+        (WebCore::SVGFEImageElement::SVGFEImageElement):
+        (WebCore::SVGFEImageElement::parseAttribute):
+        (WebCore::SVGFEImageElement::build const):
+        (WebCore::SVGFEImageElement::registerAttributes): Deleted.
+        (WebCore::SVGFEImageElement::build): Deleted.
+        * svg/SVGFEImageElement.h:
+        * svg/SVGFEMergeElement.cpp:
+        (WebCore::SVGFEMergeElement::build const):
+        (WebCore::SVGFEMergeElement::build): Deleted.
+        * svg/SVGFEMergeElement.h:
+        * svg/SVGFEMorphologyElement.cpp:
+        (WebCore::SVGFEMorphologyElement::build const):
+        (WebCore::SVGFEMorphologyElement::build): Deleted.
+        * svg/SVGFEMorphologyElement.h:
+        * svg/SVGFEOffsetElement.cpp:
+        (WebCore::SVGFEOffsetElement::build const):
+        (WebCore::SVGFEOffsetElement::build): Deleted.
+        * svg/SVGFEOffsetElement.h:
+        * svg/SVGFESpecularLightingElement.cpp:
+        (WebCore::SVGFESpecularLightingElement::build const):
+        (WebCore::SVGFESpecularLightingElement::build): Deleted.
+        * svg/SVGFESpecularLightingElement.h:
+        * svg/SVGFETileElement.cpp:
+        (WebCore::SVGFETileElement::build const):
+        (WebCore::SVGFETileElement::build): Deleted.
+        * svg/SVGFETileElement.h:
+        * svg/SVGFETurbulenceElement.cpp:
+        (WebCore::SVGFETurbulenceElement::build const):
+        (WebCore::SVGFETurbulenceElement::build): Deleted.
+        * svg/SVGFETurbulenceElement.h:
+        * svg/SVGFilterPrimitiveStandardAttributes.h:
+        * svg/SVGFitToViewBox.cpp:
+        (WebCore::SVGFitToViewBox::SVGFitToViewBox):
+        (WebCore::SVGFitToViewBox::parseViewBox):
+        (WebCore::SVGFitToViewBox::registerAttributes): Deleted.
+        * svg/SVGFitToViewBox.h:
+        (WebCore::SVGFitToViewBox::preserveAspectRatio const):
+        (WebCore::SVGFitToViewBox::preserveAspectRatioAnimated):
+        (WebCore::SVGFitToViewBox::setPreserveAspectRatio):
+        (WebCore::SVGFitToViewBox::resetPreserveAspectRatio):
+        (WebCore::SVGFitToViewBox::preserveAspectRatioString const):
+        * svg/SVGImageElement.cpp:
+        (WebCore::SVGImageElement::SVGImageElement):
+        (WebCore::SVGImageElement::registerAttributes):
+        (WebCore::SVGImageElement::parseAttribute):
+        * svg/SVGImageElement.h:
+        * svg/SVGMarkerElement.h:
+        * svg/SVGPatternElement.h:
+        * svg/SVGPreserveAspectRatio.h:
+        (WebCore::SVGPreserveAspectRatio::create):
+        (WebCore::SVGPreserveAspectRatio::align const):
+        (WebCore::SVGPreserveAspectRatio::setAlign):
+        (WebCore::SVGPreserveAspectRatio::meetOrSlice const):
+        (WebCore::SVGPreserveAspectRatio::setMeetOrSlice):
+        (WebCore::SVGPreserveAspectRatio::align): Deleted.
+        (WebCore::SVGPreserveAspectRatio::meetOrSlice): Deleted.
+        (WebCore::SVGPreserveAspectRatio::SVGPreserveAspectRatio): Deleted.
+        * svg/SVGSVGElement.h:
+        * svg/SVGStringList.h:
+        * svg/SVGSymbolElement.h:
+        * svg/SVGViewSpec.h:
+        * svg/properties/SVGAnimatedPropertyAccessorImpl.h:
+        * svg/properties/SVGAnimatedPropertyAnimatorImpl.h:
+        * svg/properties/SVGAnimatedPropertyImpl.h:
+        * svg/properties/SVGAnimationDiscreteFunctionImpl.h:
+        * svg/properties/SVGAttributeRegistry.h:
+        * svg/properties/SVGPropertyOwnerRegistry.h:
+        (WebCore::SVGPropertyOwnerRegistry::registerProperty):
+
+2019-03-19  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove the SVG property tear off objects of SVGAnimatedRect
+        https://bugs.webkit.org/show_bug.cgi?id=195949
+
+        Reviewed by Simon Fraser.
+
+        SVGRect is an SVG type, so we need to introduce two classes to represent
+        it and its animated property SVGAnimatedRect.
+
+        -- SVGValueProperty: It is derived from SVGProperty and it will be the 
+           base class of all the SVG type based properties. It is basically a
+           RefCounted object with m_value member. For SVGRect, m_value will be
+           of type FloatRect.
+
+        -- SVGAnimatedValueProperty: It is derived from SVGAnimatedProperty and
+           it will be the base class of all the animated SVG type based properties.
+           It is RefCounted object with two RefCounted members: baseVal and animVal.
+           These two members are of type SVGValueProperty. For SVGAnimatedRect,
+           baseVal and animVal will be of type SVGRect.
+
+        SVGAnimatedValueProperty will be responsible for:
+
+        1) Providing access to its baseVal and animVal. Note the same interface
+           is used internally and used by the DOM.
+
+        2) Managing the animation of the property by starting and stopping it.
+
+        3) Coordinating the changes in its baseVal and animVal with the owner
+           element.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * svg/SVGAnimatedRect.cpp: Removed.
+        * svg/SVGAnimatedRect.h: Removed.
+        * svg/SVGAnimatorFactory.h:
+        (WebCore::SVGAnimatorFactory::create):
+        * svg/SVGAttributeAnimationController.cpp:
+        (WebCore::SVGAttributeAnimationController::calculateAnimatedValue):
+        This is a bug from r243036. The <set> can be the tag of m_animationElement
+        not m_targetElement.
+        * svg/SVGAttributeAnimationController.h:
+        * svg/SVGAttributeAnimationControllerBase.h:
+        * svg/SVGFitToViewBox.cpp:
+        (WebCore::SVGFitToViewBox::SVGFitToViewBox):
+        (WebCore::SVGFitToViewBox::registerAttributes):
+        (WebCore::SVGFitToViewBox::setViewBox):
+        (WebCore::SVGFitToViewBox::resetViewBox):
+        * svg/SVGFitToViewBox.h:
+        (WebCore::SVGFitToViewBox::viewBox const):
+        (WebCore::SVGFitToViewBox::viewBoxAnimated):
+        (WebCore::SVGFitToViewBox::viewBoxString const):
+        * svg/SVGMarkerElement.h:
+        * svg/SVGPatternElement.h:
+        * svg/SVGRect.h:
+        (WebCore::SVGRect::create):
+        (WebCore::SVGRect::x):
+        (WebCore::SVGRect::setX):
+        (WebCore::SVGRect::y):
+        (WebCore::SVGRect::setY):
+        (WebCore::SVGRect::width):
+        (WebCore::SVGRect::setWidth):
+        (WebCore::SVGRect::height):
+        (WebCore::SVGRect::setHeight):
+        (WebCore::SVGRect::SVGRect): Deleted.
+        * svg/SVGSVGElement.cpp:
+        (WebCore::checkIntersectionWithoutUpdatingLayout):
+        (WebCore::checkEnclosureWithoutUpdatingLayout):
+        * svg/SVGSVGElement.h:
+        * svg/SVGSymbolElement.h:
+        * svg/SVGViewSpec.cpp:
+        (WebCore::SVGViewSpec::SVGViewSpec):
+        * svg/SVGViewSpec.h:
+        * svg/properties/SVGAnimatedPropertyAccessorImpl.h:
+        * svg/properties/SVGAnimatedPropertyAnimatorImpl.h:
+        * svg/properties/SVGAnimatedPropertyImpl.h:
+        * svg/properties/SVGAnimatedValueProperty.h: Added.
+        (WebCore::SVGAnimatedValueProperty::create):
+        (WebCore::SVGAnimatedValueProperty::~SVGAnimatedValueProperty):
+        (WebCore::SVGAnimatedValueProperty::setBaseValInternal):
+        (WebCore::SVGAnimatedValueProperty::baseVal const):
+        (WebCore::SVGAnimatedValueProperty::baseVal):
+        (WebCore::SVGAnimatedValueProperty::setAnimVal):
+        (WebCore::SVGAnimatedValueProperty::animVal const):
+        (WebCore::SVGAnimatedValueProperty::animVal):
+        (WebCore::SVGAnimatedValueProperty::currentValue const):
+        (WebCore::SVGAnimatedValueProperty::SVGAnimatedValueProperty):
+        (WebCore::SVGAnimatedValueProperty::ensureAnimVal):
+        * svg/properties/SVGAnimationAdditiveValueFunctionImpl.h:
+        (WebCore::SVGAnimationRectFunction::progress):
+        * svg/properties/SVGAttributeRegistry.h:
+        * svg/properties/SVGPropertyOwnerRegistry.h:
+        (WebCore::SVGPropertyOwnerRegistry::registerProperty):
+        * svg/properties/SVGValueProperty.h: Added.
+        (WebCore::SVGValueProperty::create):
+        (WebCore::SVGValueProperty::value const):
+        (WebCore::SVGValueProperty::setValue):
+        (WebCore::SVGValueProperty::value):
+        (WebCore::SVGValueProperty::SVGValueProperty):
+
+2019-03-19  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics (experimental): Clear non-cookie website data for sites that have been navigated to, with link decoration, by a prevalent resource
+        https://bugs.webkit.org/show_bug.cgi?id=195923
+        <rdar://problem/49001272>
+
+        Reviewed by Alex Christensen.
+
+        Adds a new experimental feature.
+
+        Test: http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html
+
+        * page/RuntimeEnabledFeatures.h:
+        (WebCore::RuntimeEnabledFeatures::setIsITPFirstPartyWebsiteDataRemovalEnabled):
+        (WebCore::RuntimeEnabledFeatures::isITPFirstPartyWebsiteDataRemovalEnabled const):
+
+2019-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Reparenting during a mutation event inside appendChild could result in a circular DOM tree
+        https://bugs.webkit.org/show_bug.cgi?id=192825
+
+        Reviewed by Zalan Bujtas.
+
+        The bug was caused by appendChildWithoutPreInsertionValidityCheck, insertBefore and replaceChild
+        checking the circular dependency against newChild instead of targets even though when newChild
+        is a document fragment, appendChildWithoutPreInsertionValidityCheck inserts the children of
+        the document fragment. Fixed the bug by checking the circular dependency against each target child.
+
+        Also fixed the bug that checkAcceptChildGuaranteedNodeTypes was not considering shadow inclusive
+        ancestors or template host elements.
+
+        Tests: fast/dom/append-child-with-mutation-event-removal-and-circular-insertion.html
+               fast/dom/append-child-with-mutation-event-removal-and-circular-shadow-insertion.html
+               fast/dom/append-child-with-mutation-event-removal-and-circular-template-insertion.html
+               fast/dom/insert-child-with-mutation-event-removal-and-circular-insertion.html
+               fast/dom/insert-child-with-mutation-event-removal-and-circular-shadow-insertion.html
+               fast/dom/insert-child-with-mutation-event-removal-and-circular-template-insertion.html
+               fast/dom/replace-child-with-mutation-event-removal-and-circular-insertion.html
+               fast/dom/replace-child-with-mutation-event-removal-and-circular-shadow-insertion.html
+               fast/dom/replace-child-with-mutation-event-removal-and-circular-template-insertion.html
+
+        * dom/ContainerNode.cpp:
+        (WebCore::checkAcceptChildGuaranteedNodeTypes):
+        (WebCore::ContainerNode::insertBefore):
+        (WebCore::ContainerNode::replaceChild):
+        (WebCore::ContainerNode::appendChildWithoutPreInsertionValidityCheck):
+
+2019-03-19  Brent Fulgham  <bfulgham@apple.com>
+
+        Add default prompt implementation for the Storage Access API
+        https://bugs.webkit.org/show_bug.cgi?id=195866
+        <rdar://problem/45150009>
+
+        Reviewed by Chris Dumez.
+
+        * en.lproj/Localizable.strings: Update with new strings used by the
+        Storage Access API dialog.
+
 2019-03-19  Thibault Saunier  <tsaunier@igalia.com>
 
         [GStreamer][WebRTC] Create sps/pps for all frames to please libwebrtc

@@ -75,6 +75,8 @@ WI.DOMManager = class DOMManager extends WI.Object
 
     // Public
 
+    get inspectedNode() { return this._inspectedNode; }
+
     get eventListenerBreakpoints()
     {
         return Array.from(this._breakpointsForEventListeners.values());
@@ -438,47 +440,6 @@ WI.DOMManager = class DOMManager extends WI.Object
         remoteObject.pushNodeToFrontend(nodeAvailable.bind(this));
     }
 
-    performSearch(query, searchCallback)
-    {
-        this.cancelSearch();
-
-        function callback(error, searchId, resultsCount)
-        {
-            this._searchId = searchId;
-            searchCallback(resultsCount);
-        }
-        DOMAgent.performSearch(query, callback.bind(this));
-    }
-
-    searchResult(index, callback)
-    {
-        function mycallback(error, nodeIds)
-        {
-            if (error) {
-                console.error(error);
-                callback(null);
-                return;
-            }
-            if (nodeIds.length !== 1)
-                return;
-
-            callback(this._idToDOMNode[nodeIds[0]]);
-        }
-
-        if (this._searchId)
-            DOMAgent.getSearchResults(this._searchId, index, index + 1, mycallback.bind(this));
-        else
-            callback(null);
-    }
-
-    cancelSearch()
-    {
-        if (this._searchId) {
-            DOMAgent.discardSearchResults(this._searchId);
-            this._searchId = undefined;
-        }
-    }
-
     querySelector(nodeOrNodeId, selector, callback)
     {
         let nodeId = nodeOrNodeId instanceof WI.DOMNode ? nodeOrNodeId.id : nodeOrNodeId;
@@ -595,6 +556,8 @@ WI.DOMManager = class DOMManager extends WI.Object
                 return;
 
             this._inspectedNode = node;
+
+            this.dispatchEventToListeners(WI.DOMManager.Event.InspectedNodeChanged);
         };
 
         // COMPATIBILITY (iOS 11): DOM.setInspectedNode did not exist.
@@ -707,4 +670,5 @@ WI.DOMManager.Event = {
     ChildNodeCountUpdated: "dom-manager-child-node-count-updated",
     DOMNodeWasInspected: "dom-manager-dom-node-was-inspected",
     InspectModeStateChanged: "dom-manager-inspect-mode-state-changed",
+    InspectedNodeChanged: "dom-manager-inspected-node-changed",
 };

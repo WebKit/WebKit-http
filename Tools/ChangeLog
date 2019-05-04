@@ -1,3 +1,242 @@
+2019-03-21  Alexey Proskuryakov  <ap@apple.com>
+
+        Update status inactive committers' status to 'contributor'.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-03-21  Xan Lopez  <xan@igalia.com>
+
+        [JSC][x86] Drop support for x87 floating point
+        https://bugs.webkit.org/show_bug.cgi?id=194853
+
+        Reviewed by Don Olmstead.
+
+        Force SSE2 on x86/32bit builds.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject):
+
+2019-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] User data not correctly passed to callback of functions and constructors with no parameters
+        https://bugs.webkit.org/show_bug.cgi?id=196073
+
+        Reviewed by Michael Catanzaro.
+
+        Add test cases to check functions and constructors with no arguments but receiving user data.
+
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (checkUserData):
+        (testJSCFunction):
+        (fooCreateWithUserData):
+        (testJSCClass):
+
+2019-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK build with GLib < 2.58 after r243285.
+
+        Add g_assert_cmpfloat_with_epsilon macro if not defined.
+
+        * TestWebKitAPI/glib/WebKitGLib/TestMain.h:
+
+2019-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to provide geolocation information
+        https://bugs.webkit.org/show_bug.cgi?id=195940
+
+        Reviewed by Michael Catanzaro.
+
+        Add a new test to check the new API.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestGeolocationManager.cpp: Added.
+        (testGeolocationManagerCurrentPosition):
+        (testGeolocationManagerWatchPosition):
+        (beforeAll):
+        (afterAll):
+        * TestWebKitAPI/Tests/WebKitGLib/TestUIClient.cpp:
+        (testWebViewGeolocationPermissionRequests): Stop using ENABLE(GEOLOCATION) conditionals for geolocation tests.
+        (beforeAll): Ditto.
+        * TestWebKitAPI/glib/CMakeLists.txt:
+
+2019-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLib] Returning G_TYPE_OBJECT from a method does not work
+        https://bugs.webkit.org/show_bug.cgi?id=195574
+
+        Reviewed by Michael Catanzaro.
+
+        Add new test cases to check the behavior of constructors and functions returning GObject and boxed types.
+
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (getGFile):
+        (getParent):
+        (createGString):
+        (getGString):
+        (getGStringCopyWillRaise):
+        (getGStringCopy):
+        (getGStringStr):
+        (getGStringLen):
+        (freeGString):
+        (testJSCClass):
+
+2019-03-20  Saam Barati  <sbarati@apple.com>
+
+        DFG::AbstractValue::validateOSREntry is wrong when isHeapTop and the incoming value is Empty
+        https://bugs.webkit.org/show_bug.cgi?id=195721
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/run-javascriptcore-tests:
+
+2019-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename ENABLE_ACCELERATED_OVERFLOW_SCROLLING macro to ENABLE_OVERFLOW_SCROLLING_TOUCH
+        https://bugs.webkit.org/show_bug.cgi?id=196049
+
+        Reviewed by Tim Horton.
+
+        This macro is about the -webkit-overflow-scrolling CSS property, not accelerated
+        overflow scrolling in general, so rename it.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-03-20  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r243153): [iOS] TestWebKitAPI.FocusPreservationTests.ChangingFocusedNodeResetsFocusPreservationState is failing
+        https://bugs.webkit.org/show_bug.cgi?id=196031
+        <rdar://problem/49078172>
+
+        Reviewed by Tim Horton.
+
+        The test incorrectly assumes that calling -[WKWebView resignFirstResponder] is identical to dismissing the
+        <select> picker. This is no longer the case following r243135. Instead use testing SPI that invokes that
+        same code path used when the Done button is pressed to dismiss the <select> picker.
+
+        * TestWebKitAPI/Tests/ios/FocusPreservationTests.mm:
+        (TestWebKitAPI::TEST):
+
+2019-03-20  Chris Dumez  <cdumez@apple.com>
+
+        Regression(PSON): ViewGestureController is not properly notified of process swaps on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=196029
+        <rdar://problem/48954651>
+
+        Reviewed by Tim Horton.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2019-03-20  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Improve failure summary string for ApplyPatch step
+        https://bugs.webkit.org/show_bug.cgi?id=195995
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (ApplyPatch.getResultSummary): Override getResultSummary.
+
+2019-03-20  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for new meter ARIA role
+        https://bugs.webkit.org/show_bug.cgi?id=195966
+
+        Reviewed by Chris Fleizach.
+
+        Update Core role for ATK_ROLE_LEVEL_BAR from AXProgressIndicator
+        to AXLevelIndicator.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+
+2019-03-19  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Implement FIDO AppID extension
+        https://bugs.webkit.org/show_bug.cgi?id=143491
+        <rdar://problem/48298273>
+
+        Reviewed by Brent Fulgham.
+
+        Add a test that covers the new flag of convertToU2fSignCommand.
+
+        * TestWebKitAPI/Tests/WebCore/CtapRequestTest.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/FidoTestData.h:
+        * TestWebKitAPI/Tests/WebCore/U2fCommandConstructorTest.cpp:
+        (TestWebKitAPI::TEST):
+
+2019-03-19  Keith Rollin  <krollin@apple.com>
+
+        Add support for more platforms to generate-xcfilelists
+        https://bugs.webkit.org/show_bug.cgi?id=195977
+
+        Reviewed by Alexey Proskuryakov.
+
+        generate-xcfilelists incorrectly complains when involved with building
+        WebKit for iphonesimulator:
+
+            $ make debug SDKROOT=iphonesimulator.internal -C Internal/
+            …
+            ### (die get_canonical_platform_name main main) Unrecognized platform name: iphonesimulator
+
+        Address this by teaching generate-xcfilelists about more platforms.
+
+        * Scripts/generate-xcfilelists:
+
+2019-03-19  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics (experimental): Clear non-cookie website data for sites that have been navigated to, with link decoration, by a prevalent resource
+        https://bugs.webkit.org/show_bug.cgi?id=195923
+        <rdar://problem/49001272>
+
+        Reviewed by Alex Christensen.
+
+        This patch does the following to the TestRunner:
+        - Adds setStatisticsCrossSiteLoadWithLinkDecoration().
+        - Makes setStatisticsTimeToLiveUserInteraction() wait for completion.
+        - Makes statisticsProcessStatisticsAndDataRecords() wait for completion.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStatisticsCrossSiteLoadWithLinkDecoration):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setStatisticsCrossSiteLoadWithLinkDecoration):
+        (WTR::TestController::setStatisticsTimeToLiveUserInteraction):
+        (WTR::TestController::statisticsProcessStatisticsAndDataRecords):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2019-03-19  Christopher Reid  <chris.reid@sony.com>
+
+        [CMake] Support more clang and gcc sanitizers
+        https://bugs.webkit.org/show_bug.cgi?id=195956
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitdirs.pm: Updating ENABLE_ADDRESS_SANITIZER to ENABLE_SANITIZERS=address
+
+2019-03-19  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Improve summary for PrintConfiguration step
+        https://bugs.webkit.org/show_bug.cgi?id=195945
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (PrintConfiguration.getResultSummary): Override getResultSummary.
+
+2019-03-19  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Improve summary for CheckOutSource step
+        https://bugs.webkit.org/show_bug.cgi?id=195963
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (CheckOutSource.getResultSummary):
+
 2019-03-19  Daniel Bates  <dabates@apple.com>
 
         [iOS] Focus not preserved when switching between tabs

@@ -1,3 +1,818 @@
+2019-03-21  Tadeu Zagallo  <tzagallo@apple.com>
+
+        JSObject::putDirectIndexSlowOrBeyondVectorLength should check if indexIsSufficientlyBeyondLengthForSparseMap
+        https://bugs.webkit.org/show_bug.cgi?id=196078
+        <rdar://problem/35925380>
+
+        Reviewed by Mark Lam.
+
+        Unlike the other variations of putByIndex, it only checked if the index
+        was larger than MIN_SPARSE_ARRAY_INDEX when the indexingType was
+        ALL_BLANK_INDEXING_TYPES. This resulted in a huge butterfly being
+        allocated for object literals (e.g. `{[9e4]: ...}`) and objects parsed
+        from JSON.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putDirectIndexSlowOrBeyondVectorLength):
+
+2019-03-21  Tadeu Zagallo  <tzagallo@apple.com>
+
+        CachedUnlinkedSourceCodeShape::m_provider should be a CachedRefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=196079
+
+        Reviewed by Saam Barati.
+
+        It was mistakenly cached as CachedPtr, which was leaking the decoded SourceProvider.
+
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedUnlinkedSourceCodeShape::encode):
+
+2019-03-21  Mark Lam  <mark.lam@apple.com>
+
+        Placate exception check validation in operationArrayIndexOfString().
+        https://bugs.webkit.org/show_bug.cgi?id=196067
+        <rdar://problem/49056572>
+
+        Reviewed by Michael Saboff.
+
+        * dfg/DFGOperations.cpp:
+
+2019-03-21  Xan Lopez  <xan@igalia.com>
+
+        [JSC][x86] Drop support for x87 floating point
+        https://bugs.webkit.org/show_bug.cgi?id=194853
+
+        Reviewed by Don Olmstead.
+
+        Require SSE2 throughout the codebase, and remove x87 support where
+        it was optionally available. SSE2 detection happens at compile
+        time through a static_assert.
+
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::storeDouble):
+        (JSC::MacroAssemblerX86::moveDoubleToInts):
+        (JSC::MacroAssemblerX86::supportsFloatingPoint):
+        (JSC::MacroAssemblerX86::supportsFloatingPointTruncate):
+        (JSC::MacroAssemblerX86::supportsFloatingPointSqrt):
+        (JSC::MacroAssemblerX86::supportsFloatingPointAbs):
+        * assembler/MacroAssemblerX86Common.cpp:
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::moveDouble):
+        (JSC::MacroAssemblerX86Common::loadDouble):
+        (JSC::MacroAssemblerX86Common::loadFloat):
+        (JSC::MacroAssemblerX86Common::storeDouble):
+        (JSC::MacroAssemblerX86Common::storeFloat):
+        (JSC::MacroAssemblerX86Common::convertDoubleToFloat):
+        (JSC::MacroAssemblerX86Common::convertFloatToDouble):
+        (JSC::MacroAssemblerX86Common::addDouble):
+        (JSC::MacroAssemblerX86Common::addFloat):
+        (JSC::MacroAssemblerX86Common::divDouble):
+        (JSC::MacroAssemblerX86Common::divFloat):
+        (JSC::MacroAssemblerX86Common::subDouble):
+        (JSC::MacroAssemblerX86Common::subFloat):
+        (JSC::MacroAssemblerX86Common::mulDouble):
+        (JSC::MacroAssemblerX86Common::mulFloat):
+        (JSC::MacroAssemblerX86Common::convertInt32ToDouble):
+        (JSC::MacroAssemblerX86Common::convertInt32ToFloat):
+        (JSC::MacroAssemblerX86Common::branchDouble):
+        (JSC::MacroAssemblerX86Common::branchFloat):
+        (JSC::MacroAssemblerX86Common::compareDouble):
+        (JSC::MacroAssemblerX86Common::compareFloat):
+        (JSC::MacroAssemblerX86Common::branchTruncateDoubleToInt32):
+        (JSC::MacroAssemblerX86Common::truncateDoubleToInt32):
+        (JSC::MacroAssemblerX86Common::truncateFloatToInt32):
+        (JSC::MacroAssemblerX86Common::branchConvertDoubleToInt32):
+        (JSC::MacroAssemblerX86Common::branchDoubleNonZero):
+        (JSC::MacroAssemblerX86Common::branchDoubleZeroOrNaN):
+        (JSC::MacroAssemblerX86Common::lshiftPacked):
+        (JSC::MacroAssemblerX86Common::rshiftPacked):
+        (JSC::MacroAssemblerX86Common::orPacked):
+        (JSC::MacroAssemblerX86Common::move32ToFloat):
+        (JSC::MacroAssemblerX86Common::moveFloatTo32):
+        (JSC::MacroAssemblerX86Common::moveConditionallyDouble):
+        (JSC::MacroAssemblerX86Common::moveConditionallyFloat):
+        * offlineasm/x86.rb:
+        * runtime/MathCommon.cpp:
+        (JSC::operationMathPow):
+
+2019-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] User data not correctly passed to callback of functions and constructors with no parameters
+        https://bugs.webkit.org/show_bug.cgi?id=196073
+
+        Reviewed by Michael Catanzaro.
+
+        This is because GClosure always expects a first parameter as instance. In case of functions or constructors with
+        no parameters we insert a fake instance which is just a null pointer that is ignored by the callback. But
+        if the function/constructor has user data the callback will expect one parameter for the user data. In that case
+        we can simply swap instance/user data so that the fake instance will be the second argument and user data the
+        first one.
+
+        * API/glib/JSCClass.cpp:
+        (jscClassCreateConstructor): Use g_cclosure_new_swap() if parameters is empty and user data was provided.
+        * API/glib/JSCValue.cpp:
+        (jscValueFunctionCreate): Ditto.
+
+2019-03-21  Pablo Saavedra  <psaavedra@igalia.com>
+
+        [JSC][32-bit] Build failure after r243232
+        https://bugs.webkit.org/show_bug.cgi?id=196068
+
+        Reviewed by Mark Lam.
+
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+
+2019-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLib] Returning G_TYPE_OBJECT from a method does not work
+        https://bugs.webkit.org/show_bug.cgi?id=195574
+
+        Reviewed by Michael Catanzaro.
+
+        Add more documentation to clarify the ownership of wrapped objects when created and when returned by functions.
+
+        * API/glib/JSCCallbackFunction.cpp:
+        (JSC::JSCCallbackFunction::construct): Also allow to return boxed types from a constructor.
+        * API/glib/JSCClass.cpp:
+        * API/glib/JSCValue.cpp:
+
+2019-03-21  Mark Lam  <mark.lam@apple.com>
+
+        Cap length of an array with spread to MIN_ARRAY_STORAGE_CONSTRUCTION_LENGTH.
+        https://bugs.webkit.org/show_bug.cgi?id=196055
+        <rdar://problem/49067448>
+
+        Reviewed by Yusuke Suzuki.
+
+        We are doing this because:
+        1. We expect the array to be densely packed.
+        2. SpeculativeJIT::compileAllocateNewArrayWithSize() (and the FTL equivalent)
+           expects the array length to be less than MIN_ARRAY_STORAGE_CONSTRUCTION_LENGTH
+           if we don't want to use an ArrayStorage shape.
+        3. There's no reason why an array with spread needs to be that large anyway.
+           MIN_ARRAY_STORAGE_CONSTRUCTION_LENGTH is plenty.
+
+        In this patch, we also add a debug assert in compileAllocateNewArrayWithSize() and
+        emitAllocateButterfly() to check for overflows.
+
+        * assembler/AbortReason.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCreateRest):
+        (JSC::DFG::SpeculativeJIT::compileNewArrayWithSpread):
+        (JSC::DFG::SpeculativeJIT::emitAllocateButterfly):
+        (JSC::DFG::SpeculativeJIT::compileAllocateNewArrayWithSize):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayWithSpread):
+        * runtime/ArrayConventions.h:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+
+2019-03-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Use finalizer in JSGlobalLexicalEnvironment and JSGlobalObject
+        https://bugs.webkit.org/show_bug.cgi?id=195992
+
+        Reviewed by Keith Miller and Mark Lam.
+
+        JSGlobalLexicalEnvironment and JSGlobalObject have their own CompleteSubspace to call destructors while they are not inheriting JSDestructibleObject.
+        But it is too costly since (1) it requires CompleteSubspace in VM, (2) both objects allocate MarkedBlocks while # of them are really small.
+
+        Instead of using CompleteSubspace, we just set finalizers for them. Since these objects are rarely allocated, setting finalizers does not show
+        memory / performance problems (actually, previously we used finalizer for ArrayPrototype due to the same reason, and it does not show any problems).
+
+        And we also add following two changes to JSSegmentedVariableObject.
+
+        1. Remove one boolean used for debugging in Release build. It enlarges sizeof(JSSegmentedVariableObject) and allocates one more MarkedBlock.
+        2. Use cellLock() instead.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * runtime/JSSegmentedVariableObject.cpp:
+        (JSC::JSSegmentedVariableObject::findVariableIndex):
+        (JSC::JSSegmentedVariableObject::addVariables):
+        (JSC::JSSegmentedVariableObject::visitChildren):
+        (JSC::JSSegmentedVariableObject::~JSSegmentedVariableObject):
+        (JSC::JSSegmentedVariableObject::finishCreation):
+        * runtime/JSSegmentedVariableObject.h:
+        (JSC::JSSegmentedVariableObject::subspaceFor): Deleted.
+        * runtime/JSSegmentedVariableObjectHeapCellType.cpp: Removed.
+        * runtime/JSSegmentedVariableObjectHeapCellType.h: Removed.
+        * runtime/StringIteratorPrototype.cpp:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2019-03-20  Saam Barati  <sbarati@apple.com>
+
+        DFG::AbstractValue::validateOSREntry is wrong when isHeapTop and the incoming value is Empty
+        https://bugs.webkit.org/show_bug.cgi?id=195721
+
+        Reviewed by Filip Pizlo.
+
+        There was a check in AbstractValue::validateOSREntry where it checked
+        if isHeapTop(), and if so, just returned true. However, this is wrong
+        if the value we're checking against is the empty value, since HeapTop
+        does not include the Empty value. Instead, this check should be
+        isBytecodeTop(), which does account for the empty value.
+        
+        This patch also does a couple of other things:
+        - For our OSR entry AbstractValues, we were using HeapTop to mark
+         a dead value. That is now changed to BytecodeTop. (The idea here
+         is just to have validateOSREntry return early.)
+        - It wasn't obvious to me how I could make this fail in JS code.
+         The symptom we'd end up seeing is something like a nullptr derefernece
+         from forgetting to do a TDZ check. Instead, I've added a unit test.
+         This unit test lives in a new test file: testdfg. testdfg is similar
+         to testb3/testair/testapi.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/SpeculatedType.h:
+        * dfg/DFGAbstractValue.h:
+        (JSC::DFG::AbstractValue::isBytecodeTop const):
+        (JSC::DFG::AbstractValue::validateOSREntryValue const):
+        * dfg/testdfg.cpp: Added.
+        (hiddenTruthBecauseNoReturnIsStupid):
+        (usage):
+        (JSC::DFG::testEmptyValueDoesNotValidateWithHeapTop):
+        (JSC::DFG::run):
+        (run):
+        (main):
+        * shell/CMakeLists.txt:
+
+2019-03-20  Saam Barati  <sbarati@apple.com>
+
+        typeOfDoubleSum is wrong for when NaN can be produced
+        https://bugs.webkit.org/show_bug.cgi?id=196030
+
+        Reviewed by Filip Pizlo.
+
+        We were using typeOfDoubleSum(SpeculatedType, SpeculatedType) for add/sub/mul.
+        It assumed that the only way the resulting type could be NaN is if one of
+        the inputs were NaN. However, this is wrong. NaN can be produced in at least
+        these cases:
+          Infinity - Infinity
+          Infinity + (-Infinity)
+          Infinity * 0
+
+        * bytecode/SpeculatedType.cpp:
+        (JSC::typeOfDoubleSumOrDifferenceOrProduct):
+        (JSC::typeOfDoubleSum):
+        (JSC::typeOfDoubleDifference):
+        (JSC::typeOfDoubleProduct):
+
+2019-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename ENABLE_ACCELERATED_OVERFLOW_SCROLLING macro to ENABLE_OVERFLOW_SCROLLING_TOUCH
+        https://bugs.webkit.org/show_bug.cgi?id=196049
+
+        Reviewed by Tim Horton.
+
+        This macro is about the -webkit-overflow-scrolling CSS property, not accelerated
+        overflow scrolling in general, so rename it.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-03-20  Saam Barati  <sbarati@apple.com>
+
+        GetCallee does not report the correct type in AI
+        https://bugs.webkit.org/show_bug.cgi?id=195981
+
+        Reviewed by Yusuke Suzuki.
+
+        I found this as part of my work in:
+        https://bugs.webkit.org/show_bug.cgi?id=195924
+        
+        I'm not sure how to write a test for it.
+        
+        GetCallee was always reporting that the result is SpecFunction. However,
+        for eval, it may result in just a JSCallee object, which is not a JSFunction.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+
+2019-03-20  Mark Lam  <mark.lam@apple.com>
+
+        Open source arm64e code.
+        https://bugs.webkit.org/show_bug.cgi?id=196012
+        <rdar://problem/49066237>
+
+        Reviewed by Keith Miller.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * assembler/ARM64EAssembler.h: Added.
+        (JSC::ARM64EAssembler::encodeGroup1):
+        (JSC::ARM64EAssembler::encodeGroup2):
+        (JSC::ARM64EAssembler::encodeGroup4):
+        (JSC::ARM64EAssembler::pacia1716):
+        (JSC::ARM64EAssembler::pacib1716):
+        (JSC::ARM64EAssembler::autia1716):
+        (JSC::ARM64EAssembler::autib1716):
+        (JSC::ARM64EAssembler::paciaz):
+        (JSC::ARM64EAssembler::paciasp):
+        (JSC::ARM64EAssembler::pacibz):
+        (JSC::ARM64EAssembler::pacibsp):
+        (JSC::ARM64EAssembler::autiaz):
+        (JSC::ARM64EAssembler::autiasp):
+        (JSC::ARM64EAssembler::autibz):
+        (JSC::ARM64EAssembler::autibsp):
+        (JSC::ARM64EAssembler::xpaclri):
+        (JSC::ARM64EAssembler::pacia):
+        (JSC::ARM64EAssembler::pacib):
+        (JSC::ARM64EAssembler::pacda):
+        (JSC::ARM64EAssembler::pacdb):
+        (JSC::ARM64EAssembler::autia):
+        (JSC::ARM64EAssembler::autib):
+        (JSC::ARM64EAssembler::autda):
+        (JSC::ARM64EAssembler::autdb):
+        (JSC::ARM64EAssembler::paciza):
+        (JSC::ARM64EAssembler::pacizb):
+        (JSC::ARM64EAssembler::pacdza):
+        (JSC::ARM64EAssembler::pacdzb):
+        (JSC::ARM64EAssembler::autiza):
+        (JSC::ARM64EAssembler::autizb):
+        (JSC::ARM64EAssembler::autdza):
+        (JSC::ARM64EAssembler::autdzb):
+        (JSC::ARM64EAssembler::xpaci):
+        (JSC::ARM64EAssembler::xpacd):
+        (JSC::ARM64EAssembler::pacga):
+        (JSC::ARM64EAssembler::braa):
+        (JSC::ARM64EAssembler::brab):
+        (JSC::ARM64EAssembler::blraa):
+        (JSC::ARM64EAssembler::blrab):
+        (JSC::ARM64EAssembler::braaz):
+        (JSC::ARM64EAssembler::brabz):
+        (JSC::ARM64EAssembler::blraaz):
+        (JSC::ARM64EAssembler::blrabz):
+        (JSC::ARM64EAssembler::retaa):
+        (JSC::ARM64EAssembler::retab):
+        (JSC::ARM64EAssembler::eretaa):
+        (JSC::ARM64EAssembler::eretab):
+        (JSC::ARM64EAssembler::linkPointer):
+        (JSC::ARM64EAssembler::repatchPointer):
+        (JSC::ARM64EAssembler::setPointer):
+        (JSC::ARM64EAssembler::readPointer):
+        (JSC::ARM64EAssembler::readCallTarget):
+        (JSC::ARM64EAssembler::ret):
+        * assembler/MacroAssembler.cpp:
+        * assembler/MacroAssembler.h:
+        * assembler/MacroAssemblerARM64.cpp:
+        * assembler/MacroAssemblerARM64E.h: Added.
+        (JSC::MacroAssemblerARM64E::tagReturnAddress):
+        (JSC::MacroAssemblerARM64E::untagReturnAddress):
+        (JSC::MacroAssemblerARM64E::tagPtr):
+        (JSC::MacroAssemblerARM64E::untagPtr):
+        (JSC::MacroAssemblerARM64E::removePtrTag):
+        (JSC::MacroAssemblerARM64E::callTrustedPtr):
+        (JSC::MacroAssemblerARM64E::call):
+        (JSC::MacroAssemblerARM64E::callRegister):
+        (JSC::MacroAssemblerARM64E::jump):
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * ftl/FTLThunks.cpp:
+        (JSC::FTL::genericGenerationThunkGenerator):
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::prepareForTailCallSlow):
+        * jit/CallFrameShuffler.cpp:
+        (JSC::CallFrameShuffler::prepareForTailCall):
+        * jit/ExecutableAllocator.cpp:
+        (JSC::ExecutableAllocator::allocate):
+        * jit/ThunkGenerators.cpp:
+        (JSC::arityFixupGenerator):
+        * llint/LLIntOfflineAsmConfig.h:
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/ClassInfo.h:
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSCPtrTag.cpp: Added.
+        (JSC::tagForPtr):
+        (JSC::ptrTagName):
+        (JSC::initializePtrTagLookup):
+        * runtime/JSCPtrTag.h:
+        (JSC::initializePtrTagLookup):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2019-03-20  Tadeu Zagallo  <tzagallo@apple.com>
+
+        JSC::createError needs to check for OOM in errorDescriptionForValue
+        https://bugs.webkit.org/show_bug.cgi?id=196032
+        <rdar://problem/46842740>
+
+        Reviewed by Mark Lam.
+
+        We were missing exceptions checks at two levels:
+        - In errorDescriptionForValue, when the value is a string, we should
+          check that JSString::value returns a valid string, since we might run
+          out of memory if it is a rope and we need to resolve it.
+        - In createError, we should check for the result of errorDescriptionForValue
+          before concatenating it with the message provided by the caller.
+
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::errorDescriptionForValue):
+        (JSC::createError):
+        * runtime/ExceptionHelpers.h:
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: include window as part of any event listener chain
+        https://bugs.webkit.org/show_bug.cgi?id=195730
+        <rdar://problem/48916872>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/DOM.json:
+        Modify `DOM.getEventListenersForNode` to not save the handler object, as that was never
+        used by the frontend. Add an `onWindow` optional property to `DOM.EventListener` that is set
+        when the event listener was retrieved from the `window` object.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Runtime: lazily create the agent
+        https://bugs.webkit.org/show_bug.cgi?id=195972
+        <rdar://problem/49039655>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::createLazyAgents):
+
+        * inspector/agents/InspectorRuntimeAgent.h:
+        (Inspector::InspectorRuntimeAgent::enabled): Deleted.
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::didCreateFrontendAndBackend): Added.
+        (Inspector::InspectorRuntimeAgent::willDestroyFrontendAndBackend):
+
+        * inspector/agents/JSGlobalObjectRuntimeAgent.h:
+        * inspector/agents/JSGlobalObjectRuntimeAgent.cpp:
+        (Inspector::JSGlobalObjectRuntimeAgent::didCreateFrontendAndBackend): Deleted.
+
+2019-03-20  Michael Saboff  <msaboff@apple.com>
+
+        JSC test crash: stress/dont-strength-reduce-regexp-with-compile-error.js.default
+        https://bugs.webkit.org/show_bug.cgi?id=195906
+
+        Reviewed by Mark Lam.
+
+        The problem here as that we may successfully parsed a RegExp without running out of stack,
+        but later run out of stack when trying to JIT compile the same expression.
+
+        Added a check for available stack space when we call into one of the parenthesis compilation
+        functions that recurse.  When we don't have enough stack space to recurse, we fail the JIT
+        compilation and let the interpreter handle the expression.
+
+        From code inspection of the YARR interpreter it has the same issue, but I couldn't cause a failure.
+        Filed a new bug and added a FIXME comment for the Interpreter to have similar checks.
+        Given that we can reproduce a failure, this is sufficient for now.
+
+        This change is covered by the previously added failing test,
+        JSTests/stress/dont-strength-reduce-regexp-with-compile-error.js.
+
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::Interpreter::interpret):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::opCompileParenthesesSubpattern):
+        (JSC::Yarr::YarrGenerator::opCompileParentheticalAssertion):
+        (JSC::Yarr::YarrGenerator::opCompileBody):
+        (JSC::Yarr::dumpCompileFailure):
+        * yarr/YarrJIT.h:
+
+2019-03-20  Robin Morisset  <rmorisset@apple.com>
+
+        DFGNodeAllocator.h is dead code
+        https://bugs.webkit.org/show_bug.cgi?id=196019
+
+        Reviewed by Yusuke Suzuki.
+
+        As explained by Yusuke on IRC, the comment on DFG::Node saying that it cannot have a destructor is obsolete since https://trac.webkit.org/changeset/216815/webkit.
+        This patch removes both the comment and DFGNodeAllocator.h that that patch forgot to remove.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::dumpChildren):
+        * dfg/DFGNodeAllocator.h: Removed.
+
+2019-03-20  Robin Morisset  <rmorisset@apple.com>
+
+        Compress CodeOrigin into a single word in the common case
+        https://bugs.webkit.org/show_bug.cgi?id=195928
+
+        Reviewed by Saam Barati.
+
+        The trick is that pointers only take 48 bits on x86_64 in practice (and we can even use the bottom three bits of that thanks to alignment), and even less on ARM64.
+        So we can shove the bytecode index in the top bits almost all the time.
+        If the bytecodeIndex is too ginormous (1<<16 in practice on x86_64), we just set one bit at the bottom and store a pointer to some out-of-line storage instead.
+        Finally we represent an invalid bytecodeIndex (which used to be represented by UINT_MAX) by setting the second least signifcant bit.
+
+        The patch looks very long, but most of it is just replacing direct accesses to inlineCallFrame and bytecodeIndex by the relevant getters.
+
+        End result: CodeOrigin in the common case moves from 16 bytes (8 for InlineCallFrame*, 4 for unsigned bytecodeIndex, 4 of padding) to 8.
+        As a reference, during running JetStream2 we allocate more than 35M CodeOrigins. While they won't all be alive at the same time, it is still quite a lot of objects, so I am hoping for some small
+        improvement to RAMification from this work.
+
+        The one slightly tricky part is that we must implement copy and move assignment operators and constructors to make sure that any out-of-line storage belongs to a single CodeOrigin and is destroyed exactly once.
+
+        * bytecode/ByValInfo.h:
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeFor):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::globalObjectFor):
+        (JSC::CodeBlock::updateOSRExitCounterAndCheckIfNeedToReoptimize):
+        (JSC::CodeBlock::bytecodeOffsetFromCallSiteIndex):
+        * bytecode/CodeOrigin.cpp:
+        (JSC::CodeOrigin::inlineDepth const):
+        (JSC::CodeOrigin::isApproximatelyEqualTo const):
+        (JSC::CodeOrigin::approximateHash const):
+        (JSC::CodeOrigin::inlineStack const):
+        (JSC::CodeOrigin::codeOriginOwner const):
+        (JSC::CodeOrigin::stackOffset const):
+        (JSC::CodeOrigin::dump const):
+        (JSC::CodeOrigin::inlineDepthForCallFrame): Deleted.
+        * bytecode/CodeOrigin.h:
+        (JSC::OutOfLineCodeOrigin::OutOfLineCodeOrigin):
+        (JSC::CodeOrigin::CodeOrigin):
+        (JSC::CodeOrigin::~CodeOrigin):
+        (JSC::CodeOrigin::isSet const):
+        (JSC::CodeOrigin::isHashTableDeletedValue const):
+        (JSC::CodeOrigin::bytecodeIndex const):
+        (JSC::CodeOrigin::inlineCallFrame const):
+        (JSC::CodeOrigin::buildCompositeValue):
+        (JSC::CodeOrigin::hash const):
+        (JSC::CodeOrigin::operator== const):
+        (JSC::CodeOrigin::exitingInlineKind const): Deleted.
+        * bytecode/DeferredSourceDump.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeForStubInfo):
+        (JSC::GetByIdStatus::computeFor):
+        * bytecode/ICStatusMap.cpp:
+        (JSC::ICStatusContext::isInlined const):
+        * bytecode/InByIdStatus.cpp:
+        (JSC::InByIdStatus::computeFor):
+        (JSC::InByIdStatus::computeForStubInfo):
+        * bytecode/InlineCallFrame.cpp:
+        (JSC::InlineCallFrame::dumpInContext const):
+        * bytecode/InlineCallFrame.h:
+        (JSC::InlineCallFrame::computeCallerSkippingTailCalls):
+        (JSC::InlineCallFrame::getCallerInlineFrameSkippingTailCalls):
+        (JSC::baselineCodeBlockForOriginAndBaselineCodeBlock):
+        (JSC::CodeOrigin::walkUpInlineStack):
+        * bytecode/InstanceOfStatus.h:
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeForStubInfo):
+        (JSC::PutByIdStatus::computeFor):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGArgumentsUtilities.cpp:
+        (JSC::DFG::argumentsInvolveStackSlot):
+        (JSC::DFG::emitCodeToGetArgumentsArrayLength):
+        * dfg/DFGArrayMode.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::injectLazyOperandSpeculation):
+        (JSC::DFG::ByteCodeParser::setLocal):
+        (JSC::DFG::ByteCodeParser::setArgument):
+        (JSC::DFG::ByteCodeParser::flushForTerminalImpl):
+        (JSC::DFG::ByteCodeParser::getPredictionWithoutOSRExit):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::parseCodeBlock):
+        (JSC::DFG::ByteCodeParser::handlePutByVal):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::attemptToMakeGetArrayLength):
+        * dfg/DFGForAllKills.h:
+        (JSC::DFG::forAllKilledOperands):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dumpCodeOrigin):
+        (JSC::DFG::Graph::dump):
+        (JSC::DFG::Graph::isLiveInBytecode):
+        (JSC::DFG::Graph::methodOfGettingAValueProfileFor):
+        (JSC::DFG::Graph::willCatchExceptionInMachineFrame):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::executableFor):
+        (JSC::DFG::Graph::isStrictModeFor):
+        (JSC::DFG::Graph::hasExitSite):
+        (JSC::DFG::Graph::forAllLocalsLiveInBytecode):
+        * dfg/DFGLiveCatchVariablePreservationPhase.cpp:
+        (JSC::DFG::LiveCatchVariablePreservationPhase::handleBlockForTryCatch):
+        * dfg/DFGMinifiedNode.cpp:
+        (JSC::DFG::MinifiedNode::fromNode):
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::LocalOSRAvailabilityCalculator::executeNode):
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::executeOSRExit):
+        (JSC::DFG::reifyInlinedCallFrames):
+        (JSC::DFG::adjustAndJumpToTarget):
+        (JSC::DFG::printOSRExit):
+        (JSC::DFG::OSRExit::compileExit):
+        * dfg/DFGOSRExitBase.cpp:
+        (JSC::DFG::OSRExitBase::considerAddingAsFrequentExitSiteSlow):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::handleExitCounts):
+        (JSC::DFG::reifyInlinedCallFrames):
+        (JSC::DFG::adjustAndJumpToTarget):
+        * dfg/DFGOSRExitPreparation.cpp:
+        (JSC::DFG::prepareCodeOriginForOSRExit):
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitGetLength):
+        (JSC::DFG::SpeculativeJIT::emitGetCallee):
+        (JSC::DFG::SpeculativeJIT::compileCurrentBlock):
+        (JSC::DFG::SpeculativeJIT::compileValueAdd):
+        (JSC::DFG::SpeculativeJIT::compileValueSub):
+        (JSC::DFG::SpeculativeJIT::compileValueNegate):
+        (JSC::DFG::SpeculativeJIT::compileValueMul):
+        (JSC::DFG::SpeculativeJIT::compileForwardVarargs):
+        (JSC::DFG::SpeculativeJIT::compileCreateDirectArguments):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+        (JSC::DFG::TierUpCheckInjectionPhase::canOSREnterAtLoopHint):
+        (JSC::DFG::TierUpCheckInjectionPhase::buildNaturalLoopToLoopHintMap):
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::run):
+        * dfg/DFGVariableEventStream.cpp:
+        (JSC::DFG::VariableEventStream::reconstruct const):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueAdd):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueSub):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueMul):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithAddOrSub):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueNegate):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetMyArgumentByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayWithSpread):
+        (JSC::FTL::DFG::LowerDFGToB3::compileSpread):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargsSpread):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargs):
+        (JSC::FTL::DFG::LowerDFGToB3::compileForwardVarargs):
+        (JSC::FTL::DFG::LowerDFGToB3::compileForwardVarargsWithSpread):
+        (JSC::FTL::DFG::LowerDFGToB3::getArgumentsLength):
+        (JSC::FTL::DFG::LowerDFGToB3::getCurrentCallee):
+        (JSC::FTL::DFG::LowerDFGToB3::getArgumentsStart):
+        (JSC::FTL::DFG::LowerDFGToB3::codeOriginDescriptionOfCallSite const):
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileStub):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::bytecodeOffset):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::unwindToMachineCodeBlockFrame):
+        (JSC::StackVisitor::readFrame):
+        (JSC::StackVisitor::readNonInlinedFrame):
+        (JSC::inlinedFrameOffset):
+        (JSC::StackVisitor::readInlinedFrame):
+        * interpreter/StackVisitor.h:
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::executableFor):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::isStrictModeFor):
+        (JSC::AssemblyHelpers::argumentsStart):
+        (JSC::AssemblyHelpers::argumentCount):
+        * jit/PCToCodeOriginMap.cpp:
+        (JSC::PCToCodeOriginMap::PCToCodeOriginMap):
+        (JSC::PCToCodeOriginMap::findPC const):
+        * profiler/ProfilerOriginStack.cpp:
+        (JSC::Profiler::OriginStack::OriginStack):
+        * profiler/ProfilerOriginStack.h:
+        * runtime/ErrorInstance.cpp:
+        (JSC::appendSourceToError):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::processUnverifiedStackTraces):
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Search: allow DOM searches to be case sensitive
+        https://bugs.webkit.org/show_bug.cgi?id=194673
+        <rdar://problem/48087577>
+
+        Reviewed by Timothy Hatcher.
+
+        Since `DOM.performSearch` also searches by selector and XPath, some results may appear
+        as unexpected. As an example, searching for "BoDy" will still return the <body> as a result,
+        as although the literal node name ("BODY") didn't match, it did match via selector/XPath.
+
+        * inspector/protocol/DOM.json:
+        Allow `DOM.performSearch` to be case sensitive.
+
+2019-03-20  Saam Barati  <sbarati@apple.com>
+
+        AI rule for ValueBitNot/ValueBitXor/ValueBitAnd/ValueBitOr is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=195980
+
+        Reviewed by Yusuke Suzuki.
+
+        They were all saying they could be type: (SpecBoolInt32, SpecBigInt)
+        However, they should have been type: (SpecInt32Only, SpecBigInt)
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+
+2019-03-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove copyRef() calls added in r243163
+        https://bugs.webkit.org/show_bug.cgi?id=195962
+
+        Reviewed by Chris Dumez.
+
+        As best I can tell, may be a GCC 9 bug. It shouldn't warn about this case because the return
+        value is noncopyable and the WTFMove() is absolutely required. We can avoid the warning
+        without refcount churn by introducing an intermediate variable.
+
+        * inspector/scripts/codegen/cpp_generator_templates.py:
+
+2019-03-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Optimize jsc_value_object_define_property_data|accessor
+        https://bugs.webkit.org/show_bug.cgi?id=195679
+
+        Reviewed by Saam Barati.
+
+        Use direct C++ call instead of using the JSC GLib API to create the descriptor object and invoke Object.defineProperty().
+
+        * API/glib/JSCValue.cpp:
+        (jsc_value_object_define_property_data):
+        (jsc_value_object_define_property_accessor):
+
+2019-03-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: lazily create the agent
+        https://bugs.webkit.org/show_bug.cgi?id=195973
+        <rdar://problem/49039674>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::JSGlobalObjectInspectorController):
+        (Inspector::JSGlobalObjectInspectorController::frontendInitialized):
+        (Inspector::JSGlobalObjectInspectorController::createLazyAgents):
+
+        * inspector/JSGlobalObjectConsoleClient.h:
+        (Inspector::JSGlobalObjectConsoleClient::setInspectorDebuggerAgent): Added.
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::JSGlobalObjectConsoleClient):
+        (Inspector::JSGlobalObjectConsoleClient::startConsoleProfile):
+        (Inspector::JSGlobalObjectConsoleClient::stopConsoleProfile):
+
+        * inspector/agents/InspectorDebuggerAgent.h:
+        (Inspector::InspectorDebuggerAgent::addListener): Added.
+        (Inspector::InspectorDebuggerAgent::removeListener): Added.
+        (Inspector::InspectorDebuggerAgent::setListener): Deleted.
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::InspectorDebuggerAgent):
+        (Inspector::InspectorDebuggerAgent::enable):
+        (Inspector::InspectorDebuggerAgent::disable):
+        (Inspector::InspectorDebuggerAgent::getScriptSource):
+        (Inspector::InspectorDebuggerAgent::schedulePauseOnNextStatement):
+        (Inspector::InspectorDebuggerAgent::didPause):
+        (Inspector::InspectorDebuggerAgent::breakProgram):
+        (Inspector::InspectorDebuggerAgent::clearBreakDetails):
+        Drive-by: reorder some member variables for better sizing.
+        Drive-by: rename some member variables for clarity.
+
+2019-03-19  Saam barati  <sbarati@apple.com>
+
+        Prune code after ForceOSRExit
+        https://bugs.webkit.org/show_bug.cgi?id=195913
+
+        Reviewed by Keith Miller.
+
+        I removed our original implementation of this in r242989 because
+        it was not sound. It broke backwards propagation because it removed
+        uses of a node that backwards propagation relied on to be sound.
+        Essentially, backwards propagation relies on being able to see uses
+        that would exist in bytecode to be sound.
+        
+        The rollout in r242989 was a 1% Speedometer2 regression. This patch
+        rolls back in the optimization in a sound way.
+        
+        This patch augments the code we had prior to r242989 to be sound. In
+        addition to preserving liveness, we now also convert all uses after
+        the ForceOSRExit to be Phantom. This may pessimize the optimizations
+        we do in backwards propagation, but it will prevent that phase from
+        making unsound optimizations.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addToGraph):
+        (JSC::DFG::ByteCodeParser::parse):
+
 2019-03-19  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         Build cleanly with GCC 9

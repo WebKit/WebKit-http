@@ -136,6 +136,7 @@ messages -> NetworkProcess LegacyReceiver {
     SetTopFrameUniqueRedirectFrom(PAL::SessionID sessionID, WebCore::RegistrableDomain topFrameDomain, WebCore::RegistrableDomain redirectedFromDomain) -> () Async
     ResetCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID) -> () Async
     CommittedCrossSiteLoadWithLinkDecoration(PAL::SessionID sessionID, WebCore::RegistrableDomain fromDomain, WebCore::RegistrableDomain toDomain, uint64_t pageID) -> () Async
+    SetCrossSiteLoadWithLinkDecorationForTesting(PAL::SessionID sessionID, WebCore::RegistrableDomain fromDomain, WebCore::RegistrableDomain toDomain) -> () Async
     ResetCrossSiteLoadsWithLinkDecorationForTesting(PAL::SessionID sessionID) -> () Async
     DeleteCookiesForTesting(PAL::SessionID sessionID, WebCore::RegistrableDomain domain, bool includeHttpOnlyCookies) -> () Async
 #endif
@@ -163,6 +164,7 @@ messages -> NetworkProcess LegacyReceiver {
 #if ENABLE(INDEXED_DATABASE)
     SetIDBPerOriginQuota(uint64_t quota)
 #endif
+    UpdateQuotaBasedOnSpaceUsageForTesting(PAL::SessionID sessionID, struct WebCore::ClientOrigin origin)
 
     StoreAdClickAttribution(PAL::SessionID sessionID, WebCore::AdClickAttribution adClickAttribution)
     DumpAdClickAttribution(PAL::SessionID sessionID) -> (String adClickAttributionState) Async

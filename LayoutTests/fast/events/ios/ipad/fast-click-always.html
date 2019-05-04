@@ -1,4 +1,4 @@
-<!DOCTYPE html> <!-- webkit-test-runner [ useFlexibleViewport=true internal:FastClicksEverywhere=true ] -->
+<!DOCTYPE html> <!-- webkit-test-runner [ useFlexibleViewport=true ] -->
 
 <html>
 <meta name="viewport" content="width=800">
@@ -49,7 +49,7 @@
 <div id="target"></div>
 <div id="description">This document doesn't have fast clicks because
     it sets a viewport width. It has a significant zoom since the viewport
-    width is significantly bigger than the body width. However, it sets fast click everywhere to
-    on, so double tapping on the rectangle above should send a click event.</div>
+    width is significantly bigger than the body width. However, since fast click everywhere
+    is set to true, double tapping on the rectangle above should send a click event.</div>
 </body>
 </html>

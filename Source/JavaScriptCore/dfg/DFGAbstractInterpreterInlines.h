@@ -389,7 +389,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setTypeForNode(node, SpecBigInt);
         else {
             clobberWorld();
-            setTypeForNode(node, SpecBoolInt32 | SpecBigInt);
+            setTypeForNode(node, SpecInt32Only | SpecBigInt);
         }
 
         break;
@@ -414,7 +414,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setTypeForNode(node, SpecBigInt);
         else {
             clobberWorld();
-            setTypeForNode(node, SpecBoolInt32 | SpecBigInt);
+            setTypeForNode(node, SpecInt32Only | SpecBigInt);
         }
         break;
             
@@ -2213,7 +2213,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds: {
         JSValue index = forNode(node->child2()).m_value;
-        InlineCallFrame* inlineCallFrame = node->child1()->origin.semantic.inlineCallFrame;
+        InlineCallFrame* inlineCallFrame = node->child1()->origin.semantic.inlineCallFrame();
 
         if (index && index.isUInt32()) {
             // This pretends to return TOP for accesses that are actually proven out-of-bounds because
@@ -2730,7 +2730,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
         }
-        setTypeForNode(node, SpecFunction);
+        setTypeForNode(node, SpecFunction | SpecObjectOther);
         break;
         
     case GetArgumentCountIncludingThis:

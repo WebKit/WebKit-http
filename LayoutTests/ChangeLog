@@ -1,3 +1,461 @@
+2019-03-21  Shawn Roberts  <sroberts@apple.com>
+
+        Unreviewed, rolling out r243250.
+
+        Causing 109 Failures and 2 crashes on iOS Sim Debug
+        OpenSource/Internal queues
+
+        Reverted changeset:
+
+        "[iOS WK2] Turn on async overflow scrolling by default"
+        https://bugs.webkit.org/show_bug.cgi?id=196011
+        https://trac.webkit.org/changeset/243250
+
+2019-03-21  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ and WPE gardening after r243278.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2019-03-21  Antti Koivisto  <antti@apple.com>
+
+        Use immediateScrollElementAtContentPointToOffset for scroll overlap tests
+        https://bugs.webkit.org/show_bug.cgi?id=195943
+
+        Reviewed by Simon Fraser.
+
+        This is much faster and simpler than simulated touch events.
+
+        * fast/scrolling/ios/overflow-scroll-overlap-2.html:
+        * fast/scrolling/ios/overflow-scroll-overlap-3.html:
+        * fast/scrolling/ios/overflow-scroll-overlap-4.html:
+        * fast/scrolling/ios/overflow-scroll-overlap.html:
+
+        This API doesn't respect touch-action property, so stop using it. Instead restore
+        the main scrollview to the initial position explicitly after scroll.
+
+        * fast/scrolling/resources/overflow-scroll-overlap.js:
+        (async.runTest):
+        * resources/ui-helper.js:
+        (return.new.Promise.):
+        (return.new.Promise):
+
+        Add a Promise returning helper.
+
+2019-03-20  Youenn Fablet  <youenn@apple.com>
+
+        Compute quota after network process restart based on default quota and space used
+        https://bugs.webkit.org/show_bug.cgi?id=195804
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/cache-storage/cache-quota-after-restart.any-expected.txt: Added.
+        * http/wpt/cache-storage/cache-quota-after-restart.any.html: Added.
+        * http/wpt/cache-storage/cache-quota-after-restart.any.js: Added.
+        (promise_test.async):
+
+2019-03-20  Youenn Fablet  <youenn@apple.com>
+
+        Include WAL and SHM file size in IDB database size computation
+        https://bugs.webkit.org/show_bug.cgi?id=195688
+
+        Reviewed by Brady Eidson.
+
+        * storage/websql/open-database-creation-callback.html:
+        Bump quota for this test since WAL files are not included in quota computation.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timeline should show when events preventDefault() was called on an event or not
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        <rdar://problem/34290931>
+
+        Reviewed by Timothy Hatcher.
+
+        Original patch by Joseph Pecoraro <pecoraro@apple.com>.
+
+        * inspector/timeline/resources/timeline-event-utilities.js: Added.
+        (finishRecording):
+        (TestPage.registerInitializer.InspectorTest.TimelineEvent.captureTimelineWithScript):
+        (TestPage.registerInitializer):
+        Helper code for creating a recording from a function.
+
+        * inspector/timeline/timeline-event-CancelAnimationFrame.html: Added.
+        * inspector/timeline/timeline-event-CancelAnimationFrame-expected.txt: Added.
+        * inspector/timeline/timeline-event-EventDispatch.html: Added.
+        * inspector/timeline/timeline-event-EventDispatch-expected.txt: Added.
+        * inspector/timeline/timeline-event-FireAnimationFrame.html: Added.
+        * inspector/timeline/timeline-event-FireAnimationFrame-expected.txt: Added.
+        * inspector/timeline/timeline-event-RequestAnimationFrame.html: Added.
+        * inspector/timeline/timeline-event-RequestAnimationFrame-expected.txt: Added.
+        * inspector/timeline/timeline-event-TimerFire.html: Added.
+        * inspector/timeline/timeline-event-TimerFire-expected.txt: Added.
+        * inspector/timeline/timeline-event-TimerInstall.html: Added.
+        * inspector/timeline/timeline-event-TimerInstall-expected.txt: Added.
+        * inspector/timeline/timeline-event-TimerRemove.html: Added.
+        * inspector/timeline/timeline-event-TimerRemove-expected.txt: Added.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Styles Redesign: Editing selector should not hide the rule
+        https://bugs.webkit.org/show_bug.cgi?id=178489
+        <rdar://problem/35062434>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/unit-tests/multimap.html: Added.
+        * inspector/unit-tests/multimap-expected.txt: Added.
+
+2019-03-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rebaseline two tests after r243241.
+
+        * http/tests/adClickAttribution/anchor-tag-attributes-validation-expected.txt:
+        * http/tests/security/anchor-download-block-crossorigin-expected.txt:
+
+2019-03-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [ iOS WK2 ] Layout Test imported/w3c/web-platform-tests/webrtc/simplecall.https.html is flaky crashing
+        https://bugs.webkit.org/show_bug.cgi?id=191707
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Skip crashing test.
+
+2019-03-20  Timothy Hatcher  <timothy@apple.com>
+
+        Unreviewed test gardening after r243229.
+
+        * inspector/css/shadow-scoped-style-expected.txt: Rebaseline.
+        * platform/mac-highsierra/inspector/css/shadow-scoped-style-expected.txt: Added.
+        * platform/mac-highsierra/printing/width-overflow-expected.txt: Added.
+        * platform/mac-sierra/inspector/css/shadow-scoped-style-expected.txt: Added.
+        * platform/mac-sierra/printing/width-overflow-expected.txt: Added.
+        * platform/mac/printing/width-overflow-expected.txt: Rebaseline.
+
+2019-03-20  Chris Dumez  <cdumez@apple.com>
+
+        [ Mac WK2 ] REGRESSION (r239333) Flaky ASSERTION FAILED: m_uncommittedState.state == State::Committed on http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page.html
+        https://bugs.webkit.org/show_bug.cgi?id=194225
+        <rdar://problem/47820247>
+
+        Unreviewed, unskip the test as it no longer appears to be flaky.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Turn on async overflow scrolling by default
+        https://bugs.webkit.org/show_bug.cgi?id=196011
+        rdar://problem/48453859
+
+        Reviewed by Antti Koivisto.
+
+        New baselines, and skip some RTL tests that need a bit of work (webkit.org/b/196013).
+
+        * compositing/layer-creation/absolute-in-async-overflow-scroll-expected.txt:
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios-wk2/compositing/geometry/limit-layer-bounds-transformed-overflow-expected.txt: Copied from LayoutTests/compositing/layer-creation/absolute-in-async-overflow-scroll-expected.txt.
+        * platform/ios-wk2/compositing/layer-creation/absolute-in-async-overflow-scroll-expected.txt: Copied from LayoutTests/compositing/layer-creation/absolute-in-async-overflow-scroll-expected.txt.
+        * platform/ios-wk2/compositing/layer-creation/overflow-scroll-overlap-expected.txt: Added.
+        * platform/ios-wk2/compositing/layer-creation/scroll-partial-update-expected.txt: Added.
+        * platform/ios-wk2/compositing/overflow/content-gains-scrollbars-expected.txt: Added.
+        * platform/ios-wk2/compositing/overflow/overflow-scroll-expected.txt:
+        * platform/ios-wk2/compositing/overflow/overflow-scrollbar-layer-positions-expected.txt: Added.
+        * platform/ios-wk2/compositing/overflow/overflow-scrollbar-layers-expected.txt: Added.
+        * platform/ios-wk2/compositing/overflow/remove-overflow-crash2-expected.txt:
+        * platform/ios-wk2/compositing/overflow/scrollbar-painting-expected.txt:
+        * platform/ios/compositing/geometry/limit-layer-bounds-clipping-ancestor-expected.txt:
+        * platform/ios/compositing/layers-inside-overflow-scroll-expected.txt:
+        * platform/ios/compositing/overflow/scroll-ancestor-update-expected.txt:
+        * platform/ios/compositing/reflections/nested-reflection-on-overflow-expected.txt:
+        * platform/ios/compositing/self-painting-layers-expected.txt:
+        * scrollingcoordinator/scrolling-tree/positioned-nodes-complex-expected.txt:
+
+2019-03-20  Youenn Fablet  <youenn@apple.com>
+
+        Have smaller default quotas for third party frames
+        https://bugs.webkit.org/show_bug.cgi?id=195841
+
+        Reviewed by Geoffrey Garen.
+
+        * http/wpt/cache-storage/quota-third-party.https-expected.txt: Added.
+        * http/wpt/cache-storage/quota-third-party.https.html: Added.
+        * http/wpt/cache-storage/resources/quota-third-party-iframe.html: Added.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: include window as part of any event listener chain
+        https://bugs.webkit.org/show_bug.cgi?id=195730
+        <rdar://problem/48916872>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/dom/getEventListenersForNode.html:
+        * inspector/dom/getEventListenersForNode-expected.txt:
+        * inspector/dom/setEventListenerDisabled.html:
+        * inspector/dom/event-listener-add-remove.html:
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: virtualize the list of variables in the Scope sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=192648
+        <rdar://problem/46800949>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/unit-tests/array-utilities.html:
+        * inspector/unit-tests/array-utilities-expected.txt:
+
+2019-03-20  Dean Jackson  <dino@apple.com>
+
+        [iOS] Enable fast clicking everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=196023
+        <rdar://problem/49073589>
+
+        Reviewed by Wenson Hsieh.
+
+        Add a new test for the case where "Fast Clicks Everywhere" is explicitly
+        set to false. This required implementing a humanSpeedZoomByDoubleTappingAt
+        variation.
+
+        * fast/events/ios/ipad/fast-click-always-expected.txt:
+        * fast/events/ios/ipad/fast-click-always.html:
+        * fast/events/ios/ipad/fast-click-not-always-expected.txt: Added.
+        * fast/events/ios/ipad/fast-click-not-always.html:
+        * resources/ui-helper.js:
+        (window.UIHelper.humanSpeedZoomByDoubleTappingAt): New helper function that pauses between
+        double taps, and resolves when the zoom finishes.
+
+2019-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [CSS OM] StyledElementInlineStylePropertyMap creates a Ref cycle with its owner element
+        https://bugs.webkit.org/show_bug.cgi?id=195987
+
+        Reviewed by Simon Fraser.
+
+        Added a regression test.
+
+        * css-typedom/attribute-style-map-should-not-leak-every-element-expected.txt: Added.
+        * css-typedom/attribute-style-map-should-not-leak-every-element.html: Added.
+
+2019-03-20  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION(r240634): Element::hasPointerCapture() passes a JS-controlled value directly into a HashMap as a key
+        https://bugs.webkit.org/show_bug.cgi?id=195683
+
+        Reviewed by Alex Christensen.
+
+        Adding the test that was supposed to have landed along with r242893.
+
+        * pointerevents/pointer-id-crash-expected.txt: Added.
+        * pointerevents/pointer-id-crash.html: Added.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failures after r243161.
+
+        * inspector/timeline/line-column-expected.txt:
+        Update expected line number for code movement inside Web Inspector's injected script.
+
+2019-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        appendChild should throw when inserting an ancestor of a template into its content adopted to another document
+        https://bugs.webkit.org/show_bug.cgi?id=195984
+
+        Reviewed by Darin Adler.
+
+        Added a regression test.
+
+        * fast/dom/insert-template-parent-into-adopted-content-expected.txt: Added.
+        * fast/dom/insert-template-parent-into-adopted-content.html: Added.
+
+2019-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Unreviewed test gardening. Fix the results for absolute-in-async-overflow-scroll.html.
+
+        * compositing/layer-creation/absolute-in-async-overflow-scroll-expected.txt:
+        * platform/ios-wk2/compositing/layer-creation/absolute-in-async-overflow-scroll-expected.txt: Copied from LayoutTests/compositing/layer-creation/absolute-in-async-overflow-scroll-expected.txt.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: move breakpoint storage to use `WI.ObjectStore`
+        https://bugs.webkit.org/show_bug.cgi?id=192719
+        <rdar://problem/46746857>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/unit-tests/objectStore/resources/objectStore-utilities.js:
+        * inspector/unit-tests/objectStore/put.html: Renamed from LayoutTests/inspector/unit-tests/objectStore/add.html.
+        * inspector/unit-tests/objectStore/put-expected.txt: Renamed from LayoutTests/inspector/unit-tests/objectStore/add-expected.txt.
+        * inspector/unit-tests/objectStore/putObject.html: Renamed from LayoutTests/inspector/unit-tests/objectStore/addObject.html.
+        * inspector/unit-tests/objectStore/putObject-expected.txt: Renamed from LayoutTests/inspector/unit-tests/objectStore/addObject-expected.txt.
+        * inspector/unit-tests/objectStore/delete-expected.txt:
+        * inspector/unit-tests/objectStore/delete.html:
+        * inspector/unit-tests/objectStore/deleteObject-expected.txt:
+        * inspector/unit-tests/objectStore/deleteObject.html:
+        * inspector/unit-tests/objectStore/clear.html:
+        Replace `add` with `put` so that if a key already exists, it is overridden.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Database: lazily create the agent
+        https://bugs.webkit.org/show_bug.cgi?id=195587
+        <rdar://problem/48791735>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/backend-dispatcher-argument-errors.html:
+        * inspector/runtime/CommandLineAPI-inspect.html:
+
+2019-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Some elements lag behind async overflow scrolling on palace-games.com
+        https://bugs.webkit.org/show_bug.cgi?id=195934
+
+        Reviewed by Zalan Bujtas.
+        
+        Add a test with more combinations of overflow, containing block and compositing ancestor.
+
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/positioned-nodes-complex-expected.txt: Added.
+        * scrollingcoordinator/scrolling-tree/positioned-nodes-complex-expected.txt: Added.
+        * scrollingcoordinator/scrolling-tree/positioned-nodes-complex.html: Added.
+
+2019-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Explicitly trigger compositing for layers that need to be moved by ScrollingTreePositionedNodes
+        https://bugs.webkit.org/show_bug.cgi?id=195710
+
+        Reviewed by Zalan Bujtas.
+
+        * compositing/layer-creation/absolute-in-async-overflow-scroll-expected.txt: Added.
+        * compositing/layer-creation/absolute-in-async-overflow-scroll.html: Added.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Search: allow DOM searches to be case sensitive
+        https://bugs.webkit.org/show_bug.cgi?id=194673
+        <rdar://problem/48087577>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/dom/dom-search-caseSensitive.html: Copied from LayoutTests/inspector/dom/dom-search.html.
+        * inspector/dom/dom-search-caseSensitive-expected.txt: Copied from LayoutTests/inspector/dom/dom-search-expected.txt.
+        * inspector/dom/dom-search-expected.txt:
+        * inspector/dom/resources/dom-search-queries.js:
+        (TestPage.registerInitializer):
+
+2019-03-20  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed test gardening.
+
+        * TestExpectations: This test case asserts on all platforms.
+        * platform/mac/TestExpectations:
+
+2019-03-20  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] Fix handling of resolution changes in AppendPipeline
+        https://bugs.webkit.org/show_bug.cgi?id=195855
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * media/media-source/content/test-green-6s-320x240.mp4: Added.
+        * media/media-source/content/test-red-3s-480x360.mp4: Added.
+        * media/media-source/media-source-samples-resolution-change-expected.txt: Added.
+        * media/media-source/media-source-samples-resolution-change.html: Added.
+
+2019-03-20  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for new meter ARIA role
+        https://bugs.webkit.org/show_bug.cgi?id=195966
+
+        Reviewed by Chris Fleizach.
+
+        Add new role to the existing role exposure tests and update the
+        expectations accordingly.
+
+        * accessibility/gtk/xml-roles-exposed-expected.txt:
+        * accessibility/gtk/xml-roles-exposed.html:
+        * accessibility/roles-computedRoleString.html:
+        * accessibility/roles-exposed.html:
+        * platform/gtk/accessibility/roles-computedRoleString-expected.txt:
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/roles-computedRoleString-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+        * platform/mac-wk2/accessibility/roles-exposed-expected.txt:
+
+2019-03-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening for macOS.
+
+        * platform/mac/TestExpectations:
+
+2019-03-19  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Implement FIDO AppID extension
+        https://bugs.webkit.org/show_bug.cgi?id=143491
+        <rdar://problem/48298273>
+
+        Reviewed by Brent Fulgham.
+
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-create-success-local.https.html:
+        * http/wpt/webauthn/public-key-credential-create-success-u2f.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure-u2f.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure-u2f.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-local.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-u2f.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-success-u2f.https.html:
+
+2019-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rebaseline the test after r243175. It got somehow landed with failing expectations.
+
+        * fast/dom/replace-child-with-mutation-event-removal-and-circular-template-insertion-expected.txt:
+
+2019-03-19  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics (experimental): Clear non-cookie website data for sites that have been navigated to, with link decoration, by a prevalent resource
+        https://bugs.webkit.org/show_bug.cgi?id=195923
+        <rdar://problem/49001272>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html: Added.
+
+2019-03-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Reparenting during a mutation event inside appendChild could result in a circular DOM tree
+        https://bugs.webkit.org/show_bug.cgi?id=192825
+
+        Reviewed by Zalan Bujtas.
+
+        Added regression tests.
+
+        * fast/dom/append-child-with-mutation-event-removal-and-circular-insertion-expected.txt: Added.
+        * fast/dom/append-child-with-mutation-event-removal-and-circular-insertion.html: Added.
+        * fast/dom/append-child-with-mutation-event-removal-and-circular-shadow-insertion-expected.txt: Added.
+        * fast/dom/append-child-with-mutation-event-removal-and-circular-shadow-insertion.html: Added.
+        * fast/dom/append-child-with-mutation-event-removal-and-circular-template-insertion-expected.txt: Added.
+        * fast/dom/append-child-with-mutation-event-removal-and-circular-template-insertion.html: Added.
+        * fast/dom/insert-child-with-mutation-event-removal-and-circular-insertion-expected.txt: Added.
+        * fast/dom/insert-child-with-mutation-event-removal-and-circular-insertion.html: Added.
+        * fast/dom/insert-child-with-mutation-event-removal-and-circular-shadow-insertion-expected.txt: Added.
+        * fast/dom/insert-child-with-mutation-event-removal-and-circular-shadow-insertion.html: Added.
+        * fast/dom/insert-child-with-mutation-event-removal-and-circular-template-insertion-expected.txt: Added.
+        * fast/dom/insert-child-with-mutation-event-removal-and-circular-template-insertion.html: Added.
+        * fast/dom/replace-child-with-mutation-event-removal-and-circular-insertion-expected.txt: Added.
+        * fast/dom/replace-child-with-mutation-event-removal-and-circular-insertion.html: Added.
+        * fast/dom/replace-child-with-mutation-event-removal-and-circular-shadow-insertion-expected.txt: Added.
+        * fast/dom/replace-child-with-mutation-event-removal-and-circular-shadow-insertion.html: Added.
+        * fast/dom/replace-child-with-mutation-event-removal-and-circular-template-insertion-expected.txt: Added.
+        * fast/dom/replace-child-with-mutation-event-removal-and-circular-template-insertion.html: Added.
+
 2019-03-19  Timothy Hatcher  <timothy@apple.com>
 
         REGRESSION (r239904): Update dark mode defines in a few places that got missed.

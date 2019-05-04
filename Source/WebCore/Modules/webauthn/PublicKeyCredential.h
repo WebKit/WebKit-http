@@ -42,23 +42,26 @@ struct PublicKeyCredentialData;
 
 class PublicKeyCredential final : public BasicCredential {
 public:
-    static Ref<PublicKeyCredential> create(Ref<ArrayBuffer>&& id, Ref<AuthenticatorResponse>&&);
+    struct AuthenticationExtensionsClientOutputs {
+        Optional<bool> appid;
+    };
+
     static RefPtr<PublicKeyCredential> tryCreate(const PublicKeyCredentialData&);
 
     ArrayBuffer* rawId() const { return m_rawId.ptr(); }
     AuthenticatorResponse* response() const { return m_response.ptr(); }
-    // Not support yet. Always throws.
-    ExceptionOr<bool> getClientExtensionResults() const;
+    AuthenticationExtensionsClientOutputs getClientExtensionResults() const;
 
     static void isUserVerifyingPlatformAuthenticatorAvailable(Document&, DOMPromiseDeferred<IDLBoolean>&&);
 
 private:
-    PublicKeyCredential(Ref<ArrayBuffer>&& id, Ref<AuthenticatorResponse>&&);
+    PublicKeyCredential(Ref<ArrayBuffer>&& id, Ref<AuthenticatorResponse>&&, AuthenticationExtensionsClientOutputs&&);
 
     Type credentialType() const final { return Type::PublicKey; }
 
     Ref<ArrayBuffer> m_rawId;
     Ref<AuthenticatorResponse> m_response;
+    AuthenticationExtensionsClientOutputs m_extensions;
 };
 
 } // namespace WebCore

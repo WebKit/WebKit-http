@@ -46,7 +46,8 @@ public:
     }
     WEBCORE_EXPORT ~StorageQuotaManager();
 
-    static constexpr uint64_t defaultQuota() { return 500 * MB; }
+    static constexpr uint64_t defaultQuota() { return 1000 * MB; }
+    static constexpr uint64_t defaultThirdPartyQuota() { return 100 * MB; }
 
     WEBCORE_EXPORT void addUser(StorageQuotaUser&);
     void removeUser(StorageQuotaUser& user)
@@ -61,9 +62,12 @@ public:
     WEBCORE_EXPORT void requestSpace(uint64_t, RequestCallback&&);
     void resetQuota(uint64_t newQuota) { m_quota = newQuota; }
 
+    WEBCORE_EXPORT void updateQuotaBasedOnSpaceUsage();
+
 private:
     uint64_t spaceUsage() const;
-    void askForMoreSpace(uint64_t spaceUsage, uint64_t spaceIncrease);
+    bool shouldAskForMoreSpace(uint64_t spaceIncrease) const;
+    void askForMoreSpace(uint64_t spaceIncrease);
     void processPendingRequests(Optional<uint64_t>);
 
     uint64_t m_quota { 0 };

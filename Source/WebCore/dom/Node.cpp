@@ -42,6 +42,7 @@
 #include "EventDispatcher.h"
 #include "EventHandler.h"
 #include "FrameView.h"
+#include "HTMLAreaElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLCollection.h"
 #include "HTMLElement.h"
@@ -795,7 +796,11 @@ RenderBoxModelObject* Node::renderBoxModelObject() const
 LayoutRect Node::renderRect(bool* isReplaced)
 {    
     RenderObject* hitRenderer = this->renderer();
-    ASSERT(hitRenderer);
+    if (!hitRenderer && is<HTMLAreaElement>(*this)) {
+        auto& area = downcast<HTMLAreaElement>(*this);
+        if (auto* imageElement = area.imageElement())
+            hitRenderer = imageElement->renderer();
+    }
     RenderObject* renderer = hitRenderer;
     while (renderer && !renderer->isBody() && !renderer->isDocumentElementRenderer()) {
         if (renderer->isRenderBlock() || renderer->isInlineBlockOrInlineTable() || renderer->isReplaced()) {
@@ -1025,19 +1030,6 @@ bool Node::containsIncludingShadowDOM(const Node* node) const
     for (; node; node = node->parentOrShadowHostNode()) {
         if (node == this)
             return true;
-    }
-    return false;
-}
-
-bool Node::containsIncludingHostElements(const Node* node) const
-{
-    while (node) {
-        if (node == this)
-            return true;
-        if (is<DocumentFragment>(*node) && downcast<DocumentFragment>(*node).isTemplateContent())
-            node = static_cast<const TemplateContentDocumentFragment*>(node)->host();
-        else
-            node = node->parentOrShadowHostNode();
     }
     return false;
 }

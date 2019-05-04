@@ -23,8 +23,6 @@
 
 #include "SVGAnimatedEnumeration.h"
 #include "SVGAnimatedLength.h"
-#include "SVGAnimatedPreserveAspectRatio.h"
-#include "SVGAnimatedRect.h"
 #include "SVGAnimatedTransformList.h"
 #include "SVGElement.h"
 #include "SVGExternalResourcesRequired.h"

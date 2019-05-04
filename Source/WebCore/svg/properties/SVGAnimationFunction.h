@@ -25,7 +25,11 @@
 
 #pragma once
 
+#include "SVGAttributeAnimator.h"
+
 namespace WebCore {
+
+class SVGElement;
 
 class SVGAnimationFunction {
 public:

@@ -32,6 +32,7 @@
 #include "NetworkContentRuleListManager.h"
 #include "NetworkHTTPSUpgradeChecker.h"
 #include "SandboxExtension.h"
+#include "WebResourceLoadStatisticsStore.h"
 #include <WebCore/AdClickAttribution.h>
 #include <WebCore/ClientOrigin.h>
 #include <WebCore/DiagnosticLoggingClient.h>
@@ -205,7 +206,7 @@ public:
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void clearPrevalentResource(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void()>&&);
     void clearUserInteraction(PAL::SessionID, const RegistrableDomain&, CompletionHandler<void()>&&);
-    void deleteWebsiteDataForRegistrableDomainsInAllPersistentDataStores(PAL::SessionID, OptionSet<WebsiteDataType>, Vector<RegistrableDomain>&&, bool shouldNotifyPage, WebCore::IncludeHttpOnlyCookies, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&&);
+    void deleteWebsiteDataForRegistrableDomains(PAL::SessionID, OptionSet<WebsiteDataType>, HashMap<RegistrableDomain, WebsiteDataToRemove>&&, bool shouldNotifyPage, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&&);
     void deleteCookiesForTesting(PAL::SessionID, RegistrableDomain, bool includeHttpOnlyCookies, CompletionHandler<void()>&&);
     void dumpResourceLoadStatistics(PAL::SessionID, CompletionHandler<void(String)>&&);
     void updatePrevalentDomainsToBlockCookiesFor(PAL::SessionID, const Vector<RegistrableDomain>& domainsToBlock, CompletionHandler<void()>&&);
@@ -258,6 +259,7 @@ public:
     void setTopFrameUniqueRedirectFrom(PAL::SessionID, const TopFrameDomain&, const RedirectedFromDomain&, CompletionHandler<void()>&&);
     void registrableDomainsWithWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, bool shouldNotifyPage, CompletionHandler<void(HashSet<RegistrableDomain>&&)>&&);
     void committedCrossSiteLoadWithLinkDecoration(PAL::SessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, uint64_t pageID, CompletionHandler<void()>&&);
+    void setCrossSiteLoadWithLinkDecorationForTesting(PAL::SessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, CompletionHandler<void()>&&);
     void resetCrossSiteLoadsWithLinkDecorationForTesting(PAL::SessionID, CompletionHandler<void()>&&);
 #endif
 
@@ -279,6 +281,7 @@ public:
     void accessToTemporaryFileComplete(const String& path) final;
     void setIDBPerOriginQuota(uint64_t);
 #endif
+    void updateQuotaBasedOnSpaceUsageForTesting(PAL::SessionID, const WebCore::ClientOrigin&);
 
 #if ENABLE(SANDBOX_EXTENSIONS)
     void getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, CompletionHandler<void(SandboxExtension::HandleArray&&)>&&);
@@ -532,6 +535,7 @@ private:
 
     struct StorageQuotaManagers {
         uint64_t defaultQuota { WebCore::StorageQuotaManager::defaultQuota() };
+        uint64_t defaultThirdPartyQuota { WebCore::StorageQuotaManager::defaultThirdPartyQuota() };
         HashMap<WebCore::ClientOrigin, std::unique_ptr<WebCore::StorageQuotaManager>> managersPerOrigin;
     };
     HashMap<PAL::SessionID, StorageQuotaManagers> m_storageQuotaManagers;

@@ -203,6 +203,13 @@ Element::~Element()
     if (hasSyntheticAttrChildNodes())
         detachAllAttrNodesFromElement();
 
+#if ENABLE(CSS_TYPED_OM)
+    if (hasRareData()) {
+        if (auto* map = elementRareData()->attributeStyleMap())
+            map->clearElement();
+    }
+#endif
+
     if (hasPendingResources()) {
         document().accessSVGExtensions().removeElementFromPendingResources(*this);
         ASSERT(!hasPendingResources());
@@ -4228,7 +4235,7 @@ OptionSet<TouchAction> Element::computedTouchActions() const
     return computedTouchActions;
 }
 
-#if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
+#if ENABLE(OVERFLOW_SCROLLING_TOUCH)
 ScrollingNodeID Element::nearestScrollingNodeIDUsingTouchOverflowScrolling() const
 {
     if (!renderer())

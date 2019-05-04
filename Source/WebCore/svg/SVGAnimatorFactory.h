@@ -20,17 +20,12 @@
 #pragma once
 
 #include "SVGAnimatedAngle.h"
-#include "SVGAnimatedColor.h"
 #include "SVGAnimatedEnumeration.h"
 #include "SVGAnimatedLength.h"
 #include "SVGAnimatedLengthList.h"
-#include "SVGAnimatedNumber.h"
 #include "SVGAnimatedNumberList.h"
-#include "SVGAnimatedNumberOptionalNumber.h"
 #include "SVGAnimatedPath.h"
 #include "SVGAnimatedPointList.h"
-#include "SVGAnimatedPreserveAspectRatio.h"
-#include "SVGAnimatedRect.h"
 #include "SVGAnimatedString.h"
 #include "SVGAnimatedTransformList.h"
 
@@ -46,36 +41,30 @@ public:
         ASSERT(contextElement);
 
         switch (attributeType) {
+        case AnimatedBoolean:
+        case AnimatedColor:
+        case AnimatedInteger:
+        case AnimatedIntegerOptionalInteger:
+        case AnimatedNumber:
+        case AnimatedNumberOptionalNumber:
+        case AnimatedPreserveAspectRatio:
+        case AnimatedRect:
+            return nullptr;
+
         case AnimatedAngle:
             return std::make_unique<SVGAnimatedAngleAnimator>(animationElement, contextElement);
-        case AnimatedBoolean:
-            return nullptr;
-        case AnimatedColor:
-            return std::make_unique<SVGAnimatedColorAnimator>(*animationElement, *contextElement);
         case AnimatedEnumeration:
             return std::make_unique<SVGAnimatedEnumerationAnimator>(animationElement, contextElement);
-        case AnimatedInteger:
-            return nullptr;
-        case AnimatedIntegerOptionalInteger:
-            return nullptr;
         case AnimatedLength:
             return std::make_unique<SVGAnimatedLengthAnimator>(animationElement, contextElement);
         case AnimatedLengthList:
             return std::make_unique<SVGAnimatedLengthListAnimator>(animationElement, contextElement);
-        case AnimatedNumber:
-            return std::make_unique<SVGAnimatedNumberAnimator>(animationElement, contextElement);
         case AnimatedNumberList:
             return std::make_unique<SVGAnimatedNumberListAnimator>(animationElement, contextElement);
-        case AnimatedNumberOptionalNumber:
-            return std::make_unique<SVGAnimatedNumberOptionalNumberAnimator>(animationElement, contextElement);
         case AnimatedPath:
             return std::make_unique<SVGAnimatedPathAnimator>(animationElement, contextElement);
         case AnimatedPoints:
             return std::make_unique<SVGAnimatedPointListAnimator>(animationElement, contextElement);
-        case AnimatedPreserveAspectRatio:
-            return std::make_unique<SVGAnimatedPreserveAspectRatioAnimator>(animationElement, contextElement);
-        case AnimatedRect:
-            return std::make_unique<SVGAnimatedRectAnimator>(animationElement, contextElement);
         case AnimatedString:
             return std::make_unique<SVGAnimatedStringAnimator>(animationElement, contextElement);
         case AnimatedTransformList:

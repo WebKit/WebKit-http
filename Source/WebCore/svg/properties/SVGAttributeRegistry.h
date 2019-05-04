@@ -28,11 +28,8 @@
 #include "SVGAnimatedEnumeration.h"
 #include "SVGAnimatedLength.h"
 #include "SVGAnimatedLengthList.h"
-#include "SVGAnimatedNumber.h"
 #include "SVGAnimatedNumberList.h"
 #include "SVGAnimatedPointList.h"
-#include "SVGAnimatedPreserveAspectRatio.h"
-#include "SVGAnimatedRect.h"
 #include "SVGAnimatedString.h"
 #include "SVGAnimatedTransformList.h"
 #include "SVGAttributeAccessor.h"
@@ -76,42 +73,16 @@ public:
         registerAttribute(SVGAnimatedLengthListAttributeAccessor<OwnerType>::template singleton<attributeName, attribute>());
     }
 
-    template<const LazyNeverDestroyed<const QualifiedName>& attributeName, SVGAnimatedNumberAttribute OwnerType::*attribute>
-    void registerAttribute()
-    {
-        registerAttribute(SVGAnimatedNumberAttributeAccessor<OwnerType>::template singleton<attributeName, attribute>());
-    }
-
     template<const LazyNeverDestroyed<const QualifiedName>& attributeName, SVGAnimatedNumberListAttribute OwnerType::*attribute>
     void registerAttribute()
     {
         registerAttribute(SVGAnimatedNumberListAttributeAccessor<OwnerType>::template singleton<attributeName, attribute>());
     }
 
-    template<const LazyNeverDestroyed<const QualifiedName>& attributeName,
-        const AtomicString& (*identifier)(), SVGAnimatedNumberAttribute OwnerType::*attribute,
-        const AtomicString& (*optionalIdentifier)(), SVGAnimatedNumberAttribute OwnerType::*optionalAttribute>
-    void registerAttribute()
-    {
-        registerAttribute(SVGAnimatedOptionalNumberAttributeAccessor<OwnerType>::template singleton<attributeName, identifier, attribute, optionalIdentifier, optionalAttribute>());
-    }
-
     template<const LazyNeverDestroyed<const QualifiedName>& attributeName, SVGAnimatedPointListAttribute OwnerType::*attribute>
     void registerAttribute()
     {
         registerAttribute(SVGAnimatedPointListAttributeAccessor<OwnerType>::template singleton<attributeName, attribute>());
-    }
-
-    template<const LazyNeverDestroyed<const QualifiedName>& attributeName, SVGAnimatedPreserveAspectRatioAttribute OwnerType::*attribute>
-    void registerAttribute()
-    {
-        registerAttribute(SVGAnimatedPreserveAspectRatioAttributeAccessor<OwnerType>::template singleton<attributeName, attribute>());
-    }
-
-    template<const LazyNeverDestroyed<const QualifiedName>& attributeName, SVGAnimatedRectAttribute OwnerType::*attribute>
-    void registerAttribute()
-    {
-        registerAttribute(SVGAnimatedRectAttributeAccessor<OwnerType>::template singleton<attributeName, attribute>());
     }
 
     template<const LazyNeverDestroyed<const QualifiedName>& attributeName, SVGAnimatedStringAttribute OwnerType::*attribute>

@@ -2177,7 +2177,7 @@ bool RenderLayer::canUseCompositedScrolling() const
     if (renderer().settings().asyncOverflowScrollingEnabled())
         return scrollsOverflow();
 
-#if PLATFORM(IOS_FAMILY) && ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
+#if PLATFORM(IOS_FAMILY) && ENABLE(OVERFLOW_SCROLLING_TOUCH)
     return scrollsOverflow() && (renderer().style().useTouchOverflowScrolling() || renderer().settings().alwaysUseAcceleratedOverflowScroll());
 #else
     return false;
@@ -6746,7 +6746,7 @@ static void outputPaintOrderTreeRecursive(TextStream& stream, const WebCore::Ren
         auto viewportConstrainedNodeID = backing.scrollingNodeIDForRole(WebCore::ScrollCoordinationRole::ViewportConstrained);
         auto positionedNodeID = backing.scrollingNodeIDForRole(WebCore::ScrollCoordinationRole::Positioning);
 
-        if (scrollingNodeID || frameHostingNodeID || viewportConstrainedNodeID) {
+        if (scrollingNodeID || frameHostingNodeID || viewportConstrainedNodeID || positionedNodeID) {
             stream << " {";
             bool first = true;
             if (scrollingNodeID) {

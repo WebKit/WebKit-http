@@ -17,10 +17,9 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef GeolocationProviderGeoclueClient_h
-#define GeolocationProviderGeoclueClient_h
+#pragma once
 
-#if ENABLE(GEOLOCATION)
+#if USE(GEOCLUE)
 
 namespace WebCore {
 
@@ -32,6 +31,4 @@ public:
 
 } // namespace WebCore
 
-#endif // ENABLE(GEOLOCATION)
-
-#endif // GeolocationProviderGeoclueClient_h
+#endif // USE(GEOCLUE)

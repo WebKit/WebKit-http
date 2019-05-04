@@ -5475,10 +5475,10 @@ void WebPageProxy::didChooseColor(const WebCore::Color& color)
 
 void WebPageProxy::didEndColorPicker()
 {
+    m_colorPicker = nullptr;
     if (!hasRunningProcess())
         return;
 
-    m_colorPicker = nullptr;
     m_process->send(Messages::WebPage::DidEndColorPicker(), m_pageID);
 }
 #endif
@@ -5528,7 +5528,7 @@ void WebPageProxy::didSelectOption(const String& selectedOption)
 
 WebInspectorProxy* WebPageProxy::inspector() const
 {
-    if (isClosed() || !hasRunningProcess())
+    if (isClosed())
         return nullptr;
     return m_inspector.get();
 }
@@ -5796,7 +5796,7 @@ NativeWebMouseEvent* WebPageProxy::currentlyProcessedMouseDownEvent()
 
 void WebPageProxy::postMessageToInjectedBundle(const String& messageName, API::Object* messageBody)
 {
-    // For backward-compatibility, make sure we launch the initial process if the client asks to post a message to its injected bundle because doing a load.
+    // For backward-compatibility, make sure we launch the initial process if the client asks to post a message to its injected bundle before doing a load.
     launchInitialProcessIfNecessary();
 
     process().send(Messages::WebPage::PostInjectedBundleMessage(messageName, UserData(process().transformObjectsToHandles(messageBody).get())), m_pageID);
@@ -8459,7 +8459,7 @@ void WebPageProxy::loadSynchronousURLSchemeTask(URLSchemeTaskParameters&& parame
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
 void WebPageProxy::requestStorageAccessConfirm(const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
 {
-    m_uiClient->requestStorageAccessConfirm(*this, m_process->webFrame(frameID), subFrameDomain.string(), topFrameDomain.string(), WTFMove(completionHandler));
+    m_uiClient->requestStorageAccessConfirm(*this, m_process->webFrame(frameID), subFrameDomain, topFrameDomain, WTFMove(completionHandler));
 }
 #endif
 

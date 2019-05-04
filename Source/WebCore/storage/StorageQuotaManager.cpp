@@ -44,6 +44,15 @@ uint64_t StorageQuotaManager::spaceUsage() const
     return usage;
 }
 
+void StorageQuotaManager::updateQuotaBasedOnSpaceUsage()
+{
+    if (!m_quota)
+        return;
+
+    auto defaultQuotaStep = m_quota / 10;
+    m_quota = std::max(m_quota, defaultQuotaStep * ((spaceUsage() / defaultQuotaStep) + 1));
+}
+
 void StorageQuotaManager::addUser(StorageQuotaUser& user)
 {
     ASSERT(!m_pendingInitializationUsers.contains(&user));
@@ -52,10 +61,24 @@ void StorageQuotaManager::addUser(StorageQuotaUser& user)
     user.whenInitialized([this, &user, weakThis = makeWeakPtr(this)]() {
         if (!weakThis)
             return;
-        m_pendingInitializationUsers.remove(&user);
-        m_users.add(&user);
+
+        if (m_pendingInitializationUsers.remove(&user))
+            m_users.add(&user);
+
+        if (!m_pendingInitializationUsers.isEmpty())
+            return;
+
+        updateQuotaBasedOnSpaceUsage();
         processPendingRequests({ });
     });
+}
+
+bool StorageQuotaManager::shouldAskForMoreSpace(uint64_t spaceIncrease) const
+{
+    if (!spaceIncrease)
+        return false;
+
+    return spaceUsage() + spaceIncrease > m_quota;
 }
 
 void StorageQuotaManager::requestSpace(uint64_t spaceIncrease, RequestCallback&& callback)
@@ -65,19 +88,18 @@ void StorageQuotaManager::requestSpace(uint64_t spaceIncrease, RequestCallback&&
         return;
     }
 
-    auto spaceUsage = this->spaceUsage();
-    if (spaceUsage + spaceIncrease > m_quota) {
+    if (shouldAskForMoreSpace(spaceIncrease)) {
         m_pendingRequests.append({ spaceIncrease, WTFMove(callback) });
-        askForMoreSpace(spaceUsage, spaceIncrease);
+        askForMoreSpace(spaceIncrease);
         return;
     }
     callback(Decision::Grant);
 }
 
-void StorageQuotaManager::askForMoreSpace(uint64_t spaceUsage, uint64_t spaceIncrease)
+void StorageQuotaManager::askForMoreSpace(uint64_t spaceIncrease)
 {
-    ASSERT(spaceUsage + spaceIncrease > m_quota);
-    m_spaceIncreaseRequester(m_quota, spaceUsage, spaceIncrease, [this, weakThis = makeWeakPtr(*this)](Optional<uint64_t> newQuota) {
+    ASSERT(shouldAskForMoreSpace(spaceIncrease));
+    m_spaceIncreaseRequester(m_quota, spaceUsage(), spaceIncrease, [this, weakThis = makeWeakPtr(*this)](Optional<uint64_t> newQuota) {
         if (!weakThis)
             return;
         processPendingRequests(newQuota);
@@ -93,18 +115,17 @@ void StorageQuotaManager::processPendingRequests(Optional<uint64_t> newQuota)
         m_quota = *newQuota;
 
     auto request = m_pendingRequests.takeFirst();
-    auto decision = m_quota >= (spaceUsage() + request.spaceIncrease) ? Decision::Grant : Decision::Deny;
+    auto decision = shouldAskForMoreSpace(request.spaceIncrease) ? Decision::Deny : Decision::Grant;
     request.callback(decision);
 
     while (!m_pendingRequests.isEmpty()) {
         auto& request = m_pendingRequests.first();
 
-        auto spaceUsage = this->spaceUsage();
-        if (m_quota < spaceUsage + request.spaceIncrease) {
+        if (shouldAskForMoreSpace(request.spaceIncrease)) {
             uint64_t spaceIncrease = 0;
             for (auto& request : m_pendingRequests)
                 spaceIncrease += request.spaceIncrease;
-            askForMoreSpace(spaceUsage, spaceIncrease);
+            askForMoreSpace(spaceIncrease);
             return;
         }
 

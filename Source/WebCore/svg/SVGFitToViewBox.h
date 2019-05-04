@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2007, 2010 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,9 +23,12 @@
 
 #include "FloatRect.h"
 #include "QualifiedName.h"
+#include "SVGAnimatedPropertyImpl.h"
+#include "SVGAttributeOwnerProxyImpl.h"
 #include "SVGAttributeRegistry.h"
 #include "SVGNames.h"
 #include "SVGPreserveAspectRatio.h"
+#include "SVGPropertyOwnerRegistry.h"
 #include <wtf/HashSet.h>
 
 namespace WebCore {
@@ -42,26 +45,26 @@ public:
 
     using PropertyRegistry = SVGPropertyOwnerRegistry<SVGFitToViewBox>;
 
-    const FloatRect& viewBox() const { return m_viewBox.currentValue(m_attributeOwnerProxy); }
-    const SVGPreserveAspectRatioValue& preserveAspectRatio() const { return m_preserveAspectRatio.currentValue(m_attributeOwnerProxy); }
+    const FloatRect& viewBox() const { return m_viewBox->currentValue(); }
+    const SVGPreserveAspectRatioValue& preserveAspectRatio() const { return m_preserveAspectRatio->currentValue(); }
 
-    RefPtr<SVGAnimatedRect> viewBoxAnimated() { return m_viewBox.animatedProperty(m_attributeOwnerProxy); }
-    RefPtr<SVGAnimatedPreserveAspectRatio> preserveAspectRatioAnimated() { return m_preserveAspectRatio.animatedProperty(m_attributeOwnerProxy); }
+    SVGAnimatedRect& viewBoxAnimated() { return m_viewBox; }
+    SVGAnimatedPreserveAspectRatio& preserveAspectRatioAnimated() { return m_preserveAspectRatio; }
 
     void setViewBox(const FloatRect&);
     void resetViewBox();
 
-    void setPreserveAspectRatio(const SVGPreserveAspectRatioValue& preserveAspectRatio) { m_preserveAspectRatio.setValue(preserveAspectRatio); }
-    void resetPreserveAspectRatio() { m_preserveAspectRatio.resetValue(); }
+    void setPreserveAspectRatio(const SVGPreserveAspectRatioValue& preserveAspectRatio) { m_preserveAspectRatio->setBaseValInternal(preserveAspectRatio); }
+    void resetPreserveAspectRatio() { m_preserveAspectRatio->setBaseValInternal({ }); }
 
-    String viewBoxString() const { return m_viewBox.toString(); }
-    String preserveAspectRatioString() const { return m_preserveAspectRatio.toString(); }
+    String viewBoxString() const { return SVGPropertyTraits<FloatRect>::toString(viewBox()); }
+    String preserveAspectRatioString() const { return preserveAspectRatio().valueAsString(); }
 
     bool hasValidViewBox() const { return m_isViewBoxValid; }
     bool hasEmptyViewBox() const { return m_isViewBoxValid && viewBox().isEmpty(); }
 
 protected:
-    SVGFitToViewBox(SVGElement* contextElement, AnimatedPropertyState = PropertyIsReadWrite);
+    SVGFitToViewBox(SVGElement* contextElement, SVGPropertyAccess = SVGPropertyAccess::ReadWrite);
 
     static bool isKnownAttribute(const QualifiedName& attributeName)
     {
@@ -74,11 +77,8 @@ protected:
     bool parseViewBox(const UChar*& start, const UChar* end, FloatRect& viewBox, bool validate = true);
 
 private:
-    static void registerAttributes();
-
-    AttributeOwnerProxy m_attributeOwnerProxy;
-    SVGAnimatedRectAttribute m_viewBox;
-    SVGAnimatedPreserveAspectRatioAttribute m_preserveAspectRatio;
+    Ref<SVGAnimatedRect> m_viewBox;
+    Ref<SVGAnimatedPreserveAspectRatio> m_preserveAspectRatio;
     bool m_isViewBoxValid { false };
 };
 

@@ -765,6 +765,10 @@
 
 /* FIXME: move out all ENABLE() defines from here to FeatureDefines.h */
 
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/AdditionalPlatform.h>)
+#include <WebKitAdditions/AdditionalPlatform.h>
+#endif
+
 #if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/AdditionalFeatureDefines.h>)
 #include <WebKitAdditions/AdditionalFeatureDefines.h>
 #endif
@@ -1077,11 +1081,6 @@
 
 #if ENABLE(DFG_JIT) && HAVE(MACHINE_CONTEXT) && (CPU(X86) || CPU(X86_64) || CPU(ARM64))
 #define ENABLE_SIGNAL_BASED_VM_TRAPS 1
-#endif
-
-#if !defined(USE_POINTER_PROFILING) || USE(JSVALUE32_64) || !ENABLE(JIT)
-#undef USE_POINTER_PROFILING
-#define USE_POINTER_PROFILING 0
 #endif
 
 /* CSS Selector JIT Compiler */
@@ -1553,4 +1552,8 @@
 
 #if PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000
 #define HAVE_UI_WEB_TOUCH_EVENTS_GESTURE_RECOGNIZER_WITH_ACTIVE_TOUCHES_BY_ID 1
+#endif
+
+#if PLATFORM(IOSMAC)
+#define ENABLE_PLATFORM_DRIVEN_TEXT_CHECKING 1
 #endif

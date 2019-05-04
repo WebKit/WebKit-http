@@ -35,6 +35,7 @@
 #include "CallTracerTypes.h"
 #include "CanvasBase.h"
 #include "CanvasRenderingContext.h"
+#include "Database.h"
 #include "DocumentThreadableLoader.h"
 #include "Element.h"
 #include "EventTarget.h"
@@ -68,7 +69,6 @@ class CachedResource;
 class CharacterData;
 class DOMWindow;
 class DOMWrapperWorld;
-class Database;
 class Document;
 class DocumentLoader;
 class EventListener;
@@ -152,11 +152,11 @@ public:
     static void willRemoveEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
     static bool isEventListenerDisabled(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
     static InspectorInstrumentationCookie willDispatchEvent(Document&, const Event&, bool hasEventListeners);
-    static void didDispatchEvent(const InspectorInstrumentationCookie&);
+    static void didDispatchEvent(const InspectorInstrumentationCookie&, bool defaultPrevented);
     static void willHandleEvent(ScriptExecutionContext&, Event&, const RegisteredEventListener&);
     static void didHandleEvent(ScriptExecutionContext&);
     static InspectorInstrumentationCookie willDispatchEventOnWindow(Frame*, const Event&, DOMWindow&);
-    static void didDispatchEventOnWindow(const InspectorInstrumentationCookie&);
+    static void didDispatchEventOnWindow(const InspectorInstrumentationCookie&, bool defaultPrevented);
     static void eventDidResetAfterDispatch(const Event&);
     static InspectorInstrumentationCookie willEvaluateScript(Frame&, const String& url, int lineNumber, int columnNumber);
     static void didEvaluateScript(const InspectorInstrumentationCookie&, Frame&);
@@ -240,7 +240,7 @@ public:
     static InspectorInstrumentationCookie willFireObserverCallback(ScriptExecutionContext&, const String& callbackType);
     static void didFireObserverCallback(const InspectorInstrumentationCookie&);
 
-    static void didOpenDatabase(ScriptExecutionContext*, RefPtr<Database>&&, const String& domain, const String& name, const String& version);
+    static void didOpenDatabase(Database&);
 
     static void didDispatchDOMStorageEvent(Page&, const String& key, const String& oldValue, const String& newValue, StorageType, SecurityOrigin*);
 
@@ -347,9 +347,9 @@ private:
     static InspectorInstrumentationCookie willDispatchEventImpl(InstrumentingAgents&, Document&, const Event&, bool hasEventListeners);
     static void willHandleEventImpl(InstrumentingAgents&, Event&, const RegisteredEventListener&);
     static void didHandleEventImpl(InstrumentingAgents&);
-    static void didDispatchEventImpl(const InspectorInstrumentationCookie&);
+    static void didDispatchEventImpl(const InspectorInstrumentationCookie&, bool defaultPrevented);
     static InspectorInstrumentationCookie willDispatchEventOnWindowImpl(InstrumentingAgents&, const Event&, DOMWindow&);
-    static void didDispatchEventOnWindowImpl(const InspectorInstrumentationCookie&);
+    static void didDispatchEventOnWindowImpl(const InspectorInstrumentationCookie&, bool defaultPrevented);
     static void eventDidResetAfterDispatchImpl(InstrumentingAgents&, const Event&);
     static InspectorInstrumentationCookie willEvaluateScriptImpl(InstrumentingAgents&, Frame&, const String& url, int lineNumber, int columnNumber);
     static void didEvaluateScriptImpl(const InspectorInstrumentationCookie&, Frame&);
@@ -417,7 +417,7 @@ private:
     static InspectorInstrumentationCookie willFireObserverCallbackImpl(InstrumentingAgents&, const String&, ScriptExecutionContext&);
     static void didFireObserverCallbackImpl(const InspectorInstrumentationCookie&);
 
-    static void didOpenDatabaseImpl(InstrumentingAgents&, RefPtr<Database>&&, const String& domain, const String& name, const String& version);
+    static void didOpenDatabaseImpl(InstrumentingAgents&, Database&);
 
     static void didDispatchDOMStorageEventImpl(InstrumentingAgents&, const String& key, const String& oldValue, const String& newValue, StorageType, SecurityOrigin*);
 
@@ -793,11 +793,11 @@ inline InspectorInstrumentationCookie InspectorInstrumentation::willDispatchEven
     return InspectorInstrumentationCookie();
 }
 
-inline void InspectorInstrumentation::didDispatchEvent(const InspectorInstrumentationCookie& cookie)
+inline void InspectorInstrumentation::didDispatchEvent(const InspectorInstrumentationCookie& cookie, bool defaultPrevented)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (cookie.isValid())
-        didDispatchEventImpl(cookie);
+        didDispatchEventImpl(cookie, defaultPrevented);
 }
 
 inline void InspectorInstrumentation::willHandleEvent(ScriptExecutionContext& context, Event& event, const RegisteredEventListener& listener)
@@ -822,11 +822,11 @@ inline InspectorInstrumentationCookie InspectorInstrumentation::willDispatchEven
     return InspectorInstrumentationCookie();
 }
 
-inline void InspectorInstrumentation::didDispatchEventOnWindow(const InspectorInstrumentationCookie& cookie)
+inline void InspectorInstrumentation::didDispatchEventOnWindow(const InspectorInstrumentationCookie& cookie, bool defaultPrevented)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
     if (cookie.isValid())
-        didDispatchEventOnWindowImpl(cookie);
+        didDispatchEventOnWindowImpl(cookie, defaultPrevented);
 }
 
 inline void InspectorInstrumentation::eventDidResetAfterDispatch(const Event& event)
@@ -1172,10 +1172,11 @@ inline void InspectorInstrumentation::willDestroyCachedResource(CachedResource& 
     willDestroyCachedResourceImpl(cachedResource);
 }
 
-inline void InspectorInstrumentation::didOpenDatabase(ScriptExecutionContext* context, RefPtr<Database>&& database, const String& domain, const String& name, const String& version)
+inline void InspectorInstrumentation::didOpenDatabase(Database& database)
 {
-    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        didOpenDatabaseImpl(*instrumentingAgents, WTFMove(database), domain, name, version);
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (auto* instrumentingAgents = instrumentingAgentsForContext(database.scriptExecutionContext()))
+        didOpenDatabaseImpl(*instrumentingAgents, database);
 }
 
 inline void InspectorInstrumentation::didDispatchDOMStorageEvent(Page& page, const String& key, const String& oldValue, const String& newValue, StorageType storageType, SecurityOrigin* securityOrigin)

@@ -51,7 +51,7 @@ class JSValue;
 }
 
 namespace WebCore {
-    
+
 class AccessibilityObject;
 class CharacterData;
 class DOMEditor;
@@ -63,12 +63,12 @@ class FloatQuad;
 class Frame;
 class InspectorHistory;
 class InspectorOverlay;
-class InspectorPageAgent;
 #if ENABLE(VIDEO)
 class HTMLMediaElement;
 #endif
 class HitTestResult;
 class Node;
+class Page;
 class PseudoElement;
 class RevalidateStyleAttributeTask;
 class ShadowRoot;
@@ -77,30 +77,11 @@ struct HighlightConfig;
 
 typedef String ErrorString;
 
-struct EventListenerInfo {
-    EventListenerInfo(Node* node, const AtomicString& eventType, EventListenerVector&& eventListenerVector)
-        : node(node)
-        , eventType(eventType)
-        , eventListenerVector(WTFMove(eventListenerVector))
-    {
-    }
-
-    Node* node;
-    const AtomicString eventType;
-    const EventListenerVector eventListenerVector;
-};
-
 class InspectorDOMAgent final : public InspectorAgentBase, public Inspector::DOMBackendDispatcherHandler {
     WTF_MAKE_NONCOPYABLE(InspectorDOMAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    struct DOMListener {
-        virtual ~DOMListener() = default;
-        virtual void didRemoveDOMNode(Node&, int nodeId) = 0;
-        virtual void didModifyDOMAttr(Element&) = 0;
-    };
-
-    InspectorDOMAgent(WebAgentContext&, InspectorPageAgent*, InspectorOverlay*);
+    InspectorDOMAgent(PageAgentContext&, InspectorOverlay*);
     virtual ~InspectorDOMAgent();
 
     static String toErrorString(ExceptionCode);
@@ -129,12 +110,12 @@ public:
     void getSupportedEventNames(ErrorString&, RefPtr<JSON::ArrayOf<String>>& eventNames) override;
     void getDataBindingsForNode(ErrorString&, int nodeId, RefPtr<JSON::ArrayOf<Inspector::Protocol::DOM::DataBinding>>& dataArray) override;
     void getAssociatedDataForNode(ErrorString&, int nodeId, Optional<String>& associatedData) override;
-    void getEventListenersForNode(ErrorString&, int nodeId, const WTF::String* objectGroup, RefPtr<JSON::ArrayOf<Inspector::Protocol::DOM::EventListener>>& listenersArray) override;
+    void getEventListenersForNode(ErrorString&, int nodeId, RefPtr<JSON::ArrayOf<Inspector::Protocol::DOM::EventListener>>& listenersArray) override;
     void setEventListenerDisabled(ErrorString&, int eventListenerId, bool disabled) override;
     void setBreakpointForEventListener(ErrorString&, int eventListenerId) override;
     void removeBreakpointForEventListener(ErrorString&, int eventListenerId) override;
     void getAccessibilityPropertiesForNode(ErrorString&, int nodeId, RefPtr<Inspector::Protocol::DOM::AccessibilityProperties>& axProperties) override;
-    void performSearch(ErrorString&, const String& whitespaceTrimmedQuery, const JSON::Array* nodeIds, String* searchId, int* resultCount) override;
+    void performSearch(ErrorString&, const String& query, const JSON::Array* nodeIds, const bool* caseSensitive, String* searchId, int* resultCount) override;
     void getSearchResults(ErrorString&, const String& searchId, int fromIndex, int toIndex, RefPtr<JSON::ArrayOf<int>>&) override;
     void discardSearchResults(ErrorString&, const String& searchId) override;
     void resolveNode(ErrorString&, int nodeId, const String* objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result) override;
@@ -155,9 +136,6 @@ public:
     void markUndoableState(ErrorString&) override;
     void focus(ErrorString&, int nodeId) override;
     void setInspectedNode(ErrorString&, int nodeId) override;
-
-    void getEventListeners(Node*, Vector<EventListenerInfo>& listenersArray, bool includeAncestors);
-
 
     // InspectorInstrumentation
     int identifierForNode(Node&);
@@ -191,7 +169,6 @@ public:
     int pushNodeToFrontend(ErrorString&, int documentNodeId, Node*);
     Node* nodeForId(int nodeId);
     int boundNodeId(const Node*);
-    void setDOMListener(DOMListener*);
 
     static String documentURLString(Document*);
 
@@ -217,9 +194,6 @@ public:
 
     static Node* scriptValueAsNode(JSC::JSValue);
     static JSC::JSValue nodeAsScriptValue(JSC::ExecState&, Node*);
-
-    // Methods called from other agents.
-    InspectorPageAgent* pageAgent() { return m_pageAgent; }
 
     bool hasBreakpointForEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
     int idForEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
@@ -248,7 +222,7 @@ private:
     Ref<JSON::ArrayOf<String>> buildArrayForElementAttributes(Element*);
     Ref<JSON::ArrayOf<Inspector::Protocol::DOM::Node>> buildArrayForContainerChildren(Node* container, int depth, NodeToIdMap* nodesMap);
     RefPtr<JSON::ArrayOf<Inspector::Protocol::DOM::Node>> buildArrayForPseudoElements(const Element&, NodeToIdMap* nodesMap);
-    Ref<Inspector::Protocol::DOM::EventListener> buildObjectForEventListener(const RegisteredEventListener&, int identifier, const AtomicString& eventType, Node*, const String* objectGroupId, bool disabled, bool hasBreakpoint);
+    Ref<Inspector::Protocol::DOM::EventListener> buildObjectForEventListener(const RegisteredEventListener&, int identifier, EventTarget&, const AtomicString& eventType, bool disabled, bool hasBreakpoint);
     RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> buildObjectForAccessibilityProperties(Node*);
     void processAccessibilityChildren(AccessibilityObject&, JSON::ArrayOf<int>&);
     
@@ -262,10 +236,8 @@ private:
     Inspector::InjectedScriptManager& m_injectedScriptManager;
     std::unique_ptr<Inspector::DOMFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::DOMBackendDispatcher> m_backendDispatcher;
-    InspectorPageAgent* m_pageAgent { nullptr };
-
+    Page& m_inspectedPage;
     InspectorOverlay* m_overlay { nullptr };
-    DOMListener* m_domListener { nullptr };
     NodeToIdMap m_documentNodeToIdMap;
     // Owns node mappings for dangling nodes.
     Vector<std::unique_ptr<NodeToIdMap>> m_danglingNodeToIdMaps;

@@ -1,3 +1,749 @@
+2019-03-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: flatten the overview to show all records, one per line
+        https://bugs.webkit.org/show_bug.cgi?id=191901
+        <rdar://problem/46423618>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WI.OverviewTimelineView):
+        (WI.OverviewTimelineView.prototype.closed):
+        (WI.OverviewTimelineView.prototype.get navigationItems): Added.
+        (WI.OverviewTimelineView.prototype.reset):
+        (WI.OverviewTimelineView.prototype.layout):
+        (WI.OverviewTimelineView.prototype.get _relevantTimelines): Added.
+        (WI.OverviewTimelineView.prototype.get _shouldGroupBySourceCode): Added.
+        (WI.OverviewTimelineView.prototype._loadExistingRecords): Added.
+        (WI.OverviewTimelineView.prototype._insertDataGridNode):
+        (WI.OverviewTimelineView.prototype._addResourceToDataGridIfNeeded):
+        (WI.OverviewTimelineView.prototype._addSourceCodeTimeline):
+        (WI.OverviewTimelineView.prototype._processPendingRepresentedObjects):
+        (WI.OverviewTimelineView.prototype._handleGroupBySourceCodeSettingChanged): Added.
+        (WI.OverviewTimelineView.prototype._handleGroupBySourceCodeNavigationItemCheckedDidChange): Added.
+        (WI.OverviewTimelineView.prototype._handleTimelineRecordAdded): Added.
+        (WI.OverviewTimelineView.prototype._sourceCodeTimelineAdded):
+        (WI.OverviewTimelineView.prototype._networkTimelineRecordAdded): Deleted.
+        Listen for new records on all timelines. Add each record as a new line. Since each timeline
+        has different data to display, only show the "name" and "graph" for all records.
+
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        (WI.TimelineRecordingContentView.prototype._currentContentViewDidChange):
+        (WI.TimelineRecordingContentView.prototype._updateImportedView): Deleted.
+        When viewing the overview of an imported recording, show the non-grouped overview.
+
+        * UserInterface/Models/TimelineRecording.js:
+        (WI.TimelineRecording.prototype.addRecord):
+        (WI.TimelineRecording.prototype._keyForRecord):
+        Drive-by: show Media timeline events under the owner frame's resource when grouped.
+
+        * UserInterface/Views/TimelineRecordBar.css:
+        (.timeline-record-bar.timeline-record-type-script.garbage-collected > .segment, .timeline-record-bar.timeline-record-type-heap-allocations > .segment): Added.
+        (.timeline-record-bar.timeline-record-type-script.garbage-collected > .segment): Deleted.
+
+        * UserInterface/Base/Setting.js:
+        Add setting for controlling the Timeline overview grouping.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/SourceCodeTimelineTreeElement.js: Removed.
+        * UserInterface/Views/TimelineRecordingImportedView.js: Removed.
+        * UserInterface/Views/TimelineRecordingImportedView.css: Removed.
+        Remove unused files.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: the name of the file should not be used as a folder
+        https://bugs.webkit.org/show_bug.cgi?id=196064
+        <rdar://problem/49097710>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WI.GeneralTreeElement.prototype.createFoldersAsNeededForSubpath):
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype._addResource):
+        Drive-by: sort resources in each folder by name when grouping by path.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: rework how Canvas.enable/Canvas.disable is used so that events are not sent when the Canvas tab isn't enabled
+        https://bugs.webkit.org/show_bug.cgi?id=195828
+        <rdar://problem/48941756>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.initializeTarget):
+        (WI.CanvasManager.prototype.enable): Added.
+        (WI.CanvasManager.prototype.disable): Added.
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView):
+        (WI.CanvasTabContentView.prototype.closed): Added.
+
+        * UserInterface/Base/Test.js:
+        (WI.contentLoaded):
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: collapsing a section doesn't shrink the space used by that section
+        https://bugs.webkit.org/show_bug.cgi?id=196045
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleDebuggerPaused):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleDebuggerResumed):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.sources > .content > .details-section):
+        (.sidebar > .panel.navigation.sources > .content > .details-section:matches(.paused-reason, .breakpoins).collapsed > .header > .options,):
+        (.sidebar > .panel.navigation.sources > .content > .details-section.collapsed > .content):
+        (.sidebar > .panel.navigation.sources > .content > .details-section.breakpoints > .header > .options .create-breakpoint):
+        (.sidebar > .panel.navigation.sources > .content > .details-section:matches(.pause-reason, .call-stack, .breakpoints) > .content,):
+        (.sidebar > .panel.navigation.sources > .content > .details-section:matches(.call-stack, .breakpoints) > .content):
+        (.sidebar > .panel.navigation.sources > .content > .details-section:matches(.call-stack, .breakpoints):not(.collapsed) > .content):
+        (.sidebar > .panel.navigation.sources > .content > .details-section.call-stack):
+        (.sidebar > .panel.navigation.sources > .content > .details-section.breakpoints):
+        (.sidebar > .panel.navigation.sources > .content > .details-section.breakpoints .create-breakpoint):
+        (.sidebar > .panel.navigation.sources > .content > .pause-reason):
+        (.sidebar > .panel.navigation.sources > .content > .details-section:matches(.call-stack, .breakpoints):not(.collapsed) > .content,):
+        (.sidebar > .panel.navigation.sources > .content > .details-section.breakpoints .tree-outline .item.event-target-window .icon):
+        (.sidebar > .panel.navigation.sources > .content .details-section): Deleted.
+        (.sidebar > .panel.navigation.sources > .content .details-section:matches(.paused-reason, .breakpoins).collapsed > .header > .options,): Deleted.
+        (.sidebar > .panel.navigation.sources > .content .details-section.collapsed > .content): Deleted.
+        (.sidebar > .panel.navigation.sources > .content .details-section.breakpoints > .header > .options .create-breakpoint): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > :matches(.pause-reason-container, .call-stack-container, .breakpoints-container)): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .call-stack-container): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .breakpoints-container): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .breakpoints-container .create-breakpoint): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .resources-container): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .pause-reason-container): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > :matches(.call-stack-container, .breakpoints-container, .resources-container)): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .breakpoints .tree-outline .item.event-target-window .icon): Deleted.
+         - Apply the overflow scrolling to the content element of each `WI.DetailsSection`.
+         - Ensure that there is a maximum height for each section.
+         - When `.collapsed`, don't try to grow/shrink the section based on its contents.
+
+        * UserInterface/Views/CallFrameTreeElement.css:
+        (.tree-outline .item.call-frame):
+        (.tree-outline .item.call-frame .status):
+        Make the container of the active call frame status indicator relatively positioned so that
+        the active call frame status indicator will follow the container when scrolling.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timeline should show when events preventDefault() was called on an event or not
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        <rdar://problem/34290931>
+
+        Reviewed by Timothy Hatcher.
+
+        Original patch by Joseph Pecoraro <pecoraro@apple.com>.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New string.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype._processRecord):
+        Include the whole data object as extra details.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WI.ScriptTimelineRecord):
+        (WI.ScriptTimelineRecord.prototype.get eventType):
+        Wholesale copy of the extra data instead of just a single property.
+
+        * UserInterface/Views/ScriptDetailsTimelineView.js:
+        (WI.ScriptDetailsTimelineView):
+        Give the name column more initial space, there is still extra space
+        after this adjustment but name is comfortably larger (and the most
+        likely to be expanded).
+
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WI.ScriptTimelineDataGridNode.prototype.get subtitle):
+        Include "default prevented" as the event's subtitle if it was prevented.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Styles Redesign: Editing selector should not hide the rule
+        https://bugs.webkit.org/show_bug.cgi?id=178489
+        <rdar://problem/35062434>
+
+        Reviewed by Timothy Hatcher.
+
+        Extracts the selector payload parsing logic inside `WI.DOMNodeStyles` into static functions
+        so that when the user changes the selector of a `WI.CSSRule`, it's able to process and
+        update itself with the new selector. This is mainly useful in the case where the `WI.CSSRule`
+        no longer applies to the selected node (meaning it won't be part of that node's
+        `WI.DOMNodeStyles`) in that it allows the `WI.SpreadsheetCSSStyleDeclarationSection` to
+        display the new selector text and the owner `WI.SpreadsheetRulesStyleDetailsPanel` to keep
+        that section visible even though it isn't applicable to the current node anymore.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles):
+        (WI.DOMNodeStyles.parseSelectorListPayload): Added.
+        (WI.DOMNodeStyles.createSourceCodeLocation): Added.
+        (WI.DOMNodeStyles.prototype.refresh):
+        (WI.DOMNodeStyles.prototype.refresh.fetchedMatchedStyles):
+        (WI.DOMNodeStyles.prototype.refresh.fetchedInlineStyles):
+        (WI.DOMNodeStyles.prototype.refresh.fetchedComputedStyle):
+        (WI.DOMNodeStyles.prototype._parseStyleDeclarationPayload):
+        (WI.DOMNodeStyles.prototype._parseRulePayload):
+        (WI.DOMNodeStyles.prototype._styleSheetContentDidChange):
+        (WI.DOMNodeStyles.prototype.refresh.parseRuleMatchArrayPayload): Deleted.
+        (WI.DOMNodeStyles.prototype._createSourceCodeLocation): Deleted.
+        (WI.DOMNodeStyles.prototype._parseSelectorListPayload): Deleted.
+        Keep track of all `WI.CSSRule` and `WI.CSSStyleDeclaration` that have ever been associated
+        with this object, so that if a rule's selector is changed to no longer match, and then is
+        changed back to match again, we are able to update that rule instead of creating a new one.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.layout):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype._handleSectionFilterApplied):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype._handleSectionSelectorWillChange): Added.
+        Attempt to preserve the position of any sections that are changed and no longer apply to the
+        current node.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetSelectorFieldDidChange):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._renderSelector):
+        Drive-by: remove unused CSS classes.
+
+        * UserInterface/Models/CSSRule.js:
+        (WI.CSSRule.prototype.update):
+        (WI.CSSRule.prototype._selectorResolved):
+        Drive-by: remove unused event.
+
+        * UserInterface/Base/Multimap.js:
+        (Multimap.prototype.has): Added.
+        (Multimap.prototype.sets): Added.
+        (Multimap.prototype.copy): Added.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: no way to filter out all console messages or all evaluations/results
+        https://bugs.webkit.org/show_bug.cgi?id=167035
+        <rdar://problem/30023523>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView):
+        (WI.LogContentView.prototype.didAppendConsoleMessageView):
+        (WI.LogContentView.prototype._markScopeBarItemUnread):
+        (WI.LogContentView.prototype._markScopeBarItemForMessageLevelUnread): Added.
+        (WI.LogContentView.prototype._previousMessageRepeatCountUpdated):
+        (WI.LogContentView.prototype._messageSourceBarSelectionDidChange):
+        (WI.LogContentView.prototype._scopeBarSelectionDidChange):
+        (WI.LogContentView.prototype._filterMessageElements):
+        (WI.LogContentView.prototype.performSearch):
+        * UserInterface/Views/LogContentView.css:
+        (.log-scope-bar > li.unread.evaluations::before): Added.
+
+        * UserInterface/Views/ConsoleCommandView.js:
+        (WI.ConsoleCommandView):
+        Drive-by: remove unnecessary super-class extends.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: enabledProperties don't get invalidated after removing property
+        https://bugs.webkit.org/show_bug.cgi?id=196038
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration.prototype.shiftPropertiesAfter):
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: include window as part of any event listener chain
+        https://bugs.webkit.org/show_bug.cgi?id=195730
+        <rdar://problem/48916872>
+
+        Reviewed by Timothy Hatcher.
+
+        Allow non-nodes (e.g. `window`) to be listed as the target of an event listener.
+        Add support for the same concept when showing breakpoint details after pausing on a specific
+        event listener in the Debugger/Sources navigation sidebar.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WI.DOMNodeDetailsSidebarPanel.prototype.initialLayout):
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.generateGroupsByEvent):
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.generateGroupsByTarget): Added.
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.eventListenersCallback):
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners):
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.generateGroupsByNode): Deleted.
+
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WI.EventListenerSectionGroup.prototype._targetTextOrLink): Added.
+        (WI.EventListenerSectionGroup.prototype._nodeTextOrLink): Deleted.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._addBreakpoint):
+        (WI.DebuggerSidebarPanel.prototype._breakpointTreeOutlineDeleteTreeElement):
+        (WI.DebuggerSidebarPanel.prototype._treeSelectionDidChange):
+        (WI.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger > .content > .breakpoints .tree-outline .item.event-target-window .icon): Added.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._addBreakpoint):
+        (WI.SourcesNavigationSidebarPanel.prototype._updatePauseReasonSection):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTreeSelectionDidChange):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.sources > .content > .breakpoints .tree-outline .item.event-target-window .icon): Added.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: virtualize the list of variables in the Scope sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=192648
+        <rdar://problem/46800949>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WI.ScopeChainDetailsSidebarPanel.prototype._generateCallFramesSection):
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype.set hidden):
+        (WI.TreeElement.prototype._attach):
+        (WI.TreeElement.prototype._detach):
+        (WI.TreeElement.prototype.collapse):
+        (WI.TreeElement.prototype.expand):
+        Move `updateVirtualizedElements` calls to the owner `WI.TreeOutline` to ensure that they get
+        called. Make the remaining calls use rAF debouncing to better coalesce updates.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype._rememberTreeElement):
+        (WI.TreeOutline.prototype._forgetTreeElement):
+        (WI.TreeOutline.prototype.registerScrollVirtualizer):
+        (WI.TreeOutline.prototype._updateVirtualizedElements.calculateOffsetFromContainer): Added.
+        (WI.TreeOutline.prototype._updateVirtualizedElements):
+        (WI.TreeOutline.prototype._calculateVirtualizedValues): Deleted.
+        Calculate the `WI.TreeOutline`'s top offset within the scroll container so that it will only
+        update when it's within the visual area.
+
+        * UserInterface/Views/Utilities.js:
+        (Array.prototype.remove):
+        Return whether the item was actually removed from the array.
+
+2019-03-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timelines - Export fails for MediaTimelineRecords with originator DOM Node - Cannot serialize cyclic structure
+        https://bugs.webkit.org/show_bug.cgi?id=196027
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/MediaTimelineRecord.js:
+        (WI.MediaTimelineRecord.prototype.toJSON):
+        Remove the originator since that is a WI.DOMNode and cannot
+        be JSON serialized.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: move breakpoint storage to use `WI.ObjectStore`
+        https://bugs.webkit.org/show_bug.cgi?id=192719
+        <rdar://problem/46746857>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager):
+        (WI.DebuggerManager.prototype.addBreakpoint):
+        (WI.DebuggerManager.prototype.removeBreakpoint):
+        (WI.DebuggerManager.prototype._debuggerBreakpointOptions):
+        (WI.DebuggerManager.prototype._setBreakpoint.didSetBreakpoint):
+        (WI.DebuggerManager.prototype._setBreakpoint):
+        (WI.DebuggerManager.prototype._breakpointDisabledStateDidChange):
+        (WI.DebuggerManager.prototype._breakpointEditablePropertyDidChange):
+        (WI.DebuggerManager.prototype._saveBreakpoints): Deleted.
+
+        * UserInterface/Models/Breakpoint.js:
+        (WI.Breakpoint.prototype.saveIdentityToCookie):
+        (WI.Breakpoint.prototype.serializeOptions): Added.
+        (WI.Breakpoint.prototype.toJSON): Added.
+        (WI.Breakpoint.prototype.get options): Deleted.
+        (WI.Breakpoint.prototype.get info): Deleted.
+        (WI.Breakpoint.prototype._serializableActions): Deleted.
+        * UserInterface/Models/BreakpointAction.js:
+        (WI.BreakpointAction.prototype.toJSON): Added.
+        (WI.BreakpointAction.prototype.get info): Deleted.
+
+        * UserInterface/Base/ObjectStore.js:
+        (WI.ObjectStore.async reset): Added.
+        (WI.ObjectStore._open):
+        (WI.ObjectStore.prototype.get keyPath): Added.
+        (WI.ObjectStore.prototype.async.getAll):
+        (WI.ObjectStore.prototype.async.put): Added.
+        (WI.ObjectStore.prototype.async.putObject): Added.
+        (WI.ObjectStore.prototype.async.add): Deleted.
+        (WI.ObjectStore.prototype.async.addObject): Deleted.
+        Replace `add` with `put` so that if a key already exists, it is overridden.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.set editing):
+        (WI.AuditManager.prototype.async processJSON):
+
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        (WI.BreakpointPopoverController.prototype._popoverActionsAddActionButtonClicked):
+        Inline some `WI.Breakpoint` static values.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: disabled breakpoints banner should be sticky
+        https://bugs.webkit.org/show_bug.cgi?id=195104
+        <rdar://problem/48442259>
+
+        Reviewed by Timothy Hatcher.
+
+        Allow each of the individual sections to be scrolled separately from the entire sidebar.
+
+        Leverage CSS variables set via JavaScript to be able to calculate the maximum height of each
+        `WI.TreeOutline` section based on the number of items.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleCallStackElementAddedOrRemoved): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleBreakpointElementAddedOrRemoved):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleDebuggerPaused):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleDebuggerResumed):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.sources > .content):
+        (.sidebar > .panel.navigation.sources > .content .details-section): Added.
+        (.sidebar > .panel.navigation.sources > .content .details-section.paused-reason.collapsed > .header > .options,): Added.
+        (.sidebar > .panel.navigation.sources > .content .details-section.collapsed > .content): Added.
+        (.sidebar > .panel.navigation.sources > .content > :matches(.pause-reason-container, .call-stack-container, .breakpoints-container)): Added.
+        (.sidebar > .panel.navigation.sources > .content > .call-stack-container): Added.
+        (.sidebar > .panel.navigation.sources > .content > .breakpoints-container): Added.
+        (.sidebar > .panel.navigation.sources > .content > .breakpoints-container .create-breakpoint): Added.
+        (.sidebar > .panel.navigation.sources > .content > .resources-container): Added.
+        (.sidebar > .panel.navigation.sources > .content .tree-outline.single-thread): Added.
+        (.sidebar > .panel.navigation.sources > .content .tree-outline.single-thread > .item.thread): Added.
+        (@media (min-height: 600px) .sidebar > .panel.navigation.sources > .content): Added.
+        (@media (min-height: 600px) .sidebar > .panel.navigation.sources > .content > .pause-reason-container): Added.
+        (@media (min-height: 600px) .sidebar > .panel.navigation.sources > .content > :matches(.call-stack-container, .breakpoints-container, .resources-container)): Added.
+        (.sidebar > .panel.navigation.sources > .content > .details-section): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .details-section.paused-reason.collapsed > .header > .options,): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .details-section.collapsed > .content): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .details-section.breakpoints > .header > .options .create-breakpoint): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .tree-outline.single-thread): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .tree-outline.single-thread > .item.thread): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .resources): Deleted.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        "Reveal in Layers Tab" context menu option should not be available if the Layers Tab has not been enabled
+        https://bugs.webkit.org/show_bug.cgi?id=196009
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForDOMNode):
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Console: add a setting for controlling auto-expansion of Trace messages
+        https://bugs.webkit.org/show_bug.cgi?id=195690
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WI.ConsoleMessageView.prototype._appendStackTrace):
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: selecting a node in a different frame should automatically switch the console prompt's execution context
+        https://bugs.webkit.org/show_bug.cgi?id=195805
+        <rdar://problem/48930866>
+
+        Reviewed by Timothy Hatcher.
+
+        Add an "Auto" execution context item that is selected by default and will update the
+        selected execution context whenever the inspected node changes. It will also display the
+        preferred name for whatever execution context is currently active.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole):
+        (WI.QuickConsole.prototype.initializeMainExecutionContextPathComponent):
+        (WI.QuickConsole.prototype._preferredNameForFrame): Added.
+        (WI.QuickConsole.prototype._selectExecutionContext): Added.
+        (WI.QuickConsole.prototype._executionContextPathComponentsToDisplay):
+        (WI.QuickConsole.prototype._rebuildExecutionContextPathComponents):
+        (WI.QuickConsole.prototype._framePageExecutionContextsChanged):
+        (WI.QuickConsole.prototype._frameExecutionContextsCleared):
+        (WI.QuickConsole.prototype._activeExecutionContextChanged):
+        (WI.QuickConsole.prototype._createExecutionContextPathComponent):
+        (WI.QuickConsole.prototype._insertOtherExecutionContextPathComponent):
+        (WI.QuickConsole.prototype._removeOtherExecutionContextPathComponent):
+        (WI.QuickConsole.prototype._insertExecutionContextPathComponentForFrame):
+        (WI.QuickConsole.prototype._removeExecutionContextPathComponentForFrame):
+        (WI.QuickConsole.prototype._targetRemoved):
+        (WI.QuickConsole.prototype._pathComponentSelected):
+        (WI.QuickConsole.prototype._handleInspectedNodeChanged): Added.
+        (WI.QuickConsole.prototype.get selectedExecutionContext): Deleted.
+        (WI.QuickConsole.prototype.set selectedExecutionContext): Deleted.
+        (WI.QuickConsole.prototype._createExecutionContextPathComponentFromFrame): Deleted.
+        * UserInterface/Views/QuickConsole.css:
+        (.quick-console > .navigation-bar > .hierarchical-path:not(.automatic-execution-context)): Added.
+        (.quick-console > .navigation-bar > .hierarchical-path:not(.automatic-execution-context) .execution-context): Added.
+        (.quick-console > .navigation-bar > .hierarchical-path:not(.automatic-execution-context) .execution-context .selector-arrows): Added.
+        (.quick-console > .navigation-bar > .hierarchical-path.non-default-execution-context .execution-context): Deleted.
+        (.quick-console > .navigation-bar > .hierarchical-path.non-default-execution-context .execution-context .selector-arrows): Deleted.
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.get inspectedNode): Added.
+        (WI.DOMManager.prototype.setInspectedNode):
+        Broadcast when the inspected node changes.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WI.NavigationBar.prototype.layout):
+        When `sizesToFit` is enabled, don't force any items to be hidden.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: refactor WI.TimelineDataGridNode and its subclasses to unify the API surface
+        https://bugs.webkit.org/show_bug.cgi?id=195959
+        <rdar://problem/49028896>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineDataGridNode.js:
+        (WI.TimelineDataGridNode.prototype.get records):
+        (WI.TimelineDataGridNode.prototype.get data):
+        (WI.TimelineDataGridNode.prototype.refresh):
+
+        * UserInterface/Views/HeapAllocationsTimelineDataGridNode.js:
+        (WI.HeapAllocationsTimelineDataGridNode):
+        (WI.HeapAllocationsTimelineDataGridNode.prototype.get heapSnapshot): Added.
+        (WI.HeapAllocationsTimelineDataGridNode.prototype.get data):
+        (WI.HeapAllocationsTimelineDataGridNode.prototype.createCellContent):
+        (WI.HeapAllocationsTimelineDataGridNode.prototype.createCells):
+        (WI.HeapAllocationsTimelineDataGridNode.prototype._handleHeapSnapshotCollectedNodes):
+        (WI.HeapAllocationsTimelineDataGridNode.prototype._handleHeapSnapshotInvalidated):
+        (WI.HeapAllocationsTimelineDataGridNode.prototype.get record): Deleted.
+        (WI.HeapAllocationsTimelineDataGridNode.prototype.updateTimestamp): Deleted.
+        (WI.HeapAllocationsTimelineDataGridNode.prototype._heapSnapshotCollectedNodes): Deleted.
+        (WI.HeapAllocationsTimelineDataGridNode.prototype._heapSnapshotInvalidated): Deleted.
+
+        * UserInterface/Views/LayoutTimelineDataGridNode.js:
+        (WI.LayoutTimelineDataGridNode):
+        (WI.LayoutTimelineDataGridNode.prototype.get data):
+        (WI.LayoutTimelineDataGridNode.prototype.createCellContent):
+        (WI.LayoutTimelineDataGridNode.prototype.get records): Deleted.
+
+        * UserInterface/Views/MediaTimelineDataGridNode.js:
+        (WI.MediaTimelineDataGridNode):
+        (WI.MediaTimelineDataGridNode.prototype.get records): Deleted.
+
+        * UserInterface/Views/ProfileNodeDataGridNode.js:
+        (WI.ProfileNodeDataGridNode):
+        (WI.ProfileNodeDataGridNode.prototype.get profileNode):
+        (WI.ProfileNodeDataGridNode.prototype.get data):
+        (WI.ProfileNodeDataGridNode.prototype.createCellContent):
+        (WI.ProfileNodeDataGridNode.prototype._populate):
+        (WI.ProfileNodeDataGridNode.prototype.get records): Deleted.
+        (WI.ProfileNodeDataGridNode.prototype.get baseStartTime): Deleted.
+        (WI.ProfileNodeDataGridNode.prototype.get rangeStartTime): Deleted.
+        (WI.ProfileNodeDataGridNode.prototype.get rangeEndTime): Deleted.
+        (WI.ProfileNodeDataGridNode.prototype.updateRangeTimes): Deleted.
+        (WI.ProfileNodeDataGridNode.prototype.refresh): Deleted.
+
+        * UserInterface/Views/RenderingFrameTimelineDataGridNode.js:
+        (WI.RenderingFrameTimelineDataGridNode):
+        (WI.RenderingFrameTimelineDataGridNode.prototype.get data):
+        (WI.RenderingFrameTimelineDataGridNode.prototype.createCellContent):
+        (WI.RenderingFrameTimelineDataGridNode.prototype.get records): Deleted.
+
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WI.ResourceTimelineDataGridNode):
+        (WI.ResourceTimelineDataGridNode.prototype.get resource):
+        (WI.ResourceTimelineDataGridNode.prototype.get data):
+        (WI.ResourceTimelineDataGridNode.prototype.createCellContent):
+        (WI.ResourceTimelineDataGridNode.prototype.appendContextMenuItems):
+        (WI.ResourceTimelineDataGridNode.prototype.filterableDataForColumn):
+        (WI.ResourceTimelineDataGridNode.prototype._createNameCellDocumentFragment):
+        (WI.ResourceTimelineDataGridNode.prototype._cachedCellContent):
+        (WI.ResourceTimelineDataGridNode.prototype._timelineRecordUpdated):
+        (WI.ResourceTimelineDataGridNode.prototype._dataGridNodeGoToArrowClicked):
+        (WI.ResourceTimelineDataGridNode.prototype._updateStatus):
+        (WI.ResourceTimelineDataGridNode.prototype._mouseoverRecordBar.else.let.graphDataSource.get startTime):
+        (WI.ResourceTimelineDataGridNode.prototype._mouseoverRecordBar.else.let.graphDataSource.get currentTime):
+        (WI.ResourceTimelineDataGridNode.prototype._mouseoverRecordBar.else.let.graphDataSource.get endTime):
+        (WI.ResourceTimelineDataGridNode.prototype._mouseoverRecordBar.else.let.graphDataSource.get _extraTimePadding):
+        (WI.ResourceTimelineDataGridNode.prototype._mouseoverRecordBar):
+        (WI.ResourceTimelineDataGridNode.prototype.get records): Deleted.
+
+        * UserInterface/Views/ResourceTimingPopoverDataGridNode.js:
+        (WI.ResourceTimingPopoverDataGridNode):
+        (WI.ResourceTimingPopoverDataGridNode.prototype.get records): Deleted.
+
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WI.ScriptTimelineDataGridNode.prototype.get data):
+        (WI.ScriptTimelineDataGridNode.prototype.get subtitle):
+        (WI.ScriptTimelineDataGridNode.prototype.createCellContent):
+        (WI.ScriptTimelineDataGridNode.prototype.get records): Deleted.
+        (WI.ScriptTimelineDataGridNode.prototype.get baseStartTime): Deleted.
+        (WI.ScriptTimelineDataGridNode.prototype.get rangeStartTime): Deleted.
+        (WI.ScriptTimelineDataGridNode.prototype.get rangeEndTime): Deleted.
+        (WI.ScriptTimelineDataGridNode.prototype.updateRangeTimes): Deleted.
+
+        * UserInterface/Views/SourceCodeTimelineTimelineDataGridNode.js:
+        (WI.SourceCodeTimelineTimelineDataGridNode.prototype.get data):
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WI.HeapAllocationsTimelineView):
+        (WI.HeapAllocationsTimelineView.prototype.layout):
+        (WI.HeapAllocationsTimelineView.prototype.reset):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WI.LayoutTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/MediaTimelineView.js:
+        (WI.MediaTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WI.NetworkTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WI.OverviewTimelineView.prototype._addResourceToDataGridIfNeeded):
+        (WI.OverviewTimelineView.prototype._addSourceCodeTimeline):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WI.RenderingFrameTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/ScriptDetailsTimelineView.js:
+        (WI.ScriptDetailsTimelineView.prototype.layout):
+        (WI.ScriptDetailsTimelineView.prototype._processPendingRecords):
+        Update Timeline `WI.DataGrid` views to use the new constructor format.
+
+        * UserInterface/Views/ResourceTimelineDataGridNode.css:
+        (.resource-timing-popover-content .data-grid td.graph-column):
+        Drive-by: add extra padding before/after resource timing bars shown when hovering.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: changes to CSS resources only take affect once editing stops
+        https://bugs.webkit.org/show_bug.cgi?id=195774
+        <rdar://problem/48905413>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Controllers/CSSManager.js:
+        (WI.CSSManager.prototype._resourceContentDidChange.applyStyleSheetChanges.styleSheetFound):
+        (WI.CSSManager.prototype._resourceContentDidChange):
+        (WI.CSSManager.prototype._updateResourceContent.fetchedStyleSheetContent):
+        (WI.CSSManager.prototype._updateResourceContent):
+        Use a `Throttler` instead of a 500ms debounce.
+
+2019-03-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Search: allow DOM searches to be case sensitive
+        https://bugs.webkit.org/show_bug.cgi?id=194673
+        <rdar://problem/48087577>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WI.SearchSidebarPanel.prototype.performSearch):
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView.prototype.performSearch.contextNodesReady):
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.prototype.performSearch.callback): Deleted.
+        (WI.DOMManager.prototype.performSearch): Deleted.
+        (WI.DOMManager.prototype.searchResult.mycallback): Deleted.
+        (WI.DOMManager.prototype.searchResult): Deleted.
+        (WI.DOMManager.prototype.cancelSearch): Deleted.
+        Drive-by: remove unused code.
+
+2019-03-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: provide option to group by path
+        https://bugs.webkit.org/show_bug.cgi?id=195203
+        <rdar://problem/27340680>
+
+        Reviewed by Timothy Hatcher.
+
+        Create top-level folders for each origin and nest all resources (in a folder chain) underneath.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype.closed):
+        (WI.SourcesNavigationSidebarPanel.prototype.treeElementForRepresentedObject.searchTreeOutline): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype.treeElementForRepresentedObject):
+        (WI.SourcesNavigationSidebarPanel.prototype._compareTreeElements):
+        (WI.SourcesNavigationSidebarPanel.prototype._updateMainFrameTreeElement):
+        (WI.SourcesNavigationSidebarPanel.prototype._addResource):
+        (WI.SourcesNavigationSidebarPanel.prototype._addScript):
+        (WI.SourcesNavigationSidebarPanel.prototype._addWorkerTargetWithMainResource):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleResourceGroupingModeMouseDown.addOption): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleResourceGroupingModeMouseDown): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTreeSelectionDidChange):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleResourceGroupingModeChanged):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleFrameMainResourceDidChange):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleMainFrameDidChange):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.sources > .content):
+        (.sidebar > .panel.navigation.sources > .content > .details-section.paused-reason.collapsed > .header > .options,):
+        (.sidebar > .panel.navigation.sources > .content > .details-section.breakpoints > .header > .options .create-breakpoint): Added.
+        (.sidebar > .panel.navigation.sources > .content > .resources): Added.
+        (.sidebar > .panel.navigation.sources > .content .tree-outline.single-thread): Added.
+        (.sidebar > .panel.navigation.sources > .content .tree-outline.single-thread > .item.thread): Added.
+        (.sidebar > .panel.navigation.sources > .content > .details-section.scripts:not(.collapsed)): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .tree-outline.single-thread): Deleted.
+        (.sidebar > .panel.navigation.sources > .content > .tree-outline.single-thread > .item.thread): Deleted.
+        Drive-by: fix "No Filter Results" message view to not overlap eachother.
+        Drive-by: try to be more smart about what tree we focus when selecting a represented object.
+
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WI.ResourceTreeElement):
+        (WI.ResourceTreeElement.prototype.get mainTitleText):
+        (WI.ResourceTreeElement.prototype._updateTitles):
+        * UserInterface/Base/URLUtilities.js:
+        (WI.displayNameForURL):
+        Provide a way for the display name to use a directory "/" instead of the last path component.
+        This is needed in cases where the loaded resource is an implicit "index.*".
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WI.GeneralTreeElement.prototype.createFoldersAsNeededForSubpath): Added.
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        (WI.SourceCodeTreeElement.prototype.createFoldersAsNeededForSubpath): Deleted.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/Resource.js:
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .header .go-to-arrow):
+        Drive-by: vertically center go-to-arrow.
+
+        * UserInterface/Protocol/InspectorFrontendAPI.js:
+        (InspectorFrontendAPI.contextMenuItemSelected):
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.get filterNavigationItems):
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        (WI.NetworkTableContentView.prototype._generateSortComparator):
+        (WI.NetworkTableContentView.prototype._insertResourceAndReloadTable):
+        (WI.NetworkTableContentView.prototype._updateFilteredEntries):
+        (WI.NetworkTableContentView.prototype._handleGroupMediaRequestsByDOMNodeCheckedDidChange): Added.
+        (WI.NetworkTableContentView.prototype._handleGroupByDOMNodeCheckedDidChange): Deleted.
+        Rename the `groupByNode` setting to be more specific.
+
 2019-03-19  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: CPU Usage Timeline - the right edge of each column should align with a CPU measurement

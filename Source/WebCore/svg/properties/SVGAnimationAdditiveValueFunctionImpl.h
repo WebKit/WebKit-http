@@ -30,6 +30,62 @@
 
 namespace WebCore {
 
+class SVGAnimationColorFunction : public SVGAnimationAdditiveValueFunction<Color> {
+public:
+    using Base = SVGAnimationAdditiveValueFunction<Color>;
+    using Base::Base;
+
+    void setFromAndToValues(SVGElement* targetElement, const String& from, const String& to) override
+    {
+        m_from = colorFromString(targetElement, from);
+        m_to = colorFromString(targetElement, to);
+    }
+
+    void setToAtEndOfDurationValue(const String& toAtEndOfDuration) override
+    {
+        m_toAtEndOfDuration = SVGPropertyTraits<Color>::fromString(toAtEndOfDuration);
+    }
+
+    void progress(SVGElement*, float percentage, unsigned repeatCount, Color& animated)
+    {
+        Color from = m_animationMode == AnimationMode::To ? animated : m_from;
+        
+        float red = Base::progress(percentage, repeatCount, from.red(), m_to.red(), toAtEndOfDuration().red(), animated.red());
+        float green = Base::progress(percentage, repeatCount, from.green(), m_to.green(), toAtEndOfDuration().green(), animated.green());
+        float blue = Base::progress(percentage, repeatCount, from.blue(), m_to.blue(), toAtEndOfDuration().blue(), animated.blue());
+        float alpha = Base::progress(percentage, repeatCount, from.alpha(), m_to.alpha(), toAtEndOfDuration().alpha(), animated.alpha());
+        
+        animated = { roundAndClampColorChannel(red), roundAndClampColorChannel(green), roundAndClampColorChannel(blue), roundAndClampColorChannel(alpha) };
+    }
+
+    float calculateDistance(SVGElement*, const String& from, const String& to) const override
+    {
+        Color fromColor = CSSParser::parseColor(from.stripWhiteSpace());
+        if (!fromColor.isValid())
+            return -1;
+        Color toColor = CSSParser::parseColor(to.stripWhiteSpace());
+        if (!toColor.isValid())
+            return -1;
+        float red = fromColor.red() - toColor.red();
+        float green = fromColor.green() - toColor.green();
+        float blue = fromColor.blue() - toColor.blue();
+        return sqrtf(red * red + green * green + blue * blue);
+    }
+
+private:
+    void addFromAndToValues(SVGElement*) override
+    {
+        // Ignores any alpha and sets alpha on result to 100% opaque.
+        m_to = {
+            roundAndClampColorChannel(m_to.red() + m_from.red()),
+            roundAndClampColorChannel(m_to.green() + m_from.green()),
+            roundAndClampColorChannel(m_to.blue() + m_from.blue())
+        };
+    }
+
+    static Color colorFromString(SVGElement*, const String&);
+};
+
 class SVGAnimationIntegerFunction : public SVGAnimationAdditiveValueFunction<int> {
     friend class SVGAnimatedIntegerPairAnimator;
 
@@ -56,6 +112,81 @@ public:
     float calculateDistance(SVGElement*, const String& from, const String& to) const override
     {
         return std::abs(to.toIntStrict() - from.toIntStrict());
+    }
+
+private:
+    void addFromAndToValues(SVGElement*) override
+    {
+        m_to += m_from;
+    }
+};
+
+class SVGAnimationNumberFunction : public SVGAnimationAdditiveValueFunction<float> {
+    friend class SVGAnimatedNumberPairAnimator;
+
+public:
+    using Base = SVGAnimationAdditiveValueFunction<float>;
+    using Base::Base;
+
+    void setFromAndToValues(SVGElement*, const String& from, const String& to) override
+    {
+        m_from = SVGPropertyTraits<float>::fromString(from);
+        m_to = SVGPropertyTraits<float>::fromString(to);
+    }
+
+    void setToAtEndOfDurationValue(const String& toAtEndOfDuration) override
+    {
+        m_toAtEndOfDuration = SVGPropertyTraits<float>::fromString(toAtEndOfDuration);
+    }
+
+    void progress(SVGElement*, float percentage, unsigned repeatCount, float& animated)
+    {
+        float from = m_animationMode == AnimationMode::To ? animated : m_from;
+        animated = Base::progress(percentage, repeatCount, from, m_to, toAtEndOfDuration(), animated);
+    }
+
+    float calculateDistance(SVGElement*, const String& from, const String& to) const override
+    {
+        float fromNumber = 0;
+        float toNumber = 0;
+        parseNumberFromString(from, fromNumber);
+        parseNumberFromString(to, toNumber);
+        return fabsf(toNumber - fromNumber);
+    }
+
+private:
+    void addFromAndToValues(SVGElement*) override
+    {
+        m_to += m_from;
+    }
+};
+
+class SVGAnimationRectFunction : public SVGAnimationAdditiveValueFunction<FloatRect> {
+public:
+    using Base = SVGAnimationAdditiveValueFunction<FloatRect>;
+    using Base::Base;
+
+    void setFromAndToValues(SVGElement*, const String& from, const String& to) override
+    {
+        m_from = SVGPropertyTraits<FloatRect>::fromString(from);
+        m_to = SVGPropertyTraits<FloatRect>::fromString(to);
+    }
+
+    void setToAtEndOfDurationValue(const String& toAtEndOfDuration) override
+    {
+        m_toAtEndOfDuration = SVGPropertyTraits<FloatRect>::fromString(toAtEndOfDuration);
+    }
+
+    void progress(SVGElement*, float percentage, unsigned repeatCount, FloatRect& animated)
+    {
+        FloatRect from = m_animationMode == AnimationMode::To ? animated : m_from;
+        
+        float x = Base::progress(percentage, repeatCount, from.x(), m_to.x(), toAtEndOfDuration().x(), animated.x());
+        float y = Base::progress(percentage, repeatCount, from.y(), m_to.y(), toAtEndOfDuration().y(), animated.y());
+        float width = Base::progress(percentage, repeatCount, from.width(), m_to.width(), toAtEndOfDuration().width(), animated.width());
+        float height = Base::progress(percentage, repeatCount, from.height(), m_to.height(), toAtEndOfDuration().height(), animated.height());
+        
+        animated = { x, y, width, height };
     }
 
 private:

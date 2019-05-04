@@ -59,6 +59,7 @@
 			buildPhases = (
 			);
 			dependencies = (
+				52CD0F662242F5A3004A18A5 /* PBXTargetDependency */,
 				7954BE0D20B63348009BC83A /* PBXTargetDependency */,
 				FE533CAF1F217EC60016A1FE /* PBXTargetDependency */,
 				0F6183471C45F67A0072450B /* PBXTargetDependency */,
@@ -348,7 +349,6 @@
 		0F4F11E8209BCDAB00709654 /* CompilerTimingScope.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F4F11E6209BCDA100709654 /* CompilerTimingScope.h */; };
 		0F4F11EB209D426600709654 /* DFGAbstractValueClobberEpoch.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F4F11EA209D426300709654 /* DFGAbstractValueClobberEpoch.h */; };
 		0F4F29E018B6AD1C0057BC15 /* DFGStaticExecutionCountEstimationPhase.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F4F29DE18B6AD1C0057BC15 /* DFGStaticExecutionCountEstimationPhase.h */; };
-		0F4F82881E2FFDE00075184C /* JSSegmentedVariableObjectHeapCellType.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F4F82861E2FFDDB0075184C /* JSSegmentedVariableObjectHeapCellType.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F4F828C1E31B9760075184C /* StochasticSpaceTimeMutatorScheduler.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F4F828A1E31B9710075184C /* StochasticSpaceTimeMutatorScheduler.h */; };
 		0F50AF3C193E8B3900674EE8 /* DFGStructureClobberState.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F50AF3B193E8B3900674EE8 /* DFGStructureClobberState.h */; };
 		0F5513A61D5A682C00C32BD8 /* FreeList.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F5513A51D5A682A00C32BD8 /* FreeList.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -884,6 +884,9 @@
 		52B311011975B4670080857C /* TypeLocationCache.h in Headers */ = {isa = PBXBuildFile; fileRef = 52B311001975B4670080857C /* TypeLocationCache.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		52C0611F1AA51E1C00B4ADBA /* RuntimeType.h in Headers */ = {isa = PBXBuildFile; fileRef = 52C0611D1AA51E1B00B4ADBA /* RuntimeType.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		52C952B719A289850069B386 /* TypeProfiler.h in Headers */ = {isa = PBXBuildFile; fileRef = 52C952B619A289850069B386 /* TypeProfiler.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		52CD0F5D2242F569004A18A5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 51F0EB6105C86C6B00E6DF1B /* Foundation.framework */; };
+		52CD0F5E2242F569004A18A5 /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 932F5BD90822A1C700736975 /* JavaScriptCore.framework */; };
+		52CD0F682242F71C004A18A5 /* testdfg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 52CD0F672242F71C004A18A5 /* testdfg.cpp */; };
 		52D13091221CE176009C836C /* foo.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 52D1308F221CE03A009C836C /* foo.js */; };
 		52F6C35E1E71EB080081F4CC /* WebAssemblyWrapperFunction.h in Headers */ = {isa = PBXBuildFile; fileRef = 52F6C35C1E71EB080081F4CC /* WebAssemblyWrapperFunction.h */; };
 		530A66B91FA3E78B0026A545 /* UnifiedSource3-mm.mm in Sources */ = {isa = PBXBuildFile; fileRef = 530A66B11FA3E77A0026A545 /* UnifiedSource3-mm.mm */; };
@@ -1808,6 +1811,8 @@
 		FE1BD0211E72027900134BC9 /* CellProfile.h in Headers */ = {isa = PBXBuildFile; fileRef = FE1BD0201E72027000134BC9 /* CellProfile.h */; };
 		FE1BD0251E72053800134BC9 /* HeapVerifier.h in Headers */ = {isa = PBXBuildFile; fileRef = FE1BD0231E72052F00134BC9 /* HeapVerifier.h */; };
 		FE1C0FFD1B193E9800B53FCA /* Exception.h in Headers */ = {isa = PBXBuildFile; fileRef = FE1C0FFC1B193E9800B53FCA /* Exception.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		FE1E2C3F2240DD5800F6B729 /* MacroAssemblerARM64E.h in Headers */ = {isa = PBXBuildFile; fileRef = FE1E2C3E2240D30B00F6B729 /* MacroAssemblerARM64E.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		FE1E2C402240DD6200F6B729 /* ARM64EAssembler.h in Headers */ = {isa = PBXBuildFile; fileRef = FE1E2C3D2240D2F600F6B729 /* ARM64EAssembler.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE20CE9E15F04A9500DF3430 /* LLIntCLoop.h in Headers */ = {isa = PBXBuildFile; fileRef = FE20CE9C15F04A9500DF3430 /* LLIntCLoop.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FE2A87601F02381600EB31B2 /* MinimumReservedZoneSize.h in Headers */ = {isa = PBXBuildFile; fileRef = FE2A875F1F02381600EB31B2 /* MinimumReservedZoneSize.h */; };
 		FE3022D31E3D73A500BAC493 /* SigillCrashAnalyzer.h in Headers */ = {isa = PBXBuildFile; fileRef = FE3022D11E3D739600BAC493 /* SigillCrashAnalyzer.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1922,6 +1927,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 65FB3F6609D11E9100F49DEB;
 			remoteInfo = "Derived Sources";
+		};
+		52CD0F652242F5A3004A18A5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0867D690FE84028FC02AAC07 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 52CD0F592242F569004A18A5;
+			remoteInfo = testdfg;
 		};
 		53B4BD131F68C2AA00D2BEA3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -2428,8 +2440,6 @@
 		0F4F11EA209D426300709654 /* DFGAbstractValueClobberEpoch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGAbstractValueClobberEpoch.h; path = dfg/DFGAbstractValueClobberEpoch.h; sourceTree = "<group>"; };
 		0F4F29DD18B6AD1C0057BC15 /* DFGStaticExecutionCountEstimationPhase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGStaticExecutionCountEstimationPhase.cpp; path = dfg/DFGStaticExecutionCountEstimationPhase.cpp; sourceTree = "<group>"; };
 		0F4F29DE18B6AD1C0057BC15 /* DFGStaticExecutionCountEstimationPhase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGStaticExecutionCountEstimationPhase.h; path = dfg/DFGStaticExecutionCountEstimationPhase.h; sourceTree = "<group>"; };
-		0F4F82851E2FFDDB0075184C /* JSSegmentedVariableObjectHeapCellType.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSSegmentedVariableObjectHeapCellType.cpp; sourceTree = "<group>"; };
-		0F4F82861E2FFDDB0075184C /* JSSegmentedVariableObjectHeapCellType.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSSegmentedVariableObjectHeapCellType.h; sourceTree = "<group>"; };
 		0F4F82891E31B9710075184C /* StochasticSpaceTimeMutatorScheduler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StochasticSpaceTimeMutatorScheduler.cpp; sourceTree = "<group>"; };
 		0F4F828A1E31B9710075184C /* StochasticSpaceTimeMutatorScheduler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StochasticSpaceTimeMutatorScheduler.h; sourceTree = "<group>"; };
 		0F50AF3B193E8B3900674EE8 /* DFGStructureClobberState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGStructureClobberState.h; path = dfg/DFGStructureClobberState.h; sourceTree = "<group>"; };
@@ -3379,6 +3389,8 @@
 		52C0611D1AA51E1B00B4ADBA /* RuntimeType.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RuntimeType.h; sourceTree = "<group>"; };
 		52C952B619A289850069B386 /* TypeProfiler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TypeProfiler.h; sourceTree = "<group>"; };
 		52C952B819A28A1C0069B386 /* TypeProfiler.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = TypeProfiler.cpp; sourceTree = "<group>"; };
+		52CD0F642242F569004A18A5 /* testdfg */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = testdfg; sourceTree = BUILT_PRODUCTS_DIR; };
+		52CD0F672242F71C004A18A5 /* testdfg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = testdfg.cpp; path = dfg/testdfg.cpp; sourceTree = "<group>"; };
 		52D1308F221CE03A009C836C /* foo.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = foo.js; sourceTree = "<group>"; };
 		52F6C35B1E71EB080081F4CC /* WebAssemblyWrapperFunction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = WebAssemblyWrapperFunction.cpp; path = js/WebAssemblyWrapperFunction.cpp; sourceTree = "<group>"; };
 		52F6C35C1E71EB080081F4CC /* WebAssemblyWrapperFunction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WebAssemblyWrapperFunction.h; path = js/WebAssemblyWrapperFunction.h; sourceTree = "<group>"; };
@@ -4816,6 +4828,9 @@
 		FE1BD0231E72052F00134BC9 /* HeapVerifier.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HeapVerifier.h; sourceTree = "<group>"; };
 		FE1C0FFC1B193E9800B53FCA /* Exception.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Exception.h; sourceTree = "<group>"; };
 		FE1C0FFE1B194FD100B53FCA /* Exception.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Exception.cpp; sourceTree = "<group>"; };
+		FE1E2C3C2240C1EF00F6B729 /* JSCPtrTag.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSCPtrTag.cpp; sourceTree = "<group>"; };
+		FE1E2C3D2240D2F600F6B729 /* ARM64EAssembler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARM64EAssembler.h; sourceTree = "<group>"; };
+		FE1E2C3E2240D30B00F6B729 /* MacroAssemblerARM64E.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MacroAssemblerARM64E.h; sourceTree = "<group>"; };
 		FE20CE9B15F04A9500DF3430 /* LLIntCLoop.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = LLIntCLoop.cpp; path = llint/LLIntCLoop.cpp; sourceTree = "<group>"; };
 		FE20CE9C15F04A9500DF3430 /* LLIntCLoop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LLIntCLoop.h; path = llint/LLIntCLoop.h; sourceTree = "<group>"; };
 		FE2A875F1F02381600EB31B2 /* MinimumReservedZoneSize.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MinimumReservedZoneSize.h; sourceTree = "<group>"; };
@@ -4995,6 +5010,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		52CD0F5C2242F569004A18A5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				52CD0F5D2242F569004A18A5 /* Foundation.framework in Frameworks */,
+				52CD0F5E2242F569004A18A5 /* JavaScriptCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		651122FC14046A4C002B101D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -5063,6 +5087,7 @@
 				79281BDC20B62B3E002E2A60 /* testmem */,
 				6511230514046A4C002B101D /* testRegExp */,
 				932F5BD90822A1C700736975 /* JavaScriptCore.framework */,
+				52CD0F642242F569004A18A5 /* testdfg */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -6867,6 +6892,7 @@
 				F692A8870255597D01FF60F7 /* JSCJSValue.cpp */,
 				14ABB36E099C076400E2A24F /* JSCJSValue.h */,
 				865A30F0135007E100CDB49E /* JSCJSValueInlines.h */,
+				FE1E2C3C2240C1EF00F6B729 /* JSCPtrTag.cpp */,
 				FE7497E5209001B00003565B /* JSCPtrTag.h */,
 				72AAF7CB1D0D318B005E60BE /* JSCustomGetterSetterFunction.cpp */,
 				72AAF7CC1D0D318B005E60BE /* JSCustomGetterSetterFunction.h */,
@@ -6967,8 +6993,6 @@
 				E38D060B1F8E814100649CF2 /* JSScriptFetchParameters.h */,
 				0F919D0E157F3327004A4E7D /* JSSegmentedVariableObject.cpp */,
 				0F919D0F157F3327004A4E7D /* JSSegmentedVariableObject.h */,
-				0F4F82851E2FFDDB0075184C /* JSSegmentedVariableObjectHeapCellType.cpp */,
-				0F4F82861E2FFDDB0075184C /* JSSegmentedVariableObjectHeapCellType.h */,
 				A7299D9B17D12837005F5FF9 /* JSSet.cpp */,
 				A7299D9C17D12837005F5FF9 /* JSSet.h */,
 				A790DD69182F499700588807 /* JSSetIterator.cpp */,
@@ -7640,6 +7664,7 @@
 				0FDB2CE5174830A2007B3C1B /* DFGWorklist.cpp */,
 				0FDB2CE6174830A2007B3C1B /* DFGWorklist.h */,
 				0F1FB3951E1AF7DF00A9BE50 /* DFGWorklistInlines.h */,
+				52CD0F672242F71C004A18A5 /* testdfg.cpp */,
 			);
 			name = dfg;
 			sourceTree = "<group>";
@@ -7703,6 +7728,7 @@
 				0F3730901C0CD70C00052BFA /* AllowMacroScratchRegisterUsage.h */,
 				AD412B351E7B57C0008AF157 /* AllowMacroScratchRegisterUsageIf.h */,
 				8640923B156EED3B00566CB2 /* ARM64Assembler.h */,
+				FE1E2C3D2240D2F600F6B729 /* ARM64EAssembler.h */,
 				86ADD1430FDDEA980006EEC2 /* ARMv7Assembler.h */,
 				9688CB130ED12B4E001D649F /* AssemblerBuffer.h */,
 				86D3B2C110156BDE002865E7 /* AssemblerBufferWithConstantPool.h */,
@@ -7716,6 +7742,7 @@
 				86C36EE90EE1289D00B3DF59 /* MacroAssembler.h */,
 				FEB137561BB11EEE00CD5100 /* MacroAssemblerARM64.cpp */,
 				8640923C156EED3B00566CB2 /* MacroAssemblerARM64.h */,
+				FE1E2C3E2240D30B00F6B729 /* MacroAssemblerARM64E.h */,
 				A729009B17976C6000317298 /* MacroAssemblerARMv7.cpp */,
 				86ADD1440FDDEA980006EEC2 /* MacroAssemblerARMv7.h */,
 				0F6DB7EB1D617D0F00CDBF8E /* MacroAssemblerCodeRef.cpp */,
@@ -8473,6 +8500,7 @@
 				79A228361D35D71F00D8E067 /* ArithProfile.h in Headers */,
 				0F6B1CB91861244C00845D97 /* ArityCheckMode.h in Headers */,
 				A1A009C11831A26E00CF8711 /* ARM64Assembler.h in Headers */,
+				FE1E2C402240DD6200F6B729 /* ARM64EAssembler.h in Headers */,
 				86ADD1450FDDEA980006EEC2 /* ARMv7Assembler.h in Headers */,
 				0F8335B81639C1EA001443B5 /* ArrayAllocationProfile.h in Headers */,
 				A7A8AF3517ADB5F3005AB174 /* ArrayBuffer.h in Headers */,
@@ -9370,7 +9398,6 @@
 				A7C0C4AC168103020017011D /* JSScriptRefPrivate.h in Headers */,
 				14D01A7721FB351F00BC54E9 /* JSScriptSourceProvider.h in Headers */,
 				0F919D11157F332C004A4E7D /* JSSegmentedVariableObject.h in Headers */,
-				0F4F82881E2FFDE00075184C /* JSSegmentedVariableObjectHeapCellType.h in Headers */,
 				A7299D9E17D12837005F5FF9 /* JSSet.h in Headers */,
 				A790DD70182F499700588807 /* JSSetIterator.h in Headers */,
 				BDFCB2BBE90F41349E1B0BED /* JSSourceCode.h in Headers */,
@@ -9461,6 +9488,7 @@
 				14B723B812D7DA6F003BD5ED /* MachineStackMarker.h in Headers */,
 				86C36EEA0EE1289D00B3DF59 /* MacroAssembler.h in Headers */,
 				A1A009C01831A22D00CF8711 /* MacroAssemblerARM64.h in Headers */,
+				FE1E2C3F2240DD5800F6B729 /* MacroAssemblerARM64E.h in Headers */,
 				86ADD1460FDDEA980006EEC2 /* MacroAssemblerARMv7.h in Headers */,
 				863B23E00FC6118900703AA4 /* MacroAssemblerCodeRef.h in Headers */,
 				E32AB2441DCD75F400D7533A /* MacroAssemblerHelpers.h in Headers */,
@@ -10028,6 +10056,22 @@
 			productReference = 14BD688E215191310050DAFF /* JSCLLIntSettingsExtractor */;
 			productType = "com.apple.product-type.tool";
 		};
+		52CD0F592242F569004A18A5 /* testdfg */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 52CD0F5F2242F569004A18A5 /* Build configuration list for PBXNativeTarget "testdfg" */;
+			buildPhases = (
+				52CD0F5A2242F569004A18A5 /* Sources */,
+				52CD0F5C2242F569004A18A5 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = testdfg;
+			productName = testapi;
+			productReference = 52CD0F642242F569004A18A5 /* testdfg */;
+			productType = "com.apple.product-type.tool";
+		};
 		651122F714046A4C002B101D /* testRegExp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6511230014046A4C002B101D /* Build configuration list for PBXNativeTarget "testRegExp" */;
@@ -10174,6 +10218,7 @@
 				FE533CA11F217DB30016A1FE /* testmasm */,
 				79281BBD20B62B3E002E2A60 /* testmem */,
 				5325BDBF21DFF2B100A0DEE1 /* Apply Configuration to XCFileLists */,
+				52CD0F592242F569004A18A5 /* testdfg */,
 			);
 		};
 /* End PBXProject section */
@@ -10542,6 +10587,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		52CD0F5A2242F569004A18A5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				52CD0F682242F71C004A18A5 /* testdfg.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		651122FA14046A4C002B101D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -10791,6 +10844,11 @@
 			isa = PBXTargetDependency;
 			target = 65FB3F6609D11E9100F49DEB /* Derived Sources */;
 			targetProxy = 14D9D9D9218462B5009126C2 /* PBXContainerItemProxy */;
+		};
+		52CD0F662242F5A3004A18A5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 52CD0F592242F569004A18A5 /* testdfg */;
+			targetProxy = 52CD0F652242F5A3004A18A5 /* PBXContainerItemProxy */;
 		};
 		53B4BD141F68C2AA00D2BEA3 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -11192,6 +11250,38 @@
 		};
 		14BD6897215191450050DAFF /* Production */ = {
 			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Production;
+		};
+		52CD0F602242F569004A18A5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BC021BF2136900C300FC5467 /* ToolExecutable.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		52CD0F612242F569004A18A5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BC021BF2136900C300FC5467 /* ToolExecutable.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		52CD0F622242F569004A18A5 /* Profiling */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BC021BF2136900C300FC5467 /* ToolExecutable.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Profiling;
+		};
+		52CD0F632242F569004A18A5 /* Production */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BC021BF2136900C300FC5467 /* ToolExecutable.xcconfig */;
 			buildSettings = {
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -11634,6 +11724,17 @@
 				14BD6895215191450050DAFF /* Release */,
 				14BD6896215191450050DAFF /* Profiling */,
 				14BD6897215191450050DAFF /* Production */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Production;
+		};
+		52CD0F5F2242F569004A18A5 /* Build configuration list for PBXNativeTarget "testdfg" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				52CD0F602242F569004A18A5 /* Debug */,
+				52CD0F612242F569004A18A5 /* Release */,
+				52CD0F622242F569004A18A5 /* Profiling */,
+				52CD0F632242F569004A18A5 /* Production */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Production;

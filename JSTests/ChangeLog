@@ -1,3 +1,81 @@
+2019-03-21  Tadeu Zagallo  <tzagallo@apple.com>
+
+        JSObject::putDirectIndexSlowOrBeyondVectorLength should check if indexIsSufficientlyBeyondLengthForSparseMap
+        https://bugs.webkit.org/show_bug.cgi?id=196078
+        <rdar://problem/35925380>
+
+        Reviewed by Mark Lam.
+
+        Add a new benchmark that allocates several objects and invokes put_by_val_direct
+        with a large index. run-jsc-benchmarks says "definitely 1.6178x faster".
+
+        * microbenchmarks/put-by-val-direct-large-index.js: Added.
+
+2019-03-21  Mark Lam  <mark.lam@apple.com>
+
+        Placate exception check validation in operationArrayIndexOfString().
+        https://bugs.webkit.org/show_bug.cgi?id=196067
+        <rdar://problem/49056572>
+
+        Reviewed by Michael Saboff.
+
+        * stress/string-equal-exception-check.js: Added.
+
+2019-03-21  Mark Lam  <mark.lam@apple.com>
+
+        Cap length of an array with spread to MIN_ARRAY_STORAGE_CONSTRUCTION_LENGTH.
+        https://bugs.webkit.org/show_bug.cgi?id=196055
+        <rdar://problem/49067448>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/new_array_with_spread-should-cap-array-size-to-MIN_ARRAY_STORAGE_CONSTRUCTION_LENGTH.js: Added.
+
+2019-03-20  Saam Barati  <sbarati@apple.com>
+
+        typeOfDoubleSum is wrong for when NaN can be produced
+        https://bugs.webkit.org/show_bug.cgi?id=196030
+
+        Reviewed by Filip Pizlo.
+
+        * stress/double-add-sub-mul-can-produce-nan.js: Added.
+        (assert):
+        (noInline.sub):
+        (noInline):
+        (assert.mul):
+        (assert.add):
+
+2019-03-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Update the test to ensure OutOfMemoryError is thrown as intended
+        https://bugs.webkit.org/show_bug.cgi?id=196032
+        <rdar://problem/46842740>
+
+        Rubber stamped by Saam Barati.
+
+        * stress/create-error-out-of-memory-rope-string.js:
+        (assert):
+        (catch):
+
+2019-03-20  Tadeu Zagallo  <tzagallo@apple.com>
+
+        JSC::createError needs to check for OOM in errorDescriptionForValue
+        https://bugs.webkit.org/show_bug.cgi?id=196032
+        <rdar://problem/46842740>
+
+        Reviewed by Mark Lam.
+
+        * stress/create-error-out-of-memory-rope-string.js: Added.
+
+2019-03-19  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, reduce # of iterations to avoid timing out after r242991
+        https://bugs.webkit.org/show_bug.cgi?id=195791
+
+        To avoid timing out, this patch reduces it from 3e7 to 1e7. 1e7 iteration counts still reproduce the issue at 60%.
+
+        * stress/symbol-is-destructed-before-refing-underlying-symbol-impl.js:
+
 2019-03-19  Caio Lima  <ticaiolima@gmail.com>
 
         [JSC] microbenchmarks/generate-multiple-llint-entrypoints.js is running out of executable memory on ARMv7

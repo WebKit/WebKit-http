@@ -23,7 +23,6 @@
 
 #include "FEGaussianBlur.h"
 #include "SVGAnimatedEnumeration.h"
-#include "SVGAnimatedNumber.h"
 #include "SVGFEConvolveMatrixElement.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 
@@ -37,13 +36,13 @@ public:
     void setStdDeviation(float stdDeviationX, float stdDeviationY);
 
     String in1() const { return m_in1.currentValue(attributeOwnerProxy()); }
-    float stdDeviationX() const { return m_stdDeviationX.currentValue(attributeOwnerProxy()); }
-    float stdDeviationY() const { return m_stdDeviationY.currentValue(attributeOwnerProxy()); }
+    float stdDeviationX() const { return m_stdDeviationX->currentValue(); }
+    float stdDeviationY() const { return m_stdDeviationY->currentValue(); }
     EdgeModeType edgeMode() const { return m_edgeMode.currentValue(attributeOwnerProxy()); }
 
     RefPtr<SVGAnimatedString> in1Animated() { return m_in1.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumber> stdDeviationXAnimated() { return m_stdDeviationX.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumber> stdDeviationYAnimated() { return m_stdDeviationY.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedNumber& stdDeviationXAnimated() { return m_stdDeviationX; }
+    SVGAnimatedNumber& stdDeviationYAnimated() { return m_stdDeviationY; }
     RefPtr<SVGAnimatedEnumeration> edgeModeAnimated() { return m_edgeMode.animatedProperty(attributeOwnerProxy()); }
 
 private:
@@ -65,16 +64,13 @@ private:
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
-    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
-
-    static const AtomicString& stdDeviationXIdentifier();
-    static const AtomicString& stdDeviationYIdentifier();
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) const override;
 
     AttributeOwnerProxy m_attributeOwnerProxy { *this };
     PropertyRegistry m_propertyRegistry { *this };
     SVGAnimatedStringAttribute m_in1;
-    SVGAnimatedNumberAttribute m_stdDeviationX;
-    SVGAnimatedNumberAttribute m_stdDeviationY;
+    Ref<SVGAnimatedNumber> m_stdDeviationX { SVGAnimatedNumber::create(this) };
+    Ref<SVGAnimatedNumber> m_stdDeviationY { SVGAnimatedNumber::create(this) };
     SVGAnimatedEnumerationAttribute<EdgeModeType> m_edgeMode { EDGEMODE_NONE };
 };
 

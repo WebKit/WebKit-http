@@ -71,13 +71,10 @@ WorkerInspectorController::WorkerInspectorController(WorkerGlobalScope& workerGl
 
     auto consoleAgent = std::make_unique<WorkerConsoleAgent>(workerContext);
     m_instrumentingAgents->setWebConsoleAgent(consoleAgent.get());
-
-    m_agents.append(std::make_unique<WorkerRuntimeAgent>(workerContext));
-    m_agents.append(std::make_unique<WorkerDebuggerAgent>(workerContext));
     m_agents.append(WTFMove(consoleAgent));
 
-    if (CommandLineAPIHost* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost())
-        commandLineAPIHost->init(nullptr, m_instrumentingAgents->webConsoleAgent(), nullptr);
+    if (auto* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost())
+        commandLineAPIHost->init(m_instrumentingAgents.copyRef());
 }
 
 WorkerInspectorController::~WorkerInspectorController()
@@ -168,6 +165,8 @@ void WorkerInspectorController::createLazyAgents()
 
     auto workerContext = workerAgentContext();
 
+    m_agents.append(std::make_unique<WorkerRuntimeAgent>(workerContext));
+
 #if ENABLE(SERVICE_WORKER)
     if (is<ServiceWorkerGlobalScope>(m_workerGlobalScope)) {
         m_agents.append(std::make_unique<ServiceWorkerAgent>(workerContext));
@@ -176,6 +175,7 @@ void WorkerInspectorController::createLazyAgents()
 #endif
 
     m_agents.append(std::make_unique<WebHeapAgent>(workerContext));
+    m_agents.append(std::make_unique<WorkerDebuggerAgent>(workerContext));
     m_agents.append(std::make_unique<WorkerAuditAgent>(workerContext));
 }
 

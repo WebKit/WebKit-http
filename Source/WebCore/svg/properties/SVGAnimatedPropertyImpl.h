@@ -29,18 +29,22 @@
 #include "SVGAnimatedEnumeration.h"
 #include "SVGAnimatedLength.h"
 #include "SVGAnimatedLengthList.h"
-#include "SVGAnimatedNumber.h"
 #include "SVGAnimatedNumberList.h"
 #include "SVGAnimatedPointList.h"
-#include "SVGAnimatedPreserveAspectRatio.h"
 #include "SVGAnimatedPrimitiveProperty.h"
-#include "SVGAnimatedRect.h"
 #include "SVGAnimatedString.h"
 #include "SVGAnimatedTransformList.h"
+#include "SVGAnimatedValueProperty.h"
+#include "SVGPreserveAspectRatio.h"
+#include "SVGRect.h"
 
 namespace WebCore {
 
 using SVGAnimatedBoolean = SVGAnimatedPrimitiveProperty<bool>;
 using SVGAnimatedInteger = SVGAnimatedPrimitiveProperty<int>;
+using SVGAnimatedNumber = SVGAnimatedPrimitiveProperty<float>;
+
+using SVGAnimatedRect = SVGAnimatedValueProperty<SVGRect>;
+using SVGAnimatedPreserveAspectRatio = SVGAnimatedValueProperty<SVGPreserveAspectRatio>;
 
 }

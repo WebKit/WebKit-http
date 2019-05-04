@@ -351,6 +351,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webaudio/PeriodicWave.idl \
     $(WebCore)/Modules/webaudio/ScriptProcessorNode.idl \
     $(WebCore)/Modules/webaudio/WaveShaperNode.idl \
+    $(WebCore)/Modules/webauthn/AuthenticationExtensionsClientInputs.idl \
     $(WebCore)/Modules/webauthn/AuthenticatorAssertionResponse.idl \
     $(WebCore)/Modules/webauthn/AuthenticatorAttestationResponse.idl \
     $(WebCore)/Modules/webauthn/AuthenticatorResponse.idl \
@@ -1165,6 +1166,10 @@ else ifeq ($(WTF_PLATFORM_MAC), 1)
 FEATURE_AND_PLATFORM_DEFINES = $(FEATURE_DEFINES) WTF_PLATFORM_MAC
 else
 FEATURE_AND_PLATFORM_DEFINES = $(FEATURE_DEFINES)
+endif
+
+ifeq ($(HAVE_OS_DARK_MODE_SUPPORT), 1)
+FEATURE_AND_PLATFORM_DEFINES += HAVE_OS_DARK_MODE_SUPPORT
 endif
 
 ifeq ($(PLATFORM_FEATURE_DEFINES),)
