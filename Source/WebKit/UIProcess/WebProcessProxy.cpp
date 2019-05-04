@@ -115,14 +115,14 @@ uint64_t WebProcessProxy::generatePageID()
     return ++uniquePageID;
 }
 
-static WebProcessProxy::WebPageProxyMap::MapType& globalPageMap()
+static WebProcessProxy::WebPageProxyMap& globalPageMap()
 {
     ASSERT(isMainThreadOrCheckDisabled());
-    static NeverDestroyed<WebProcessProxy::WebPageProxyMap::MapType> pageMap;
+    static NeverDestroyed<WebProcessProxy::WebPageProxyMap> pageMap;
     return pageMap;
 }
 
-Ref<WebProcessProxy> WebProcessProxy::create(WebProcessPool& processPool, WebsiteDataStore& websiteDataStore, IsPrewarmed isPrewarmed, ShouldLaunchProcess shouldLaunchProcess)
+Ref<WebProcessProxy> WebProcessProxy::create(WebProcessPool& processPool, WebsiteDataStore* websiteDataStore, IsPrewarmed isPrewarmed, ShouldLaunchProcess shouldLaunchProcess)
 {
     auto proxy = adoptRef(*new WebProcessProxy(processPool, websiteDataStore, isPrewarmed));
     if (shouldLaunchProcess == ShouldLaunchProcess::Yes)
@@ -130,13 +130,12 @@ Ref<WebProcessProxy> WebProcessProxy::create(WebProcessPool& processPool, Websit
     return proxy;
 }
 
-WebProcessProxy::WebProcessProxy(WebProcessPool& processPool, WebsiteDataStore& websiteDataStore, IsPrewarmed isPrewarmed)
+WebProcessProxy::WebProcessProxy(WebProcessPool& processPool, WebsiteDataStore* websiteDataStore, IsPrewarmed isPrewarmed)
     : AuxiliaryProcessProxy(processPool.alwaysRunsAtBackgroundPriority())
     , m_responsivenessTimer(*this)
     , m_backgroundResponsivenessTimer(*this)
     , m_processPool(processPool, isPrewarmed == IsPrewarmed::Yes ? IsWeak::Yes : IsWeak::No)
     , m_mayHaveUniversalFileReadSandboxExtension(false)
-    , m_pageMap(*this)
     , m_numberOfTimesSuddenTerminationWasDisabled(0)
     , m_throttler(*this, processPool.shouldTakeUIBackgroundAssertion())
     , m_isResponsive(NoOrMaybe::Maybe)
@@ -188,18 +187,6 @@ WebProcessProxy::~WebProcessProxy()
 #endif
 }
 
-void WebProcessProxy::validateFreezerStatus()
-{
-#if PLATFORM(IOS_FAMILY)
-    bool value = !m_isPrewarmed && !m_isInProcessCache && !m_pageMap.isEmpty() && !isServiceWorkerProcess();
-    if (m_currentIsFreezableValue != WTF::nullopt && m_currentIsFreezableValue == value)
-        return;
-
-    m_currentIsFreezableValue = value;
-    send(Messages::WebProcess::SetFreezable(value), 0);
-#endif
-}
-
 void WebProcessProxy::setIsInProcessCache(bool value)
 {
     ASSERT(m_isInProcessCache != value);
@@ -215,8 +202,12 @@ void WebProcessProxy::setIsInProcessCache(bool value)
         RELEASE_ASSERT(m_processPool);
         m_processPool.setIsWeak(IsWeak::No);
     }
-    
-    validateFreezerStatus();
+}
+
+void WebProcessProxy::setWebsiteDataStore(WebsiteDataStore& dataStore)
+{
+    ASSERT(!m_websiteDataStore);
+    m_websiteDataStore = &dataStore;
 }
 
 void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
@@ -375,7 +366,7 @@ void WebProcessProxy::addExistingWebPage(WebPageProxy& webPage, BeginsUsingDataS
     ASSERT(!m_pageMap.contains(webPage.pageID()));
     ASSERT(!globalPageMap().contains(webPage.pageID()));
     ASSERT(!m_isInProcessCache);
-    ASSERT(m_websiteDataStore.ptr() == &webPage.websiteDataStore() || processPool().dummyProcessProxy() == this);
+    ASSERT(!m_websiteDataStore || m_websiteDataStore == &webPage.websiteDataStore());
 
     if (beginsUsingDataStore == BeginsUsingDataStore::Yes)
         m_processPool->pageBeginUsingWebsiteDataStore(webPage.pageID(), webPage.websiteDataStore());
@@ -393,8 +384,6 @@ void WebProcessProxy::markIsNoLongerInPrewarmedPool()
     m_isPrewarmed = false;
     RELEASE_ASSERT(m_processPool);
     m_processPool.setIsWeak(IsWeak::No);
-
-    validateFreezerStatus();
 
     send(Messages::WebProcess::MarkIsNoLongerPrewarmed(), 0);
 }
@@ -659,7 +648,7 @@ void WebProcessProxy::didReceiveSyncMessage(IPC::Connection& connection, IPC::De
 
 void WebProcessProxy::didClose(IPC::Connection&)
 {
-    RELEASE_LOG_IF(m_websiteDataStore->sessionID().isAlwaysOnLoggingAllowed(), Process, "%p - WebProcessProxy didClose (web process crash)", this);
+    RELEASE_LOG_IF(isReleaseLoggingAllowed(), Process, "%p - WebProcessProxy didClose (web process crash)", this);
     processDidTerminateOrFailedToLaunch();
 }
 
@@ -768,7 +757,7 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
     AuxiliaryProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
 
     if (!IPC::Connection::identifierIsValid(connectionIdentifier)) {
-        RELEASE_LOG_IF(m_websiteDataStore->sessionID().isAlwaysOnLoggingAllowed(), Process, "%p - WebProcessProxy didFinishLaunching - invalid connection identifier (web process failed to launch)", this);
+        RELEASE_LOG_IF(isReleaseLoggingAllowed(), Process, "%p - WebProcessProxy didFinishLaunching - invalid connection identifier (web process failed to launch)", this);
         processDidTerminateOrFailedToLaunch();
         return;
     }
@@ -789,8 +778,6 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
 
     unblockAccessibilityServerIfNeeded();
 #endif
-
-    validateFreezerStatus();
 }
 
 WebFrameProxy* WebProcessProxy::webFrame(uint64_t frameID) const
@@ -997,7 +984,7 @@ void WebProcessProxy::requestTermination(ProcessTerminationReason reason)
         return;
 
     auto protectedThis = makeRef(*this);
-    RELEASE_LOG_IF(m_websiteDataStore->sessionID().isAlwaysOnLoggingAllowed(), Process, "%p - WebProcessProxy::requestTermination - reason %d", this, reason);
+    RELEASE_LOG_IF(isReleaseLoggingAllowed(), Process, "%p - WebProcessProxy::requestTermination - reason %d", this, reason);
 
     AuxiliaryProcessProxy::terminate();
 
@@ -1010,6 +997,11 @@ void WebProcessProxy::requestTermination(ProcessTerminationReason reason)
 
     for (auto& page : pages)
         page->processDidTerminate(reason);
+}
+
+bool WebProcessProxy::isReleaseLoggingAllowed() const
+{
+    return !m_websiteDataStore || m_websiteDataStore->sessionID().isAlwaysOnLoggingAllowed();
 }
 
 void WebProcessProxy::stopResponsivenessTimer()

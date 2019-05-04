@@ -198,6 +198,10 @@ Element::~Element()
     disconnectFromIntersectionObservers();
 #endif
 
+#if ENABLE(RESIZE_OBSERVER)
+    disconnectFromResizeObservers();
+#endif
+
     removeShadowRoot();
 
     if (hasSyntheticAttrChildNodes())
@@ -476,11 +480,9 @@ void Element::synchronizeAllAttributes() const
         ASSERT(isStyledElement());
         static_cast<const StyledElement*>(this)->synchronizeStyleAttributeInternal();
     }
-
-    if (elementData()->animatedSVGAttributesAreDirty()) {
-        ASSERT(isSVGElement());
-        downcast<SVGElement>(*this).synchronizeAnimatedSVGAttribute(anyQName());
-    }
+    
+    if (isSVGElement())
+        downcast<SVGElement>(const_cast<Element&>(*this)).synchronizeAllAttributes();
 }
 
 ALWAYS_INLINE void Element::synchronizeAttribute(const QualifiedName& name) const
@@ -493,10 +495,8 @@ ALWAYS_INLINE void Element::synchronizeAttribute(const QualifiedName& name) cons
         return;
     }
 
-    if (UNLIKELY(elementData()->animatedSVGAttributesAreDirty())) {
-        ASSERT(isSVGElement());
-        downcast<SVGElement>(*this).synchronizeAnimatedSVGAttribute(name);
-    }
+    if (isSVGElement())
+        downcast<SVGElement>(const_cast<Element&>(*this)).synchronizeAttribute(name);
 }
 
 static ALWAYS_INLINE bool isStyleAttribute(const Element& element, const AtomicString& attributeLocalName)
@@ -517,11 +517,9 @@ ALWAYS_INLINE void Element::synchronizeAttribute(const AtomicString& localName) 
         static_cast<const StyledElement*>(this)->synchronizeStyleAttributeInternal();
         return;
     }
-    if (elementData()->animatedSVGAttributesAreDirty()) {
-        // We're not passing a namespace argument on purpose. SVGNames::*Attr are defined w/o namespaces as well.
-        ASSERT_WITH_SECURITY_IMPLICATION(isSVGElement());
-        downcast<SVGElement>(*this).synchronizeAnimatedSVGAttribute(QualifiedName(nullAtom(), localName, nullAtom()));
-    }
+
+    if (isSVGElement())
+        downcast<SVGElement>(const_cast<Element&>(*this)).synchronizeAttribute(QualifiedName(nullAtom(), localName, nullAtom()));
 }
 
 const AtomicString& Element::getAttribute(const QualifiedName& name) const
@@ -818,8 +816,8 @@ void Element::scrollTo(const ScrollToOptions& options, ScrollClamping clamping)
         adjustForAbsoluteZoom(renderer->scrollLeft(), *renderer),
         adjustForAbsoluteZoom(renderer->scrollTop(), *renderer)
     );
-    renderer->setScrollLeft(clampToInteger(scrollToOptions.left.value() * renderer->style().effectiveZoom()), clamping);
-    renderer->setScrollTop(clampToInteger(scrollToOptions.top.value() * renderer->style().effectiveZoom()), clamping);
+    renderer->setScrollLeft(clampToInteger(scrollToOptions.left.value() * renderer->style().effectiveZoom()), ScrollType::Programmatic, clamping);
+    renderer->setScrollTop(clampToInteger(scrollToOptions.top.value() * renderer->style().effectiveZoom()), ScrollType::Programmatic, clamping);
 }
 
 void Element::scrollTo(double x, double y)
@@ -1140,7 +1138,7 @@ void Element::setScrollLeft(int newLeft)
     }
 
     if (auto* renderer = renderBox()) {
-        renderer->setScrollLeft(static_cast<int>(newLeft * renderer->style().effectiveZoom()));
+        renderer->setScrollLeft(static_cast<int>(newLeft * renderer->style().effectiveZoom()), ScrollType::Programmatic);
         if (auto* scrollableArea = renderer->layer())
             scrollableArea->setScrolledProgrammatically(true);
     }
@@ -1157,7 +1155,7 @@ void Element::setScrollTop(int newTop)
     }
 
     if (auto* renderer = renderBox()) {
-        renderer->setScrollTop(static_cast<int>(newTop * renderer->style().effectiveZoom()));
+        renderer->setScrollTop(static_cast<int>(newTop * renderer->style().effectiveZoom()), ScrollType::Programmatic);
         if (auto* scrollableArea = renderer->layer())
             scrollableArea->setScrolledProgrammatically(true);
     }
@@ -3531,6 +3529,32 @@ IntersectionObserverData* Element::intersectionObserverData()
 }
 #endif
 
+#if ENABLE(RESIZE_OBSERVER)
+void Element::disconnectFromResizeObservers()
+{
+    auto* observerData = resizeObserverData();
+    if (!observerData)
+        return;
+
+    for (const auto& observer : observerData->observers)
+        observer->targetDestroyed(*this);
+    observerData->observers.clear();
+}
+
+ResizeObserverData& Element::ensureResizeObserverData()
+{
+    auto& rareData = ensureElementRareData();
+    if (!rareData.resizeObserverData())
+        rareData.setResizeObserverData(std::make_unique<ResizeObserverData>());
+    return *rareData.resizeObserverData();
+}
+
+ResizeObserverData* Element::resizeObserverData()
+{
+    return hasRareData() ? elementRareData()->resizeObserverData() : nullptr;
+}
+#endif
+
 SpellcheckAttributeState Element::spellcheckAttributeState() const
 {
     const AtomicString& value = attributeWithoutSynchronization(HTMLNames::spellcheckAttr);
@@ -3566,7 +3590,7 @@ bool Element::fastAttributeLookupAllowed(const QualifiedName& name) const
         return false;
 
     if (isSVGElement())
-        return !downcast<SVGElement>(*this).isAnimatableAttribute(name);
+        return !downcast<SVGElement>(*this).isAnimatedPropertyAttribute(name);
 
     return true;
 }

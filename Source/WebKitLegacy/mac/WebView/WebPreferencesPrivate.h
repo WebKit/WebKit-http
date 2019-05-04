@@ -275,9 +275,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 - (BOOL)webGPUEnabled;
 - (void)setWebGPUEnabled:(BOOL)enabled;
 
-- (BOOL)webMetalEnabled;
-- (void)setWebMetalEnabled:(BOOL)enabled;
-
 - (BOOL)accelerated2dCanvasEnabled;
 - (void)setAccelerated2dCanvasEnabled:(BOOL)enabled;
 
@@ -628,6 +625,7 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 @property (nonatomic) BOOL allowCrossOriginSubresourcesToAskForCredentials;
 @property (nonatomic) BOOL sourceBufferChangeTypeEnabled;
 @property (nonatomic) BOOL referrerPolicyAttributeEnabled;
+@property (nonatomic) BOOL resizeObserverEnabled;
 
 #if TARGET_OS_IPHONE
 @property (nonatomic) BOOL quickLookDocumentSavingEnabled;

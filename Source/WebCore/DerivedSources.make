@@ -378,8 +378,10 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/GPUCanvasContext.idl \
     $(WebCore)/Modules/webgpu/GPUColor.idl \
     $(WebCore)/Modules/webgpu/GPUColorStateDescriptor.idl \
+    $(WebCore)/Modules/webgpu/GPUColorWriteBits.idl \
     $(WebCore)/Modules/webgpu/GPUBindGroupLayoutBinding.idl \
     $(WebCore)/Modules/webgpu/GPUBindGroupLayoutDescriptor.idl \
+    $(WebCore)/Modules/webgpu/GPUBlendDescriptor.idl \
     $(WebCore)/Modules/webgpu/GPUBufferDescriptor.idl \
     $(WebCore)/Modules/webgpu/GPUBufferUsage.idl \
     $(WebCore)/Modules/webgpu/GPUCompareFunction.idl \
@@ -407,6 +409,9 @@ JS_BINDING_IDLS = \
 	$(WebCore)/Modules/webgpu/WebGPUBufferBinding.idl \
     $(WebCore)/Modules/webgpu/WebGPUCommandBuffer.idl \
     $(WebCore)/Modules/webgpu/WebGPUCommandEncoder.idl \
+    $(WebCore)/Modules/webgpu/WebGPUComputePassEncoder.idl \
+    $(WebCore)/Modules/webgpu/WebGPUComputePipeline.idl \
+    $(WebCore)/Modules/webgpu/WebGPUComputePipelineDescriptor.idl \
     $(WebCore)/Modules/webgpu/WebGPUDevice.idl \
     $(WebCore)/Modules/webgpu/WebGPUQueue.idl \
     $(WebCore)/Modules/webgpu/WebGPUPipelineDescriptorBase.idl \
@@ -816,28 +821,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/html/canvas/WebGLUniformLocation.idl \
     $(WebCore)/html/canvas/WebGLVertexArrayObject.idl \
     $(WebCore)/html/canvas/WebGLVertexArrayObjectOES.idl \
-    $(WebCore)/html/canvas/WebMetalBuffer.idl \
-    $(WebCore)/html/canvas/WebMetalCommandBuffer.idl \
-    $(WebCore)/html/canvas/WebMetalCommandQueue.idl \
-    $(WebCore)/html/canvas/WebMetalComputeCommandEncoder.idl \
-    $(WebCore)/html/canvas/WebMetalComputePipelineState.idl \
-    $(WebCore)/html/canvas/WebMetalDepthStencilDescriptor.idl \
-    $(WebCore)/html/canvas/WebMetalDepthStencilState.idl \
-    $(WebCore)/html/canvas/WebMetalDrawable.idl \
-    $(WebCore)/html/canvas/WebMetalFunction.idl \
-    $(WebCore)/html/canvas/WebMetalLibrary.idl \
-    $(WebCore)/html/canvas/WebMetalRenderCommandEncoder.idl \
-    $(WebCore)/html/canvas/WebMetalRenderPassAttachmentDescriptor.idl \
-    $(WebCore)/html/canvas/WebMetalRenderPassColorAttachmentDescriptor.idl \
-    $(WebCore)/html/canvas/WebMetalRenderPassDepthAttachmentDescriptor.idl \
-    $(WebCore)/html/canvas/WebMetalRenderPassDescriptor.idl \
-    $(WebCore)/html/canvas/WebMetalRenderPipelineColorAttachmentDescriptor.idl \
-    $(WebCore)/html/canvas/WebMetalRenderPipelineDescriptor.idl \
-    $(WebCore)/html/canvas/WebMetalRenderPipelineState.idl \
-    $(WebCore)/html/canvas/WebMetalRenderingContext.idl \
-    $(WebCore)/html/canvas/WebMetalSize.idl \
-    $(WebCore)/html/canvas/WebMetalTexture.idl \
-    $(WebCore)/html/canvas/WebMetalTextureDescriptor.idl \
     $(WebCore)/html/track/AudioTrack.idl \
     $(WebCore)/html/track/AudioTrackList.idl \
     $(WebCore)/html/track/DataCue.idl \
@@ -887,6 +870,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/page/PerformanceServerTiming.idl \
     $(WebCore)/page/PerformanceTiming.idl \
     $(WebCore)/page/RemoteDOMWindow.idl \
+    $(WebCore)/page/ResizeObserver.idl \
+    $(WebCore)/page/ResizeObserverCallback.idl \
+    $(WebCore)/page/ResizeObserverEntry.idl \
     $(WebCore)/page/Screen.idl \
     $(WebCore)/page/ScrollIntoViewOptions.idl \
     $(WebCore)/page/ScrollLogicalPosition.idl \

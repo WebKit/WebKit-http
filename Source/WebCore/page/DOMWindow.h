@@ -100,7 +100,9 @@ class DOMWindow final
     , public ContextDestructionObserver
     , public Base64Utilities
     , public Supplementable<DOMWindow> {
+    WTF_MAKE_ISO_ALLOCATED(DOMWindow);
 public:
+
     static Ref<DOMWindow> create(Document& document) { return adoptRef(*new DOMWindow(document)); }
     WEBCORE_EXPORT virtual ~DOMWindow();
 
@@ -209,8 +211,6 @@ public:
     void setStatus(const String&);
     String defaultStatus() const;
     void setDefaultStatus(const String&);
-
-    WindowProxy* self() const;
 
     WindowProxy* opener() const;
     void disownOpener();

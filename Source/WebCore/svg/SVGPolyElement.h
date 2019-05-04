@@ -41,16 +41,8 @@ protected:
     SVGPolyElement(const QualifiedName&, Document&);
 
 private:
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGPolyElement, SVGGeometryElement, SVGExternalResourcesRequired>;
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-
     using PropertyRegistry = SVGPropertyOwnerRegistry<SVGPolyElement, SVGGeometryElement, SVGExternalResourcesRequired>;
     const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
-
-    static bool isKnownAttribute(const QualifiedName& attributeName)
-    {
-        return AttributeOwnerProxy::isKnownAttribute(attributeName) || PropertyRegistry::isKnownAttribute(attributeName);
-    }
 
     void parseAttribute(const QualifiedName&, const AtomicString&) override; 
     void svgAttributeChanged(const QualifiedName&) override;
@@ -58,7 +50,6 @@ private:
     bool isValid() const override { return SVGTests::isValid(); }
     bool supportsMarkers() const override { return true; }
 
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
     PropertyRegistry m_propertyRegistry { *this };
     Ref<SVGAnimatedPointList> m_points { SVGAnimatedPointList::create(this) };
 };

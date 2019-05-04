@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -78,7 +78,7 @@ void StructureRareData::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
 // ----------- Object.prototype.toString() helper watchpoint classes -----------
 
-class ObjectToStringAdaptiveInferredPropertyValueWatchpoint : public AdaptiveInferredPropertyValueWatchpointBase {
+class ObjectToStringAdaptiveInferredPropertyValueWatchpoint final : public AdaptiveInferredPropertyValueWatchpointBase {
 public:
     typedef AdaptiveInferredPropertyValueWatchpointBase Base;
     ObjectToStringAdaptiveInferredPropertyValueWatchpoint(const ObjectPropertyCondition&, StructureRareData*);
@@ -90,11 +90,13 @@ private:
     StructureRareData* m_structureRareData;
 };
 
-class ObjectToStringAdaptiveStructureWatchpoint : public Watchpoint {
+class ObjectToStringAdaptiveStructureWatchpoint final : public Watchpoint {
 public:
     ObjectToStringAdaptiveStructureWatchpoint(const ObjectPropertyCondition&, StructureRareData*);
 
     void install(VM&);
+
+    const ObjectPropertyCondition& key() const { return m_key; }
 
 protected:
     void fireInternal(VM&, const FireDetail&) override;
@@ -169,6 +171,22 @@ inline void StructureRareData::clearObjectToStringValue()
     m_objectToStringValue.clear();
 }
 
+void StructureRareData::finalizeUnconditionally(VM& vm)
+{
+    if (m_objectToStringAdaptiveInferredValueWatchpoint) {
+        if (!m_objectToStringAdaptiveInferredValueWatchpoint->key().isStillLive(vm)) {
+            clearObjectToStringValue();
+            return;
+        }
+    }
+    for (auto* watchpoint : m_objectToStringAdaptiveWatchpointSet) {
+        if (!watchpoint->key().isStillLive(vm)) {
+            clearObjectToStringValue();
+            return;
+        }
+    }
+}
+
 // ------------- Methods for Object.prototype.toString() helper watchpoint classes --------------
 
 ObjectToStringAdaptiveStructureWatchpoint::ObjectToStringAdaptiveStructureWatchpoint(const ObjectPropertyCondition& key, StructureRareData* structureRareData)
@@ -191,9 +209,7 @@ void ObjectToStringAdaptiveStructureWatchpoint::fireInternal(VM& vm, const FireD
     if (!m_structureRareData->isLive())
         return;
 
-    // FIXME: The m_key.isStillLive() check should not be needed if this watchpoint was removed
-    // when m_key's m_object died. https://bugs.webkit.org/show_bug.cgi?id=195829
-    if (m_key.isStillLive() && m_key.isWatchable(PropertyCondition::EnsureWatchability)) {
+    if (m_key.isWatchable(PropertyCondition::EnsureWatchability)) {
         install(vm);
         return;
     }

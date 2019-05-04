@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.12)
 
 include(WebKitCommon)
 include(WebCoreMacros.cmake)
+include(frameworks/WTF)
 
 set_property(DIRECTORY . PROPERTY FOLDER "WebCore")
 
@@ -372,8 +373,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCStatsReport.idl
     Modules/mediastream/RTCTrackEvent.idl
 
-    Modules/navigatorcontentutils/NavigatorContentUtils.idl
-
     Modules/notifications/Notification.idl
     Modules/notifications/NotificationPermission.idl
     Modules/notifications/NotificationPermissionCallback.idl
@@ -475,11 +474,13 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webgpu/DOMWindowWebGPU.idl
     Modules/webgpu/GPUBindGroupLayoutBinding.idl
     Modules/webgpu/GPUBindGroupLayoutDescriptor.idl
+    Modules/webgpu/GPUBlendDescriptor.idl
     Modules/webgpu/GPUBufferDescriptor.idl
     Modules/webgpu/GPUBufferUsage.idl
     Modules/webgpu/GPUCanvasContext.idl
     Modules/webgpu/GPUColor.idl
     Modules/webgpu/GPUColorStateDescriptor.idl
+    Modules/webgpu/GPUColorWriteBits.idl
     Modules/webgpu/GPUCompareFunction.idl
     Modules/webgpu/GPUDepthStencilStateDescriptor.idl
     Modules/webgpu/GPUExtent3D.idl
@@ -505,6 +506,9 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webgpu/WebGPUBufferBinding.idl
     Modules/webgpu/WebGPUCommandBuffer.idl
     Modules/webgpu/WebGPUCommandEncoder.idl
+    Modules/webgpu/WebGPUComputePassEncoder.idl
+    Modules/webgpu/WebGPUComputePipeline.idl
+    Modules/webgpu/WebGPUComputePipelineDescriptor.idl
     Modules/webgpu/WebGPUDevice.idl
     Modules/webgpu/WebGPUPipelineDescriptorBase.idl
     Modules/webgpu/WebGPUPipelineLayout.idl
@@ -886,28 +890,6 @@ set(WebCore_NON_SVG_IDL_FILES
     html/canvas/OffscreenCanvasRenderingContext2D.idl
     html/canvas/PaintRenderingContext2D.idl
     html/canvas/Path2D.idl
-    html/canvas/WebMetalBuffer.idl
-    html/canvas/WebMetalCommandBuffer.idl
-    html/canvas/WebMetalCommandQueue.idl
-    html/canvas/WebMetalComputeCommandEncoder.idl
-    html/canvas/WebMetalComputePipelineState.idl
-    html/canvas/WebMetalDepthStencilDescriptor.idl
-    html/canvas/WebMetalDepthStencilState.idl
-    html/canvas/WebMetalDrawable.idl
-    html/canvas/WebMetalFunction.idl
-    html/canvas/WebMetalLibrary.idl
-    html/canvas/WebMetalRenderCommandEncoder.idl
-    html/canvas/WebMetalRenderPassAttachmentDescriptor.idl
-    html/canvas/WebMetalRenderPassColorAttachmentDescriptor.idl
-    html/canvas/WebMetalRenderPassDepthAttachmentDescriptor.idl
-    html/canvas/WebMetalRenderPassDescriptor.idl
-    html/canvas/WebMetalRenderPipelineColorAttachmentDescriptor.idl
-    html/canvas/WebMetalRenderPipelineDescriptor.idl
-    html/canvas/WebMetalRenderPipelineState.idl
-    html/canvas/WebMetalRenderingContext.idl
-    html/canvas/WebMetalSize.idl
-    html/canvas/WebMetalTexture.idl
-    html/canvas/WebMetalTextureDescriptor.idl
 
     inspector/CommandLineAPIHost.idl
     inspector/InspectorAuditAccessibilityObject.idl
@@ -947,6 +929,9 @@ set(WebCore_NON_SVG_IDL_FILES
     page/PerformanceServerTiming.idl
     page/PerformanceTiming.idl
     page/RemoteDOMWindow.idl
+    page/ResizeObserver.idl
+    page/ResizeObserverCallback.idl
+    page/ResizeObserverEntry.idl
     page/Screen.idl
     page/ScrollIntoViewOptions.idl
     page/ScrollLogicalPosition.idl

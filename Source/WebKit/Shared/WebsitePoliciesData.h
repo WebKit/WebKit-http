@@ -28,6 +28,7 @@
 #include "WebsiteAutoplayPolicy.h"
 #include "WebsiteAutoplayQuirk.h"
 #include "WebsiteDataStoreParameters.h"
+#include "WebsiteMetaViewportPolicy.h"
 #include "WebsitePopUpPolicy.h"
 #include <WebCore/HTTPHeaderField.h>
 #include <wtf/OptionSet.h>
@@ -56,6 +57,7 @@ struct WebsitePoliciesData {
     String customUserAgent;
     String customJavaScriptUserAgentAsSiteSpecificQuirks;
     String customNavigatorPlatform;
+    WebsiteMetaViewportPolicy metaViewportPolicy { WebsiteMetaViewportPolicy::Default };
 
     void encode(IPC::Encoder&) const;
     static Optional<WebsitePoliciesData> decode(IPC::Decoder&);

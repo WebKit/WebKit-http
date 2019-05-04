@@ -107,7 +107,6 @@ public:
     void setXSSAuditorEnabled(bool);
     void setModernMediaControlsEnabled(bool);
     void setWebGL2Enabled(bool);
-    void setWebMetalEnabled(bool);
     void setWritableStreamAPIEnabled(bool);
     void setReadableByteStreamAPIEnabled(bool);
 
@@ -434,6 +433,7 @@ public:
     void statisticsClearThroughWebsiteDataRemoval(JSValueRef callback);
     void statisticsDeleteCookiesForHost(JSStringRef hostName, bool includeHttpOnlyCookies);
     void statisticsCallClearThroughWebsiteDataRemovalCallback();
+    bool isStatisticsHasLocalStorage(JSStringRef hostName);
     void setStatisticsCacheMaxAgeCap(double seconds);
     void statisticsResetToConsistentState(JSValueRef completionHandler);
     void statisticsCallDidResetToConsistentStateCallback();

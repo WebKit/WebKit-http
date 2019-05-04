@@ -274,7 +274,6 @@ enum CompositingPolicy {
 
     [MayThrowException] boolean wasLastChangeUserEdit(Element textField);
     boolean elementShouldAutoComplete(HTMLInputElement inputElement);
-    void setEditingValue(HTMLInputElement inputElement, DOMString value);
     void setAutofilled(HTMLInputElement inputElement, boolean enabled);
     void setShowAutoFillButton(HTMLInputElement inputElement, AutoFillButtonType autoFillButtonType);
     AutoFillButtonType autoFillButtonType(HTMLInputElement inputElement);
@@ -372,6 +371,7 @@ enum CompositingPolicy {
     const unsigned short LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32;
     const unsigned short LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED = 64;
     const unsigned short LAYER_TREE_INCLUDES_ROOT_LAYER_PROPERTIES = 128;
+    const unsigned short LAYER_TREE_INCLUDES_EVENT_REGION = 256;
     [MayThrowException] DOMString layerTreeAsText(Document document, optional unsigned short flags = 0);
 
     [MayThrowException] unsigned long long layerIDForElement(Element element);

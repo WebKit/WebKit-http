@@ -96,6 +96,7 @@ enum class AllowProcessCaching { No, Yes };
 class WebProcessProxy : public AuxiliaryProcessProxy, public ResponsivenessTimer::Client, public ThreadSafeRefCounted<WebProcessProxy>, public CanMakeWeakPtr<WebProcessProxy>, private ProcessThrottlerClient {
 public:
     typedef HashMap<uint64_t, RefPtr<WebFrameProxy>> WebFrameProxyMap;
+    typedef HashMap<uint64_t, WebPageProxy*> WebPageProxyMap;
     typedef HashMap<uint64_t, RefPtr<API::UserInitiatedAction>> UserInitiatedActionMap;
 
     enum class IsPrewarmed {
@@ -105,7 +106,7 @@ public:
 
     enum class ShouldLaunchProcess : bool { No, Yes };
 
-    static Ref<WebProcessProxy> create(WebProcessPool&, WebsiteDataStore&, IsPrewarmed, ShouldLaunchProcess = ShouldLaunchProcess::Yes);
+    static Ref<WebProcessProxy> create(WebProcessPool&, WebsiteDataStore*, IsPrewarmed, ShouldLaunchProcess = ShouldLaunchProcess::Yes);
     ~WebProcessProxy();
 
     WebConnection* webConnection() const { return m_webConnection.get(); }
@@ -120,8 +121,8 @@ public:
     void setIsInProcessCache(bool);
     bool isInProcessCache() const { return m_isInProcessCache; }
 
-    // FIXME: WebsiteDataStores should be made per-WebPageProxy throughout WebKit2
-    WebsiteDataStore& websiteDataStore() const { return m_websiteDataStore.get(); }
+    WebsiteDataStore& websiteDataStore() const { ASSERT(m_websiteDataStore); return *m_websiteDataStore; }
+    void setWebsiteDataStore(WebsiteDataStore&);
 
     static WebProcessProxy* processForIdentifier(WebCore::ProcessIdentifier);
     static WebPageProxy* webPage(uint64_t pageID);
@@ -135,45 +136,6 @@ public:
 
     void addProvisionalPageProxy(ProvisionalPageProxy& provisionalPage) { ASSERT(!m_provisionalPages.contains(&provisionalPage)); m_provisionalPages.add(&provisionalPage); }
     void removeProvisionalPageProxy(ProvisionalPageProxy& provisionalPage) { ASSERT(m_provisionalPages.contains(&provisionalPage)); m_provisionalPages.remove(&provisionalPage); }
-
-    class WebPageProxyMap {
-    public:
-        WebPageProxyMap(WebProcessProxy& proxy)
-            : m_proxy(proxy)
-        {
-        }
-
-        typedef HashMap<uint64_t, WebPageProxy*> MapType;
-        using ValuesConstIteratorRange = MapType::ValuesConstIteratorRange;
-
-        auto size() const { return m_map.size(); }
-        auto values() { return m_map.values(); }
-        auto values() const { return m_map.values(); }
-        auto begin() { return m_map.begin(); }
-        auto end() { return m_map.end(); }
-        auto get(uint64_t key) { return m_map.get(key); }
-        auto contains(uint64_t key) const { return m_map.contains(key); }
-        auto isEmpty() const { return m_map.isEmpty(); }
-
-        auto set(uint64_t key, WebPageProxy* value)
-        {
-            auto result = m_map.set(key, value);
-            m_proxy.validateFreezerStatus();
-            return result;
-        }
-
-        auto take(uint64_t key)
-        {
-            auto result = m_map.take(key);
-            m_proxy.validateFreezerStatus();
-            return result;
-        }
-
-    private:
-        WebProcessProxy& m_proxy;
-        MapType m_map;
-    };
-
     
     typename WebPageProxyMap::ValuesConstIteratorRange pages() const { return m_pageMap.values(); }
     unsigned pageCount() const { return m_pageMap.size(); }
@@ -313,11 +275,6 @@ public:
     void sendProcessDidResume() override;
     void didSetAssertionState(AssertionState) override;
 
-#if PLATFORM(IOS_FAMILY)
-    void setKeyboardIsAttached(bool keyboardIsAttached) { m_keyboardIsAttached = keyboardIsAttached; }
-    bool keyboardIsAttached() const { return m_keyboardIsAttached; }
-#endif
-
 #if PLATFORM(COCOA)
     enum SandboxExtensionType : uint32_t {
         None = 0,
@@ -342,7 +299,7 @@ public:
 
 protected:
     static uint64_t generatePageID();
-    WebProcessProxy(WebProcessPool&, WebsiteDataStore&, IsPrewarmed);
+    WebProcessProxy(WebProcessPool&, WebsiteDataStore*, IsPrewarmed);
 
     // AuxiliaryProcessProxy
     void getLaunchOptions(ProcessLauncher::LaunchOptions&) override;
@@ -400,6 +357,8 @@ private:
     void updateBackgroundResponsivenessTimer();
 
     void processDidTerminateOrFailedToLaunch();
+
+    bool isReleaseLoggingAllowed() const;
 
     // IPC::Connection::Client
     friend class WebConnectionToWebProcess;
@@ -493,8 +452,7 @@ private:
 
     VisibleWebPageCounter m_visiblePageCounter;
 
-    // FIXME: WebsiteDataStores should be made per-WebPageProxy throughout WebKit2. Get rid of this member.
-    Ref<WebsiteDataStore> m_websiteDataStore;
+    RefPtr<WebsiteDataStore> m_websiteDataStore;
 
     bool m_isUnderMemoryPressure { false };
 
@@ -509,14 +467,9 @@ private:
     unsigned m_suspendedPageCount { 0 };
     bool m_hasCommittedAnyProvisionalLoads { false };
     bool m_isPrewarmed;
-    Optional<bool> m_currentIsFreezableValue;
 
 #if PLATFORM(WATCHOS)
     ProcessThrottler::BackgroundActivityToken m_backgroundActivityTokenForFullscreenFormControls;
-#endif
-
-#if PLATFORM(IOS_FAMILY)
-    bool m_keyboardIsAttached { false };
 #endif
 
 #if PLATFORM(COCOA)

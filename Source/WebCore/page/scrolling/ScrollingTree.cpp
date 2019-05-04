@@ -93,6 +93,8 @@ ScrollingEventResult ScrollingTree::handleWheelEvent(const PlatformWheelEvent& w
 {
     LOG_WITH_STREAM(Scrolling, stream << "ScrollingTree " << this << " handleWheelEvent (async scrolling enabled: " << asyncFrameOrOverflowScrollingEnabled() << ")");
 
+    LockHolder locker(m_treeMutex);
+
     if (!asyncFrameOrOverflowScrollingEnabled()) {
         if (m_rootNode)
             downcast<ScrollingTreeScrollingNode>(*m_rootNode).handleWheelEvent(wheelEvent);
@@ -106,7 +108,6 @@ ScrollingEventResult ScrollingTree::handleWheelEvent(const PlatformWheelEvent& w
             return downcast<ScrollingTreeScrollingNode>(*node).handleWheelEvent(wheelEvent);
     }
 
-    LockHolder locker(m_treeMutex);
     if (m_rootNode) {
         auto& frameScrollingNode = downcast<ScrollingTreeFrameScrollingNode>(*m_rootNode);
 
@@ -175,6 +176,7 @@ void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollin
         unvisitedNodes.add(nodeID);
 
     m_overflowRelatedNodesMap.clear();
+    m_positionedNodesWithRelatedOverflow.clear();
 
     // orphanNodes keeps child nodes alive while we rebuild child lists.
     OrphanScrollingNodeMap orphanNodes;
@@ -259,9 +261,9 @@ void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode,
     node->commitStateAfterChildren(*stateNode);
 }
 
-// Called from the main thread.
 void ScrollingTree::applyLayerPositions()
 {
+    ASSERT(isMainThread());
     LockHolder locker(m_treeMutex);
 
     if (!m_rootNode)

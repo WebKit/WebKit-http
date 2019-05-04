@@ -569,6 +569,10 @@ private:
     template <typename IntType>
     void emitModOrDiv(bool isDiv, ExpressionType lhs, ExpressionType rhs, ExpressionType& result);
 
+    enum class MinOrMax { Min, Max };
+
+    PartialResult addFloatingPointMinOrMax(Type, MinOrMax, ExpressionType lhs, ExpressionType rhs, ExpressionType& result);
+
     int32_t WARN_UNUSED_RETURN fixupPointerPlusOffset(ExpressionType&, uint32_t);
 
     void restoreWasmContextInstance(BasicBlock*, TypedTmp);
@@ -676,10 +680,8 @@ AirIRGenerator::AirIRGenerator(const ModuleInformation& info, B3::Procedure& pro
         m_code.pinRegister(m_wasmContextInstanceGPR);
 
     if (mode != MemoryMode::Signaling) {
-        ASSERT(!pinnedRegs.sizeRegisters[0].sizeOffset);
-        m_memorySizeGPR = pinnedRegs.sizeRegisters[0].sizeRegister;
-        for (const PinnedSizeRegisterInfo& regInfo : pinnedRegs.sizeRegisters)
-            m_code.pinRegister(regInfo.sizeRegister);
+        m_memorySizeGPR = pinnedRegs.sizeRegister;
+        m_code.pinRegister(m_memorySizeGPR);
     }
 
     if (throwWasmException)
@@ -819,8 +821,7 @@ void AirIRGenerator::restoreWebAssemblyGlobalState(RestoreCachedStackLimit resto
         const PinnedRegisterInfo* pinnedRegs = &PinnedRegisterInfo::get();
         RegisterSet clobbers;
         clobbers.set(pinnedRegs->baseMemoryPointer);
-        for (auto info : pinnedRegs->sizeRegisters)
-            clobbers.set(info.sizeRegister);
+        clobbers.set(pinnedRegs->sizeRegister);
 
         auto* patchpoint = addPatchpoint(B3::Void);
         B3::Effects effects = B3::Effects::none();
@@ -830,14 +831,8 @@ void AirIRGenerator::restoreWebAssemblyGlobalState(RestoreCachedStackLimit resto
         patchpoint->clobber(clobbers);
 
         patchpoint->setGenerator([pinnedRegs] (CCallHelpers& jit, const B3::StackmapGenerationParams& params) {
-            GPRReg baseMemory = pinnedRegs->baseMemoryPointer;
-            const auto& sizeRegs = pinnedRegs->sizeRegisters;
-            ASSERT(sizeRegs.size() >= 1);
-            ASSERT(!sizeRegs[0].sizeOffset); // The following code assumes we start at 0, and calculates subsequent size registers relative to 0.
-            jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemorySize()), sizeRegs[0].sizeRegister);
-            jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemory()), baseMemory);
-            for (unsigned i = 1; i < sizeRegs.size(); ++i)
-                jit.add64(CCallHelpers::TrustedImm32(-sizeRegs[i].sizeOffset), sizeRegs[0].sizeRegister, sizeRegs[i].sizeRegister);
+            jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemorySize()), pinnedRegs->sizeRegister);
+            jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemory()), pinnedRegs->baseMemoryPointer);
         });
 
         emitPatchpoint(block, patchpoint, Tmp(), instance);
@@ -1851,19 +1846,15 @@ auto AirIRGenerator::addCallIndirect(const Signature& signature, Vector<Expressi
             GPRReg newContextInstance = params[0].gpr();
             GPRReg oldContextInstance = params[1].gpr();
             const PinnedRegisterInfo& pinnedRegs = PinnedRegisterInfo::get();
-            const auto& sizeRegs = pinnedRegs.sizeRegisters;
             GPRReg baseMemory = pinnedRegs.baseMemoryPointer;
             ASSERT(newContextInstance != baseMemory);
             jit.loadPtr(CCallHelpers::Address(oldContextInstance, Instance::offsetOfCachedStackLimit()), baseMemory);
             jit.storePtr(baseMemory, CCallHelpers::Address(newContextInstance, Instance::offsetOfCachedStackLimit()));
             jit.storeWasmContextInstance(newContextInstance);
-            ASSERT(sizeRegs[0].sizeRegister != baseMemory);
             // FIXME: We should support more than one memory size register
             //   see: https://bugs.webkit.org/show_bug.cgi?id=162952
-            ASSERT(sizeRegs.size() == 1);
-            ASSERT(sizeRegs[0].sizeRegister != newContextInstance);
-            ASSERT(!sizeRegs[0].sizeOffset);
-            jit.loadPtr(CCallHelpers::Address(newContextInstance, Instance::offsetOfCachedMemorySize()), sizeRegs[0].sizeRegister); // Memory size.
+            ASSERT(pinnedRegs.sizeRegister != newContextInstance);
+            jit.loadPtr(CCallHelpers::Address(newContextInstance, Instance::offsetOfCachedMemorySize()), pinnedRegs.sizeRegister); // Memory size.
             jit.loadPtr(CCallHelpers::Address(newContextInstance, Instance::offsetOfCachedMemory()), baseMemory); // Memory::void*.
         });
 
@@ -2743,31 +2734,7 @@ template<> auto AirIRGenerator::addOp<OpType::F32DemoteF64>(ExpressionType arg0,
 
 template<> auto AirIRGenerator::addOp<OpType::F32Min>(ExpressionType arg0, ExpressionType arg1, ExpressionType& result) -> PartialResult
 {
-    result = f32();
-
-    BasicBlock* isEqual = m_code.addBlock();
-    BasicBlock* notEqual = m_code.addBlock();
-    BasicBlock* greaterThanOrEqual = m_code.addBlock();
-    BasicBlock* continuation = m_code.addBlock();
-
-    append(m_currentBlock, BranchFloat, Arg::doubleCond(MacroAssembler::DoubleEqual), arg0, arg1);
-    m_currentBlock->setSuccessors(isEqual, notEqual);
-
-    append(isEqual, OrFloat, arg0, arg1, result);
-    append(isEqual, Jump);
-    isEqual->setSuccessors(continuation);
-
-    append(notEqual, MoveFloat, arg0, result);
-    append(notEqual, BranchFloat, Arg::doubleCond(MacroAssembler::DoubleLessThan), arg0, arg1);
-    notEqual->setSuccessors(continuation, greaterThanOrEqual);
-
-    append(greaterThanOrEqual, MoveFloat, arg1, result);
-    append(greaterThanOrEqual, Jump);
-    greaterThanOrEqual->setSuccessors(continuation);
-
-    m_currentBlock = continuation;
-
-    return { };
+    return addFloatingPointMinOrMax(F32, MinOrMax::Min, arg0, arg1, result);
 }
 
 template<> auto AirIRGenerator::addOp<OpType::F64Ne>(ExpressionType arg0, ExpressionType arg1, ExpressionType& result) -> PartialResult
@@ -2784,33 +2751,58 @@ template<> auto AirIRGenerator::addOp<OpType::F64Lt>(ExpressionType arg0, Expres
     return { };
 }
 
-template<> auto AirIRGenerator::addOp<OpType::F32Max>(ExpressionType arg0, ExpressionType arg1, ExpressionType& result) -> PartialResult
+auto AirIRGenerator::addFloatingPointMinOrMax(Type floatType, MinOrMax minOrMax, ExpressionType arg0, ExpressionType arg1, ExpressionType& result) -> PartialResult
 {
-    result = f32();
+    ASSERT(floatType == F32 || floatType == F64);
+    result = tmpForType(floatType);
 
     BasicBlock* isEqual = m_code.addBlock();
     BasicBlock* notEqual = m_code.addBlock();
-    BasicBlock* lessThan = m_code.addBlock();
+    BasicBlock* isLessThan = m_code.addBlock();
+    BasicBlock* notLessThan = m_code.addBlock();
+    BasicBlock* isGreaterThan = m_code.addBlock();
+    BasicBlock* isNaN = m_code.addBlock();
     BasicBlock* continuation = m_code.addBlock();
 
-    append(m_currentBlock, BranchFloat, Arg::doubleCond(MacroAssembler::DoubleEqual), arg0, arg1);
+    auto branchOp = floatType == F32 ? BranchFloat : BranchDouble;
+    append(m_currentBlock, branchOp, Arg::doubleCond(MacroAssembler::DoubleEqual), arg0, arg1);
     m_currentBlock->setSuccessors(isEqual, notEqual);
 
-    append(isEqual, AndFloat, arg0, arg1, result);
+    append(notEqual, branchOp, Arg::doubleCond(MacroAssembler::DoubleLessThan), arg0, arg1);
+    notEqual->setSuccessors(isLessThan, notLessThan);
+
+    append(notLessThan, branchOp, Arg::doubleCond(MacroAssembler::DoubleGreaterThan), arg0, arg1);
+    notLessThan->setSuccessors(isGreaterThan, isNaN);
+
+    auto andOp = floatType == F32 ? AndFloat : AndDouble;
+    auto orOp = floatType == F32 ? OrFloat : OrDouble;
+    append(isEqual, minOrMax == MinOrMax::Max ? andOp : orOp, arg0, arg1, result);
     append(isEqual, Jump);
     isEqual->setSuccessors(continuation);
 
-    append(notEqual, MoveFloat, arg0, result);
-    append(notEqual, BranchFloat, Arg::doubleCond(MacroAssembler::DoubleLessThan), arg0, arg1);
-    notEqual->setSuccessors(lessThan, continuation);
+    auto isLessThanResult = minOrMax == MinOrMax::Max ? arg1 : arg0;
+    append(isLessThan, moveOpForValueType(floatType), isLessThanResult, result);
+    append(isLessThan, Jump);
+    isLessThan->setSuccessors(continuation);
 
-    append(lessThan, MoveFloat, arg1, result);
-    append(lessThan, Jump);
-    lessThan->setSuccessors(continuation);
+    auto isGreaterThanResult = minOrMax == MinOrMax::Max ? arg0 : arg1;
+    append(isGreaterThan, moveOpForValueType(floatType), isGreaterThanResult, result);
+    append(isGreaterThan, Jump);
+    isGreaterThan->setSuccessors(continuation);
+
+    auto addOp = floatType == F32 ? AddFloat : AddDouble;
+    append(isNaN, addOp, arg0, arg1, result);
+    append(isNaN, Jump);
+    isNaN->setSuccessors(continuation);
 
     m_currentBlock = continuation;
 
     return { };
+}
+
+template<> auto AirIRGenerator::addOp<OpType::F32Max>(ExpressionType arg0, ExpressionType arg1, ExpressionType& result) -> PartialResult
+{
+    return addFloatingPointMinOrMax(F32, MinOrMax::Max, arg0, arg1, result);
 }
 
 template<> auto AirIRGenerator::addOp<OpType::F64Mul>(ExpressionType arg0, ExpressionType arg1, ExpressionType& result) -> PartialResult
@@ -3170,31 +3162,7 @@ template<> auto AirIRGenerator::addOp<OpType::F32Abs>(ExpressionType arg0, Expre
 
 template<> auto AirIRGenerator::addOp<OpType::F64Min>(ExpressionType arg0, ExpressionType arg1, ExpressionType& result) -> PartialResult
 {
-    result = f64();
-
-    BasicBlock* isEqual = m_code.addBlock();
-    BasicBlock* notEqual = m_code.addBlock();
-    BasicBlock* greaterThanOrEqual = m_code.addBlock();
-    BasicBlock* continuation = m_code.addBlock();
-
-    append(m_currentBlock, BranchDouble, Arg::doubleCond(MacroAssembler::DoubleEqual), arg0, arg1);
-    m_currentBlock->setSuccessors(isEqual, notEqual);
-
-    append(isEqual, OrDouble, arg0, arg1, result);
-    append(isEqual, Jump);
-    isEqual->setSuccessors(continuation);
-
-    append(notEqual, MoveDouble, arg0, result);
-    append(notEqual, BranchDouble, Arg::doubleCond(MacroAssembler::DoubleLessThan), arg0, arg1);
-    notEqual->setSuccessors(continuation, greaterThanOrEqual);
-
-    append(greaterThanOrEqual, MoveDouble, arg1, result);
-    append(greaterThanOrEqual, Jump);
-    greaterThanOrEqual->setSuccessors(continuation);
-
-    m_currentBlock = continuation;
-
-    return { };
+    return addFloatingPointMinOrMax(F64, MinOrMax::Min, arg0, arg1, result);
 }
 
 template<> auto AirIRGenerator::addOp<OpType::F32Mul>(ExpressionType arg0, ExpressionType arg1, ExpressionType& result) -> PartialResult
@@ -3466,31 +3434,7 @@ template<> auto AirIRGenerator::addOp<OpType::F64Neg>(ExpressionType arg0, Expre
 
 template<> auto AirIRGenerator::addOp<OpType::F64Max>(ExpressionType arg0, ExpressionType arg1, ExpressionType& result) -> PartialResult
 {
-    result = f64();
-
-    BasicBlock* isEqual = m_code.addBlock();
-    BasicBlock* notEqual = m_code.addBlock();
-    BasicBlock* lessThan = m_code.addBlock();
-    BasicBlock* continuation = m_code.addBlock();
-
-    append(m_currentBlock, BranchDouble, Arg::doubleCond(MacroAssembler::DoubleEqual), arg0, arg1);
-    m_currentBlock->setSuccessors(isEqual, notEqual);
-
-    append(isEqual, AndDouble, arg0, arg1, result);
-    append(isEqual, Jump);
-    isEqual->setSuccessors(continuation);
-
-    append(notEqual, MoveDouble, arg0, result);
-    append(notEqual, BranchDouble, Arg::doubleCond(MacroAssembler::DoubleLessThan), arg0, arg1);
-    notEqual->setSuccessors(lessThan, continuation);
-
-    append(lessThan, MoveDouble, arg1, result);
-    append(lessThan, Jump);
-    lessThan->setSuccessors(continuation);
-
-    m_currentBlock = continuation;
-
-    return { };
+    return addFloatingPointMinOrMax(F64, MinOrMax::Max, arg0, arg1, result);
 }
 
 template<> auto AirIRGenerator::addOp<OpType::I64LeU>(ExpressionType arg0, ExpressionType arg1, ExpressionType& result) -> PartialResult

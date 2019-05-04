@@ -336,33 +336,9 @@ bool SVGAnimationElement::isAccumulated() const
     return value == sum && animationMode() != AnimationMode::To;
 }
 
-bool SVGAnimationElement::isTargetAttributeCSSProperty(SVGElement* element, const QualifiedName& attributeName)
+bool SVGAnimationElement::isTargetAttributeCSSProperty(SVGElement* targetElement, const QualifiedName& attributeName)
 {
-    if (element->isTextContent()
-        && (attributeName == SVGNames::xAttr || attributeName == SVGNames::yAttr))
-        return false;
-
-    return SVGElement::isAnimatableCSSProperty(attributeName);
-}
-
-SVGAnimationElement::ShouldApplyAnimation SVGAnimationElement::shouldApplyAnimation(SVGElement* targetElement, const QualifiedName& attributeName)
-{
-    if (!hasValidAttributeType() || !targetElement || attributeName == anyQName())
-        return DontApplyAnimation;
-
-    // Always animate CSS properties, using the ApplyCSSAnimation code path, regardless of the attributeType value.
-    if (isTargetAttributeCSSProperty(targetElement, attributeName)) {
-        if (targetElement->isPresentationAttributeWithSVGDOM(attributeName))
-            return ApplyXMLandCSSAnimation;
-        return ApplyCSSAnimation;
-    }
-
-
-    // If attributeType="CSS" and attributeName doesn't point to a CSS property, ignore the animation.
-    if (attributeType() == AttributeType::CSS)
-        return DontApplyAnimation;
-
-    return ApplyXMLAnimation;
+    return targetElement->isAnimatedStyleAttribute(attributeName);
 }
 
 void SVGAnimationElement::calculateKeyTimesForCalcModePaced()
@@ -383,11 +359,11 @@ void SVGAnimationElement::calculateKeyTimesForCalcModePaced()
     keyTimesForPaced.append(0);
     for (unsigned n = 0; n < valuesCount - 1; ++n) {
         // Distance in any units
-        float distance = calculateDistance(m_values[n], m_values[n + 1]);
-        if (distance < 0)
+        auto distance = calculateDistance(m_values[n], m_values[n + 1]);
+        if (!distance)
             return;
-        totalDistance += distance;
-        keyTimesForPaced.append(distance);
+        totalDistance += *distance;
+        keyTimesForPaced.append(*distance);
     }
     if (!totalDistance)
         return;
@@ -631,27 +607,13 @@ void SVGAnimationElement::computeCSSPropertyValue(SVGElement* element, CSSProper
     element->setUseOverrideComputedStyle(false);
 }
 
-void SVGAnimationElement::adjustForInheritance(SVGElement* targetElement, const QualifiedName& attributeName, String& value)
-{
-    // FIXME: At the moment the computed style gets returned as a String and needs to get parsed again.
-    // In the future we might want to work with the value type directly to avoid the String parsing.
-    ASSERT(targetElement);
-
-    auto parent = makeRefPtr(targetElement->parentElement());
-    if (!parent || !parent->isSVGElement())
-        return;
-
-    SVGElement& svgParent = downcast<SVGElement>(*parent);
-    computeCSSPropertyValue(&svgParent, cssPropertyID(attributeName.localName()), value);
-}
-
-static bool inheritsFromProperty(SVGElement*, const QualifiedName& attributeName, const String& value)
+static bool inheritsFromProperty(SVGElement* targetElement, const QualifiedName& attributeName, const String& value)
 {
     static NeverDestroyed<const AtomicString> inherit("inherit", AtomicString::ConstructFromLiteral);
     
     if (value.isEmpty() || value != inherit)
         return false;
-    return SVGElement::isAnimatableCSSProperty(attributeName);
+    return targetElement->isAnimatedStyleAttribute(attributeName);
 }
 
 void SVGAnimationElement::determinePropertyValueTypes(const String& from, const String& to)

@@ -1,3 +1,444 @@
+2019-04-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Single click on links in non-read-only TextEditors should not follow links
+        https://bugs.webkit.org/show_bug.cgi?id=123364
+        <rdar://problem/15323913>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WI._updateModifierKeys):
+        Add classes to the body whenever alt, shift, or ctrl are pressed.
+
+        * UserInterface/Views/CodeMirrorEditor.js:
+        (WI.CodeMirrorEditor.create):
+        Add a `read-only` class if the `CodeMirror` is readonly.
+
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.cm-s-default .cm-link,):
+        (.read-only.cm-s-default .cm-link:hover,):
+        (.cm-s-default .cm-link:hover,): Deleted.
+
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype.set readOnly):
+        (WI.TextEditor.prototype._openClickedLinks):
+
+2019-04-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove support for -apple-trailing-word
+        https://bugs.webkit.org/show_bug.cgi?id=196525
+
+        Reviewed by Zalan Bujtas.
+
+        This CSS property is nonstandard and not used.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2019-04-03  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Uncaught Exception: TypeError: this._computedStyleSection.focus is not a function. (In 'this._computedStyleSection.focus()', 'this._computedStyleSection.focus' is undefined)
+        https://bugs.webkit.org/show_bug.cgi?id=192108
+        <rdar://problem/46685392>
+
+        Reviewed by Devin Rousso.
+
+        This patch fixes the uncaught exception. Tabbing to and from "Properties" section continues
+        working the same way as before the patch.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WI.ComputedStyleDetailsPanel.prototype.focusFirstSection): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype.focusLastSection): Deleted.
+
+2019-04-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: DOM breakpoint icon should stroke when hovering selection area
+        https://bugs.webkit.org/show_bug.cgi?id=196516
+        <rdar://problem/49540494>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeContentView.css:
+        (body:not(.window-inactive) .content-view.dom-tree .tree-outline.dom:focus li:matches(.selected, .hovered) .status-image.breakpoint,): Added.
+        (body:not(.window-inactive) .content-view.dom-tree .tree-outline.dom:focus li:matches(.selected, .hovered) .status-image.breakpoint.subtree): Added.
+        (body:not(.window-inactive) .content-view.dom-tree .tree-outline.dom:focus li:matches(.selected, :hover) .status-image.breakpoint): Deleted.
+        (body:not(.window-inactive) .content-view.dom-tree .tree-outline.dom:focus li:matches(.selected, :hover) .status-image.breakpoint.subtree): Deleted.
+
+2019-04-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: modernize serialization of breakpoints and the maps that hold them
+        https://bugs.webkit.org/show_bug.cgi?id=196230
+        <rdar://problem/49236485>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager):
+        (WI.DebuggerManager.prototype.breakpointsForSourceCode):
+        (WI.DebuggerManager.prototype.addBreakpoint):
+        (WI.DebuggerManager.prototype.removeBreakpoint):
+        (WI.DebuggerManager.prototype._setBreakpoint):
+        (WI.DebuggerManager.prototype._setBreakpoint.didSetBreakpoint):
+
+        * UserInterface/Models/Breakpoint.js:
+        (WI.Breakpoint):
+        (WI.Breakpoint.fromJSON): Added.
+        (WI.Breakpoint.prototype.toJSON):
+        (WI.Breakpoint.prototype.set resolved):
+        (WI.Breakpoint.prototype.recreateAction):
+        (WI.Breakpoint.prototype.saveIdentityToCookie):
+        (WI.Breakpoint.prototype._isSpecial): Added.
+        (WI.Breakpoint.set resolved.isSpecialBreakpoint): Deleted.
+        (WI.Breakpoint.serializeOptions): Deleted.
+
+        * UserInterface/Models/BreakpointAction.js:
+        (WI.BreakpointAction):
+        (WI.BreakpointAction.fromJSON): Added.
+        (WI.BreakpointAction.prototype.toProtocol): Added.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._addBreakpointsForSourceCode):
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype._prepareEditorForInitialContent):
+        (WI.SourceCodeTextEditor.prototype._breakpointsEnabledDidChange):
+
+2019-04-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOMDebugger: disabling a breakpoint for a specific event listener removes it from the UI
+        https://bugs.webkit.org/show_bug.cgi?id=196453
+        <rdar://problem/49489318>
+
+        Reviewed by Joseph Pecoraro.
+
+        Allow breakpoints for specific event listeners to be disabled, rather than immeditately
+        removing/deleting them when they are about to become disabled. This preserves the existing
+        functionality, but now allows for the tree element to stay in the UI in a disabled state.
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager):
+        (WI.DOMManager.prototype.setBreakpointForEventListener):
+        (WI.DOMManager.prototype.removeBreakpointForEventListener):
+        (WI.DOMManager.prototype.removeEventListenerBreakpointsForNode): Added.
+        (WI.DOMManager.prototype._updateEventBreakpoint): Added.
+        (WI.DOMManager.prototype._handleEventBreakpointDisabledStateChanged): Added.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager.prototype._handleEventBreakpointDisabledStateChanged):
+
+        * UserInterface/Views/EventBreakpointTreeElement.js:
+        (WI.EventBreakpointTreeElement.prototype.populateContextMenu):
+        (WI.EventBreakpointTreeElement.prototype._toggleBreakpoint):
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForDOMNodeBreakpoints):
+
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        (WI.DOMNodeTreeElement.prototype.ondelete):
+
+2019-04-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: auto-record after page load sometimes shows the wrong UI
+        https://bugs.webkit.org/show_bug.cgi?id=196320
+        <rdar://problem/49356686>
+
+        Reviewed by Joseph Pecoraro.
+
+        It was previously possible that the timing of a recording being started and the preview
+        image being loaded would not always be in the same order.
+
+        Utilize the existing `View.prototype.layout` mechanics to ensure that updates are coalesced
+        and that the changes are always applied in a particular order.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView):
+        (WI.CanvasContentView.prototype.refreshPreview): Added.
+        (WI.CanvasContentView.prototype.initialLayout):
+        (WI.CanvasContentView.prototype.layout):
+        (WI.CanvasContentView.prototype.shown):
+        (WI.CanvasContentView.prototype.attached):
+        (WI.CanvasContentView.prototype._refreshPixelSize):
+        (WI.CanvasContentView.prototype.refresh): Deleted.
+        (WI.CanvasContentView.prototype._recordingStarted): Deleted.
+        (WI.CanvasContentView.prototype._recordingProgress): Deleted.
+        (WI.CanvasContentView.prototype._recordingStopped): Deleted.
+        (WI.CanvasContentView.prototype._shaderProgramAdded): Deleted.
+        (WI.CanvasContentView.prototype._shaderProgramRemoved): Deleted.
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView.prototype._refreshPreviews):
+
+2019-04-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: add compatibility support for WebMetal
+        https://bugs.webkit.org/show_bug.cgi?id=196412
+        <rdar://problem/49439417>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.fromPayload):
+        (WI.Canvas.displayNameForContextType):
+        * UserInterface/Protocol/Legacy/12.2/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-12.2.json:
+
+2019-04-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: "Copy as HTML" appears twice when showing a context menu for a logged node
+        https://bugs.webkit.org/show_bug.cgi?id=196271
+        <rdar://problem/49290676>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WI.ObjectTreeBaseTreeElement.prototype._appendMenusItemsForObject):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-04-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: breakpoints don't populate in inspector2 on first load
+        https://bugs.webkit.org/show_bug.cgi?id=196063
+        <rdar://problem/49097787>
+
+        Reviewed by Joseph Pecoraro.
+
+        In the case that a breakpoint becomes resolved after the resource has finished loaded, there
+        won't be an already existing `TreeElement` for the breakpoint to replace.
+
+        This can realistically only happen if the IndexedDB lookup is super slow, or the resource is
+        extremely fast (e.g. a `data` url).
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._handleDebuggerObjectDisplayLocationDidChange):
+        (WI.DebuggerSidebarPanel.prototype._addDebuggerObject): Deleted.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype._addBreakpoint):
+        (WI.SourcesNavigationSidebarPanel.prototype._addBreakpointsForSourceCode):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleDebuggerObjectDisplayLocationDidChange):
+
+2019-04-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Adjust Energy Impact Threshholds
+        https://bugs.webkit.org/show_bug.cgi?id=196421
+        <rdar://problem/49125703>
+
+        Reviewed by Devin Rousso.
+
+        - Low - Keep Below 3% to continue to encourage idle pages stay below 3%
+          Might want to reduce to 2.5 or 2 after fixing bug 196419.
+
+        - High - Make Above 30% instead of 50% to encourage long running interactivity to stay below 30%
+          Depends on interaction, but sustained (1-2min) at 30%+ will certainly impact battery.
+
+        - Very High - Make above 100% instead of 150%
+          CPU Usage spikes around page load and is quite often still under 100% despite many threads.
+          Drop this a bit as we dropped High down.
+
+        Reduce the size of the Medium section, and increase the High section
+        Having 70% of the chart be "Medium" is just too much Medium, and
+        we've now made it more possible to be in the High range.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype.get mediumEnergyThreshold):
+        (WI.CPUTimelineView.prototype.get highEnergyThreshold):
+        (WI.CPUTimelineView.prototype.get lowEnergyGraphBoundary):
+        (WI.CPUTimelineView.prototype.get mediumEnergyGraphBoundary):
+        (WI.CPUTimelineView.prototype.get highEnergyGraphBoundary):
+        (WI.CPUTimelineView.prototype.initialLayout):
+        (WI.CPUTimelineView.prototype.layout.bestThreadLayoutMax):
+        (WI.CPUTimelineView.prototype._layoutEnergyChart):
+
+2019-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete WebMetal implementation in favor of WebGPU
+        https://bugs.webkit.org/show_bug.cgi?id=195418
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.fromPayload):
+        (WI.Canvas.displayNameForContextType):
+        * UserInterface/Protocol/Legacy/12.2/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-12.2.json:
+
+2019-03-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Storage: some cookie column headers are not localized
+        https://bugs.webkit.org/show_bug.cgi?id=196406
+        <rdar://problem/48467422>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WI.CookieStorageContentView.prototype.initialLayout):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-03-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Show Resource Initiator in Network Tab detail views
+        https://bugs.webkit.org/show_bug.cgi?id=196316
+        <rdar://problem/49352679>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/NetworkManager.js:
+        (WI.NetworkManager.prototype.resourceRequestWillBeSent):
+        (WI.NetworkManager.prototype.resourceRequestWasServedFromMemoryCache):
+        (WI.NetworkManager.prototype._initiatorCallFramesFromPayload):
+        Initialize call frames from the initiator payload.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.get initiatorCallFrames):
+        Initialization and accessor.
+
+        * UserInterface/Views/CallFrameTreeElement.js:
+        (WI.CallFrameTreeElement):
+        Selecting a native element won't do anything so just don't allow selection.
+
+        * UserInterface/Views/ResourceHeadersContentView.css:
+        (.resource-headers .go-to-link):
+        (.resource-headers .call-stack):
+        (.resource-headers .call-stack:hover):
+        (@media (prefers-color-scheme: dark)):
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView):
+        (WI.ResourceHeadersContentView.prototype.hidden):
+        (WI.ResourceHeadersContentView.prototype._refreshSummarySection):
+        Add an "Initiator" line in the summary with a way to view the whole
+        initiator backtrace if one exists.
+
+2019-03-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: fix typo in CSS selector to always show add breakpoint button
+        https://bugs.webkit.org/show_bug.cgi?id=196241
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.sources > .content > .details-section:matches(.paused-reason, .breakpoints).collapsed > .header > .options,):
+        (.sidebar > .panel.navigation.sources > .content > .details-section:matches(.paused-reason, .breakpoins).collapsed > .header > .options,): Deleted.
+
+2019-03-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Page Weight indicator clears on pages with zero length resources (macrumors.com)
+        https://bugs.webkit.org/show_bug.cgi?id=196170
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DefaultDashboard.js:
+        (WI.DefaultDashboard.prototype._resourceSizeDidChange):
+        Catch NaN earlier.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.updateWithMetrics):
+        When we receive exact metrics transition the estimated size to zero,
+        since we won't receive any more updates for the resource.
+
+2019-03-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: WebGL action icon shouldn't invert when selected
+        https://bugs.webkit.org/show_bug.cgi?id=196135
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement._classNameForAction):
+        (WI.RecordingActionTreeElement._classNameForAction.classNameForActionName): Deleted.
+        Remove unnecessary logging and memoization.
+
+        * UserInterface/Views/RecordingActionTreeElement.css:
+        (.tree-outline:focus .item.recording-action.selected:not(.invalid, .initial-state, .has-context-replacer, .name-unknown) > .icon): Added.
+        (@media (prefers-color-scheme: dark)):
+        (.item.recording-action:not(.invalid, .initial-state, .has-context-replacer, .name-unknown) > .icon): Added.
+        (.tree-outline:focus .item.recording-action.selected:not(.invalid, .initial-state, .has-context-replacer) > .icon): Deleted.
+        (.item.recording-action.has-context-replacer > .icon): Deleted.
+        (.item.recording-action:not(.invalid, .initial-state, .has-context-replacer) > .icon): Deleted.
+        Simplify styles between light and dark mode.
+
+2019-03-24  Simon Welsh  <simon@welsh-au.com>
+
+        Web Inspector: testCellRoleForRequiredChidren accessibility audit checks for rows in cells
+        https://bugs.webkit.org/show_bug.cgi?id=195988
+
+        Reviewed by Timothy Hatcher.
+
+        The audit now checks that rows contain cells, allowing any of the four
+        cell-based roles.
+
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype.addDefaultTestsIfNeeded):
+        (WI.AuditManager):
+        (WI.AuditManager.prototype.addDefaultTestsIfNeeded.const.testCellRoleForRequiredChidren): Deleted.
+
+2019-03-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: missing icons for WebGL2 contexts
+        https://bugs.webkit.org/show_bug.cgi?id=196136
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CanvasSidebarPanel.css:
+        (.sidebar > .panel.navigation.canvas > .navigation-bar > .item.record-start-stop.disabled > .glyph): Added.
+        (.sidebar > .panel.navigation.canvas > .content > .tree-outline .item.canvas:matches(.canvas-2d, .bitmaprenderer) .icon): Added.
+        (.sidebar > .panel.navigation.canvas > .content > .tree-outline .item.canvas:matches(.webgl, .webgl2, .webgpu, .webmetal) .icon): Added.
+        (@media (prefers-color-scheme: dark)):
+        (.sidebar > .panel.navigation.canvas > .navigation-bar > .item.record-start-stop.disabled): Deleted.
+        (.sidebar > .panel.navigation.canvas > .content > .tree-outline .item.canvas.canvas-2d .icon): Deleted.
+        (.sidebar > .panel.navigation.canvas > .content > .tree-outline .item.casnvas.webgl .icon): Deleted.
+        Use the 2D icon for BitmapRenderer and the 3D icon for WebGL2, WebMetals, and WebGPU.
+        Drive-by: the start/stop button text was too dark when disabled in dark mode.
+
+        * UserInterface/Models/Canvas.js:
+        Drive-by: "gpu" => "webgpu", to match the protocol string.
+
+2019-03-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Sources: "Reveal in Resources Tab" still shown when Sources tab is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=196134
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement.prototype.populateContextMenu):
+        Drive-by: find the first call frame that has a source code location, rather than naively
+        always using the top call frame.
+
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WI.SearchResultTreeElement.prototype.populateContextMenu):
+
+2019-03-22  Keith Rollin  <krollin@apple.com>
+
+        Enable ThinLTO support in Production builds
+        https://bugs.webkit.org/show_bug.cgi?id=190758
+        <rdar://problem/45413233>
+
+        Reviewed by Daniel Bates.
+
+        Enable building with Thin LTO in Production when using Xcode 10.2 or
+        later. This change results in a 1.45% progression in PLT5. Full
+        Production build times increase about 2-3%. Incremental build times
+        are more severely affected, and so LTO is not enabled for local
+        engineering builds.
+
+        LTO is enabled only on macOS for now, until rdar://problem/49013399,
+        which affects ARM builds, is fixed.
+
+        To change the LTO setting when building locally:
+
+        - If building with `make`, specify WK_LTO_MODE={none,thin,full} on the
+          command line.
+        - If building with `build-webkit`, specify --lto-mode={none,thin,full}
+          on the command line.
+        - If building with `build-root`, specify --lto={none,thin,full} on the
+          command line.
+        - If building with Xcode, create a LocalOverrides.xcconfig file at the
+          top level of your repository directory (if needed) and define
+          WK_LTO_MODE to full, thin, or none.
+
+        * Configurations/Base.xcconfig:
+
 2019-03-21  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Timelines - Cannot export on about:blank - suggested filename containing a colon silently fails

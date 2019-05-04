@@ -188,6 +188,7 @@ void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
         LayoutStateMaintainer statePusher(*this, locationOffset(), hasTransform() || hasReflection() || style().isFlippedBlocksWritingMode());
 
         preparePaginationBeforeBlockLayout(relayoutChildren);
+        beginUpdateScrollInfoAfterLayoutTransaction();
 
         LayoutSize previousSize = size();
         // FIXME: We should use RenderBlock::hasDefiniteLogicalHeight() but it does not work for positioned stuff.
@@ -278,6 +279,8 @@ void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
 
         layoutGridItems();
         m_trackSizingAlgorithm.reset();
+
+        endAndCommitUpdateScrollInfoAfterLayoutTransaction();
 
         if (size() != previousSize)
             relayoutChildren = true;
@@ -1260,7 +1263,7 @@ Optional<int> RenderGrid::firstLineBaseline() const
         // FIXME: We should pass |direction| into firstLineBaseline and stop bailing out if we're a writing
         // mode root. This would also fix some cases where the grid is orthogonal to its container.
         LineDirectionMode direction = isHorizontalWritingMode() ? HorizontalLine : VerticalLine;
-        return synthesizedBaselineFromBorderBox(*baselineChild, direction) + baselineChild->logicalTop().toInt();
+        return synthesizedBaselineFromBorderBox(*baselineChild, direction) + logicalTopForChild(*baselineChild).toInt();
     }
     return baseline.value() + baselineChild->logicalTop().toInt();
 }

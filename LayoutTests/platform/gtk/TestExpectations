@@ -221,9 +221,6 @@ webkit.org/b/98942 fast/workers/worker-storagequota-query-usage.html [ Failure ]
 # GTK doesn't support smart replace.
 webkit.org/b/61661 editing/pasteboard/drag-drop-list.html [ Failure ]
 
-# isProtocolHandlerRegistered() isn't supported yet.
-webkit.org/b/92749 fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Skip ]
-
 # MSE failures
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/URL-createObjectURL-revoke.html [ Failure ]
 # See also bug #175578
@@ -599,7 +596,7 @@ http/tests/webrtc [ Skip ]
 webkit.org/b/79203 fast/mediastream/mock-media-source-webaudio.html [ Timeout Pass ]
 webkit.org/b/79203 fast/mediastream/getUserMedia-webaudio.html [ Timeout Pass ]
 # Crash is bug #186678
-webkit.org/b/79203 fast/mediastream/MediaStream-video-element-track-stop.html [ Timeout Crash ]
+webkit.org/b/79203 fast/mediastream/MediaStream-video-element-track-stop.html [ Timeout Failure Crash ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-icecandidate-event.html [ Failure Crash ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html [ Pass Failure Crash ]
 webkit.org/b/79203 fast/mediastream/MediaStream-video-element.html [ Pass Crash Failure ]
@@ -1101,11 +1098,6 @@ plugins/form-value.html [ Skip ]
 fast/files/filereader-zip-bundle-using-open-panel.html [ Skip ]
 http/tests/local/fileapi/upload-zip-bundle-as-blob-using-open-panel.html [ Skip ]
 
-# WebMetal is not enabled on GTK+.
-fast/canvas/webmetal [ Skip ]
-inspector/canvas/create-context-webmetal.html [ Skip ]
-inspector/canvas/resolveCanvasContext-webmetal.html [ Skip ]
-
 # We don't support APPLE_PAY.
 http/tests/ssl/applepay [ Skip ]
 
@@ -1244,6 +1236,8 @@ webkit.org/b/168466 http/tests/security/bypassing-cors-checks-for-extension-urls
 
 # No support for WebGPU yet
 webkit.org/b/191005 webgpu/ [ Skip ]
+webkit.org/b/191005 inspector/canvas/create-context-webgpu.html [ Skip ]
+webkit.org/b/191005 inspector/canvas/resolveCanvasContext-webgpu.html [ Skip ]
 
 # No support for resource load statistics yet
 http/tests/resourceLoadStatistics/ [ Skip ]
@@ -1337,6 +1331,9 @@ webkit.org/b/194630 accessibility/removed-continuation-element-causes-crash.html
 webkit.org/b/195260 mathml/presentation/tokenElements-dynamic.html [ Crash Pass ]
 
 webkit.org/b/195271 imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/underover-1.html [ Failure Pass ]
+
+webkit.org/b/196542 printing/crash-while-formatting-subframe-for-printing.html [ Timeout Crash ]
+webkit.org/b/196542 printing/printing-events.html [ Timeout Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -1463,13 +1460,7 @@ webkit.org/b/116961 perf/show-hide-table-rows.html [ Failure Pass ]
 
 webkit.org/b/116976 media/video-played-collapse.html [ Failure Pass Crash ]
 
-webkit.org/b/116977 media/event-attributes.html [ Crash Failure Timeout Pass ]
-
 webkit.org/b/103443 fast/parser/parser-yield-timing.html [ Failure Pass ]
-
-webkit.org/b/105191 media/video-playing-and-pause.html [ Failure Pass ]
-
-webkit.org/b/118460 media/media-element-play-after-eos.html [ Timeout Pass ]
 
 webkit.org/b/119009 http/tests/cache/subresource-failover-to-network.html [ Failure Pass ]
 
@@ -1680,8 +1671,6 @@ webkit.org/b/134761 svg/custom/animate-initial-pause-unpause.html [ Failure Pass
 webkit.org/b/134994 fast/forms/select/listbox-click-on-scrollbar.html [ Failure Pass ]
 
 webkit.org/b/134981 fast/parser/document-write-during-load.html [ Timeout Pass Crash ]
-
-webkit.org/b/81604 media/video-loop.html [ Timeout Pass ]
 
 webkit.org/b/134998 plugins/change-widget-and-click-crash.html [ Timeout Pass Crash ]
 
@@ -1958,9 +1947,9 @@ webkit.org/b/186598 http/tests/media/hls/hls-audio-tracks.html [ Timeout Pass ]
 webkit.org/b/186598 http/tests/media/hls/hls-audio-tracks-has-audio.html [ Timeout Pass ]
 
 # Tests that fail on the EWS queue since we enabled tests there
-webkit.org/b/186638 printing/print-close-crash.html [ Timeout Pass ]
-webkit.org/b/186638 fast/media/print-restores-previous-mediatype.html [ Timeout Pass ]
-webkit.org/b/186638 editing/execCommand/print.html [ Timeout Pass Failure ]
+webkit.org/b/186638 printing/print-close-crash.html [ Timeout Pass Crash ]
+webkit.org/b/186638 fast/media/print-restores-previous-mediatype.html [ Timeout Pass Crash ]
+webkit.org/b/186638 editing/execCommand/print.html [ Timeout Pass Failure Crash ]
 webkit.org/b/186638 animations/play-state-paused.html [ Failure Pass ]
 webkit.org/b/186638 imported/w3c/web-platform-tests/streams/piping/error-propagation-forward.html [ Failure Pass ]
 webkit.org/b/186638 imported/mozilla/css-transitions/test_animation-finished.html [ Timeout Pass ]
@@ -2142,6 +2131,7 @@ webkit.org/b/177322 [ Debug ] imported/w3c/web-platform-tests/html/semantics/doc
 webkit.org/b/193624 compositing/fixed-with-main-thread-scrolling.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/194381 editing/pasteboard/paste-4039777-fix.html [ Failure Pass ]
+webkit.org/b/194381 editing/pasteboard/paste-4038267-fix.html [ Failure Pass ]
 
 webkit.org/b/194382 mathml/presentation/roots.xhtml [ Failure Pass ]
 webkit.org/b/194382 mathml/presentation/stretchy-depth-height-symmetric.html [ Failure Pass ]
@@ -2162,6 +2152,8 @@ webkit.org/b/195714 fast/canvas/webgl/texImage2D-video-flipY-true.html [ Pass Ti
 
 webkit.org/b/194044 imported/w3c/web-platform-tests/media-source/mediasource-addsourcebuffer.html [ Crash Failure ]
 webkit.org/b/194044 imported/w3c/web-platform-tests/media-source/mediasource-addsourcebuffer-mode.html [ Crash Pass ]
+
+webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay.html [ Failure Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -2512,6 +2504,12 @@ webkit.org/b/137311 media/video-fullscreeen-only-playback.html [ Timeout ]
 webkit.org/b/195135 storage/indexeddb/IDBObject-leak.html [ Timeout Failure Pass ]
 
 webkit.org/b/196069 inspector/indexeddb/requestData.html [ Timeout ]
+
+webkit.org/b/196198 http/tests/media/video-play-stall-seek.html [ Timeout ]
+
+webkit.org/b/196250 inspector/console/heapSnapshot.html [ Timeout ]
+
+webkit.org/b/196251 http/wpt/service-workers/third-party-registration.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -3209,7 +3207,7 @@ webkit.org/b/160246 fast/text/multiple-feature-properties.html [ ImageOnlyFailur
 
 webkit.org/b/160248 fast/text/combining-mark-paint.html [ ImageOnlyFailure ]
 webkit.org/b/160248 fast/text/synthetic-bold-transformed.html [ ImageOnlyFailure ]
-webkit.org/b/160248 fast/text/trailing-word.html [ ImageOnlyFailure ]
+webkit.org/b/160248 fast/text/trailing-word-detection.html [ Failure ]
 
 webkit.org/b/160249 fast/shrink-wrap/rect-shrink-wrap.html [ ImageOnlyFailure ]
 
@@ -3500,7 +3498,6 @@ webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-normal-bo-000.html [ ImageOnlyFailure ]
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-normal-lo-000.html [ ImageOnlyFailure ]
 
-webkit.org/b/195275 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-010.html [ ImageOnlyFailure ]
 webkit.org/b/195275 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-014.html [ ImageOnlyFailure ]
 
 webkit.org/b/195275 imported/w3c/web-platform-tests/css/css-text/boundary-shaping/boundary-shaping-004.html [ Timeout ImageOnlyFailure ]
@@ -3809,6 +3806,20 @@ webkit.org/b/196061 editing/pasteboard/smart-paste-paragraph-001.html [ Failure 
 webkit.org/b/196061 editing/pasteboard/smart-paste-paragraph-002.html [ Failure ]
 webkit.org/b/196061 editing/pasteboard/smart-paste-paragraph-004.html [ Failure ]
 
+webkit.org/b/196195 inspector/console/console-screenshot.html [ Failure ]
+
+webkit.org/b/196196 inspector/audit/run-resources.html [ Failure ]
+
+webkit.org/b/196197 http/wpt/cache-storage/cache-quota-after-restart.any.html [ Failure ]
+
+webkit.org/b/196199 http/tests/IndexedDB/storage-limit-1.https.html [ Failure ]
+
+webkit.org/b/196201 fast/text/ja-sans-serif.html [ ImageOnlyFailure ]
+
+webkit.org/b/116977 media/event-attributes.html [ Failure ]
+
+webkit.org/b/196541 editing/pasteboard/paste-content-with-overflow-auto-parent-across-origin.html [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -3916,6 +3927,8 @@ http/tests/inspector/network/contentextensions [ Pass ]
 imported/w3c/web-platform-tests/css/css-scoping/stylesheet-title-001.html [ Pass ]
 
 imported/w3c/web-platform-tests/fetch/http-cache/basic-auth-cache-test.html [ Pass ]
+
+webkit.org/b/191506 fast/css-grid-layout/grid-item-scroll-position.html [ Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of PASSING tests. See top of file where to put new expectations.

@@ -43,6 +43,7 @@
 #import "WebInspector.h"
 #import "WebPage.h"
 #import "WebProcessCreationParameters.h"
+#import "WebProcessDataStoreParameters.h"
 #import "WebProcessProxyMessages.h"
 #import "WebsiteDataStoreParameters.h"
 #import <JavaScriptCore/ConfigFile.h>
@@ -61,6 +62,7 @@
 #import <WebCore/NSScrollerImpDetails.h>
 #import <WebCore/PerformanceLogging.h>
 #import <WebCore/RuntimeApplicationChecks.h>
+#import <WebCore/SWContextManager.h>
 #import <algorithm>
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
@@ -76,6 +78,10 @@
 
 #if PLATFORM(IOS)
 #import "UIKitSPI.h"
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+#include <bmalloc/MemoryStatusSPI.h>
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -131,7 +137,7 @@ static id NSApplicationAccessibilityFocusedUIElement(NSApplication*, SEL)
 }
 #endif
 
-void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& parameters)
+void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
 {
 #if !LOG_DISABLED || !RELEASE_LOG_DISABLED
     WebCore::initializeLogChannelsIfNecessary(parameters.webCoreLoggingChannels);
@@ -145,11 +151,6 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 
 #if ENABLE(SANDBOX_EXTENSIONS)
     SandboxExtension::consumePermanently(parameters.uiProcessBundleResourcePathExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.webSQLDatabaseDirectoryExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.applicationCacheDirectoryExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.mediaCacheDirectoryExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.mediaKeyStorageDirectoryExtensionHandle);
-    SandboxExtension::consumePermanently(parameters.javaScriptConfigurationDirectoryExtensionHandle);
 #if ENABLE(MEDIA_STREAM)
     SandboxExtension::consumePermanently(parameters.audioCaptureExtensionHandle);
 #endif
@@ -159,11 +160,6 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     SandboxExtension::consumePermanently(parameters.containerTemporaryDirectoryExtensionHandle);
 #endif
 #endif
-
-    if (!parameters.javaScriptConfigurationDirectory.isEmpty()) {
-        String javaScriptConfigFile = parameters.javaScriptConfigurationDirectory + "/JSC.config";
-        JSC::processConfigFile(javaScriptConfigFile.latin1().data(), "com.apple.WebKit.WebContent", parameters.uiProcessBundleIdentifier.latin1().data());
-    }
 
     // Disable NSURLCache.
     auto urlCache = adoptNS([[NSURLCache alloc] initWithMemoryCapacity:0 diskCapacity:0 diskPath:nil]);
@@ -216,6 +212,22 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 #endif
 }
 
+void WebProcess::platformSetWebsiteDataStoreParameters(WebProcessDataStoreParameters&& parameters)
+{
+#if ENABLE(SANDBOX_EXTENSIONS)
+    SandboxExtension::consumePermanently(parameters.webSQLDatabaseDirectoryExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.applicationCacheDirectoryExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.mediaCacheDirectoryExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.mediaKeyStorageDirectoryExtensionHandle);
+    SandboxExtension::consumePermanently(parameters.javaScriptConfigurationDirectoryExtensionHandle);
+#endif
+
+    if (!parameters.javaScriptConfigurationDirectory.isEmpty()) {
+        String javaScriptConfigFile = parameters.javaScriptConfigurationDirectory + "/JSC.config";
+        JSC::processConfigFile(javaScriptConfigFile.latin1().data(), "com.apple.WebKit.WebContent", m_uiProcessBundleIdentifier.latin1().data());
+    }
+}
+
 void WebProcess::initializeProcessName(const AuxiliaryProcessInitializationParameters&)
 {
 #if PLATFORM(MAC)
@@ -230,9 +242,9 @@ void WebProcess::initializeProcessName(const AuxiliaryProcessInitializationParam
 #endif
 }
 
-#if PLATFORM(MAC)
 void WebProcess::updateProcessName()
 {
+#if PLATFORM(MAC)
     NSString *applicationName;
     switch (m_processType) {
     case ProcessType::Inspector:
@@ -266,8 +278,8 @@ void WebProcess::updateProcessName()
         ASSERT(!actualApplicationName.isEmpty());
 #endif
     });
-}
 #endif // PLATFORM(MAC)
+}
 
 static void registerWithAccessibility()
 {
@@ -387,23 +399,23 @@ void WebProcess::platformInitializeProcess(const AuxiliaryProcessInitializationP
     }
 #endif // ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
 
+    m_uiProcessName = parameters.uiProcessName;
+#endif // PLATFORM(MAC)
+
     if (parameters.extraInitializationData.get("inspector-process"_s) == "1")
         m_processType = ProcessType::Inspector;
 #if ENABLE(SERVICE_WORKER)
     else if (parameters.extraInitializationData.get("service-worker-process"_s) == "1") {
         m_processType = ProcessType::ServiceWorker;
+#if PLATFORM(MAC)
         m_registrableDomain = RegistrableDomain::uncheckedCreateFromRegistrableDomainString(parameters.extraInitializationData.get("registrable-domain"_s));
+#endif
     }
 #endif
     else if (parameters.extraInitializationData.get("is-prewarmed"_s) == "1")
         m_processType = ProcessType::PrewarmedWebContent;
     else
         m_processType = ProcessType::WebContent;
-
-    m_uiProcessName = parameters.uiProcessName;
-#else
-    UNUSED_PARAM(parameters);
-#endif // PLATFORM(MAC)
 
     registerWithAccessibility();
 
@@ -673,6 +685,36 @@ void _WKSetCrashReportApplicationSpecificInformation(NSString *infoString)
 void WebProcess::accessibilityProcessSuspendedNotification(bool suspended)
 {
     UIAccessibilityPostNotification(kAXPidStatusChangedNotification, @{ @"pid" : @(getpid()), @"suspended" : @(suspended) });
+}
+
+bool WebProcess::shouldFreezeOnSuspension() const
+{
+    switch (m_processType) {
+    case ProcessType::Inspector:
+    case ProcessType::ServiceWorker:
+    case ProcessType::PrewarmedWebContent:
+    case ProcessType::CachedWebContent:
+        return false;
+    case ProcessType::WebContent:
+        break;
+    }
+
+    for (auto& page : m_pageMap.values()) {
+        if (!page->isSuspended())
+            return false;
+    }
+
+    return true;
+}
+
+void WebProcess::updateFreezerStatus()
+{
+    bool isFreezable = shouldFreezeOnSuspension();
+    auto result = memorystatus_control(MEMORYSTATUS_CMD_SET_PROCESS_IS_FREEZABLE, getpid(), isFreezable ? 1 : 0, nullptr, 0);
+    if (result)
+        RELEASE_LOG_ERROR(ProcessSuspension, "%p - WebProcess::updateFreezerStatus() isFreezable: %d, error: %d", this, isFreezable, result);
+    else
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcess::updateFreezerStatus() isFreezable: %d, success", this, isFreezable);
 }
 #endif
 

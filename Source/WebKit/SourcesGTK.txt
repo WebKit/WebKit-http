@@ -209,6 +209,8 @@ UIProcess/Automation/gtk/WebAutomationSessionGtk.cpp
 
 UIProcess/CoordinatedGraphics/DrawingAreaProxyCoordinatedGraphics.cpp
 
+UIProcess/geoclue/GeoclueGeolocationProvider.cpp
+
 UIProcess/Launcher/glib/ProcessLauncherGLib.cpp @no-unify
 UIProcess/Launcher/glib/BubblewrapLauncher.cpp @no-unify
 UIProcess/Launcher/glib/FlatpakLauncher.cpp @no-unify
@@ -408,7 +410,7 @@ WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
 WebProcess/WebPage/CoordinatedGraphics/DrawingAreaCoordinatedGraphics.cpp
 WebProcess/WebPage/CoordinatedGraphics/LayerTreeHost.cpp
 
-WebProcess/WebPage/atk/WebPageAccessibilityObjectAtk.cpp
+WebProcess/WebPage/atk/WebKitWebPageAccessibilityObject.cpp
 
 WebProcess/WebPage/gstreamer/WebPageGStreamer.cpp
 

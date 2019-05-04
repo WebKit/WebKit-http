@@ -47,9 +47,6 @@ fast/css/image-resolution [ Skip ]
 # CSS_SCROLL_SNAP is disabled
 css3/scroll-snap [ Skip ]
 
-# CUSTOM_SCHEME_HANDLER is disabled
-fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Skip ]
-
 # DEVICE_ORIENTATION is disabled
 fast/dom/DeviceOrientation [ Skip ]
 fast/dom/DeviceMotion [ Skip ]
@@ -292,11 +289,10 @@ inspector/canvas/shaderProgram-add-remove-webgl2.html [ Skip ]
 webgl/webgl2-rendering-context-defined.html [ Skip ]
 webgl/webgl2-rendering-context-obtain.html [ Skip ]
 
-# WEBMETAL and WEBGPU are disabled
-fast/canvas/webmetal [ Skip ]
-inspector/canvas/create-context-webmetal.html [ Skip ]
-inspector/canvas/resolveCanvasContext-webmetal.html [ Skip ]
+# WEBGPU is disabled
 webgpu [ Skip ]
+inspector/canvas/create-context-webgpu.html [ Skip ]
+inspector/canvas/resolveCanvasContext-webgpu.html [ Skip ]
 
 # WIRELESS_PLAYBACK_TARGET is disabled
 media/airplay-target-availability.html [ Skip ]
@@ -951,10 +947,6 @@ http/tests/security/cookies/third-party-cookie-blocking.html [ Pass ]
 http/tests/security/cookies/third-party-cookie-blocking-redirect.html [ Pass ]
 http/tests/security/cookies/third-party-cookie-blocking-user-action.html [ Pass ]
 http/tests/security/cookies/third-party-cookie-blocking-xslt.xml [ Pass ]
-
-http/tests/ssl/iframe-upgrade.https.html [ Skip ]
-http/tests/ssl/mixedContent/insecure-websocket.html [ Failure ]
-http/tests/ssl/upgrade-origin-usage.html [ Failure ]
 
 http/tests/ssl/media-stream [ Skip ]
 

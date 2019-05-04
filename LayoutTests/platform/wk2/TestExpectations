@@ -702,6 +702,8 @@ http/tests/misc/will-send-request-with-client-provided-http-body.html [ Pass ]
 # bug 162281
 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Failure ]
 
+printing/printing-events.html [ Pass ]
+
 # Resource Load Statistics are only supported in WebKit2.
 http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Pass ]
 http/tests/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html [ Pass ]
@@ -751,7 +753,6 @@ storage/indexeddb/IDBObject-leak.html [ Pass ]
 fast/forms/call-text-did-change-in-text-field-when-typing.html [ Pass ]
 
 http/tests/adClickAttribution [ Pass ]
-http/tests/adClickAttribution/store-ad-click-attribution.html [ Skip ]
 
 ### END OF (5) Progressions, expected successes that are expected failures in WebKit1.
 ########################################

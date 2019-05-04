@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -242,6 +242,7 @@ public:
     void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned);
     void statisticsClearThroughWebsiteDataRemoval();
     void statisticsDeleteCookiesForHost(WKStringRef host, bool includeHttpOnlyCookies);
+    bool isStatisticsHasLocalStorage(WKStringRef hostName);
     void setStatisticsCacheMaxAgeCap(double seconds);
     void statisticsResetToConsistentState();
 
@@ -354,6 +355,8 @@ private:
     void checkForWorldLeaks();
 
     void didReceiveLiveDocumentsList(WKArrayRef);
+    void dumpResponse(const String&);
+    void findAndDumpWebKitProcessIdentifiers();
     void findAndDumpWorldLeaks();
 
     void decidePolicyForGeolocationPermissionRequestIfPossible();
@@ -453,6 +456,10 @@ private:
     static void runModal(WKPageRef, const void* clientInfo);
     static void runModal(PlatformWebView*);
 
+#if PLATFORM(COCOA)
+    static void finishCreatingPlatformWebView(PlatformWebView*, const TestOptions&);
+#endif
+
     static const char* libraryPathForTesting();
     static const char* platformLibraryPathForTesting();
 
@@ -482,6 +489,7 @@ private:
 #if PLATFORM(IOS_FAMILY)
     Vector<std::unique_ptr<InstanceMethodSwizzler>> m_inputModeSwizzlers;
     RetainPtr<UIKeyboardInputMode> m_overriddenKeyboardInputMode;
+    Vector<std::unique_ptr<InstanceMethodSwizzler>> m_presentPopoverSwizzlers;
 #endif
 
     enum State {

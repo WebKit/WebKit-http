@@ -571,7 +571,7 @@ bool WebPageProxy::hasRunningProcess() const
 
 void WebPageProxy::notifyProcessPoolToPrewarm()
 {
-    m_process->processPool().didReachGoodTimeToPrewarm(m_websiteDataStore);
+    m_process->processPool().didReachGoodTimeToPrewarm();
 }
 
 void WebPageProxy::setPreferences(WebPreferences& preferences)
@@ -1618,9 +1618,9 @@ void WebPageProxy::setViewNeedsDisplay(const Region& region)
     pageClient().setViewNeedsDisplay(region);
 }
 
-void WebPageProxy::requestScroll(const FloatPoint& scrollPosition, const IntPoint& scrollOrigin, bool isProgrammaticScroll)
+void WebPageProxy::requestScroll(const FloatPoint& scrollPosition, const IntPoint& scrollOrigin)
 {
-    pageClient().requestScroll(scrollPosition, scrollOrigin, isProgrammaticScroll);
+    pageClient().requestScroll(scrollPosition, scrollOrigin);
 }
 
 WebCore::FloatPoint WebPageProxy::viewScrollPosition() const
@@ -3873,10 +3873,6 @@ void WebPageProxy::didDestroyNavigation(uint64_t navigationID)
 {
     PageClientProtector protector(pageClient());
 
-    // On process-swap, the previous process tries to destroy the navigation but the provisional process is actually taking over the navigation.
-    if (m_provisionalPage && m_provisionalPage->navigationID() == navigationID)
-        return;
-
     // FIXME: Message check the navigationID.
     m_navigationState->didDestroyNavigation(navigationID);
 }
@@ -4106,8 +4102,7 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
 
     // FIXME: We should message check that navigationID is not zero here, but it's currently zero for some navigations through the page cache.
     RefPtr<API::Navigation> navigation;
-    if (frame->isMainFrame() && navigationID) {
-        navigation = navigationState().navigation(navigationID);
+    if (frame->isMainFrame() && navigationID && (navigation = navigationState().navigation(navigationID))) {
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
         auto requesterOrigin = navigation->lastNavigationAction().requesterOrigin;
         auto currentURL = navigation->currentRequest().url();
@@ -4149,6 +4144,13 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
     clearLoadDependentCallbacks();
 
     frame->didCommitLoad(mimeType, webCertificateInfo, containsPluginDocument);
+
+    if (navigation && frame->isMainFrame()) {
+        if (auto& adClickAttribution = navigation->adClickAttribution()) {
+            if (adClickAttribution->destination().matches(frame->url()))
+                m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::StoreAdClickAttribution(m_websiteDataStore->sessionID(), *adClickAttribution));
+        }
+    }
 
     if (frame->isMainFrame()) {
         m_mainFrameHasCustomContentProvider = frameHasCustomContentProvider;
@@ -4545,7 +4547,6 @@ void WebPageProxy::decidePolicyForNavigationAction(Ref<WebProcessProxy>&& proces
                 auto* fromItem = navigationActionData.sourceBackForwardItemIdentifier ? m_backForwardList->itemForID(*navigationActionData.sourceBackForwardItemIdentifier) : nullptr;
                 if (!fromItem)
                     fromItem = m_backForwardList->currentItem();
-                WTFLogAlways("WebPageProxy::decidePolicyForNavigationAction() creates back/forward navigation from item %s", fromItem ? fromItem->url().utf8().data() : "null");
                 navigation = m_navigationState->createBackForwardNavigation(*item, fromItem, FrameLoadType::IndexedBackForward);
             }
         }
@@ -6774,6 +6775,8 @@ void WebPageProxy::processWillBecomeForeground()
 void WebPageProxy::resetState(ResetStateReason resetStateReason)
 {
     m_mainFrame = nullptr;
+    m_focusedFrame = nullptr;
+    m_frameSetLargestFrame = nullptr;
 
 #if PLATFORM(COCOA)
     m_scrollingPerformanceData = nullptr;
@@ -7022,6 +7025,7 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
     parameters.viewportConfigurationLayoutSizeScaleFactor = m_viewportConfigurationLayoutSizeScaleFactor;
     parameters.maximumUnobscuredSize = m_maximumUnobscuredSize;
     parameters.deviceOrientation = m_deviceOrientation;
+    parameters.keyboardIsAttached = isInHardwareKeyboardMode();
 #endif
 
 #if PLATFORM(MAC)
@@ -8906,6 +8910,14 @@ void WebPageProxy::speechSynthesisResume(CompletionHandler<void()>&& completionH
     speechSynthesisData().synthesizer->resume();
 }
 #endif // ENABLE(SPEECH_SYNTHESIS)
+
+#if !PLATFORM(IOS_FAMILY) || !USE(APPLE_INTERNAL_SDK)
+
+void WebPageProxy::adjustPoliciesForCompatibilityMode(const API::NavigationAction&, API::WebsitePolicies&)
+{
+}
+
+#endif // !PLATFORM(IOS_FAMILY) || !USE(APPLE_INTERNAL_SDK)
 
 void WebPageProxy::addObserver(WebViewDidMoveToWindowObserver& observer)
 {

@@ -89,6 +89,8 @@ void ThreadedScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> 
 {
     ASSERT(ScrollingThread::isCurrentThread());
     ScrollingTree::commitTreeState(WTFMove(scrollingStateTree));
+    
+    decrementPendingCommitCount();
 }
 
 void ThreadedScrollingTree::scrollingTreeNodeDidScroll(ScrollingTreeScrollingNode& node, ScrollingLayerPositionAction scrollingLayerPositionAction)
@@ -101,12 +103,15 @@ void ThreadedScrollingTree::scrollingTreeNodeDidScroll(ScrollingTreeScrollingNod
     if (node.isRootNode())
         setMainFrameScrollPosition(scrollPosition);
 
+    if (isHandlingProgrammaticScroll())
+        return;
+
     Optional<FloatPoint> layoutViewportOrigin;
     if (is<ScrollingTreeFrameScrollingNode>(node))
         layoutViewportOrigin = downcast<ScrollingTreeFrameScrollingNode>(node).layoutViewport().location();
 
-    RunLoop::main().dispatch([scrollingCoordinator = m_scrollingCoordinator, nodeID = node.scrollingNodeID(), scrollPosition, layoutViewportOrigin, localIsHandlingProgrammaticScroll = isHandlingProgrammaticScroll(), scrollingLayerPositionAction] {
-        scrollingCoordinator->scheduleUpdateScrollPositionAfterAsyncScroll(nodeID, scrollPosition, layoutViewportOrigin, localIsHandlingProgrammaticScroll, scrollingLayerPositionAction);
+    RunLoop::main().dispatch([scrollingCoordinator = m_scrollingCoordinator, nodeID = node.scrollingNodeID(), scrollPosition, layoutViewportOrigin, scrollingLayerPositionAction] {
+        scrollingCoordinator->scheduleUpdateScrollPositionAfterAsyncScroll(nodeID, scrollPosition, layoutViewportOrigin, scrollingLayerPositionAction);
     });
 }
 
@@ -122,6 +127,35 @@ void ThreadedScrollingTree::reportExposedUnfilledArea(MonotonicTime timestamp, u
     RunLoop::main().dispatch([scrollingCoordinator = m_scrollingCoordinator, timestamp, unfilledArea] {
         scrollingCoordinator->reportExposedUnfilledArea(timestamp, unfilledArea);
     });
+}
+
+void ThreadedScrollingTree::incrementPendingCommitCount()
+{
+    LockHolder commitLocker(m_pendingCommitCountMutex);
+    ++m_pendingCommitCount;
+}
+
+void ThreadedScrollingTree::decrementPendingCommitCount()
+{
+    LockHolder commitLocker(m_pendingCommitCountMutex);
+    ASSERT(m_pendingCommitCount > 0);
+    if (!--m_pendingCommitCount)
+        m_commitCondition.notifyOne();
+}
+
+void ThreadedScrollingTree::waitForPendingCommits()
+{
+    ASSERT(isMainThread());
+
+    LockHolder commitLocker(m_pendingCommitCountMutex);
+    while (m_pendingCommitCount)
+        m_commitCondition.wait(m_pendingCommitCountMutex);
+}
+
+void ThreadedScrollingTree::applyLayerPositions()
+{
+    waitForPendingCommits();
+    ScrollingTree::applyLayerPositions();
 }
 
 #if PLATFORM(COCOA)

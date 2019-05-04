@@ -400,6 +400,7 @@ public:
 #if ENABLE(WEBASSEMBLY)
     LazyProperty<JSGlobalObject, Structure> m_webAssemblyModuleRecordStructure;
     LazyProperty<JSGlobalObject, Structure> m_webAssemblyFunctionStructure;
+    LazyProperty<JSGlobalObject, Structure> m_jsToWasmICCalleeStructure;
     LazyProperty<JSGlobalObject, Structure> m_webAssemblyWrapperFunctionStructure;
     LazyProperty<JSGlobalObject, Structure> m_webAssemblyToJSCalleeStructure;
     FOR_EACH_WEBASSEMBLY_CONSTRUCTOR_TYPE(DEFINE_STORAGE_FOR_LAZY_TYPE)
@@ -764,6 +765,7 @@ public:
 #if ENABLE(WEBASSEMBLY)
     Structure* webAssemblyModuleRecordStructure() const { return m_webAssemblyModuleRecordStructure.get(this); }
     Structure* webAssemblyFunctionStructure() const { return m_webAssemblyFunctionStructure.get(this); }
+    Structure* jsToWasmICCalleeStructure() const { return m_jsToWasmICCalleeStructure.get(this); }
     Structure* webAssemblyWrapperFunctionStructure() const { return m_webAssemblyWrapperFunctionStructure.get(this); }
     Structure* webAssemblyToJSCalleeStructure() const { return m_webAssemblyToJSCalleeStructure.get(this); }
 #endif // ENABLE(WEBASSEMBLY)
@@ -1005,6 +1007,8 @@ public:
 #if JSC_OBJC_API_ENABLED
     JSWrapperMap* wrapperMap() const { return m_wrapperMap.get(); }
     void setWrapperMap(JSWrapperMap* map) { m_wrapperMap = map; }
+    void setAPIWrapper(void* apiWrapper) { m_apiWrapper = apiWrapper; }
+    void* apiWrapper() const { return m_apiWrapper; }
 #endif
 #ifdef JSC_GLIB_API_ENABLED
     WrapperMap* wrapperMap() const { return m_wrapperMap.get(); }
@@ -1047,6 +1051,7 @@ private:
     bool m_needsSiteSpecificQuirks { false };
 #if JSC_OBJC_API_ENABLED
     RetainPtr<JSWrapperMap> m_wrapperMap;
+    void* m_apiWrapper { nullptr };
 #endif
 #ifdef JSC_GLIB_API_ENABLED
     std::unique_ptr<WrapperMap> m_wrapperMap;

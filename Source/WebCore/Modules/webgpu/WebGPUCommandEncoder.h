@@ -35,6 +35,7 @@
 namespace WebCore {
 
 class WebGPUBuffer;
+class WebGPUComputePassEncoder;
 class WebGPURenderPassEncoder;
 class WebGPUTexture;
 
@@ -57,8 +58,9 @@ class WebGPUCommandEncoder : public RefCounted<WebGPUCommandEncoder> {
 public:
     static Ref<WebGPUCommandEncoder> create(RefPtr<GPUCommandBuffer>&&);
 
-    Ref<WebGPURenderPassEncoder> beginRenderPass(WebGPURenderPassDescriptor&&);
-    void copyBufferToBuffer(const WebGPUBuffer&, unsigned long srcOffset, const WebGPUBuffer&, unsigned long dstOffset, unsigned long size);
+    Ref<WebGPURenderPassEncoder> beginRenderPass(const WebGPURenderPassDescriptor&);
+    Ref<WebGPUComputePassEncoder> beginComputePass();
+    void copyBufferToBuffer(WebGPUBuffer&, uint64_t srcOffset, WebGPUBuffer&, uint64_t dstOffset, uint64_t size);
     void copyBufferToTexture(const WebGPUBufferCopyView&, const WebGPUTextureCopyView&, const GPUExtent3D&);
     void copyTextureToBuffer(const WebGPUTextureCopyView&, const WebGPUBufferCopyView&, const GPUExtent3D&);
     void copyTextureToTexture(const WebGPUTextureCopyView&, const WebGPUTextureCopyView&, const GPUExtent3D&);

@@ -22,6 +22,7 @@
 
 messages -> WebProcess LegacyReceiver {
     InitializeWebProcess(struct WebKit::WebProcessCreationParameters processCreationParameters)
+    SetWebsiteDataStoreParameters(struct WebKit::WebProcessDataStoreParameters parameters)
 
     # Create a new page.
     CreateWebPage(uint64_t newPageID, struct WebKit::WebPageCreationParameters pageCreationParameters)
@@ -161,6 +162,4 @@ messages -> WebProcess LegacyReceiver {
 #if PLATFORM(IOS_FAMILY)
     UnblockAccessibilityServer(WebKit::SandboxExtension::Handle handle)
 #endif
-
-    SetFreezable(bool freezable)
 }

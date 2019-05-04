@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="resources/create-context-utilities.css">
+<script src="../../http/tests/inspector/resources/inspector-test.js"></script>
+<script src="resources/create-context-utilities.js"></script>
+<script>
+if (window.internals)
+    window.internals.settings.setWebGPUEnabled(true);
+
+function test() {
+    InspectorTest.debug();
+
+    let suite = InspectorTest.CreateContextUtilities.initializeTestSuite("Canvas.CreateContextWebGPU");
+
+    InspectorTest.CreateContextUtilities.addSimpleTestCase({
+        name: "Attached",
+        expression: `createAttachedCanvas("gpu")`,
+        contextType: WI.Canvas.ContextType.WebGPU,
+    });
+
+    InspectorTest.CreateContextUtilities.addSimpleTestCase({
+        name: "Detached",
+        expression: `createDetachedCanvas("gpu")`,
+        contextType: WI.Canvas.ContextType.WebGPU,
+    });
+
+    InspectorTest.CreateContextUtilities.addCSSCanvasTestCase(WI.Canvas.ContextType.WebGPU);
+
+    suite.runTestCasesAndFinish();
+}
+</script>
+</head>
+<body onload="runTest()">
+    <p>Test that CanvasManager tracks creation and destruction of WebGPU canvases.</p>
+</body>
+</html>

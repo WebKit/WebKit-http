@@ -197,7 +197,6 @@ class WebAnimation;
 class WebGL2RenderingContext;
 class WebGLRenderingContext;
 class GPUCanvasContext;
-class WebMetalRenderingContext;
 class WindowProxy;
 class Worklet;
 class XPathEvaluator;
@@ -251,6 +250,10 @@ class HTMLAttachmentElement;
 
 #if ENABLE(INTERSECTION_OBSERVER)
 class IntersectionObserver;
+#endif
+
+#if ENABLE(RESIZE_OBSERVER)
+class ResizeObserver;
 #endif
 
 namespace Style {
@@ -323,9 +326,6 @@ using RenderingContext = Variant<
 #endif
 #if ENABLE(WEBGPU)
     RefPtr<GPUCanvasContext>,
-#endif
-#if ENABLE(WEBMETAL)
-    RefPtr<WebMetalRenderingContext>,
 #endif
     RefPtr<ImageBitmapRenderingContext>,
     RefPtr<CanvasRenderingContext2D>
@@ -1344,13 +1344,15 @@ public:
 
     const Document* templateDocument() const;
     Document& ensureTemplateDocument();
-    void setTemplateDocumentHost(Document* templateDocumentHost) { m_templateDocumentHost = templateDocumentHost; }
-    Document* templateDocumentHost() { return m_templateDocumentHost; }
+    void setTemplateDocumentHost(Document* templateDocumentHost) { m_templateDocumentHost = makeWeakPtr(templateDocumentHost); }
+    Document* templateDocumentHost() { return m_templateDocumentHost.get(); }
 
     void didAssociateFormControl(Element&);
     bool hasDisabledFieldsetElement() const { return m_disabledFieldsetElementsCount; }
     void addDisabledFieldsetElement() { m_disabledFieldsetElementsCount++; }
     void removeDisabledFieldsetElement() { ASSERT(m_disabledFieldsetElementsCount); m_disabledFieldsetElementsCount--; }
+
+    void getParserLocation(String& url, unsigned& line, unsigned& column) const;
 
     WEBCORE_EXPORT void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&) final;
 
@@ -1415,6 +1417,18 @@ public:
     unsigned numberOfIntersectionObservers() const { return m_intersectionObservers.size(); }
     void scheduleForcedIntersectionObservationUpdate();
     void updateIntersectionObservations();
+#endif
+
+#if ENABLE(RESIZE_OBSERVER)
+    void addResizeObserver(ResizeObserver&);
+    void removeResizeObserver(ResizeObserver&);
+    bool hasResizeObservers();
+    // Return the minDepth of the active observations.
+    size_t gatherResizeObservations(size_t deeperThan);
+    void deliverResizeObservations();
+    bool hasSkippedResizeObservations() const;
+    void setHasSkippedResizeObservations(bool);
+    void scheduleResizeObservations();
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -1861,6 +1875,10 @@ private:
     Timer m_intersectionObserversNotifyTimer;
 #endif
 
+#if ENABLE(RESIZE_OBSERVER)
+    Vector<WeakPtr<ResizeObserver>> m_resizeObservers;
+#endif
+
     Timer m_loadEventDelayTimer;
 
     ViewportArguments m_viewportArguments;
@@ -1923,7 +1941,7 @@ private:
     LocaleIdentifierToLocaleMap m_localeCache;
 
     RefPtr<Document> m_templateDocument;
-    Document* m_templateDocumentHost { nullptr }; // Manually managed weakref (backpointer from m_templateDocument).
+    WeakPtr<Document> m_templateDocumentHost; // Manually managed weakref (backpointer from m_templateDocument).
 
     Ref<CSSFontSelector> m_fontSelector;
 

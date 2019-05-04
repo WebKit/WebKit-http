@@ -64,11 +64,6 @@
 #include "JSGPUCanvasContext.h"
 #endif
 
-#if ENABLE(WEBMETAL)
-#include "JSWebMetalRenderingContext.h"
-#endif
-
-
 namespace WebCore {
 
 using namespace Inspector;
@@ -206,10 +201,6 @@ static JSC::JSValue contextAsScriptValue(JSC::ExecState& state, CanvasRenderingC
 #if ENABLE(WEBGPU)
     if (is<GPUCanvasContext>(context))
         return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<GPUCanvasContext>(context));
-#endif
-#if ENABLE(WEBMETAL)
-    if (is<WebMetalRenderingContext>(context))
-        return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<WebMetalRenderingContext>(context));
 #endif
     if (is<ImageBitmapRenderingContext>(context))
         return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<ImageBitmapRenderingContext>(context));
@@ -378,8 +369,6 @@ void InspectorCanvasAgent::frameNavigated(Frame& frame)
     }
 
     for (auto* inspectorCanvas : inspectorCanvases) {
-        inspectorCanvas->context().canvasBase().removeObserver(*this);
-
         String identifier = unbindCanvas(*inspectorCanvas);
         m_frontendDispatcher->canvasRemoved(identifier);
     }
@@ -647,10 +636,10 @@ void InspectorCanvasAgent::clearCanvasData()
 
 InspectorCanvas& InspectorCanvasAgent::bindCanvas(CanvasRenderingContext& context, bool captureBacktrace)
 {
-    context.canvasBase().addObserver(*this);
-
     auto inspectorCanvas = InspectorCanvas::create(context);
     m_identifierToInspectorCanvas.set(inspectorCanvas->identifier(), inspectorCanvas.copyRef());
+
+    inspectorCanvas->context().canvasBase().addObserver(*this);
 
     m_frontendDispatcher->canvasAdded(inspectorCanvas->buildObjectForCanvas(captureBacktrace));
 
@@ -681,6 +670,8 @@ String InspectorCanvasAgent::unbindCanvas(InspectorCanvas& inspectorCanvas)
     for (auto* inspectorProgram : programsToRemove)
         unbindProgram(*inspectorProgram);
 #endif
+
+    inspectorCanvas.context().canvasBase().removeObserver(*this);
 
     String identifier = inspectorCanvas.identifier();
     m_identifierToInspectorCanvas.remove(identifier);

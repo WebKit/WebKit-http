@@ -255,7 +255,6 @@ public:
 
     ExceptionOr<bool> wasLastChangeUserEdit(Element& textField);
     bool elementShouldAutoComplete(HTMLInputElement&);
-    void setEditingValue(HTMLInputElement&, const String&);
     void setAutofilled(HTMLInputElement&, bool enabled);
     enum class AutoFillButtonType { None, Contacts, Credentials, StrongPassword, CreditCard };
     void setShowAutoFillButton(HTMLInputElement&, AutoFillButtonType);
@@ -347,6 +346,7 @@ public:
         LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32,
         LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED = 64,
         LAYER_TREE_INCLUDES_ROOT_LAYER_PROPERTIES = 128,
+        LAYER_TREE_INCLUDES_EVENT_REGION = 256,
     };
     ExceptionOr<String> layerTreeAsText(Document&, unsigned short flags) const;
     ExceptionOr<uint64_t> layerIDForElement(Element&);

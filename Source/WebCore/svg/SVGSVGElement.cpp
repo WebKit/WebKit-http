@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2006 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2010 Rob Buis <buis@kde.org>
- * Copyright (C) 2007-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -41,7 +41,6 @@
 #include "SVGNumber.h"
 #include "SVGPoint.h"
 #include "SVGRect.h"
-#include "SVGStaticPropertyTearOff.h"
 #include "SVGTransform.h"
 #include "SVGViewElement.h"
 #include "SVGViewSpec.h"
@@ -59,8 +58,15 @@ inline SVGSVGElement::SVGSVGElement(const QualifiedName& tagName, Document& docu
     , m_timeContainer(SMILTimeContainer::create(*this))
 {
     ASSERT(hasTagName(SVGNames::svgTag));
-    registerAttributes();
     document.registerForDocumentSuspensionCallbacks(*this);
+
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::xAttr, &SVGSVGElement::m_x>();
+        PropertyRegistry::registerProperty<SVGNames::yAttr, &SVGSVGElement::m_y>();
+        PropertyRegistry::registerProperty<SVGNames::widthAttr, &SVGSVGElement::m_width>();
+        PropertyRegistry::registerProperty<SVGNames::heightAttr, &SVGSVGElement::m_height>();
+    });
 }
 
 Ref<SVGSVGElement> SVGSVGElement::create(const QualifiedName& tagName, Document& document)
@@ -187,17 +193,6 @@ void SVGSVGElement::updateCurrentTranslate()
         document().renderView()->repaint();
 }
 
-void SVGSVGElement::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::xAttr, &SVGSVGElement::m_x>();
-    registry.registerAttribute<SVGNames::yAttr, &SVGSVGElement::m_y>();
-    registry.registerAttribute<SVGNames::widthAttr, &SVGSVGElement::m_width>();
-    registry.registerAttribute<SVGNames::heightAttr, &SVGSVGElement::m_height>();
-}
-
 void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (!nearestViewportElement()) {
@@ -236,9 +231,9 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::xAttr)
-        m_x.setValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
+        m_x->setBaseValInternal(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
-        m_y.setValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
+        m_y->setBaseValInternal(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::widthAttr) {
         auto length = SVGLengthValue::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths);
         if (parseError != NoError || value.isEmpty()) {
@@ -246,7 +241,7 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
             // Not sure it's correct for the empty string or for something that can't be parsed.
             length = SVGLengthValue(LengthModeWidth, "100%"_s);
         }
-        m_width.setValue(length);
+        m_width->setBaseValInternal(length);
     } else if (name == SVGNames::heightAttr) {
         auto length = SVGLengthValue::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths);
         if (parseError != NoError || value.isEmpty()) {
@@ -254,7 +249,7 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
             // Not sure it's correct for the empty string or for something that can't be parsed.
             length = SVGLengthValue(LengthModeHeight, "100%"_s);
         }
-        m_height.setValue(length);
+        m_height->setBaseValInternal(length);
     }
 
     reportAttributeParsingError(parseError, name, value);
@@ -267,7 +262,7 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
 
 void SVGSVGElement::svgAttributeChanged(const QualifiedName& attrName)
 {
-    if (isKnownAttribute(attrName)) {
+    if (PropertyRegistry::isKnownAttribute(attrName)) {
         InstanceInvalidationGuard guard(*this);
         invalidateSVGPresentationAttributeStyle();
 
@@ -391,12 +386,12 @@ Ref<SVGRect> SVGSVGElement::createSVGRect()
 
 Ref<SVGTransform> SVGSVGElement::createSVGTransform()
 {
-    return SVGTransform::create(SVGTransformValue { SVGTransformValue::SVG_TRANSFORM_MATRIX });
+    return SVGTransform::create(SVGTransformValue::SVG_TRANSFORM_MATRIX);
 }
 
 Ref<SVGTransform> SVGSVGElement::createSVGTransformFromMatrix(SVGMatrix& matrix)
 {
-    return SVGTransform::create(SVGTransformValue { matrix.propertyReference() });
+    return SVGTransform::create(matrix.value());
 }
 
 AffineTransform SVGSVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMScope mode) const
@@ -613,7 +608,7 @@ AffineTransform SVGSVGElement::viewBoxToViewTransform(float viewWidth, float vie
         return SVGFitToViewBox::viewBoxToViewTransform(currentViewBoxRect(), preserveAspectRatio(), viewWidth, viewHeight);
 
     AffineTransform transform = SVGFitToViewBox::viewBoxToViewTransform(currentViewBoxRect(), m_viewSpec->preserveAspectRatio(), viewWidth, viewHeight);
-    m_viewSpec->transformValue().concatenate(transform);
+    transform *= m_viewSpec->transform()->concatenate();
     return transform;
 }
 

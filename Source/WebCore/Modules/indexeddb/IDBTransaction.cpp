@@ -55,9 +55,12 @@
 #include "SerializedScriptValue.h"
 #include "TransactionOperation.h"
 #include <wtf/CompletionHandler.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 using namespace JSC;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(IDBTransaction);
 
 std::atomic<unsigned> IDBTransaction::numberOfIDBTransactions { 0 };
 
@@ -986,7 +989,7 @@ void IDBTransaction::didGetAllRecordsOnServer(IDBRequest& request, const IDBResu
         request.setResult(getAllResult.keys());
         break;
     case IndexedDB::GetAllType::Values:
-        request.setResult(getAllResult.values());
+        request.setResult(getAllResult);
         break;
     }
 
@@ -1090,7 +1093,7 @@ void IDBTransaction::didGetRecordOnServer(IDBRequest& request, const IDBResultDa
             request.setResultToUndefined();
     } else {
         if (resultData.getResult().value().data().data())
-            request.setResultToStructuredClone(resultData.getResult().value());
+            request.setResultToStructuredClone(resultData.getResult());
         else
             request.setResultToUndefined();
     }

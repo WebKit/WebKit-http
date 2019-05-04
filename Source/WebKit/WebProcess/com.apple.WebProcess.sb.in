@@ -164,6 +164,7 @@
         "hw.model"
         "hw.ncpu"
         "hw.vectorunit"
+        "kern.bootargs" ;; <rdar://problem/47738015>
         "kern.hostname"
         "kern.maxfilesperproc"
         "kern.memorystatus_level"
@@ -183,6 +184,7 @@
 
 (deny iokit-get-properties)
 (allow iokit-get-properties
+    (iokit-property "AAPL,LCD-PowerState-ON") ;; <rdar://problem/47738015>
     (iokit-property "AGCInfo")
     (iokit-property-regex #"^Accel(Caps|NativeDMARowByteAlignment)")
     (iokit-property-regex #"^(Accurate|Extended)MaxDigitizerPressureValue")
@@ -198,6 +200,7 @@
     (iokit-property "BlockSize")
     (iokit-property-regex #"^CEA(ModeID|PixelRepetition)")
     (iokit-property "CFBundleIdentifier")
+    (iokit-property "CFBundleIdentifierKernel") ;; <rdar://problem/47738015>
     (iokit-property "CapsLockDelay")
     (iokit-property "CaseSensitive")
     (iokit-property "ConfigState")
@@ -601,6 +604,7 @@
        (global-name "com.apple.logd")
        (global-name "com.apple.logd.events")
        (global-name "com.apple.lsd.mapdb")
+       (global-name "com.apple.lskdd") ;; <rdar://problem/49123855>
        (global-name "com.apple.mobileassetd")
        (global-name "com.apple.powerlog.plxpclogger.xpc")
        (global-name "com.apple.system.logger")
@@ -959,7 +963,10 @@
         (syscall-number SYS_kdebug_typefilter)
         (syscall-number SYS_gettid) ;; Needed for base system, see <rdar://problem/48651255>
         (syscall-number SYS_memorystatus_control) ;; Needed for memory measurement infrastructure, see <rdar://problem/48647263>
-        (syscall-number SYS_kdebug_trace_string) ;; Needed for performance sampling, see <rdar://problem/48829655>.
+        (syscall-number SYS_psynch_rw_rdlock) ;; <rdar://problem/49060359>
+    )
+    (with-filter (system-attribute apple-internal)
+        (allow syscall-unix (syscall-number SYS_kdebug_trace_string)) ;; <rdar://problem/49531420>
     )
 )
 

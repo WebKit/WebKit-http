@@ -895,18 +895,20 @@ void linkSlowFor(
 
 static void revertCall(VM* vm, CallLinkInfo& callLinkInfo, MacroAssemblerCodeRef<JITStubRoutinePtrTag> codeRef)
 {
-    if (callLinkInfo.isDirect()) {
-        callLinkInfo.clearCodeBlock();
-        if (callLinkInfo.callType() == CallLinkInfo::DirectTailCall)
-            MacroAssembler::repatchJump(callLinkInfo.patchableJump(), callLinkInfo.slowPathStart());
-        else
-            MacroAssembler::repatchNearCall(callLinkInfo.hotPathOther(), callLinkInfo.slowPathStart());
-    } else {
-        MacroAssembler::revertJumpReplacementToBranchPtrWithPatch(
-            MacroAssembler::startOfBranchPtrWithPatchOnRegister(callLinkInfo.hotPathBegin()),
-            static_cast<MacroAssembler::RegisterID>(callLinkInfo.calleeGPR()), 0);
-        linkSlowFor(vm, callLinkInfo, codeRef);
-        callLinkInfo.clearCallee();
+    if (!callLinkInfo.clearedByJettison()) {
+        if (callLinkInfo.isDirect()) {
+            callLinkInfo.clearCodeBlock();
+            if (callLinkInfo.callType() == CallLinkInfo::DirectTailCall)
+                MacroAssembler::repatchJump(callLinkInfo.patchableJump(), callLinkInfo.slowPathStart());
+            else
+                MacroAssembler::repatchNearCall(callLinkInfo.hotPathOther(), callLinkInfo.slowPathStart());
+        } else {
+            MacroAssembler::revertJumpReplacementToBranchPtrWithPatch(
+                MacroAssembler::startOfBranchPtrWithPatchOnRegister(callLinkInfo.hotPathBegin()),
+                static_cast<MacroAssembler::RegisterID>(callLinkInfo.calleeGPR()), 0);
+            linkSlowFor(vm, callLinkInfo, codeRef);
+            callLinkInfo.clearCallee();
+        }
     }
     callLinkInfo.clearSeen();
     callLinkInfo.clearStub();
@@ -973,7 +975,7 @@ void linkPolymorphicCall(
     if (PolymorphicCallStubRoutine* stub = callLinkInfo.stub())
         list = stub->variants();
     else if (JSObject* oldCallee = callLinkInfo.callee())
-        list = CallVariantList{ CallVariant(oldCallee) };
+        list = CallVariantList { CallVariant(oldCallee) };
     
     list = variantListWithVariant(list, newVariant);
 
@@ -1135,7 +1137,10 @@ void linkPolymorphicCall(
         MacroAssemblerCodePtr<JSEntryPtrTag> codePtr;
         if (variant.executable()) {
             ASSERT(variant.executable()->hasJITCodeForCall());
-            codePtr = variant.executable()->generatedJITCodeForCall()->addressForCall(ArityCheckNotRequired);
+            
+            codePtr = jsToWasmICCodePtr(vm, callLinkInfo.specializationKind(), variant.function());
+            if (!codePtr)
+                codePtr = variant.executable()->generatedJITCodeForCall()->addressForCall(ArityCheckNotRequired);
         } else {
             ASSERT(variant.internalFunction());
             codePtr = vm.getCTIInternalFunctionTrampolineFor(CodeForCall);
@@ -1273,6 +1278,23 @@ void resetInByID(CodeBlock* codeBlock, StructureStubInfo& stubInfo)
 void resetInstanceOf(StructureStubInfo& stubInfo)
 {
     resetPatchableJump(stubInfo);
+}
+
+MacroAssemblerCodePtr<JSEntryPtrTag> jsToWasmICCodePtr(VM& vm, CodeSpecializationKind kind, JSObject* callee)
+{
+#if ENABLE(WEBASSEMBLY)
+    if (!callee)
+        return nullptr;
+    if (kind != CodeForCall)
+        return nullptr;
+    if (auto* wasmFunction = jsDynamicCast<WebAssemblyFunction*>(vm, callee))
+        return wasmFunction->jsCallEntrypoint();
+#else
+    UNUSED_PARAM(vm);
+    UNUSED_PARAM(kind);
+    UNUSED_PARAM(callee);
+#endif
+    return nullptr;
 }
 
 } // namespace JSC

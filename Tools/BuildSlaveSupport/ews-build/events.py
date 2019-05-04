@@ -22,6 +22,7 @@
 
 import datetime
 import json
+import os
 import time
 
 from buildbot.util import service
@@ -71,7 +72,7 @@ class JSONProducer(object):
 
 class Events(service.BuildbotService):
 
-    EVENT_SERVER_ENDPOINT = 'http://ews.webkit.org/results/'
+    EVENT_SERVER_ENDPOINT = 'https://ews.webkit.org/results/'
 
     def __init__(self, master_hostname, type_prefix='', name='Events'):
         """
@@ -88,6 +89,8 @@ class Events(service.BuildbotService):
         self.master_hostname = master_hostname
 
     def sendData(self, data):
+        if os.getenv('EWS_API_KEY', None):
+            data['EWS_API_KEY'] = os.getenv('EWS_API_KEY')
         agent = Agent(reactor)
         body = JSONProducer(data)
 
@@ -100,7 +103,7 @@ class Events(service.BuildbotService):
         return build.get('properties').get('buildername')[0]
 
     def getPatchID(self, build):
-        if not (build and 'properties' in build):
+        if not (build and 'properties' in build and 'patch_id' in build['properties']):
             return None
 
         return build.get('properties').get('patch_id')[0]

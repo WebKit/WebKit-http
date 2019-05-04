@@ -414,8 +414,8 @@ public:
     void scrollToXOffset(int x, ScrollClamping clamping = ScrollClamping::Clamped) { scrollToOffset(ScrollOffset(x, scrollOffset().y()), clamping); }
     void scrollToYOffset(int y, ScrollClamping clamping = ScrollClamping::Clamped) { scrollToOffset(ScrollOffset(scrollOffset().x(), y), clamping); }
 
-    void scrollToXPosition(int x, ScrollClamping = ScrollClamping::Clamped);
-    void scrollToYPosition(int y, ScrollClamping = ScrollClamping::Clamped);
+    void scrollToXPosition(int x, ScrollType, ScrollClamping = ScrollClamping::Clamped);
+    void scrollToYPosition(int y, ScrollType, ScrollClamping = ScrollClamping::Clamped);
 
     void setPostLayoutScrollPosition(Optional<ScrollPosition>);
     void applyPostLayoutScrollPositionIfNeeded();
@@ -438,12 +438,16 @@ public:
     bool hasHorizontalScrollbar() const { return horizontalScrollbar(); }
     bool hasVerticalScrollbar() const { return verticalScrollbar(); }
 
+    bool horizontalScrollbarHiddenByStyle() const override;
+    bool verticalScrollbarHiddenByStyle() const override;
+
     // ScrollableArea overrides
     ScrollPosition scrollPosition() const override { return m_scrollPosition; }
 
     Scrollbar* horizontalScrollbar() const override { return m_hBar.get(); }
     Scrollbar* verticalScrollbar() const override { return m_vBar.get(); }
     ScrollableArea* enclosingScrollableArea() const override;
+
     bool isScrollableOrRubberbandable() override;
     bool hasScrollableOrRubberbandableAncestor() override;
     bool useDarkAppearance() const final;
@@ -860,6 +864,8 @@ public:
     bool paintingFrequently() const { return m_paintFrequencyTracker.paintingFrequently(); }
 
     WEBCORE_EXPORT bool isTransparentOrFullyClippedRespectingParentFrames() const;
+
+    void invalidateEventRegion();
 
 private:
 

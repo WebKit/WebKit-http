@@ -34,6 +34,7 @@
 #include <wtf/Forward.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
+#include <wtf/WorkQueue.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 #include <WebKitAdditions/WebPaymentCoordinatorProxyAdditions.h>
@@ -111,7 +112,6 @@ private:
     void presenterWillValidateMerchant(PaymentAuthorizationPresenter&, const URL&) final;
 
     // Message handlers
-    void availablePaymentNetworks(CompletionHandler<void(Vector<String>&&)>&&);
     void canMakePayments(CompletionHandler<void(bool)>&&);
     void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, PAL::SessionID, CompletionHandler<void(bool)>&&);
     void openPaymentSetup(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&&);
@@ -133,8 +133,7 @@ private:
     void didReachFinalState();
     void hidePaymentUI();
 
-    Vector<String> platformAvailablePaymentNetworks();
-    bool platformCanMakePayments();
+    void platformCanMakePayments(CompletionHandler<void(bool)>&&);
     void platformCanMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, PAL::SessionID, WTF::Function<void(bool)>&& completionHandler);
     void platformOpenPaymentSetup(const String& merchantIdentifier, const String& domainName, WTF::Function<void(bool)>&& completionHandler);
     void platformShowPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, PAL::SessionID, const WebCore::ApplePaySessionPaymentRequest&, CompletionHandler<void(bool)>&&);
@@ -185,6 +184,7 @@ private:
     } m_merchantValidationState { MerchantValidationState::Idle };
 
     std::unique_ptr<PaymentAuthorizationPresenter> m_authorizationPresenter;
+    Ref<WorkQueue> m_canMakePaymentsQueue;
 
 #if PLATFORM(MAC)
     uint64_t m_showPaymentUIRequestSeed { 0 };

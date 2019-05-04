@@ -29,6 +29,7 @@
 #include "GraphicsLayer.h"
 #include "ScriptWrappable.h"
 #include <wtf/Forward.h>
+#include <wtf/IsoMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/StringHash.h>
 
@@ -43,7 +44,8 @@ class TypedOMCSSImageValue;
 class WebGLObject;
 
 class CanvasRenderingContext : public ScriptWrappable {
-    WTF_MAKE_NONCOPYABLE(CanvasRenderingContext); WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(CanvasRenderingContext);
+    WTF_MAKE_ISO_ALLOCATED(CanvasRenderingContext);
 public:
     virtual ~CanvasRenderingContext();
 
@@ -61,9 +63,6 @@ public:
     bool isWebGL() const { return isWebGL1() || isWebGL2(); }
 #if ENABLE(WEBGPU)
     virtual bool isWebGPU() const { return false; }
-#endif
-#if ENABLE(WEBMETAL)
-    virtual bool isWebMetal() const { return false; }
 #endif
     virtual bool isGPUBased() const { return false; }
     virtual bool isAccelerated() const { return false; }

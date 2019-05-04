@@ -1,3 +1,95 @@
+2019-04-04  Youenn Fablet  <youenn@apple.com>
+
+        Log the error if VideoProcessing library cannot be dlopen
+        https://bugs.webkit.org/show_bug.cgi?id=196609
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/sdk/WebKit/VideoProcessingSoftLink.cpp:
+        (webrtc::initVideoProcessingVPModuleInitialize):
+
+2019-04-03  Youenn Fablet  <youenn@apple.com>
+
+        Add logging and ASSERTs to investigate issue with VPModuleInitialize
+        https://bugs.webkit.org/show_bug.cgi?id=196573
+
+        Reviewed by Eric Carlson.
+
+        Expand macros directly to add some logging.
+        Removed the dispatch_once since VPModuleInitialize is already called in one.
+
+        * Source/webrtc/sdk/WebKit/VideoProcessingSoftLink.cpp:
+        (webrtc::initVideoProcessingVPModuleInitialize):
+
+2019-04-03  Youenn Fablet  <youenn@apple.com>
+
+        Remove unneeded libwebrtc files
+        https://bugs.webkit.org/show_bug.cgi?id=196553
+
+        Reviewed by Eric Carlson.
+
+        * Source/third_party/boringssl/src/fuzz: Removed.
+        * Source/third_party/protobuf/csharp/keys: Removed.
+
+2019-04-03  Youenn Fablet  <youenn@apple.com>
+
+        Adopt new VCP SPI
+        https://bugs.webkit.org/show_bug.cgi?id=193357
+        <rdar://problem/43656651>
+
+        Reviewed by Eric Carlson.
+
+       Enable VCP through VTB API with specific encoder id.
+
+        * Source/webrtc/sdk/WebKit/VideoProcessingSoftLink.cpp:
+        * Source/webrtc/sdk/WebKit/VideoProcessingSoftLink.h:
+        * Source/webrtc/sdk/WebKit/WebKitUtilities.mm:
+        (webrtc::setApplicationStatus):
+        * Source/webrtc/sdk/objc/components/video_codec/RTCVideoEncoderH264.mm:
+        (-[RTCSingleVideoEncoderH264 resetCompressionSessionWithPixelFormat:]):
+
+2019-04-02  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GSteamer][WebRTC] Fix building libwebrtc on ARM
+        https://bugs.webkit.org/show_bug.cgi?id=196157
+
+        Reviewed by Philippe Normand.
+
+        Making sure neon files are built as required
+
+        * CMakeLists.txt:
+
+2019-03-22  Keith Rollin  <krollin@apple.com>
+
+        Enable ThinLTO support in Production builds
+        https://bugs.webkit.org/show_bug.cgi?id=190758
+        <rdar://problem/45413233>
+
+        Reviewed by Daniel Bates.
+
+        Enable building with Thin LTO in Production when using Xcode 10.2 or
+        later. This change results in a 1.45% progression in PLT5. Full
+        Production build times increase about 2-3%. Incremental build times
+        are more severely affected, and so LTO is not enabled for local
+        engineering builds.
+
+        LTO is enabled only on macOS for now, until rdar://problem/49013399,
+        which affects ARM builds, is fixed.
+
+        To change the LTO setting when building locally:
+
+        - If building with `make`, specify WK_LTO_MODE={none,thin,full} on the
+          command line.
+        - If building with `build-webkit`, specify --lto-mode={none,thin,full}
+          on the command line.
+        - If building with `build-root`, specify --lto={none,thin,full} on the
+          command line.
+        - If building with Xcode, create a LocalOverrides.xcconfig file at the
+          top level of your repository directory (if needed) and define
+          WK_LTO_MODE to full, thin, or none.
+
+        * Configurations/Base.xcconfig:
+
 2019-03-13  Keith Rollin  <krollin@apple.com>
 
         Add support for new StagedFrameworks layout

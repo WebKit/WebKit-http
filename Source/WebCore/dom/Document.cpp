@@ -162,6 +162,7 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "RequestAnimationFrameCallback.h"
+#include "ResizeObserver.h"
 #include "ResourceLoadObserver.h"
 #include "RuntimeApplicationChecks.h"
 #include "RuntimeEnabledFeatures.h"
@@ -317,9 +318,6 @@
 #endif
 #if ENABLE(WEBGPU)
 #include "GPUCanvasContext.h"
-#endif
-#if ENABLE(WEBMETAL)
-#include "WebMetalRenderingContext.h"
 #endif
 
 namespace WebCore {
@@ -670,7 +668,7 @@ void Document::removedLastRef()
     ASSERT(!m_deletionHasBegun);
     if (m_referencingNodeCount) {
         // Node::removedLastRef doesn't set refCount() to zero because it's not observable.
-        // But we need to remember that our refCount reached zero in subsequent calls to decrementReferencingNodeCount()
+        // But we need to remember that our refCount reached zero in subsequent calls to decrementReferencingNodeCount().
         m_refCountAndParentBit = 0;
 
         // If removing a child removes the last node reference, we don't want the scope to be destroyed
@@ -990,10 +988,10 @@ ExceptionOr<Ref<Node>> Document::importNode(Node& nodeToImport, bool deep)
     case COMMENT_NODE:
         return nodeToImport.cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf);
 
-    case ATTRIBUTE_NODE:
-        // FIXME: This will "Attr::normalize" child nodes of Attr.
-        return Ref<Node> { Attr::create(*this, QualifiedName(nullAtom(), downcast<Attr>(nodeToImport).name(), nullAtom()), downcast<Attr>(nodeToImport).value()) };
-
+    case ATTRIBUTE_NODE: {
+        auto& attribute = downcast<Attr>(nodeToImport);
+        return Ref<Node> { Attr::create(*this, attribute.qualifiedName(), attribute.value()) };
+    }
     case DOCUMENT_NODE: // Can't import a document into another document.
     case DOCUMENT_TYPE_NODE: // FIXME: Support cloning a DocumentType node per DOM4.
         break;
@@ -2740,7 +2738,7 @@ ExceptionOr<void> Document::open(Document* responsibleDocument)
 
         if (m_frame->loader().policyChecker().delegateIsDecidingNavigationPolicy())
             m_frame->loader().policyChecker().stopCheck();
-        if (m_frame->loader().state() == FrameStateProvisional)
+        if (m_frame && m_frame->loader().state() == FrameStateProvisional)
             m_frame->loader().stopAllLoaders();
     }
 
@@ -6066,10 +6064,6 @@ Optional<RenderingContext> Document::getCSSCanvasContext(const String& type, con
     if (is<GPUCanvasContext>(*context))
         return RenderingContext { RefPtr<GPUCanvasContext> { &downcast<GPUCanvasContext>(*context) } };
 #endif
-#if ENABLE(WEBMETAL)
-    if (is<WebMetalRenderingContext>(*context))
-        return RenderingContext { RefPtr<WebMetalRenderingContext> { &downcast<WebMetalRenderingContext>(*context) } };
-#endif
 
     return RenderingContext { RefPtr<CanvasRenderingContext2D> { &downcast<CanvasRenderingContext2D>(*context) } };
 }
@@ -6124,6 +6118,26 @@ void Document::parseDNSPrefetchControlHeader(const String& dnsPrefetchControl)
 
     m_isDNSPrefetchEnabled = false;
     m_haveExplicitlyDisabledDNSPrefetch = true;
+}
+
+void Document::getParserLocation(String& completedURL, unsigned& line, unsigned& column) const
+{
+    // We definitely cannot associate the message with a location being parsed if we are not even parsing.
+    if (!parsing())
+        return;
+
+    ScriptableDocumentParser* parser = scriptableDocumentParser();
+    if (!parser)
+        return;
+
+    // When the parser waits for scripts, any messages must be coming from some other source, and are not related to the location of the script element that made the parser wait.
+    if (!parser->shouldAssociateConsoleMessagesWithTextPosition())
+        return;
+
+    completedURL = url().string();
+    TextPosition position = parser->textPosition();
+    line = position.m_line.oneBasedInt();
+    column = position.m_column.oneBasedInt();
 }
 
 void Document::addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&& consoleMessage)
@@ -8023,6 +8037,67 @@ void Document::notifyIntersectionObserversTimerFired()
             observer->notify();
     }
     m_intersectionObserversWithPendingNotifications.clear();
+}
+#endif
+
+#if ENABLE(RESIZE_OBSERVER)
+void Document::addResizeObserver(ResizeObserver& observer)
+{
+    ASSERT(m_resizeObservers.find(&observer) == notFound);
+    m_resizeObservers.append(makeWeakPtr(&observer));
+}
+
+void Document::removeResizeObserver(ResizeObserver& observer)
+{
+    m_resizeObservers.removeFirst(&observer);
+}
+
+bool Document::hasResizeObservers()
+{
+    return !m_resizeObservers.isEmpty();
+}
+
+size_t Document::gatherResizeObservations(size_t deeperThan)
+{
+    size_t minDepth = ResizeObserver::maxElementDepth();
+    for (const auto& observer : m_resizeObservers) {
+        if (!observer->hasObservations())
+            continue;
+        auto depth = observer->gatherObservations(deeperThan);
+        minDepth = std::min(minDepth, depth);
+    }
+    return minDepth;
+}
+
+void Document::deliverResizeObservations()
+{
+    for (const auto& observer : m_resizeObservers) {
+        if (!observer->hasActiveObservations())
+            continue;
+        observer->deliverObservations();
+    }
+}
+
+bool Document::hasSkippedResizeObservations() const
+{
+    for (const auto& observer : m_resizeObservers) {
+        if (observer->hasSkippedObservations())
+            return true;
+    }
+    return false;
+}
+
+void Document::setHasSkippedResizeObservations(bool skipped)
+{
+    for (const auto& observer : m_resizeObservers)
+        observer->setHasSkippedObservations(skipped);
+}
+
+void Document::scheduleResizeObservations()
+{
+    if (!page())
+        return;
+    page()->scheduleResizeObservations();
 }
 #endif
 

@@ -560,9 +560,8 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
 
     _addBreakpointsForSourceCode(sourceCode)
     {
-        var breakpoints = WI.debuggerManager.breakpointsForSourceCode(sourceCode);
-        for (var i = 0; i < breakpoints.length; ++i)
-            this._addBreakpoint(breakpoints[i], sourceCode);
+        for (let breakpoint of WI.debuggerManager.breakpointsForSourceCode(sourceCode))
+            this._addBreakpoint(breakpoint, sourceCode);
     }
 
     _addIssuesForSourceCode(sourceCode)
@@ -822,19 +821,26 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
         if (event.data.oldDisplaySourceCode === debuggerObject.sourceCodeLocation.displaySourceCode)
             return;
 
-        var debuggerTreeElement = this._breakpointsContentTreeOutline.getCachedTreeElement(debuggerObject);
-        if (!debuggerTreeElement)
+        // A known debugger object (breakpoint, issueMessage, etc.) moved between resources. Remove
+        // the old tree element and create a new tree element with the updated file.
+
+        let wasSelected = false;
+        let oldDebuggerTreeElement = this._breakpointsContentTreeOutline.getCachedTreeElement(debuggerObject);
+        if (oldDebuggerTreeElement)
+            wasSelected = oldDebuggerTreeElement.selected;
+
+        let newDebuggerTreeElement = null;
+        if (debuggerObject instanceof WI.Breakpoint)
+            newDebuggerTreeElement = this._addBreakpoint(debuggerObject);
+        else if (debuggerObject instanceof WI.IssueMessage)
+            newDebuggerTreeElement = this._addIssue(debuggerObject);
+        if (!newDebuggerTreeElement)
             return;
 
-        // A known debugger object (breakpoint, issueMessage, etc.) moved between resources, remove the old tree element
-        // and create a new tree element with the updated file.
+        if (oldDebuggerTreeElement)
+            this._removeDebuggerTreeElement(oldDebuggerTreeElement);
 
-        var wasSelected = debuggerTreeElement.selected;
-
-        this._removeDebuggerTreeElement(debuggerTreeElement);
-        var newDebuggerTreeElement = this._addDebuggerObject(debuggerObject);
-
-        if (newDebuggerTreeElement && wasSelected)
+        if (wasSelected)
             newDebuggerTreeElement.revealAndSelect(true, false, true);
     }
 
@@ -1367,17 +1373,6 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
         };
         let linkElement = WI.createSourceCodeLocationLink(sourceCodeLocation, options);
         this._pauseReasonLinkContainerElement.appendChild(linkElement);
-    }
-
-    _addDebuggerObject(debuggerObject)
-    {
-        if (debuggerObject instanceof WI.Breakpoint)
-            return this._addBreakpoint(debuggerObject);
-
-        if (debuggerObject instanceof WI.IssueMessage)
-            return this._addIssue(debuggerObject);
-
-        return null;
     }
 
     _addIssue(issueMessage)

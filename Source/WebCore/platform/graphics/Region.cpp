@@ -27,6 +27,7 @@
 #include "Region.h"
 
 #include <stdio.h>
+#include <wtf/text/TextStream.h>
 
 // A region class based on the paper "Scanline Coherent Shape Algebra"
 // by Jonathan E. Steinhart from the book "Graphics Gems II".
@@ -650,5 +651,17 @@ void Region::setShape(Shape&& shape)
         *m_shape = WTFMove(shape);
 }
 
+TextStream& operator<<(TextStream& ts, const Region& region)
+{
+    ts << "\n";
+    {
+        TextStream::IndentScope indentScope(ts);
+        for (auto& rect : region.rects())
+            ts << indent << "(rect " << rect << ")\n";
+    }
+    ts << indent;
+
+    return ts;
+}
 
 } // namespace WebCore

@@ -61,6 +61,7 @@ class HTTPCookieStore;
 }
 
 namespace WebCore {
+class RegistrableDomain;
 class SecurityOrigin;
 }
 
@@ -125,6 +126,7 @@ public:
     void removeData(OptionSet<WebsiteDataType>, const Vector<WebsiteDataRecord>&, Function<void()>&& completionHandler);
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
+    void fetchDataForRegistrableDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, const Vector<WebCore::RegistrableDomain>&, CompletionHandler<void(Vector<WebsiteDataRecord>&&, HashSet<WebCore::RegistrableDomain>&&)>&&);
     void clearPrevalentResource(const URL&, CompletionHandler<void()>&&);
     void clearUserInteraction(const URL&, CompletionHandler<void()>&&);
     void dumpResourceLoadStatistics(CompletionHandler<void(const String&)>&&);
@@ -171,6 +173,7 @@ public:
     void setCrossSiteLoadWithLinkDecorationForTesting(const URL& fromURL, const URL& toURL, CompletionHandler<void()>&&);
     void resetCrossSiteLoadsWithLinkDecorationForTesting(CompletionHandler<void()>&&);
     void deleteCookiesForTesting(const URL&, bool includeHttpOnlyCookies, CompletionHandler<void()>&&);
+    void hasLocalStorageForTesting(const URL&, CompletionHandler<void(bool)>&&) const;
 #endif
     void setCacheMaxAgeCapForPrevalentResources(Seconds, CompletionHandler<void()>&&);
     void resetCacheMaxAgeCapForPrevalentResources(CompletionHandler<void()>&&);
@@ -209,8 +212,11 @@ public:
 
     const String& sourceApplicationSecondaryIdentifier() const { return m_sourceApplicationSecondaryIdentifier; }
     bool setSourceApplicationSecondaryIdentifier(String&&);
-    
-    void finalizeApplicationIdentifiers() { m_allowedToSetApplicationIdentifiers = false; }
+
+    bool allowsTLSFallback() const { return m_allowsTLSFallback; }
+    bool setAllowsTLSFallback(bool);
+
+    void networkingHasBegun() { m_networkingHasBegun = true; }
     
     void setAllowsCellularAccess(AllowsCellularAccess allows) { m_allowsCellularAccess = allows; }
     AllowsCellularAccess allowsCellularAccess() { return m_allowsCellularAccess; }
@@ -317,7 +323,8 @@ private:
     AllowsCellularAccess m_allowsCellularAccess { AllowsCellularAccess::Yes };
     String m_sourceApplicationBundleIdentifier;
     String m_sourceApplicationSecondaryIdentifier;
-    bool m_allowedToSetApplicationIdentifiers { true };
+    bool m_allowsTLSFallback { true };
+    bool m_networkingHasBegun { false };
 
 #if HAVE(SEC_KEY_PROXY)
     Vector<Ref<SecKeyProxyStore>> m_secKeyProxyStores;

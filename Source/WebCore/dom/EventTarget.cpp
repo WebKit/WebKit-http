@@ -44,6 +44,7 @@
 #include "Settings.h"
 #include "WebKitAnimationEvent.h"
 #include "WebKitTransitionEvent.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Ref.h>
@@ -52,6 +53,9 @@
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(EventTarget);
+WTF_MAKE_ISO_ALLOCATED_IMPL(EventTargetWithInlineData);
 
 bool EventTarget::isNode() const
 {
@@ -300,16 +304,6 @@ void EventTarget::innerInvokeEventListeners(Event& event, EventListenerVector li
         InspectorInstrumentation::willHandleEvent(context, event, *registeredListener);
         registeredListener->callback().handleEvent(context, event);
         InspectorInstrumentation::didHandleEvent(context);
-
-#if ENABLE(TOUCH_EVENTS)
-        if (RuntimeEnabledFeatures::sharedFeatures().mousemoveEventHandlingPreventsDefaultEnabled() && event.type() == eventNames().mousemoveEvent) {
-            if (is<Element>(event.currentTarget())) {
-                auto* element = downcast<Element>(event.currentTarget());
-                if (!is<HTMLBodyElement>(element) && !is<HTMLHtmlElement>(element))
-                    event.setHasEncounteredListener();
-            }
-        }
-#endif
 
         if (registeredListener->isPassive())
             event.setInPassiveListener(false);

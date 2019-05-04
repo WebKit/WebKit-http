@@ -1943,6 +1943,8 @@ String RenderLayerCompositor::layerTreeAsText(LayerTreeFlags flags)
         layerTreeBehavior |= LayerTreeAsTextIncludeBackingStoreAttached;
     if (flags & LayerTreeFlagsIncludeRootLayerProperties)
         layerTreeBehavior |= LayerTreeAsTextIncludeRootLayerProperties;
+    if (flags & LayerTreeFlagsIncludeEventRegion)
+        layerTreeBehavior |= LayerTreeAsTextIncludeEventRegion;
 
     // We skip dumping the scroll and clip layers to keep layerTreeAsText output
     // similar between platforms.
@@ -2219,6 +2221,7 @@ bool RenderLayerCompositor::requiresOwnBackingStore(const RenderLayer& layer, co
         || requiresCompositingForPlugin(renderer, queryData)
         || requiresCompositingForEditableImage(renderer)
         || requiresCompositingForOverflowScrolling(layer, queryData)
+        || needsContentsCompositingLayer(layer)
         || renderer.isTransparent()
         || renderer.hasMask()
         || renderer.hasReflection()
@@ -2942,6 +2945,9 @@ static bool layerParentedAcrossCoordinatedScrollingBoundary(const RenderLayer& l
 ScrollPositioningBehavior RenderLayerCompositor::computeCoordinatedPositioningForLayer(const RenderLayer& layer) const
 {
     if (layer.isRenderViewLayer())
+        return ScrollPositioningBehavior::None;
+
+    if (layer.renderer().isFixedPositioned())
         return ScrollPositioningBehavior::None;
 
     auto* scrollingCoordinator = this->scrollingCoordinator();
@@ -4428,22 +4434,13 @@ void LegacyWebKitScrollingLayerCoordinator::unregisterAllViewportConstrainedLaye
     m_chromeClient.updateViewportConstrainedLayers(layerMap, { });
 }
 
-static bool scrollbarHasDisplayNone(Scrollbar* scrollbar)
-{
-    if (!scrollbar || !scrollbar->isCustomScrollbar())
-        return false;
-
-    std::unique_ptr<RenderStyle> scrollbarStyle = static_cast<RenderScrollbar*>(scrollbar)->getScrollbarPseudoStyle(ScrollbarBGPart, PseudoId::Scrollbar);
-    return scrollbarStyle && scrollbarStyle->display() == DisplayType::None;
-}
-
 void LegacyWebKitScrollingLayerCoordinator::updateScrollingLayer(RenderLayer& layer)
 {
     auto* backing = layer.backing();
     ASSERT(backing);
 
-    bool allowHorizontalScrollbar = !scrollbarHasDisplayNone(layer.horizontalScrollbar());
-    bool allowVerticalScrollbar = !scrollbarHasDisplayNone(layer.verticalScrollbar());
+    bool allowHorizontalScrollbar = !layer.horizontalScrollbarHiddenByStyle();
+    bool allowVerticalScrollbar = !layer.verticalScrollbarHiddenByStyle();
     m_chromeClient.addOrUpdateScrollingLayer(layer.renderer().element(), backing->scrollContainerLayer()->platformLayer(), backing->scrolledContentsLayer()->platformLayer(),
         layer.reachableTotalContentsSize(), allowHorizontalScrollbar, allowVerticalScrollbar);
 }

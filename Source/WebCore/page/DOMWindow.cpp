@@ -115,6 +115,7 @@
 #include <JavaScriptCore/ScriptCallStackFactory.h>
 #include <algorithm>
 #include <memory>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Language.h>
 #include <wtf/MainThread.h>
 #include <wtf/MathExtras.h>
@@ -144,6 +145,8 @@
 
 namespace WebCore {
 using namespace Inspector;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(DOMWindow);
 
 class PostMessageTimer : public TimerBase {
 public:
@@ -940,8 +943,9 @@ Element* DOMWindow::frameElement() const
 
 void DOMWindow::focus(DOMWindow& incumbentWindow)
 {
-    auto* opener = this->opener();
-    focus(opener && opener != self() && incumbentWindow.self() == opener);
+    auto* frame = this->frame();
+    auto* openerFrame = frame ? frame->loader().opener() : nullptr;
+    focus(openerFrame && openerFrame != frame && incumbentWindow.frame() == openerFrame);
 }
 
 void DOMWindow::focus(bool allowFocus)
@@ -1314,7 +1318,12 @@ int DOMWindow::scrollY() const
 
 bool DOMWindow::closed() const
 {
-    return !frame();
+    auto* frame = this->frame();
+    if (!frame)
+        return true;
+
+    auto* page = frame->page();
+    return !page || page->isClosing();
 }
 
 unsigned DOMWindow::length() const
@@ -1373,15 +1382,6 @@ void DOMWindow::setDefaultStatus(const String& string)
 
     ASSERT(frame->document()); // Client calls shouldn't be made when the frame is in inconsistent state.
     page->chrome().setStatusbarText(*frame, m_defaultStatus);
-}
-
-WindowProxy* DOMWindow::self() const
-{
-    auto* frame = this->frame();
-    if (!frame)
-        return nullptr;
-
-    return &frame->windowProxy();
 }
 
 WindowProxy* DOMWindow::opener() const
@@ -1698,7 +1698,6 @@ void DOMWindow::clearInterval(int timeoutId)
 
 int DOMWindow::requestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callback)
 {
-    callback->m_useLegacyTimeBase = false;
     auto* document = this->document();
     if (!document)
         return 0;
@@ -1707,11 +1706,12 @@ int DOMWindow::requestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callba
 
 int DOMWindow::webkitRequestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callback)
 {
-    callback->m_useLegacyTimeBase = true;
-    auto* document = this->document();
-    if (!document)
-        return 0;
-    return document->requestAnimationFrame(WTFMove(callback));
+    static bool firstTime = true;
+    if (firstTime && document()) {
+        document()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, "webkitRequestAnimationFrame() is deprecated and will be removed. Please use requestAnimationFrame() instead."_s);
+        firstTime = false;
+    }
+    return requestAnimationFrame(WTFMove(callback));
 }
 
 void DOMWindow::cancelAnimationFrame(int id)
@@ -2291,7 +2291,7 @@ ExceptionOr<RefPtr<Frame>> DOMWindow::createWindow(const String& urlString, cons
         return Exception { SyntaxError };
 
     // For whatever reason, Firefox uses the first frame to determine the outgoingReferrer. We replicate that behavior here.
-    String referrer = SecurityPolicy::generateReferrerHeader(firstFrame.document()->referrerPolicy(), completedURL, firstFrame.loader().outgoingReferrer());
+    String referrer = windowFeatures.noreferrer ? String() : SecurityPolicy::generateReferrerHeader(firstFrame.document()->referrerPolicy(), completedURL, firstFrame.loader().outgoingReferrer());
     auto initiatedByMainFrame = activeFrame->isMainFrame() ? InitiatedByMainFrame::Yes : InitiatedByMainFrame::Unknown;
 
     ResourceRequest resourceRequest { completedURL, referrer };
@@ -2305,14 +2305,15 @@ ExceptionOr<RefPtr<Frame>> DOMWindow::createWindow(const String& urlString, cons
     if (!newFrame)
         return RefPtr<Frame> { nullptr };
 
-    if (!windowFeatures.noopener)
+    bool noopener = windowFeatures.noopener || windowFeatures.noreferrer;
+    if (!noopener)
         newFrame->loader().setOpener(&openerFrame);
 
     if (created)
         newFrame->page()->setOpenedByDOM();
 
     if (newFrame->document()->domWindow()->isInsecureScriptAccess(activeWindow, completedURL))
-        return windowFeatures.noopener ? RefPtr<Frame> { nullptr } : newFrame;
+        return noopener ? RefPtr<Frame> { nullptr } : newFrame;
 
     if (prepareDialogFunction)
         prepareDialogFunction(*newFrame->document()->domWindow());
@@ -2331,7 +2332,7 @@ ExceptionOr<RefPtr<Frame>> DOMWindow::createWindow(const String& urlString, cons
     if (!newFrame->page())
         return RefPtr<Frame> { nullptr };
 
-    return windowFeatures.noopener ? RefPtr<Frame> { nullptr } : newFrame;
+    return noopener ? RefPtr<Frame> { nullptr } : newFrame;
 }
 
 ExceptionOr<RefPtr<WindowProxy>> DOMWindow::open(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& urlString, const AtomicString& frameName, const String& windowFeaturesString)

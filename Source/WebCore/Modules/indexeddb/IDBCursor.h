@@ -30,6 +30,7 @@
 #include "ExceptionOr.h"
 #include "IDBCursorDirection.h"
 #include "IDBCursorInfo.h"
+#include "IDBKeyPath.h"
 #include "IDBValue.h"
 #include "JSValueInWrappedObject.h"
 #include <JavaScriptCore/Strong.h>
@@ -44,6 +45,7 @@ class IDBObjectStore;
 class IDBTransaction;
 
 class IDBCursor : public ScriptWrappable, public RefCounted<IDBCursor> {
+    WTF_MAKE_ISO_ALLOCATED(IDBCursor);
 public:
     static Ref<IDBCursor> create(IDBObjectStore&, const IDBCursorInfo&);
     static Ref<IDBCursor> create(IDBIndex&, const IDBCursorInfo&);
@@ -58,6 +60,7 @@ public:
     IDBKey* key() { return m_key.get(); };
     IDBKey* primaryKey() { return m_primaryKey.get(); };
     IDBValue value() { return m_value; };
+    const Optional<IDBKeyPath>& primaryKeyPath() { return m_keyPath; };
     JSValueInWrappedObject& keyWrapper() { return m_keyWrapper; }
     JSValueInWrappedObject& primaryKeyWrapper() { return m_primaryKeyWrapper; }
     JSValueInWrappedObject& valueWrapper() { return m_valueWrapper; }
@@ -104,6 +107,7 @@ private:
     IDBKeyData m_keyData;
     IDBKeyData m_primaryKeyData;
     IDBValue m_value;
+    Optional<IDBKeyPath> m_keyPath;
 
     JSValueInWrappedObject m_keyWrapper;
     JSValueInWrappedObject m_primaryKeyWrapper;

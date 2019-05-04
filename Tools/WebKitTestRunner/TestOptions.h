@@ -89,6 +89,8 @@ struct TestOptions {
     bool enableEditableImages { false };
     bool editable { false };
     bool enableUndoManagerAPI { false };
+    bool shouldHandleRunOpenPanel { true };
+    bool shouldPresentPopovers { true };
 
     double contentInsetTop { 0 };
 
@@ -136,6 +138,8 @@ struct TestOptions {
             || enableEditableImages != options.enableEditableImages
             || editable != options.editable
             || enableUndoManagerAPI != options.enableUndoManagerAPI
+            || shouldHandleRunOpenPanel != options.shouldHandleRunOpenPanel
+            || shouldPresentPopovers != options.shouldPresentPopovers
             || contentInsetTop != options.contentInsetTop)
             return false;
 

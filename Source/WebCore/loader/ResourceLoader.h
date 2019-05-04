@@ -35,6 +35,7 @@
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include <wtf/Forward.h>
+#include <wtf/WeakPtr.h>
 
 #if ENABLE(CONTENT_EXTENSIONS)
 #include "ResourceLoadInfo.h"
@@ -53,7 +54,7 @@ class FrameLoader;
 class NetworkLoadMetrics;
 class PreviewLoader;
 
-class ResourceLoader : public RefCounted<ResourceLoader>, protected ResourceHandleClient {
+class ResourceLoader : public CanMakeWeakPtr<ResourceLoader>, public RefCounted<ResourceLoader>, protected ResourceHandleClient {
 public:
     virtual ~ResourceLoader() = 0;
 

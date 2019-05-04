@@ -43,7 +43,10 @@ imported/w3c/web-platform-tests/css/css-properties-values-api/ [ Skip ]
 css-custom-properties-api [ Skip ]
 css-typedom [ Skip ]
 css-dark-mode [ Skip ]
+
 webgpu [ Skip ]
+inspector/canvas/create-context-webgpu.html [ Skip ]
+inspector/canvas/resolveCanvasContext-webgpu.html [ Skip ]
 
 # Media Stream API testing is not supported for WK1 yet.
 fast/mediastream
@@ -695,3 +698,9 @@ webkit.org/b/194309 media/modern-media-controls/compact-media-controls/compact-m
 webkit.org/b/195098 pointerevents/mouse/over-enter-out-leave.html [ Failure ]
 webkit.org/b/195098 pointerevents/mouse/pointer-capture.html [ Failure ]
 webkit.org/b/195098 pointerevents/mouse/pointer-events-before-mouse-events.html [ Failure ]
+
+webkit.org/b/159724 [ Debug ] imported/w3c/web-platform-tests/xhr/send-redirect-post-upload.htm [ Skip ]
+
+webkit.org/b/196448 [ Debug ] inspector/audit/basic.html [ Pass Timeout ]
+
+webkit.org/b/196502 media/video-background-tab-playback.html [ Pass Failure ]

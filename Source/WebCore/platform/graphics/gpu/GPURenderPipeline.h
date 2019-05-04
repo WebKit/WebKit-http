@@ -46,7 +46,7 @@ using PlatformRenderPipelineSmartPtr = RetainPtr<MTLRenderPipelineState>;
 
 class GPURenderPipeline : public RefCounted<GPURenderPipeline> {
 public:
-    static RefPtr<GPURenderPipeline> create(const GPUDevice&, GPURenderPipelineDescriptor&&);
+    static RefPtr<GPURenderPipeline> tryCreate(const GPUDevice&, const GPURenderPipelineDescriptor&);
 
 #if USE(METAL)
     MTLDepthStencilState *depthStencilState() const { return m_depthStencilState.get(); }
@@ -56,12 +56,11 @@ public:
 
 private:
 #if USE(METAL)
-    GPURenderPipeline(RetainPtr<MTLDepthStencilState>&&, PlatformRenderPipelineSmartPtr&&, GPURenderPipelineDescriptor&&);
+    GPURenderPipeline(RetainPtr<MTLDepthStencilState>&&, PlatformRenderPipelineSmartPtr&&, GPUPrimitiveTopology);
 
     RetainPtr<MTLDepthStencilState> m_depthStencilState;
 #endif // USE(METAL)
     PlatformRenderPipelineSmartPtr m_platformRenderPipeline;
-    RefPtr<GPUPipelineLayout> m_layout;
     GPUPrimitiveTopology m_primitiveTopology;
 };
 

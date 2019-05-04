@@ -30,6 +30,7 @@
 #include "ChromeClient.h"
 #include "DOMTimer.h"
 #include "Document.h"
+#include "HTMLIFrameElement.h"
 #include "HTMLImageElement.h"
 #include "Logging.h"
 #include "NodeRenderStyle.h"
@@ -39,7 +40,7 @@
 
 namespace WebCore {
 
-static const Seconds maximumDelayForTimers { 300_ms };
+static const Seconds maximumDelayForTimers { 400_ms };
 static const Seconds maximumDelayForTransitions { 300_ms };
 
 static bool isConsideredHidden(const Element& element)
@@ -52,6 +53,9 @@ static bool isConsideredHidden(const Element& element)
         return true;
 
     if (style.visibility() == Visibility::Hidden)
+        return true;
+
+    if (!style.opacity())
         return true;
 
     auto width = style.logicalWidth();
@@ -138,6 +142,9 @@ void ContentChangeObserver::didAddTransition(const Element& element, const Anima
         return;
     if (!isConsideredHidden(element))
         return;
+    // In case of multiple transitions, the first tranistion wins (and it has to produce a visible content change in order to show up as hover).
+    if (m_elementsWithTransition.contains(&element))
+        return;
     LOG_WITH_STREAM(ContentObservation, stream << "didAddTransition: transition created on " << &element << " (" << transitionEnd.milliseconds() << "ms).");
 
     m_elementsWithTransition.add(&element);
@@ -152,7 +159,7 @@ void ContentChangeObserver::didFinishTransition(const Element& element, CSSPrope
         return;
     LOG_WITH_STREAM(ContentObservation, stream << "didFinishTransition: transition finished (" << &element << ").");
 
-    adjustObservedState(Event::EndedTransition);
+    adjustObservedState(isConsideredHidden(element) ? Event::EndedTransition : Event::CompletedTransition);
 }
 
 void ContentChangeObserver::didRemoveTransition(const Element& element, CSSPropertyID propertyID)
@@ -241,6 +248,28 @@ void ContentChangeObserver::styleRecalcDidFinish()
     adjustObservedState(Event::EndedStyleRecalc);
 }
 
+void ContentChangeObserver::renderTreeUpdateDidStart()
+{
+    if (!m_document.settings().contentChangeObserverEnabled())
+        return;
+    if (!isObservingContentChanges())
+        return;
+
+    LOG(ContentObservation, "renderTreeUpdateDidStart: RenderTree update started");
+    m_isInObservedRenderTreeUpdate = true;
+    m_elementsWithDestroyedVisibleRenderer.clear();
+}
+
+void ContentChangeObserver::renderTreeUpdateDidFinish()
+{
+    if (!m_isInObservedRenderTreeUpdate)
+        return;
+
+    LOG(ContentObservation, "renderTreeUpdateDidStart: RenderTree update finished");
+    m_isInObservedRenderTreeUpdate = false;
+    m_elementsWithDestroyedVisibleRenderer.clear();
+}
+
 void ContentChangeObserver::stopObservingPendingActivities()
 {
     setShouldObserveNextStyleRecalc(false);
@@ -258,10 +287,12 @@ void ContentChangeObserver::reset()
 
     m_touchEventIsBeingDispatched = false;
     m_isInObservedStyleRecalc = false;
+    m_isInObservedRenderTreeUpdate = false;
     m_observedDomTimerIsBeingExecuted = false;
     m_mouseMovedEventIsBeingDispatched = false;
 
     m_contentObservationTimer.stop();
+    m_elementsWithDestroyedVisibleRenderer.clear();
 }
 
 void ContentChangeObserver::didSuspendActiveDOMObjects()
@@ -274,6 +305,20 @@ void ContentChangeObserver::willDetachPage()
 {
     LOG(ContentObservation, "willDetachPage");
     reset();
+}
+
+void ContentChangeObserver::willDestroyRenderer(const Element& element)
+{ 
+    if (!m_document.settings().contentChangeObserverEnabled())
+        return;
+    if (!m_isInObservedRenderTreeUpdate)
+        return;
+    if (hasVisibleChangeState())
+        return;
+    LOG_WITH_STREAM(ContentObservation, stream << "willDestroyRenderer element: " << &element);
+
+    if (!isConsideredHidden(element))
+        m_elementsWithDestroyedVisibleRenderer.add(&element);
 }
 
 void ContentChangeObserver::contentVisibilityDidChange()
@@ -326,11 +371,6 @@ void ContentChangeObserver::mouseMovedDidFinish()
     LOG(ContentObservation, "mouseMovedDidFinish: mouseMoved finished.");
     adjustObservedState(Event::EndedMouseMovedEventDispatching);
     m_mouseMovedEventIsBeingDispatched = false;
-}
-
-WKContentChange ContentChangeObserver::observedContentChange() const
-{
-    return WKObservedContentChange();
 }
 
 void ContentChangeObserver::setShouldObserveNextStyleRecalc(bool shouldObserve)
@@ -434,12 +474,20 @@ void ContentChangeObserver::adjustObservedState(Event event)
         break;
     case Event::EndedTransition:
         // onAnimationEnd can be called while in the middle of resolving the document (synchronously) or
-        // asynchronously right before the style update is issued.
+        // asynchronously right before the style update is issued. It also means we don't know whether this animation ends up producing visible content yet. 
         if (m_document.inStyleRecalc()) {
             // We need to start observing this style change synchronously.
             m_isInObservedStyleRecalc = true;
         } else
             setShouldObserveNextStyleRecalc(true);
+        break;
+    case Event::CompletedTransition:
+        // Set visibility flag on and report visible change synchronously or asynchronously depending whether we are in the middle of style recalc.
+        contentVisibilityDidChange();
+        if (m_document.inStyleRecalc())
+            m_isInObservedStyleRecalc = true;
+        else if (!isObservationTimeWindowActive())
+            adjustStateAndNotifyContentChangeIfNeeded();
         break;
     case Event::EndedFixedObservationTimeWindow:
         adjustStateAndNotifyContentChangeIfNeeded();
@@ -452,12 +500,17 @@ void ContentChangeObserver::adjustObservedState(Event event)
     }
 }
 
+bool ContentChangeObserver::shouldObserveVisibilityChangeForElement(const Element& element)
+{
+    return isObservingContentChanges() && !hasVisibleChangeState() && !visibleRendererWasDestroyed(element);
+}
+
 ContentChangeObserver::StyleChangeScope::StyleChangeScope(Document& document, const Element& element)
     : m_contentChangeObserver(document.contentChangeObserver())
     , m_element(element)
     , m_hadRenderer(element.renderer())
 {
-    if (m_contentChangeObserver.isObservingContentChanges() && !m_contentChangeObserver.hasVisibleChangeState())
+    if (m_contentChangeObserver.shouldObserveVisibilityChangeForElement(element))
         m_wasHidden = isConsideredHidden(m_element);
 }
 
@@ -477,6 +530,9 @@ bool ContentChangeObserver::StyleChangeScope::isConsideredClickable() const
         return false;
 
     auto& element = const_cast<Element&>(m_element);
+    if (is<HTMLIFrameElement>(element))
+        return true;
+
     if (is<HTMLImageElement>(element)) {
         // This is required to avoid HTMLImageElement's touch callout override logic. See rdar://problem/48937767.
         return element.Element::willRespondToMouseClickEvents();
@@ -488,6 +544,8 @@ bool ContentChangeObserver::StyleChangeScope::isConsideredClickable() const
     // In case when the visible content already had renderers it's not sufficient to check the "newly visible" element only since it might just be the container for the clickable content.  
     ASSERT(m_element.renderer());
     for (auto& descendant : descendantsOfType<RenderElement>(*element.renderer())) {
+        if (!descendant.element())
+            continue;
         if (descendant.element()->willRespondToMouseClickEvents())
             return true;
     }
@@ -541,6 +599,17 @@ ContentChangeObserver::DOMTimerScope::~DOMTimerScope()
 {
     if (m_contentChangeObserver)
         m_contentChangeObserver->domTimerExecuteDidFinish(m_domTimer);
+}
+
+ContentChangeObserver::RenderTreeUpdateScope::RenderTreeUpdateScope(Document& document)
+    : m_contentChangeObserver(document.contentChangeObserver())
+{
+    m_contentChangeObserver.renderTreeUpdateDidStart();
+}
+
+ContentChangeObserver::RenderTreeUpdateScope::~RenderTreeUpdateScope()
+{
+    m_contentChangeObserver.renderTreeUpdateDidFinish();
 }
 
 }

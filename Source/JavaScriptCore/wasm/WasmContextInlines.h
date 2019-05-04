@@ -55,13 +55,15 @@ inline Instance* Context::load() const
 
 inline void Context::store(Instance* inst, void* softStackLimit)
 {
+    if (inst)
+        inst->setCachedStackLimit(softStackLimit);
+
 #if ENABLE(FAST_TLS_JIT)
     if (useFastTLS())
         _pthread_setspecific_direct(WTF_WASM_CONTEXT_KEY, bitwise_cast<void*>(inst));
+    else
 #endif
-    instance = inst;
-    if (instance)
-        instance->setCachedStackLimit(softStackLimit);
+        instance = inst;
 }
 
 } } // namespace JSC::Wasm

@@ -312,15 +312,43 @@ static inline UIImage *cameraIcon()
     }
 }
 
+- (NSArray<NSString *> *)currentAvailableActionTitles
+{
+    NSMutableArray<NSString *> *actionTitles = [NSMutableArray array];
+
+    NSArray *mediaTypes = UTIsForMIMETypes(_mimeTypes.get()).allObjects;
+    BOOL containsImageMediaType = !mediaTypes.count || arrayContainsUTIThatConformsTo(mediaTypes, kUTTypeImage);
+    BOOL containsVideoMediaType = !mediaTypes.count || arrayContainsUTIThatConformsTo(mediaTypes, kUTTypeMovie);
+    if (containsImageMediaType || containsVideoMediaType) {
+        [actionTitles addObject:@"Photo Library"];
+        if (containsImageMediaType && containsVideoMediaType)
+            [actionTitles addObject:@"Take Photo or Video"];
+        else if (containsVideoMediaType)
+            [actionTitles addObject:@"Take Video"];
+        else
+            [actionTitles addObject:@"Take Photo"];
+    }
+    [actionTitles addObject:@"Browse"];
+    return actionTitles;
+}
+
 #pragma mark - Media Types
 
 static NSSet<NSString *> *UTIsForMIMETypes(NSArray *mimeTypes)
 {
     NSMutableSet *mediaTypes = [NSMutableSet set];
     for (NSString *mimeType in mimeTypes) {
-        auto uti = WebCore::UTIFromMIMEType(mimeType);
-        if (!uti.isEmpty())
-            [mediaTypes addObject:(__bridge NSString *)uti];
+        if ([mimeType caseInsensitiveCompare:@"image/*"] == NSOrderedSame)
+            [mediaTypes addObject:(__bridge NSString *)kUTTypeImage];
+        else if ([mimeType caseInsensitiveCompare:@"video/*"] == NSOrderedSame)
+            [mediaTypes addObject:(__bridge NSString *)kUTTypeMovie];
+        else if ([mimeType caseInsensitiveCompare:@"audio/*"] == NSOrderedSame)
+            [mediaTypes addObject:(__bridge NSString *)kUTTypeAudio];
+        else {
+            auto uti = WebCore::UTIFromMIMEType(mimeType);
+            if (!uti.isEmpty())
+                [mediaTypes addObject:(__bridge NSString *)uti];
+        }
     }
     return mediaTypes;
 }

@@ -207,6 +207,7 @@ set(WTF_PUBLIC_HEADERS
     SixCharacterHash.h
     SmallPtrSet.h
     SoftLinking.h
+    SpanningTree.h
     Spectrum.h
     StackBounds.h
     StackPointer.h
@@ -505,7 +506,8 @@ WEBKIT_WRAP_SOURCELIST(${WTF_SOURCES})
 WEBKIT_FRAMEWORK(WTF)
 
 WEBKIT_MAKE_FORWARDING_HEADERS(WTF
-    DESTINATION ${FORWARDING_HEADERS_DIR}/wtf
+    TARGET_NAME WTFFrameworkHeaders
+    DESTINATION ${WTF_FRAMEWORK_HEADERS_DIR}/wtf
     FILES ${WTF_PUBLIC_HEADERS}
 )
 

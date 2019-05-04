@@ -117,7 +117,6 @@
 #define WebKitWebGLEnabledPreferenceKey @"WebKitWebGLEnabled"
 #define WebKitWebGL2EnabledPreferenceKey @"WebKitWebGL2Enabled"
 #define WebKitWebGPUEnabledPreferenceKey @"WebKitWebGPUEnabled"
-#define WebKitWebMetalEnabledPreferenceKey @"WebKitWebMetalEnabled"
 #define WebKitForceSoftwareWebGLRenderingPreferenceKey @"WebKitForceSoftwareWebGLRendering"
 #define WebKitForceWebGLUsesLowPowerPreferenceKey @"WebKitForceWebGLUsesLowPower"
 #define WebKitAccelerated2dCanvasEnabledPreferenceKey @"WebKitAccelerated2dCanvasEnabled"
@@ -268,3 +267,4 @@
 #define WebKitCSSLogicalEnabledPreferenceKey @"WebKitCSSLogicalEnabled"
 #define WebKitAdClickAttributionEnabledPreferenceKey @"WebKitAdClickAttributionEnabled"
 #define WebKitReferrerPolicyAttributeEnabledPreferenceKey @"WebKitReferrerPolicyAttributeEnabled"
+#define WebKitResizeObserverEnabledPreferenceKey @"WebKitResizeObserverEnabled"

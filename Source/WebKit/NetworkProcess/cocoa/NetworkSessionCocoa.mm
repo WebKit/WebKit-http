@@ -49,6 +49,7 @@
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/ProcessPrivilege.h>
 #import <wtf/URL.h>
 #import <wtf/text/WTFString.h>
@@ -105,6 +106,7 @@ static WebCore::NetworkLoadPriority toNetworkLoadPriority(float priority)
 #if HAVE(CFNETWORK_NEGOTIATED_SSL_PROTOCOL_CIPHER)
 static String stringForSSLProtocol(SSLProtocol protocol)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     switch (protocol) {
     case kDTLSProtocol1:
         return "DTLS 1.0"_s;
@@ -133,6 +135,7 @@ static String stringForSSLProtocol(SSLProtocol protocol)
         ASSERT_NOT_REACHED();
         return emptyString();
     }
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 static String stringForSSLCipher(SSLCipherSuite cipher)
@@ -604,6 +607,14 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, NS
         return;
 
     LOG(NetworkSession, "%llu didCompleteWithError %@", task.taskIdentifier, error);
+
+    if (error) {
+        NSDictionary *oldUserInfo = [error userInfo];
+        NSMutableDictionary *newUserInfo = oldUserInfo ? [NSMutableDictionary dictionaryWithDictionary:oldUserInfo] : [NSMutableDictionary dictionary];
+        newUserInfo[@"networkTaskDescription"] = [task description];
+        error = [NSError errorWithDomain:[error domain] code:[error code] userInfo:newUserInfo];
+    }
+
     if (auto* networkDataTask = [self existingTask:task])
         networkDataTask->didCompleteWithError(error, networkDataTask->networkLoadMetrics());
     else if (error) {
@@ -798,6 +809,9 @@ static NSURLSessionConfiguration *configurationForSessionID(const PAL::SessionID
     if (session.isEphemeral()) {
         NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration ephemeralSessionConfiguration];
         configuration._shouldSkipPreferredClientCertificateLookup = YES;
+#if HAVE(ALLOWS_SENSITIVE_LOGGING)
+        configuration._allowsSensitiveLogging = NO;
+#endif
         return configuration;
     }
     return [NSURLSessionConfiguration defaultSessionConfiguration];
@@ -932,6 +946,10 @@ NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, Network
 #if PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MIN_REQUIRED >= 60000
     configuration._companionProxyPreference = NSURLSessionCompanionProxyPreferencePreferDirectToCloud;
 #endif
+
+    static SEL allowsTLSFallbackSetter = NSSelectorFromString(@"set_allowsTLSFallback");
+    if (parameters.allowsTLSFallback == AllowsTLSFallback::No && [configuration respondsToSelector:allowsTLSFallbackSetter])
+        wtfObjCMsgSend<void>(configuration, allowsTLSFallbackSetter, NO);
 
     auto* storageSession = networkProcess.storageSession(parameters.sessionID);
     RELEASE_ASSERT(storageSession);

@@ -50,6 +50,10 @@ static BOOL overrideIsInHardwareKeyboardMode()
     return NO;
 }
 
+static void overridePresentViewControllerOrPopover()
+{
+}
+
 namespace WTR {
 
 static bool isDoneWaitingForKeyboardToDismiss = true;
@@ -140,6 +144,12 @@ void TestController::platformResetStateToConsistentValues(const TestOptions& opt
 
     m_inputModeSwizzlers.clear();
     m_overriddenKeyboardInputMode = nil;
+
+    m_presentPopoverSwizzlers.clear();
+    if (!options.shouldPresentPopovers) {
+        m_presentPopoverSwizzlers.append(std::make_unique<InstanceMethodSwizzler>([UIViewController class], @selector(presentViewController:animated:completion:), reinterpret_cast<IMP>(overridePresentViewControllerOrPopover)));
+        m_presentPopoverSwizzlers.append(std::make_unique<InstanceMethodSwizzler>([UIPopoverController class], @selector(presentPopoverFromRect:inView:permittedArrowDirections:animated:), reinterpret_cast<IMP>(overridePresentViewControllerOrPopover)));
+    }
     
     BOOL shouldRestoreFirstResponder = NO;
     if (PlatformWebView* platformWebView = mainWebView()) {
@@ -178,8 +188,7 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
         
     TestRunnerWKWebView *webView = mainWebView()->platformView();
 
-    if (test.options().shouldIgnoreMetaViewport)
-        webView.configuration.preferences._shouldIgnoreMetaViewport = YES;
+    webView.configuration.preferences._shouldIgnoreMetaViewport = test.options().shouldIgnoreMetaViewport;
 
     CGRect screenBounds = [UIScreen mainScreen].bounds;
     CGSize oldSize = webView.bounds.size;

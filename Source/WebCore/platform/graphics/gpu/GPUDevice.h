@@ -28,7 +28,6 @@
 #if ENABLE(WEBGPU)
 
 #include "GPUQueue.h"
-#include "GPUSwapChainDescriptor.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
@@ -40,6 +39,7 @@ namespace WebCore {
 class GPUBindGroupLayout;
 class GPUBuffer;
 class GPUCommandBuffer;
+class GPUComputePipeline;
 class GPUPipelineLayout;
 class GPURenderPipeline;
 class GPUSampler;
@@ -49,11 +49,13 @@ class GPUTexture;
 
 struct GPUBindGroupLayoutDescriptor;
 struct GPUBufferDescriptor;
+struct GPUComputePipelineDescriptor;
 struct GPUPipelineLayoutDescriptor;
 struct GPURenderPipelineDescriptor;
 struct GPURequestAdapterOptions;
 struct GPUSamplerDescriptor;
 struct GPUShaderModuleDescriptor;
+struct GPUSwapChainDescriptor;
 struct GPUTextureDescriptor;
     
 using PlatformDevice = MTLDevice;
@@ -61,28 +63,29 @@ using PlatformDeviceSmartPtr = RetainPtr<MTLDevice>;
 
 class GPUDevice : public RefCounted<GPUDevice>, public CanMakeWeakPtr<GPUDevice> {
 public:
-    static RefPtr<GPUDevice> tryCreate(Optional<GPURequestAdapterOptions>&&);
+    static RefPtr<GPUDevice> tryCreate(const Optional<GPURequestAdapterOptions>&);
 
-    RefPtr<GPUBuffer> tryCreateBuffer(GPUBufferDescriptor&&);
-    RefPtr<GPUTexture> tryCreateTexture(GPUTextureDescriptor&&) const;
+    RefPtr<GPUBuffer> tryCreateBuffer(const GPUBufferDescriptor&);
+    RefPtr<GPUTexture> tryCreateTexture(const GPUTextureDescriptor&) const;
     RefPtr<GPUSampler> tryCreateSampler(const GPUSamplerDescriptor&) const;
 
     RefPtr<GPUBindGroupLayout> tryCreateBindGroupLayout(const GPUBindGroupLayoutDescriptor&) const;
     Ref<GPUPipelineLayout> createPipelineLayout(GPUPipelineLayoutDescriptor&&) const;
 
-    RefPtr<GPUShaderModule> createShaderModule(GPUShaderModuleDescriptor&&) const;
-    RefPtr<GPURenderPipeline> createRenderPipeline(GPURenderPipelineDescriptor&&) const;
+    RefPtr<GPUShaderModule> tryCreateShaderModule(const GPUShaderModuleDescriptor&) const;
+    RefPtr<GPURenderPipeline> tryCreateRenderPipeline(const GPURenderPipelineDescriptor&) const;
+    RefPtr<GPUComputePipeline> tryCreateComputePipeline(const GPUComputePipelineDescriptor&) const;
 
     RefPtr<GPUCommandBuffer> tryCreateCommandBuffer() const;
 
     RefPtr<GPUSwapChain> tryCreateSwapChain(const GPUSwapChainDescriptor&, int width, int height) const;
 
-    RefPtr<GPUQueue> getQueue() const;
+    RefPtr<GPUQueue> tryGetQueue() const;
     PlatformDevice* platformDevice() const { return m_platformDevice.get(); }
     GPUSwapChain* swapChain() const { return m_swapChain.get(); }
 
 private:
-    GPUDevice(PlatformDeviceSmartPtr&&);
+    explicit GPUDevice(PlatformDeviceSmartPtr&&);
 
     PlatformDeviceSmartPtr m_platformDevice;
     mutable RefPtr<GPUQueue> m_queue;

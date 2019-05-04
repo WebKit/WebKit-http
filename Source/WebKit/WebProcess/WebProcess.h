@@ -36,6 +36,7 @@
 #include "TextCheckerState.h"
 #include "ViewUpdateDispatcher.h"
 #include "WebInspectorInterruptDispatcher.h"
+#include "WebProcessCreationParameters.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/RegistrableDomain.h>
 #if PLATFORM(MAC)
@@ -104,12 +105,13 @@ class WebFrame;
 class WebLoaderStrategy;
 class WebPage;
 class WebPageGroupProxy;
+struct WebProcessCreationParameters;
+struct WebProcessDataStoreParameters;
 class WebProcessSupplement;
 enum class WebsiteDataType;
 struct WebPageCreationParameters;
 struct WebPageGroupData;
 struct WebPreferencesStore;
-struct WebProcessCreationParameters;
 struct WebsiteData;
 struct WebsiteDataStoreParameters;
 
@@ -262,7 +264,9 @@ private:
     ~WebProcess();
 
     void initializeWebProcess(WebProcessCreationParameters&&);
-    void platformInitializeWebProcess(WebProcessCreationParameters&&);
+    void platformInitializeWebProcess(WebProcessCreationParameters&);
+    void setWebsiteDataStoreParameters(WebProcessDataStoreParameters&&);
+    void platformSetWebsiteDataStoreParameters(WebProcessDataStoreParameters&&);
 
     void prewarmGlobally();
     void prewarmWithDomainInformation(const WebCore::PrewarmInformation&);
@@ -407,7 +411,6 @@ private:
     void didReceiveSyncWebProcessMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
 #if PLATFORM(MAC)
-    void updateProcessName();
     void setScreenProperties(const WebCore::ScreenProperties&);
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     void scrollerStylePreferenceChanged(bool useOverlayScrollbars);
@@ -416,8 +419,17 @@ private:
 #endif
 #endif
 
+#if PLATFORM(COCOA)
+    void updateProcessName();
+#endif
+
 #if PLATFORM(IOS)
     void backlightLevelDidChange(float backlightLevel);
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+    bool shouldFreezeOnSuspension() const;
+    void updateFreezerStatus();
 #endif
 
 #if ENABLE(VIDEO)
@@ -426,7 +438,6 @@ private:
 #endif
 
     void clearCurrentModifierStateForTesting();
-    void setFreezable(bool);
 
     RefPtr<WebConnectionToUIProcess> m_webConnection;
 
@@ -501,10 +512,13 @@ private:
     std::unique_ptr<WebCore::CPUMonitor> m_cpuMonitor;
     Optional<double> m_cpuLimit;
 
-    enum class ProcessType { Inspector, ServiceWorker, PrewarmedWebContent, CachedWebContent, WebContent };
-    ProcessType m_processType { ProcessType::WebContent };
     String m_uiProcessName;
     WebCore::RegistrableDomain m_registrableDomain;
+#endif
+
+#if PLATFORM(COCOA)
+    enum class ProcessType { Inspector, ServiceWorker, PrewarmedWebContent, CachedWebContent, WebContent };
+    ProcessType m_processType { ProcessType::WebContent };
 #endif
 
     HashMap<WebCore::UserGestureToken *, uint64_t> m_userGestureTokens;

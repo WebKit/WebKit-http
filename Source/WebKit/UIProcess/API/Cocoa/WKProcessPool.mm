@@ -389,7 +389,7 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 
 - (void)_warmInitialProcess
 {
-    _processPool->prewarmProcess(nullptr, WebKit::WebProcessPool::MayCreateDefaultDataStore::Yes);
+    _processPool->prewarmProcess();
 }
 
 - (void)_automationCapabilitiesDidChange
@@ -439,6 +439,12 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 {
     return _processPool->networkProcessIdentifier();
 }
+
+- (pid_t)_prewarmedProcessIdentifier
+{
+    return _processPool->prewarmedProcessIdentifier();
+}
+
 
 - (void)_syncNetworkProcessCookies
 {

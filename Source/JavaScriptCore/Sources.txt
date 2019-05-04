@@ -124,6 +124,7 @@ b3/B3DataSection.cpp
 b3/B3DuplicateTails.cpp
 b3/B3Effects.cpp
 b3/B3EliminateCommonSubexpressions.cpp
+b3/B3EliminateDeadCode.cpp
 b3/B3EnsureLoopPreHeaders.cpp
 b3/B3FenceValue.cpp
 b3/B3FixSSA.cpp
@@ -143,6 +144,7 @@ b3/B3MemoryValue.cpp
 b3/B3MoveConstants.cpp
 b3/B3OpaqueByproducts.cpp
 b3/B3Opcode.cpp
+b3/B3OptimizeAssociativeExpressionTrees.cpp
 b3/B3Origin.cpp
 b3/B3OriginDump.cpp
 b3/B3PatchpointSpecial.cpp
@@ -416,6 +418,7 @@ dfg/DFGTypeCheckHoistingPhase.cpp
 dfg/DFGUnificationPhase.cpp
 dfg/DFGUseKind.cpp
 dfg/DFGValidate.cpp
+dfg/DFGValueRepReductionPhase.cpp
 dfg/DFGValueSource.cpp
 dfg/DFGValueStrength.cpp
 dfg/DFGVarargsForwardingPhase.cpp
@@ -692,7 +695,7 @@ profiler/ProfilerUID.cpp
 runtime/AbstractModuleRecord.cpp
 runtime/ArgList.cpp
 runtime/ArrayBuffer.cpp
-runtime/ArrayBufferNeuteringWatchpoint.cpp
+runtime/ArrayBufferNeuteringWatchpointSet.cpp
 runtime/ArrayBufferView.cpp
 runtime/ArrayConstructor.cpp
 runtime/ArrayConventions.cpp
@@ -763,6 +766,7 @@ runtime/FunctionExecutableDump.cpp
 runtime/FunctionHasExecutedCache.cpp
 runtime/FunctionPrototype.cpp
 runtime/FunctionRareData.cpp
+runtime/FuzzerAgent.cpp
 runtime/GeneratorFunctionConstructor.cpp
 runtime/GeneratorFunctionPrototype.cpp
 runtime/GeneratorPrototype.cpp
@@ -899,6 +903,7 @@ runtime/PropertyTable.cpp
 runtime/ProxyConstructor.cpp
 runtime/ProxyObject.cpp
 runtime/ProxyRevoke.cpp
+runtime/RandomizingFuzzerAgent.cpp
 runtime/ReflectObject.cpp
 runtime/RegExp.cpp
 runtime/RegExpCache.cpp
@@ -1009,6 +1014,7 @@ wasm/WasmWorklist.cpp
 
 wasm/js/JSToWasm.cpp
 wasm/js/JSToWasm.h
+wasm/js/JSToWasmICCallee.cpp
 wasm/js/JSWebAssembly.cpp
 wasm/js/JSWebAssemblyCodeBlock.cpp
 wasm/js/JSWebAssemblyCodeBlockHeapCellType.cpp
@@ -1025,6 +1031,7 @@ wasm/js/WebAssemblyCompileErrorConstructor.cpp
 wasm/js/WebAssemblyCompileErrorPrototype.cpp
 wasm/js/WebAssemblyFunction.cpp
 wasm/js/WebAssemblyFunctionBase.cpp
+wasm/js/WebAssemblyFunctionHeapCellType.cpp
 wasm/js/WebAssemblyInstanceConstructor.cpp
 wasm/js/WebAssemblyInstancePrototype.cpp
 wasm/js/WebAssemblyLinkErrorConstructor.cpp

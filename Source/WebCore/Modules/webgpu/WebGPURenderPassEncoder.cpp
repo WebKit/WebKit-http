@@ -33,34 +33,34 @@
 #include "GPURenderPassEncoder.h"
 #include "Logging.h"
 #include "WebGPUBuffer.h"
+#include "WebGPURenderPipeline.h"
 
 namespace WebCore {
 
-Ref<WebGPURenderPassEncoder> WebGPURenderPassEncoder::create(Ref<WebGPUCommandEncoder>&& commandBuffer, RefPtr<GPURenderPassEncoder>&& encoder)
+Ref<WebGPURenderPassEncoder> WebGPURenderPassEncoder::create(RefPtr<GPURenderPassEncoder>&& encoder)
 {
-    return adoptRef(*new WebGPURenderPassEncoder(WTFMove(commandBuffer), WTFMove(encoder)));
+    return adoptRef(*new WebGPURenderPassEncoder(WTFMove(encoder)));
 }
 
-WebGPURenderPassEncoder::WebGPURenderPassEncoder(Ref<WebGPUCommandEncoder>&& creator, RefPtr<GPURenderPassEncoder>&& encoder)
-    : WebGPUProgrammablePassEncoder(WTFMove(creator))
-    , m_passEncoder(WTFMove(encoder))
+WebGPURenderPassEncoder::WebGPURenderPassEncoder(RefPtr<GPURenderPassEncoder>&& encoder)
+    : m_passEncoder { WTFMove(encoder) }
 {
 }
 
 void WebGPURenderPassEncoder::setPipeline(const WebGPURenderPipeline& pipeline)
 {
     if (!m_passEncoder) {
-        LOG(WebGPU, "GPUProgrammablePassEncoder::setPipeline(): Invalid operation!");
+        LOG(WebGPU, "GPURenderPassEncoder::setPipeline(): Invalid operation!");
         return;
     }
     if (!pipeline.renderPipeline()) {
-        LOG(WebGPU, "GPUProgrammablePassEncoder::setPipeline(): Invalid pipeline!");
+        LOG(WebGPU, "GPURenderPassEncoder::setPipeline(): Invalid pipeline!");
         return;
     }
     m_passEncoder->setPipeline(makeRef(*pipeline.renderPipeline()));
 }
 
-void WebGPURenderPassEncoder::setVertexBuffers(unsigned long startSlot, Vector<RefPtr<WebGPUBuffer>>&& buffers, Vector<unsigned long long>&& offsets)
+void WebGPURenderPassEncoder::setVertexBuffers(unsigned startSlot, Vector<RefPtr<WebGPUBuffer>>&& buffers, Vector<uint64_t>&& offsets)
 {
 #if !LOG_DISABLED
     const char* const functionName = "GPURenderPassEncoder::setVertexBuffers()";
@@ -74,7 +74,7 @@ void WebGPURenderPassEncoder::setVertexBuffers(unsigned long startSlot, Vector<R
         return;
     }
     if (startSlot + buffers.size() > maxVertexBuffers) {
-        LOG(WebGPU, "%s: Invalid startSlot %lu for %lu buffers!", functionName, startSlot, buffers.size());
+        LOG(WebGPU, "%s: Invalid startSlot %u for %lu buffers!", functionName, startSlot, buffers.size());
         return;
     }
 
@@ -92,13 +92,13 @@ void WebGPURenderPassEncoder::setVertexBuffers(unsigned long startSlot, Vector<R
             return;
         }
 
-        gpuBuffers.uncheckedAppend(buffer->buffer().releaseNonNull());
+        gpuBuffers.uncheckedAppend(makeRef(*buffer->buffer()));
     }
 
     m_passEncoder->setVertexBuffers(startSlot, WTFMove(gpuBuffers), WTFMove(offsets));
 }
 
-void WebGPURenderPassEncoder::draw(unsigned long vertexCount, unsigned long instanceCount, unsigned long firstVertex, unsigned long firstInstance)
+void WebGPURenderPassEncoder::draw(unsigned vertexCount, unsigned instanceCount, unsigned firstVertex, unsigned firstInstance)
 {
     if (!m_passEncoder) {
         LOG(WebGPU, "GPURenderPassEncoder::draw(): Invalid operation!");
@@ -108,7 +108,12 @@ void WebGPURenderPassEncoder::draw(unsigned long vertexCount, unsigned long inst
     m_passEncoder->draw(vertexCount, instanceCount, firstVertex, firstInstance);
 }
 
-GPUProgrammablePassEncoder* WebGPURenderPassEncoder::passEncoder() const
+GPUProgrammablePassEncoder* WebGPURenderPassEncoder::passEncoder()
+{
+    return m_passEncoder.get();
+}
+
+const GPUProgrammablePassEncoder* WebGPURenderPassEncoder::passEncoder() const
 {
     return m_passEncoder.get();
 }

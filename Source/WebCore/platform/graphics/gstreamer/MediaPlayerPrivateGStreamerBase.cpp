@@ -29,7 +29,6 @@
 
 #include "GStreamerCommon.h"
 #include "GraphicsContext.h"
-#include "GraphicsContext3D.h"
 #include "ImageGStreamer.h"
 #include "ImageOrientation.h"
 #include "IntRect.h"
@@ -118,8 +117,8 @@
 #if USE(TEXTURE_MAPPER_GL)
 #include "BitmapTextureGL.h"
 #include "BitmapTexturePool.h"
+#include "GraphicsContext3D.h"
 #include "TextureMapperContextAttributes.h"
-#include "TextureMapperGL.h"
 #include "TextureMapperPlatformLayerBuffer.h"
 #include "TextureMapperPlatformLayerProxy.h"
 #if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
@@ -150,26 +149,6 @@ static int greatestCommonDivisor(int a, int b)
 }
 
 #if USE(TEXTURE_MAPPER_GL)
-static inline TextureMapperGL::Flags texMapFlagFromOrientation(const ImageOrientation& orientation)
-{
-    switch (orientation) {
-    case DefaultImageOrientation:
-        return 0;
-    case OriginRightTop:
-        return TextureMapperGL::ShouldRotateTexture90;
-    case OriginBottomRight:
-        return TextureMapperGL::ShouldRotateTexture180;
-    case OriginLeftBottom:
-        return TextureMapperGL::ShouldRotateTexture270;
-    default:
-        ASSERT_NOT_REACHED();
-    }
-
-    return 0;
-}
-#endif
-
-#if USE(TEXTURE_MAPPER_GL)
 class GstVideoFrameHolder : public TextureMapperPlatformLayerBuffer::UnmanagedBufferDataHolder {
 public:
     explicit GstVideoFrameHolder(GstSample* sample, TextureMapperGL::Flags flags, bool gstGLEnabled)
@@ -185,13 +164,16 @@ public:
             return;
 
 #if USE(GSTREAMER_GL)
-        m_flags = flags | (m_hasAlphaChannel ? TextureMapperGL::ShouldBlend : 0) | TEXTURE_MAPPER_COLOR_CONVERT_FLAG;
+        m_flags = flags | (m_hasAlphaChannel ? TextureMapperGL::ShouldBlend : 0);
 
         if (gstGLEnabled) {
             m_isMapped = gst_video_frame_map(&m_videoFrame, &videoInfo, m_buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL));
             if (m_isMapped)
                 m_textureID = *reinterpret_cast<GLuint*>(m_videoFrame.data[0]);
         } else
+#else
+        UNUSED_PARAM(flags);
+        UNUSED_PARAM(gstGLEnabled);
 #endif // USE(GSTREAMER_GL)
 
         {
@@ -271,7 +253,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 {
 #if USE(GSTREAMER_GL)
-    if (m_isVideoDecoderVideo4Linux)
+    if (m_videoDecoderPlatform == WebKitGstVideoDecoderPlatform::Video4Linux)
         flushCurrentBuffer();
 #endif
 #if USE(TEXTURE_MAPPER_GL) && USE(NICOSIA)
@@ -730,7 +712,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
             if (!proxy.isActive())
                 return;
 
-            std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), texMapFlagFromOrientation(m_videoSourceOrientation), !m_usingFallbackVideoSink);
+            std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), m_textureMapperFlags, !m_usingFallbackVideoSink);
 
             GLuint textureID = frameHolder->textureID();
             std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer;
@@ -745,7 +727,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
                     layerBuffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
                 }
                 frameHolder->updateTexture(layerBuffer->textureGL());
-                layerBuffer->setExtraFlags(texMapFlagFromOrientation(m_videoSourceOrientation) | (frameHolder->hasAlphaChannel() ? TextureMapperGL::ShouldBlend : 0));
+                layerBuffer->setExtraFlags(m_textureMapperFlags | (frameHolder->hasAlphaChannel() ? TextureMapperGL::ShouldBlend : 0));
             }
             proxy.pushNextBuffer(WTFMove(layerBuffer));
         };
@@ -871,15 +853,14 @@ void MediaPlayerPrivateGStreamerBase::flushCurrentBuffer()
             gst_sample_get_segment(m_sample.get()), info ? gst_structure_copy(info) : nullptr));
     }
 
-    auto proxyOperation =
-        [shouldWait = m_isVideoDecoderVideo4Linux, pipeline = pipeline()](TextureMapperPlatformLayerProxy& proxy)
-        {
-            GST_DEBUG_OBJECT(pipeline, "Flushing video sample %s", shouldWait ? "synchronously" : "");
-            LockHolder locker(!shouldWait ? &proxy.lock() : nullptr);
+    bool shouldWait = m_videoDecoderPlatform == WebKitGstVideoDecoderPlatform::Video4Linux;
+    auto proxyOperation = [shouldWait, pipeline = pipeline()](TextureMapperPlatformLayerProxy& proxy) {
+        GST_DEBUG_OBJECT(pipeline, "Flushing video sample %s", shouldWait ? "synchronously" : "");
+        LockHolder locker(!shouldWait ? &proxy.lock() : nullptr);
 
-            if (proxy.isActive())
-                proxy.dropCurrentBufferWhilePreservingTexture(shouldWait);
-        };
+        if (proxy.isActive())
+            proxy.dropCurrentBufferWhilePreservingTexture(shouldWait);
+    };
 
 #if USE(NICOSIA)
     proxyOperation(downcast<Nicosia::ContentLayerTextureMapperImpl>(m_nicosiaLayer->impl()).proxy());
@@ -933,7 +914,7 @@ bool MediaPlayerPrivateGStreamerBase::copyVideoTextureToPlatformTexture(Graphics
     if (!GST_IS_SAMPLE(m_sample.get()))
         return false;
 
-    std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), texMapFlagFromOrientation(m_videoSourceOrientation), true);
+    std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), m_textureMapperFlags, true);
 
     auto textureID = frameHolder->textureID();
     if (!textureID)
@@ -960,7 +941,7 @@ NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
     if (!GST_IS_SAMPLE(m_sample.get()))
         return nullptr;
 
-    std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), texMapFlagFromOrientation(m_videoSourceOrientation), true);
+    std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), m_textureMapperFlags, true);
 
     auto textureID = frameHolder->textureID();
     if (!textureID)
@@ -992,7 +973,42 @@ void MediaPlayerPrivateGStreamerBase::setVideoSourceOrientation(const ImageOrien
         return;
 
     m_videoSourceOrientation = orientation;
+#if USE(TEXTURE_MAPPER_GL)
+    updateTextureMapperFlags();
+#endif
 }
+
+#if USE(TEXTURE_MAPPER_GL)
+void MediaPlayerPrivateGStreamerBase::updateTextureMapperFlags()
+{
+    switch (m_videoSourceOrientation) {
+    case DefaultImageOrientation:
+        m_textureMapperFlags = 0;
+        break;
+    case OriginRightTop:
+        m_textureMapperFlags = TextureMapperGL::ShouldRotateTexture90;
+        break;
+    case OriginBottomRight:
+        m_textureMapperFlags = TextureMapperGL::ShouldRotateTexture180;
+        break;
+    case OriginLeftBottom:
+        m_textureMapperFlags = TextureMapperGL::ShouldRotateTexture270;
+        break;
+    default:
+        // FIXME: Handle OriginTopRight, OriginBottomLeft, OriginLeftTop and OriginRightBottom?
+        m_textureMapperFlags = 0;
+        break;
+    }
+
+#if USE(GSTREAMER_GL)
+    // When the imxvpudecoder is used, the texture sampling of the
+    // directviv-uploaded texture returns an RGB value, so there's no need to
+    // convert it.
+    if (m_videoDecoderPlatform != WebKitGstVideoDecoderPlatform::ImxVPU)
+        m_textureMapperFlags |= TEXTURE_MAPPER_COLOR_CONVERT_FLAG;
+#endif
+}
+#endif
 
 bool MediaPlayerPrivateGStreamerBase::supportsFullscreen() const
 {

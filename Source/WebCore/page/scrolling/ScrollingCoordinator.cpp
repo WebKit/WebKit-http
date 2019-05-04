@@ -435,10 +435,16 @@ TextStream& operator<<(TextStream& ts, ScrollableAreaParameters scrollableAreaPa
     ts.dumpProperty("vertical scroll elasticity", scrollableAreaParameters.verticalScrollElasticity);
     ts.dumpProperty("horizontal scrollbar mode", scrollableAreaParameters.horizontalScrollbarMode);
     ts.dumpProperty("vertical scrollbar mode", scrollableAreaParameters.verticalScrollbarMode);
+
     if (scrollableAreaParameters.hasEnabledHorizontalScrollbar)
         ts.dumpProperty("has enabled horizontal scrollbar", scrollableAreaParameters.hasEnabledHorizontalScrollbar);
     if (scrollableAreaParameters.hasEnabledVerticalScrollbar)
         ts.dumpProperty("has enabled vertical scrollbar", scrollableAreaParameters.hasEnabledVerticalScrollbar);
+
+    if (scrollableAreaParameters.horizontalScrollbarHiddenByStyle)
+        ts.dumpProperty("horizontal scrollbar hidden by style", scrollableAreaParameters.horizontalScrollbarHiddenByStyle);
+    if (scrollableAreaParameters.verticalScrollbarHiddenByStyle)
+        ts.dumpProperty("vertical scrollbar hidden by style", scrollableAreaParameters.verticalScrollbarHiddenByStyle);
 
     return ts;
 }
@@ -499,6 +505,15 @@ TextStream& operator<<(TextStream& ts, ViewportRectStability stability)
     case ViewportRectStability::ChangingObscuredInsetsInteractively:
         ts << "changing obscured insets interactively";
         break;
+    }
+    return ts;
+}
+
+TextStream& operator<<(TextStream& ts, ScrollType scrollType)
+{
+    switch (scrollType) {
+    case ScrollType::User: ts << "user"; break;
+    case ScrollType::Programmatic: ts << "programmatic"; break;
     }
     return ts;
 }

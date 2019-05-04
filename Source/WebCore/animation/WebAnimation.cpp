@@ -36,10 +36,13 @@
 #include "KeyframeEffect.h"
 #include "Microtasks.h"
 #include "WebAnimationUtilities.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Optional.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(WebAnimation);
 
 Ref<WebAnimation> WebAnimation::create(Document& document, AnimationEffect* effect)
 {
@@ -528,7 +531,7 @@ auto WebAnimation::playState() const -> PlayState
     // animation's effective playback rate > 0 and current time ≥ target effect end; or
     // animation's effective playback rate < 0 and current time ≤ 0,
     // → finished
-    if (animationCurrentTime && ((effectivePlaybackRate() > 0 && animationCurrentTime.value() >= effectEndTime()) || (effectivePlaybackRate() < 0 && animationCurrentTime.value() <= 0_s)))
+    if (animationCurrentTime && ((effectivePlaybackRate() > 0 && (*animationCurrentTime + timeEpsilon) >= effectEndTime()) || (effectivePlaybackRate() < 0 && (*animationCurrentTime - timeEpsilon) <= 0_s)))
         return PlayState::Finished;
 
     // Otherwise → running

@@ -35,7 +35,7 @@
 
 namespace JSC { namespace B3 {
 
-bool shouldDumpIR(B3ComplitationMode mode)
+bool shouldDumpIR(B3CompilationMode mode)
 {
 #if ENABLE(FTL_JIT)
     return FTL::verboseCompilationEnabled() || FTL::shouldDumpDisassembly() || shouldDumpIRAtEachPhase(mode);
@@ -44,7 +44,7 @@ bool shouldDumpIR(B3ComplitationMode mode)
 #endif
 }
 
-bool shouldDumpIRAtEachPhase(B3ComplitationMode mode)
+bool shouldDumpIRAtEachPhase(B3CompilationMode mode)
 {
     if (mode == B3Mode)
         return Options::dumpGraphAtEachPhase() || Options::dumpB3GraphAtEachPhase();

@@ -38,6 +38,15 @@
 
 namespace WebKit {
 
+void WebPaymentCoordinatorProxy::platformCanMakePayments(CompletionHandler<void(bool)>&& completionHandler)
+{
+    m_canMakePaymentsQueue->dispatch([theClass = retainPtr(PAL::getPKPaymentAuthorizationControllerClass()), completionHandler = WTFMove(completionHandler)]() mutable {
+        RunLoop::main().dispatch([canMakePayments = [theClass canMakePayments], completionHandler = WTFMove(completionHandler)]() mutable {
+            completionHandler(canMakePayments);
+        });
+    });
+}
+
 void WebPaymentCoordinatorProxy::platformShowPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLStrings, PAL::SessionID sessionID, const WebCore::ApplePaySessionPaymentRequest& request, CompletionHandler<void(bool)>&& completionHandler)
 {
     auto paymentRequest = platformPaymentRequest(originatingURL, linkIconURLStrings, sessionID, request);

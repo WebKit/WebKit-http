@@ -83,9 +83,12 @@ namespace WebCore {
     macro(GamepadEvent) \
     macro(GPUBufferUsage) \
     macro(GPUCanvasContext) \
-    macro(GPUShaderModule) \
+    macro(GPUColorWriteBits) \
     macro(GPUCommandBuffer) \
     macro(GPUCommandEncoder) \
+    macro(GPUComputePassEncoder) \
+    macro(GPUComputePipeline) \
+    macro(GPUShaderModule) \
     macro(GPUShaderStageBit) \
     macro(GPUSwapChain) \
     macro(GPUTextureUsage) \
@@ -153,6 +156,8 @@ namespace WebCore {
     macro(PerformanceServerTiming) \
     macro(PointerEvent) \
     macro(PublicKeyCredential) \
+    macro(ResizeObserver) \
+    macro(ResizeObserverEntry) \
     macro(RTCCertificate) \
     macro(RTCDTMFSender) \
     macro(RTCDTMFToneChangeEvent) \
@@ -215,28 +220,6 @@ namespace WebCore {
     macro(WebGPUTexture) \
     macro(WebGPUTextureView) \
     macro(WebGPUVertexFormat) \
-    macro(WebMetalBuffer) \
-    macro(WebMetalCommandBuffer) \
-    macro(WebMetalCommandQueue) \
-    macro(WebMetalComputeCommandEncoder) \
-    macro(WebMetalComputePipelineState) \
-    macro(WebMetalDepthStencilDescriptor) \
-    macro(WebMetalDepthStencilState) \
-    macro(WebMetalDrawable) \
-    macro(WebMetalFunction) \
-    macro(WebMetalLibrary) \
-    macro(WebMetalRenderCommandEncoder) \
-    macro(WebMetalRenderPassAttachmentDescriptor) \
-    macro(WebMetalRenderPassColorAttachmentDescriptor) \
-    macro(WebMetalRenderPassDepthAttachmentDescriptor) \
-    macro(WebMetalRenderPassDescriptor) \
-    macro(WebMetalRenderPipelineColorAttachmentDescriptor) \
-    macro(WebMetalRenderPipelineDescriptor) \
-    macro(WebMetalRenderPipelineState) \
-    macro(WebMetalRenderingContext) \
-    macro(WebMetalSize) \
-    macro(WebMetalTexture) \
-    macro(WebMetalTextureDescriptor) \
     macro(WebKitMediaKeyError) \
     macro(WebKitMediaKeyMessageEvent) \
     macro(WebKitMediaKeyNeededEvent) \

@@ -99,17 +99,13 @@ struct KeyboardScrollParameters {
 
     Optional<WebKit::KeyboardScroll> _currentScroll;
 
-    BOOL _hasPressedScrollingKey;
+    BOOL _scrollTriggeringKeyIsPressed;
 
     WebCore::FloatSize _velocity; // Points per second.
 
     WebCore::FloatPoint _idealPosition;
     WebCore::FloatPoint _currentPosition;
     WebCore::FloatPoint _idealPositionForMinimumTravel;
-
-#if !ENABLE(ANIMATED_KEYBOARD_SCROLLING)
-    RetainPtr<NSTimer> _repeatTimer;
-#endif
 }
 
 - (instancetype)init
@@ -137,9 +133,7 @@ struct KeyboardScrollParameters {
 - (void)invalidate
 {
     [self stopAnimatedScroll];
-#if ENABLE(ANIMATED_KEYBOARD_SCROLLING)
     [self stopDisplayLink];
-#endif
     _scrollable = nil;
 }
 
@@ -157,7 +151,6 @@ static WebCore::FloatSize unitVector(WebKit::ScrollingDirection direction)
     }
 }
 
-#if ENABLE(ANIMATED_KEYBOARD_SCROLLING)
 static WebCore::FloatSize perpendicularAbsoluteUnitVector(WebKit::ScrollingDirection direction)
 {
     switch (direction) {
@@ -169,7 +162,6 @@ static WebCore::FloatSize perpendicularAbsoluteUnitVector(WebKit::ScrollingDirec
         return { 0, 1 };
     }
 }
-#endif
 
 static WebCore::PhysicalBoxSide boxSide(WebKit::ScrollingDirection direction)
 {
@@ -295,16 +287,15 @@ static WebCore::PhysicalBoxSide boxSide(WebKit::ScrollingDirection direction)
     if (!scroll)
         return NO;
 
-    if (_hasPressedScrollingKey)
+    if (_scrollTriggeringKeyIsPressed)
         return NO;
 
     if (![_scrollable rubberbandableDirections].at(boxSide(scroll->direction)))
         return NO;
 
-    _hasPressedScrollingKey = YES;
+    _scrollTriggeringKeyIsPressed = YES;
     _currentScroll = scroll;
 
-#if ENABLE(ANIMATED_KEYBOARD_SCROLLING)
     if (scroll->increment == WebKit::ScrollingIncrement::Document) {
         _velocity = { };
         [self stopAnimatedScroll];
@@ -318,23 +309,19 @@ static WebCore::PhysicalBoxSide boxSide(WebKit::ScrollingDirection direction)
     _currentPosition = WebCore::FloatPoint([_scrollable contentOffset]);
     _velocity += WebCore::FloatSize([_scrollable interactiveScrollVelocity]);
     _idealPositionForMinimumTravel = _currentPosition + _currentScroll->offset;
-#else
-    [self startRepeatTimerIfNeeded];
-    [self performDiscreteScroll];
-#endif
 
     return YES;
 }
 
 - (void)handleKeyEvent:(::WebEvent *)event
 {
-    if (!_hasPressedScrollingKey)
+    if (!_scrollTriggeringKeyIsPressed)
         return;
 
     auto scroll = [self keyboardScrollForEvent:event];
     if (!scroll || event.type == WebEventKeyUp) {
         [self stopAnimatedScroll];
-        _hasPressedScrollingKey = NO;
+        _scrollTriggeringKeyIsPressed = NO;
     }
 }
 
@@ -376,10 +363,11 @@ static WebCore::FloatPoint farthestPointInDirection(WebCore::FloatPoint a, WebCo
     _idealPosition = [_scrollable boundedContentOffset:farthestPointInDirection(_currentPosition + displacement, _idealPositionForMinimumTravel, _currentScroll->direction)];
 
     _currentScroll = WTF::nullopt;
+}
 
-#if !ENABLE(ANIMATED_KEYBOARD_SCROLLING)
-    [self stopRepeatTimer];
-#endif
+- (BOOL)scrollTriggeringKeyIsPressed
+{
+    return _scrollTriggeringKeyIsPressed;
 }
 
 - (void)willStartInteractiveScroll
@@ -387,13 +375,8 @@ static WebCore::FloatPoint farthestPointInDirection(WebCore::FloatPoint a, WebCo
     // If the user touches the screen to start an interactive scroll, stop everything.
     _velocity = { };
     [self stopAnimatedScroll];
-
-#if ENABLE(ANIMATED_KEYBOARD_SCROLLING)
     [self stopDisplayLink];
-#endif
 }
-
-#if ENABLE(ANIMATED_KEYBOARD_SCROLLING)
 
 - (void)startDisplayLinkIfNeeded
 {
@@ -458,40 +441,12 @@ static WebCore::FloatPoint farthestPointInDirection(WebCore::FloatPoint a, WebCo
 
     // If we've effectively stopped scrolling, and no key is pressed,
     // shut down the display link.
-    if (!_hasPressedScrollingKey && _velocity.diagonalLengthSquared() < 1) {
+    if (!_scrollTriggeringKeyIsPressed && _velocity.diagonalLengthSquared() < 1) {
         [_scrollable didFinishScrolling];
         [self stopDisplayLink];
         _velocity = { };
     }
 }
-
-#else
-
-- (void)startRepeatTimerIfNeeded
-{
-    if (_repeatTimer)
-        return;
-
-    if (!_AXSKeyRepeatEnabled())
-        return;
-
-    _repeatTimer = [NSTimer scheduledTimerWithTimeInterval:_AXSKeyRepeatDelay() target:self selector:@selector(performDiscreteScroll) userInfo:nil repeats:YES];
-}
-
-- (void)stopRepeatTimer
-{
-    [_repeatTimer invalidate];
-    _repeatTimer = nil;
-}
-
-- (void)performDiscreteScroll
-{
-    _currentPosition = WebCore::FloatPoint([_scrollable contentOffset]);
-    _idealPositionForMinimumTravel = _currentPosition + _currentScroll->offset;
-    [_scrollable scrollToContentOffset:[_scrollable boundedContentOffset:_idealPositionForMinimumTravel] animated:YES];
-}
-
-#endif
 
 @end
 
@@ -564,6 +519,11 @@ static WebCore::FloatPoint farthestPointInDirection(WebCore::FloatPoint a, WebCo
     return [_animator handleKeyEvent:event];
 }
 
+- (BOOL)scrollTriggeringKeyIsPressed
+{
+    return [_animator scrollTriggeringKeyIsPressed];
+}
+
 - (BOOL)isKeyboardScrollable
 {
     if (!_delegateRespondsToIsKeyboardScrollable)
@@ -606,18 +566,14 @@ static WebCore::FloatPoint farthestPointInDirection(WebCore::FloatPoint a, WebCo
     if (_delegateRespondsToWillScroll)
         [_delegate keyboardScrollViewAnimatorWillScroll:self];
     [scrollView setContentOffset:contentOffsetDelta animated:animated];
-#if ENABLE(ANIMATED_KEYBOARD_SCROLLING)
     [scrollView _flashScrollIndicatorsPersistingPreviousFlashes:YES];
-#endif
 }
 
 - (void)scrollWithScrollToExtentAnimationTo:(CGPoint)offset
 {
     auto scrollView = _scrollView.getAutoreleased();
     [scrollView _setContentOffsetWithDecelerationAnimation:offset];
-#if ENABLE(ANIMATED_KEYBOARD_SCROLLING)
     [scrollView flashScrollIndicators];
-#endif
 }
 
 - (CGPoint)contentOffset

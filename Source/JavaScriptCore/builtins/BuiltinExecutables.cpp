@@ -254,15 +254,14 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createExecutable(VM& vm, const S
         }
     }
 
-    VariableEnvironment dummyTDZVariables;
-    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, &metadata, kind, constructAbility, JSParserScriptMode::Classic, vm.m_compactVariableMap->get(dummyTDZVariables), DerivedContextType::None, isBuiltinDefaultClassConstructor);
+    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, &metadata, kind, constructAbility, JSParserScriptMode::Classic, WTF::nullopt, DerivedContextType::None, isBuiltinDefaultClassConstructor);
     return functionExecutable;
 }
 
 void BuiltinExecutables::finalizeUnconditionally()
 {
     for (auto*& unlinkedExecutable : m_unlinkedExecutables) {
-        if (unlinkedExecutable && !Heap::isMarked(unlinkedExecutable))
+        if (unlinkedExecutable && !m_vm.heap.isMarked(unlinkedExecutable))
             unlinkedExecutable = nullptr;
     }
 }

@@ -30,12 +30,12 @@
 
 namespace WebCore {
 
-Ref<WebGPUPipelineLayout> WebGPUPipelineLayout::create(Ref<GPUPipelineLayout>&& layout)
+Ref<WebGPUPipelineLayout> WebGPUPipelineLayout::create(RefPtr<GPUPipelineLayout>&& layout)
 {
     return adoptRef(*new WebGPUPipelineLayout(WTFMove(layout)));
 }
 
-WebGPUPipelineLayout::WebGPUPipelineLayout(Ref<GPUPipelineLayout>&& layout)
+WebGPUPipelineLayout::WebGPUPipelineLayout(RefPtr<GPUPipelineLayout>&& layout)
     : m_pipelineLayout(WTFMove(layout))
 {
 }

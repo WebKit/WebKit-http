@@ -575,7 +575,8 @@ private:
     CachedVector<CachedPair<Key, Value>> m_entries;
 };
 
-class CachedUniquedStringImpl : public VariableLengthObject<UniquedStringImpl> {
+template<typename T>
+class CachedUniquedStringImplBase : public VariableLengthObject<T> {
 public:
     void encode(Encoder& encoder, const StringImpl& string)
     {
@@ -631,8 +632,8 @@ public:
         }
 
         if (m_is8Bit)
-            return create(this->buffer<LChar>());
-        return create(this->buffer<UChar>());
+            return create(this->template buffer<LChar>());
+        return create(this->template buffer<UChar>());
     }
 
 private:
@@ -642,21 +643,8 @@ private:
     unsigned m_length;
 };
 
-class CachedStringImpl : public VariableLengthObject<StringImpl> {
-public:
-    void encode(Encoder& encoder, const StringImpl& impl)
-    {
-        m_uniquedStringImpl.encode(encoder, impl);
-    }
-
-    StringImpl* decode(Decoder& decoder) const
-    {
-        return m_uniquedStringImpl.decode(decoder);
-    }
-
-private:
-    CachedUniquedStringImpl m_uniquedStringImpl;
-};
+class CachedUniquedStringImpl : public CachedUniquedStringImplBase<UniquedStringImpl> { };
+class CachedStringImpl : public CachedUniquedStringImplBase<StringImpl> { };
 
 class CachedString : public VariableLengthObject<String> {
 public:
@@ -949,6 +937,11 @@ public:
     {
         bool isNewAllocation;
         CompactVariableEnvironment* environment = m_environment.decode(decoder, isNewAllocation);
+        if (!environment) {
+            ASSERT(!isNewAllocation);
+            return CompactVariableMap::Handle();
+        }
+
         if (!isNewAllocation)
             return decoder.handleForEnvironment(environment);
         bool isNewEntry;
@@ -1524,17 +1517,21 @@ public:
     void encode(Encoder& encoder, const UnlinkedFunctionExecutable::RareData& rareData)
     {
         m_classSource.encode(encoder, rareData.m_classSource);
+        m_parentScopeTDZVariables.encode(encoder, rareData.m_parentScopeTDZVariables);
     }
 
     UnlinkedFunctionExecutable::RareData* decode(Decoder& decoder) const
     {
         UnlinkedFunctionExecutable::RareData* rareData = new UnlinkedFunctionExecutable::RareData { };
         m_classSource.decode(decoder, rareData->m_classSource);
+        auto parentScopeTDZVariables = m_parentScopeTDZVariables.decode(decoder);
+        rareData->m_parentScopeTDZVariables = WTFMove(parentScopeTDZVariables);
         return rareData;
     }
 
 private:
     CachedSourceCode m_classSource;
+    CachedCompactVariableMapHandle m_parentScopeTDZVariables;
 };
 
 class CachedFunctionExecutable : public CachedObject<UnlinkedFunctionExecutable> {
@@ -1572,7 +1569,7 @@ public:
     Identifier ecmaName(Decoder& decoder) const { return m_ecmaName.decode(decoder); }
     Identifier inferredName(Decoder& decoder) const { return m_inferredName.decode(decoder); }
 
-    UnlinkedFunctionExecutable::RareData* rareData(Decoder& decoder) const { return m_rareData.decodeAsPtr(decoder); }
+    UnlinkedFunctionExecutable::RareData* rareData(Decoder& decoder) const { return m_rareData.decode(decoder); }
 
     const CachedWriteBarrier<CachedFunctionCodeBlock, UnlinkedFunctionCodeBlock>& unlinkedCodeBlockForCall() const { return m_unlinkedCodeBlockForCall; }
     const CachedWriteBarrier<CachedFunctionCodeBlock, UnlinkedFunctionCodeBlock>& unlinkedCodeBlockForConstruct() const { return m_unlinkedCodeBlockForConstruct; }
@@ -1602,13 +1599,11 @@ private:
     unsigned m_superBinding : 1;
     unsigned m_derivedContextType: 2;
 
-    CachedOptional<CachedFunctionExecutableRareData> m_rareData;
+    CachedPtr<CachedFunctionExecutableRareData> m_rareData;
 
     CachedIdentifier m_name;
     CachedIdentifier m_ecmaName;
     CachedIdentifier m_inferredName;
-
-    CachedCompactVariableMapHandle m_parentScopeTDZVariables;
 
     CachedWriteBarrier<CachedFunctionCodeBlock, UnlinkedFunctionCodeBlock> m_unlinkedCodeBlockForCall;
     CachedWriteBarrier<CachedFunctionCodeBlock, UnlinkedFunctionCodeBlock> m_unlinkedCodeBlockForConstruct;
@@ -1655,7 +1650,7 @@ public:
     SourceParseMode parseMode() const { return m_parseMode; }
     unsigned codeType() const { return m_codeType; }
 
-    UnlinkedCodeBlock::RareData* rareData(Decoder& decoder) const { return m_rareData.decodeAsPtr(decoder); }
+    UnlinkedCodeBlock::RareData* rareData(Decoder& decoder) const { return m_rareData.decode(decoder); }
 
 private:
     VirtualRegister m_thisRegister;
@@ -1690,7 +1685,7 @@ private:
 
     CachedMetadataTable m_metadata;
 
-    CachedOptional<CachedCodeBlockRareData> m_rareData;
+    CachedPtr<CachedCodeBlockRareData> m_rareData;
 
     CachedString m_sourceURLDirective;
     CachedString m_sourceMappingURLDirective;
@@ -1874,6 +1869,8 @@ ALWAYS_INLINE UnlinkedCodeBlock::UnlinkedCodeBlock(Decoder& decoder, Structure* 
     , m_hasTailCalls(cachedCodeBlock.hasTailCalls())
     , m_codeType(cachedCodeBlock.codeType())
 
+    , m_didOptimize(static_cast<unsigned>(MixedTriState))
+
     , m_features(cachedCodeBlock.features())
     , m_parseMode(cachedCodeBlock.parseMode())
 
@@ -1953,13 +1950,11 @@ ALWAYS_INLINE void CachedFunctionExecutable::encode(Encoder& encoder, const Unli
     m_superBinding = executable.m_superBinding;
     m_derivedContextType = executable.m_derivedContextType;
 
-    m_rareData.encode(encoder, executable.m_rareData);
+    m_rareData.encode(encoder, executable.m_rareData.get());
 
     m_name.encode(encoder, executable.name());
     m_ecmaName.encode(encoder, executable.ecmaName());
     m_inferredName.encode(encoder, executable.inferredName());
-
-    m_parentScopeTDZVariables.encode(encoder, executable.m_parentScopeTDZVariables);
 
     m_unlinkedCodeBlockForCall.encode(encoder, executable.m_unlinkedCodeBlockForCall);
     m_unlinkedCodeBlockForConstruct.encode(encoder, executable.m_unlinkedCodeBlockForConstruct);
@@ -1967,14 +1962,13 @@ ALWAYS_INLINE void CachedFunctionExecutable::encode(Encoder& encoder, const Unli
 
 ALWAYS_INLINE UnlinkedFunctionExecutable* CachedFunctionExecutable::decode(Decoder& decoder) const
 {
-    CompactVariableMap::Handle env = m_parentScopeTDZVariables.decode(decoder);
-    UnlinkedFunctionExecutable* executable = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(decoder.vm().heap)) UnlinkedFunctionExecutable(decoder, WTFMove(env), *this);
+    UnlinkedFunctionExecutable* executable = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(decoder.vm().heap)) UnlinkedFunctionExecutable(decoder, *this);
     executable->finishCreation(decoder.vm());
 
     return executable;
 }
 
-ALWAYS_INLINE UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(Decoder& decoder, CompactVariableMap::Handle parentScopeTDZVariables, const CachedFunctionExecutable& cachedExecutable)
+ALWAYS_INLINE UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(Decoder& decoder, const CachedFunctionExecutable& cachedExecutable)
     : Base(decoder.vm(), decoder.vm().unlinkedFunctionExecutableStructure.get())
     , m_firstLineOffset(cachedExecutable.firstLineOffset())
     , m_lineCount(cachedExecutable.lineCount())
@@ -2006,8 +2000,6 @@ ALWAYS_INLINE UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(Decoder& de
     , m_name(cachedExecutable.name(decoder))
     , m_ecmaName(cachedExecutable.ecmaName(decoder))
     , m_inferredName(cachedExecutable.inferredName(decoder))
-
-    , m_parentScopeTDZVariables(WTFMove(parentScopeTDZVariables))
 
     , m_rareData(cachedExecutable.rareData(decoder))
 {
@@ -2058,7 +2050,7 @@ ALWAYS_INLINE void CachedCodeBlock<CodeBlockType>::encode(Encoder& encoder, cons
         m_linkTimeConstants[i] = codeBlock.m_linkTimeConstants[i];
 
     m_metadata.encode(encoder, codeBlock.m_metadata.get());
-    m_rareData.encode(encoder, codeBlock.m_rareData);
+    m_rareData.encode(encoder, codeBlock.m_rareData.get());
 
     m_sourceURLDirective.encode(encoder, codeBlock.m_sourceURLDirective.impl());
     m_sourceMappingURLDirective.encode(encoder, codeBlock.m_sourceURLDirective.impl());

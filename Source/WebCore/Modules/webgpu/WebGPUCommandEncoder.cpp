@@ -28,9 +28,11 @@
 
 #if ENABLE(WEBGPU)
 
+#include "GPUComputePassEncoder.h"
 #include "GPURenderPassDescriptor.h"
 #include "GPURenderPassEncoder.h"
 #include "WebGPUBuffer.h"
+#include "WebGPUComputePassEncoder.h"
 #include "WebGPURenderPassDescriptor.h"
 #include "WebGPURenderPassEncoder.h"
 #include "WebGPUTexture.h"
@@ -47,7 +49,7 @@ Optional<GPUBufferCopyView> WebGPUBufferCopyView::tryCreateGPUBufferCopyView() c
 
     // FIXME: Add Web GPU validation.
 
-    return GPUBufferCopyView { buffer->buffer().releaseNonNull(), *this };
+    return GPUBufferCopyView { makeRef(*buffer->buffer()), *this };
 }
 
 Optional<GPUTextureCopyView> WebGPUTextureCopyView::tryCreateGPUTextureCopyView() const
@@ -59,7 +61,7 @@ Optional<GPUTextureCopyView> WebGPUTextureCopyView::tryCreateGPUTextureCopyView(
 
     // FIXME: Add Web GPU validation.
 
-    return GPUTextureCopyView { texture->texture().releaseNonNull(), *this };
+    return GPUTextureCopyView { makeRef(*texture->texture()), *this };
 }
 
 Ref<WebGPUCommandEncoder> WebGPUCommandEncoder::create(RefPtr<GPUCommandBuffer>&& buffer)
@@ -72,21 +74,31 @@ WebGPUCommandEncoder::WebGPUCommandEncoder(RefPtr<GPUCommandBuffer>&& buffer)
 {
 }
 
-Ref<WebGPURenderPassEncoder> WebGPUCommandEncoder::beginRenderPass(WebGPURenderPassDescriptor&& descriptor)
+Ref<WebGPURenderPassEncoder> WebGPUCommandEncoder::beginRenderPass(const WebGPURenderPassDescriptor& descriptor)
 {
     if (!m_commandBuffer) {
         LOG(WebGPU, "WebGPUCommandEncoder::beginRenderPass(): Invalid operation!");
-        return WebGPURenderPassEncoder::create(*this, nullptr);
+        return WebGPURenderPassEncoder::create(nullptr);
     }
     auto gpuDescriptor = descriptor.tryCreateGPURenderPassDescriptor();
     if (!gpuDescriptor)
-        return WebGPURenderPassEncoder::create(*this, nullptr);
+        return WebGPURenderPassEncoder::create(nullptr);
 
     auto encoder = GPURenderPassEncoder::tryCreate(makeRef(*m_commandBuffer), WTFMove(*gpuDescriptor));
-    return WebGPURenderPassEncoder::create(*this, WTFMove(encoder));
+    return WebGPURenderPassEncoder::create(WTFMove(encoder));
 }
 
-void WebGPUCommandEncoder::copyBufferToBuffer(const WebGPUBuffer& src, unsigned long srcOffset, const WebGPUBuffer& dst, unsigned long dstOffset, unsigned long size)
+Ref<WebGPUComputePassEncoder> WebGPUCommandEncoder::beginComputePass()
+{
+    if (!m_commandBuffer) {
+        LOG(WebGPU, "WebGPUCommandEncoder::beginComputePass(): Invalid operation!");
+        return WebGPUComputePassEncoder::create(nullptr);
+    }
+    auto encoder = GPUComputePassEncoder::tryCreate(makeRef(*m_commandBuffer));
+    return WebGPUComputePassEncoder::create(WTFMove(encoder));
+}
+
+void WebGPUCommandEncoder::copyBufferToBuffer(WebGPUBuffer& src, uint64_t srcOffset, WebGPUBuffer& dst, uint64_t dstOffset, uint64_t size)
 {
     if (!m_commandBuffer) {
         LOG(WebGPU, "WebGPUCommandEncoder::copyBufferToBuffer(): Invalid operation!");

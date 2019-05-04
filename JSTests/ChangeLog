@@ -1,3 +1,229 @@
+2019-04-04  Saam barati  <sbarati@apple.com>
+
+        Teach Call ICs how to call Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=196387
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/function-tests/stack-trace.js:
+
+2019-04-04  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] We should consider moving UnlinkedFunctionExecutable::m_parentScopeTDZVariables to RareData
+        https://bugs.webkit.org/show_bug.cgi?id=194944
+
+        Reviewed by Keith Miller.
+
+        * stress/verify-bytecode-generator-cached-variables-under-tdz.js: Added.
+
+2019-04-04  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Cache bytecode for jsc.cpp helpers and fix CachedStringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=196409
+
+        Reviewed by Saam Barati.
+
+        * stress/bytecode-cache-cached-string-impl.js: Added.
+        (f):
+        (g):
+        * stress/bytecode-cache-run-string.js: Added.
+
+2019-04-03  Robin Morisset  <rmorisset@apple.com>
+
+        B3 should use associativity to optimize expression trees
+        https://bugs.webkit.org/show_bug.cgi?id=194081
+
+        Reviewed by Filip Pizlo.
+
+        Added three microbenchmarks:
+        - add-tree should be the ideal case, but there is no speedup because we are currently unable to prove that the CheckAdd won't overflow
+        - bit-xor-tree most closely matches the situation where the optimization triggers on the JetStream2 subtests where it triggers:
+          an unbalanced expression tree of size 8 that can be balanced, with no other optimizations being unlocked. 16% speedup
+        - bit-or-tree is an ideal case, where the reassociation also enables a ton of further simplifications. 42% speedup
+
+        * microbenchmarks/add-tree.js: Added.
+        * microbenchmarks/bit-or-tree.js: Added.
+        * microbenchmarks/bit-xor-tree.js: Added.
+
+2019-04-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Exception verification crash on operationArrayIndexOfValueInt32OrContiguous
+        https://bugs.webkit.org/show_bug.cgi?id=196574
+
+        Reviewed by Saam Barati.
+
+        * stress/string-index-of-exception-check.js: Added.
+        (blurType):
+        (1.forEach):
+
+2019-03-29  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Assertion failed in JSC::createError
+        https://bugs.webkit.org/show_bug.cgi?id=196305
+        <rdar://problem/49387382>
+
+        Reviewed by Saam Barati.
+
+        * stress/create-error-out-of-memory-rope-string-2.js: Added.
+        (assert):
+        (catch):
+
+2019-03-28  Saam Barati  <sbarati@apple.com>
+
+        BackwardsGraph needs to consider back edges as the backward's root successor
+        https://bugs.webkit.org/show_bug.cgi?id=195991
+
+        Reviewed by Filip Pizlo.
+
+        * stress/map-b3-licm-infinite-loop.js: Added.
+
+2019-03-28  Tadeu Zagallo  <tzagallo@apple.com>
+
+        CodeBlock::jettison() should disallow repatching its own calls
+        https://bugs.webkit.org/show_bug.cgi?id=196359
+        <rdar://problem/48973663>
+
+        Reviewed by Saam Barati.
+
+        * stress/call-link-info-osrexit-repatch.js: Added.
+        (foo):
+
+2019-03-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] imports-oom.js intermittently fails
+        https://bugs.webkit.org/show_bug.cgi?id=196373
+
+        Reviewed by Saam Barati.
+
+        imports-oom.js ensures that a wasm module compilation / instantiation throws an OOM error instead of crashing when compiling / instantiating their entry points
+        with extremely low executable memory amount. And this test expects we at least once successfully compile, instantiate, and execute a wasm module to test that
+        wasm implementation is always throwing an OOM error. However, maybe due to wasm changes, the amount of executable memory consumed by wasm compilation is changed,
+        and now we may encounter an OOM error at the first compilation. Since imports-oom.js randomize the amount of executable memory used by the generated wasm module,
+        imports-oom.js intermittently fails when it first generates large wasm module which cannot be compiled.
+
+        This patch reduces the maxParams from 32 to 8 to reduce the size of randomly generated wasm module. Since we repeatedly generate wasm modules, this test soon encounter
+        an expected OOM error. But this avoids the situation that we get an OOM error when we compile a first wasm module.
+
+        * wasm/lowExecutableMemory/imports-oom.js:
+
+2019-03-27  Saam Barati  <sbarati@apple.com>
+
+        validateOSREntryValue with Int52 should box the value being checked into double format
+        https://bugs.webkit.org/show_bug.cgi?id=196313
+        <rdar://problem/49306703>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/validate-int-52-ai-state.js: Added.
+
+2019-03-27  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Owner of watchpoints should validate at GC finalizing phase
+        https://bugs.webkit.org/show_bug.cgi?id=195827
+
+        Reviewed by Filip Pizlo.
+
+        * stress/gc-should-reap-dead-watchpoints.js: Added.
+        (foo):
+        (A.prototype.y):
+        (A):
+
+2019-03-26  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        Skip WebAssembly test on 32-bit systems
+        https://bugs.webkit.org/show_bug.cgi?id=196206
+
+        Reviewed by Saam Barati.
+
+        Invoking runDefault executes test immediately even though
+        that test should be skipped due to missing WASM support.
+        Therefore remove runDefault.
+
+        * wasm/regress/web-assembly-link-error-exception-check.js:
+
+2019-03-26  Tadeu Zagallo  <tzagallo@apple.com>
+
+        WebAssembly: Fix f32.min, f64.min and f64.max operations on NaN
+        https://bugs.webkit.org/show_bug.cgi?id=196217
+
+        Reviewed by Saam Barati.
+
+        Re-enable all NaN tests for f32.min, f64.min and f64.max.
+
+        * wasm/spec-tests/f32.wast.js:
+        * wasm/spec-tests/f64.wast.js:
+        * wasm/wasm.json:
+
+2019-03-25  Keith Miller  <keith_miller@apple.com>
+
+        ASSERTION FAILED: m_op == CompareStrictEq in JSC::DFG::Node::convertToCompareEqPtr(JSC::DFG::FrozenValue *, JSC::DFG::Edge)
+        https://bugs.webkit.org/show_bug.cgi?id=196176
+
+        Reviewed by Saam Barati.
+
+        * stress/object-is-fold-to-compare-eq-ptr.js: Added.
+        (main.v10):
+        (main):
+
+2019-03-25  Tadeu Zagallo  <tzagallo@apple.com>
+
+        WebAssembly: f32.max with NaN generates incorrect result
+        https://bugs.webkit.org/show_bug.cgi?id=175691
+        <rdar://problem/33952228>
+
+        Reviewed by Saam Barati.
+
+        Enable all f32.max NaN tests
+
+        * wasm/spec-tests/f32.wast.js:
+        * wasm/wasm.json:
+
+2019-03-24  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [JSC] Move test into directory for WASM tests
+        https://bugs.webkit.org/show_bug.cgi?id=196187
+
+        Reviewed by Mark Lam.
+
+        Move Test into wasm-directory. Otherwise this test
+        is also executed on systems without WASM support.
+
+        * wasm/regress/web-assembly-link-error-exception-check.js: Renamed from JSTests/stress/web-assembly-link-error-exception-check.js.
+
+2019-03-23  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r243032 and r243071 because the fix is incorrect.
+        https://bugs.webkit.org/show_bug.cgi?id=195892
+        <rdar://problem/48981239>
+
+        Not reviewed.
+
+        * stress/check-object-property-condition-liveness-before-accessing-it-when-watchpoints-fire.js: Removed.
+
+2019-03-22  Mark Lam  <mark.lam@apple.com>
+
+        Placate exception check validation in genericTypedArrayViewProtoFuncLastIndexOf().
+        https://bugs.webkit.org/show_bug.cgi?id=196154
+        <rdar://problem/49145307>
+
+        Reviewed by Filip Pizlo.
+
+        Also added //@ runDefault constraint to web-assembly-link-error-exception-check.js.
+        There's no need to run this test on more than 1 test configuration.
+
+        * stress/typed-array-lastIndexOf-exception-check.js: Added.
+        * stress/web-assembly-link-error-exception-check.js:
+
+2019-03-22  Mark Lam  <mark.lam@apple.com>
+
+        Placate exception check validation in constructJSWebAssemblyLinkError().
+        https://bugs.webkit.org/show_bug.cgi?id=196152
+        <rdar://problem/49145257>
+
+        Reviewed by Michael Saboff.
+
+        * stress/web-assembly-link-error-exception-check.js: Added.
+
 2019-03-22  Dominik Infuehr  <dinfuehr@igalia.com>
 
         Skip tests running out of memory on ARM/MIPS

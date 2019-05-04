@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -262,6 +262,12 @@ static void requestPointerLock(WKPageRef page, const void*)
     WKPageDidAllowPointerLock(page);
 }
 
+static void printFrame(WKPageRef page, WKFrameRef frame, const void*)
+{
+    WKPageBeginPrinting(page, frame, WKPrintInfo { 1, 21, 29.7f });
+    WKPageEndPrinting(page);
+}
+
 static bool shouldAllowDeviceOrientationAndMotionAccess(WKPageRef, WKSecurityOriginRef origin, const void*)
 {
     return TestController::singleton().handleDeviceOrientationAndMotionAccessRequest(origin);
@@ -320,7 +326,7 @@ WKPageRef TestController::createOtherPage(PlatformWebView* parentView, WKPageCon
         0, // footerHeight
         0, // drawHeader
         0, // drawFooter
-        0, // printFrame
+        printFrame,
         runModal,
         0, // didCompleteRubberBandForMainFrame
         0, // saveDataToFileInDownloadsFolder
@@ -458,6 +464,8 @@ void TestController::initialize(int argc, const char* argv[])
 
     WKRetainPtr<WKStringRef> pageGroupIdentifier(AdoptWK, WKStringCreateWithUTF8CString("WebKitTestRunnerPageGroup"));
     m_pageGroup.adopt(WKPageGroupCreateWithIdentifier(pageGroupIdentifier.get()));
+
+    m_eventSenderProxy = std::make_unique<EventSenderProxy>(this);
 }
 
 WKRetainPtr<WKContextConfigurationRef> TestController::generateContextConfiguration(const TestOptions::ContextOptions& options) const
@@ -605,13 +613,13 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
         0, // didDraw
         0, // pageDidScroll
         0, // exceededDatabaseQuota,
-        runOpenPanel,
+        options.shouldHandleRunOpenPanel ? runOpenPanel : 0,
         decidePolicyForGeolocationPermissionRequest,
         0, // headerHeight
         0, // footerHeight
         0, // drawHeader
         0, // drawFooter
-        0, // printFrame
+        printFrame,
         runModal,
         0, // didCompleteRubberBandForMainFrame
         0, // saveDataToFileInDownloadsFolder
@@ -1032,6 +1040,41 @@ void TestController::checkForWorldLeaks()
     }, 20_s).run();
 }
 
+void TestController::dumpResponse(const String& result)
+{
+    unsigned resultLength = result.length();
+    printf("Content-Type: text/plain\n");
+    printf("Content-Length: %u\n", resultLength);
+    fwrite(result.utf8().data(), 1, resultLength, stdout);
+    printf("#EOF\n");
+    fprintf(stderr, "#EOF\n");
+    fflush(stdout);
+    fflush(stderr);
+}
+
+void TestController::findAndDumpWebKitProcessIdentifiers()
+{
+    StringBuilder builder;
+
+#if PLATFORM(COCOA)
+    builder.append(TestController::webProcessName());
+    builder.appendLiteral(": ");
+    pid_t webContentPID = WKPageGetProcessIdentifier(TestController::singleton().mainWebView()->page());
+    builder.appendNumber(webContentPID);
+    builder.append('\n');
+
+    builder.append(TestController::networkProcessName());
+    builder.appendLiteral(": ");
+    pid_t networkingPID = WKContextGetNetworkProcessIdentifier(m_context.get());
+    builder.appendNumber(networkingPID);
+    builder.append('\n');
+#else
+    builder.append('\n');
+#endif
+
+    dumpResponse(builder.toString());
+}
+
 void TestController::findAndDumpWorldLeaks()
 {
     if (!m_checkForWorldLeaks)
@@ -1054,16 +1097,9 @@ void TestController::findAndDumpWorldLeaks()
             builder.append('\n');
         }
     } else
-        builder.append("no abandoned documents");
+        builder.append("no abandoned documents\n");
 
-    String result = builder.toString();
-    printf("Content-Type: text/plain\n");
-    printf("Content-Length: %u\n", result.length());
-    fwrite(result.utf8().data(), 1, result.length(), stdout);
-    printf("#EOF\n");
-    fprintf(stderr, "#EOF\n");
-    fflush(stdout);
-    fflush(stderr);
+    dumpResponse(builder.toString());
 }
 
 void TestController::willDestroyWebView()
@@ -1314,6 +1350,10 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.editable = parseBooleanTestHeaderValue(value);
         else if (key == "enableUndoManagerAPI")
             testOptions.enableUndoManagerAPI = parseBooleanTestHeaderValue(value);
+        else if (key == "shouldHandleRunOpenPanel")
+            testOptions.shouldHandleRunOpenPanel = parseBooleanTestHeaderValue(value);
+        else if (key == "shouldPresentPopovers")
+            testOptions.shouldPresentPopovers = parseBooleanTestHeaderValue(value);
         else if (key == "contentInset.top")
             testOptions.contentInsetTop = std::stod(value);
         else if (key == "ignoreSynchronousMessagingTimeouts")
@@ -1591,14 +1631,19 @@ bool TestController::waitForCompletion(const WTF::Function<void ()>& function, W
 
 bool TestController::handleControlCommand(const char* command)
 {
-    if (!strcmp("#CHECK FOR WORLD LEAKS", command)) {
-        if (!m_checkForWorldLeaks) {
+    if (!strncmp("#CHECK FOR WORLD LEAKS", command, 22)) {
+        if (m_checkForWorldLeaks)
+            findAndDumpWorldLeaks();
+        else
             WTFLogAlways("WebKitTestRunner asked to check for world leaks, but was not run with --world-leaks");
-            return true;
-        }
-        findAndDumpWorldLeaks();
         return true;
     }
+
+    if (!strncmp("#LIST CHILD PROCESSES", command, 21)) {
+        findAndDumpWebKitProcessIdentifiers();
+        return true;
+    }
+
     return false;
 }
 
@@ -3381,6 +3426,15 @@ void TestController::statisticsDeleteCookiesForHost(WKStringRef host, bool inclu
     ResourceStatisticsCallbackContext context(*this);
     WKWebsiteDataStoreStatisticsDeleteCookiesForTesting(dataStore, host, includeHttpOnlyCookies, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
+}
+
+bool TestController::isStatisticsHasLocalStorage(WKStringRef host)
+{
+    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreStatisticsHasLocalStorage(dataStore, host, &context, resourceStatisticsBooleanResultCallback);
+    runUntil(context.done, noTimeout);
+    return context.result;
 }
 
 void TestController::setStatisticsCacheMaxAgeCap(double seconds)

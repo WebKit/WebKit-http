@@ -45,7 +45,7 @@ public:
     ContentChangeObserver(Document&);
 
     WEBCORE_EXPORT void startContentObservationForDuration(Seconds duration);
-    WEBCORE_EXPORT WKContentChange observedContentChange() const;
+    WKContentChange observedContentChange() const { return m_observedContentState; }
 
     void didInstallDOMTimer(const DOMTimer&, Seconds timeout, bool singleShot);
     void didRemoveDOMTimer(const DOMTimer&);
@@ -60,6 +60,8 @@ public:
 
     void didSuspendActiveDOMObjects();
     void willDetachPage();
+
+    void willDestroyRenderer(const Element&);
 
     class StyleChangeScope {
     public:
@@ -87,6 +89,14 @@ public:
     public:
         WEBCORE_EXPORT MouseMovedScope(Document&);
         WEBCORE_EXPORT ~MouseMovedScope();
+    private:
+        ContentChangeObserver& m_contentChangeObserver;
+    };
+
+    class RenderTreeUpdateScope {
+    public:
+        RenderTreeUpdateScope(Document&);
+        ~RenderTreeUpdateScope();
     private:
         ContentChangeObserver& m_contentChangeObserver;
     };
@@ -123,7 +133,7 @@ private:
     bool isObservingDOMTimerScheduling() const { return m_isObservingDOMTimerScheduling; }
     void setShouldObserveTransitions(bool observe) { m_isObservingTransitions = observe; }
     bool isObservingTransitions() const { return m_isObservingTransitions; }
-    bool isObservedPropertyForTransition(CSSPropertyID propertyId) const { return propertyId == CSSPropertyLeft; }
+    bool isObservedPropertyForTransition(CSSPropertyID propertyId) const { return propertyId == CSSPropertyLeft || propertyId == CSSPropertyOpacity; }
     void domTimerExecuteDidStart(const DOMTimer&);
     void domTimerExecuteDidFinish(const DOMTimer&);
     void registerDOMTimer(const DOMTimer& timer) { m_DOMTimerList.add(&timer); }
@@ -142,9 +152,9 @@ private:
     void stopObservingPendingActivities();
     void reset();
 
-    void setHasIndeterminateState();
-    void setHasVisibleChangeState();
-    void setHasNoChangeState();
+    void setHasNoChangeState() { setObservedContentState(WKContentNoChange); }
+    void setHasIndeterminateState() { setObservedContentState(WKContentIndeterminateChange); }
+    void setHasVisibleChangeState() { setObservedContentState(WKContentVisibilityChange); } 
 
     bool hasVisibleChangeState() const { return observedContentChange() == WKContentVisibilityChange; }
     bool hasObservedDOMTimer() const { return !m_DOMTimerList.isEmpty(); }
@@ -158,6 +168,12 @@ private:
     bool isObservationTimeWindowActive() const { return m_contentObservationTimer.isActive(); }
 
     void completeDurationBasedContentObservation();
+    void setObservedContentState(WKContentChange);
+
+    void renderTreeUpdateDidStart();
+    void renderTreeUpdateDidFinish();
+    bool visibleRendererWasDestroyed(const Element& element) const { return m_elementsWithDestroyedVisibleRenderer.contains(&element); }
+    bool shouldObserveVisibilityChangeForElement(const Element&);
 
     enum class Event {
         StartedTouchStartEventDispatching,
@@ -173,6 +189,7 @@ private:
         EndedStyleRecalc,
         AddedTransition,
         EndedTransition,
+        CompletedTransition,
         CanceledTransition,
         StartedFixedObservationTimeWindow,
         EndedFixedObservationTimeWindow,
@@ -185,6 +202,8 @@ private:
     HashSet<const DOMTimer*> m_DOMTimerList;
     // FIXME: Move over to WeakHashSet when it starts supporting const.
     HashSet<const Element*> m_elementsWithTransition;
+    HashSet<const Element*> m_elementsWithDestroyedVisibleRenderer;
+    WKContentChange m_observedContentState { WKContentNoChange };
     bool m_touchEventIsBeingDispatched { false };
     bool m_isWaitingForStyleRecalc { false };
     bool m_isInObservedStyleRecalc { false };
@@ -193,22 +212,13 @@ private:
     bool m_mouseMovedEventIsBeingDispatched { false };
     bool m_isBetweenTouchEndAndMouseMoved { false };
     bool m_isObservingTransitions { false };
+    bool m_isInObservedRenderTreeUpdate { false };
 };
 
-inline void ContentChangeObserver::setHasNoChangeState()
+inline void ContentChangeObserver::setObservedContentState(WKContentChange observedContentChange)
 {
-    WKSetObservedContentChange(WKContentNoChange);
-}
-
-inline void ContentChangeObserver::setHasIndeterminateState()
-{
-    ASSERT(!hasVisibleChangeState());
-    WKSetObservedContentChange(WKContentIndeterminateChange);
-}
-
-inline void ContentChangeObserver::setHasVisibleChangeState()
-{
-    WKSetObservedContentChange(WKContentVisibilityChange);
+    m_observedContentState = observedContentChange;
+    WKSetObservedContentChange(observedContentChange);
 }
 
 inline bool ContentChangeObserver::isObservingContentChanges() const

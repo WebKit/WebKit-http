@@ -143,6 +143,7 @@ my (
     $quotaSupport,
     $registerProtocolHandlerSupport,
     $remoteInspectorSupport,
+    $resizeObserverSupport,
     $resolutionMediaQuerySupport,
     $resourceLoadStatisticsSupport,
     $resourceUsageSupport,
@@ -178,7 +179,6 @@ my (
     $webgl2Support,
     $webglSupport,
     $webgpuSupport,
-    $webmetalSupport,
     $wirelessPlaybackTargetSupport,
     $xsltSupport,
 );
@@ -266,9 +266,6 @@ my @features = (
 
     { option => "css-selectors-level4", desc => "Toggle CSS Selectors Level 4 support",
       define => "ENABLE_CSS_SELECTORS_LEVEL4", value => \$cssSelectorsLevel4Support },
-
-    { option => "css-trailing-word", desc => "Toggle CSS trailing word support",
-      define => "ENABLE_CSS_TRAILING_WORD", value => \$cssTrailingWordSupport },
 
     { option => "css-typed-om", desc => "Toggle CSS Typed OM support",
       define => "ENABLE_CSS_TYPED_OM", value => \$cssTypedOMSupport },
@@ -468,6 +465,9 @@ my @features = (
     { option => "remote-inspector", desc => "Toggle remote inspector support",
       define => "ENABLE_REMOTE_INSPECTOR", value => \$remoteInspectorSupport },
 
+    { option => "resize-observer", desc => "Enable Resize Observer support",
+      define => "ENABLE_RESIZE_OBSERVER", value => \$resizeObserverSupport },
+
     { option => "resolution-media-query", desc => "Toggle resolution media query support",
       define => "ENABLE_RESOLUTION_MEDIA_QUERY", value => \$resolutionMediaQuerySupport },
 
@@ -554,9 +554,6 @@ my @features = (
 
     { option => "webgpu", desc => "Toggle WebGPU support",
       define => "ENABLE_WEBGPU", value => \$webgpuSupport },
-
-    { option => "webmetal", desc => "Toggle WebMetal support",
-      define => "ENABLE_WEBMETAL", value => \$webmetalSupport },
 
     { option => "web-audio", desc => "Toggle Web Audio support",
       define => "ENABLE_WEB_AUDIO", value => \$webAudioSupport },

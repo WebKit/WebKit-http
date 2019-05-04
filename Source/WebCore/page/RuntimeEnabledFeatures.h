@@ -296,11 +296,6 @@ public:
     bool webGPUEnabled() const { return m_isWebGPUEnabled; }
 #endif
 
-#if ENABLE(WEBMETAL)
-    void setWebMetalEnabled(bool isEnabled) { m_isWebMetalEnabled = isEnabled; }
-    bool webMetalEnabled() const { return m_isWebMetalEnabled; }
-#endif
-
 #if ENABLE(STREAMS_API)
     void setReadableByteStreamAPIEnabled(bool isEnabled) { m_isReadableByteStreamAPIEnabled = isEnabled; }
     bool readableByteStreamAPIEnabled() const { return m_isReadableByteStreamAPIEnabled; }
@@ -350,9 +345,6 @@ public:
 #if ENABLE(TOUCH_EVENTS)
     bool mouseEventsSimulationEnabled() const { return m_mouseEventsSimulationEnabled; }
     void setMouseEventsSimulationEnabled(bool isEnabled) { m_mouseEventsSimulationEnabled = isEnabled; }
-
-    bool mousemoveEventHandlingPreventsDefaultEnabled() const { return m_mousemoveEventHandlingPreventsDefaultEnabled; }
-    void setMousemoveEventHandlingPreventsDefaultEnabled(bool isEnabled) { m_mousemoveEventHandlingPreventsDefaultEnabled = isEnabled; }
 #endif
     
     bool referrerPolicyAttributeEnabled() const { return m_referrerPolicyAttributeEnabled; }
@@ -500,10 +492,6 @@ private:
     bool m_isWebGPUEnabled { false };
 #endif
 
-#if ENABLE(WEBMETAL)
-    bool m_isWebMetalEnabled { false };
-#endif
-
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     bool m_isDownloadAttributeEnabled { false };
 #endif
@@ -536,7 +524,6 @@ private:
 
 #if ENABLE(TOUCH_EVENTS)
     bool m_mouseEventsSimulationEnabled { false };
-    bool m_mousemoveEventHandlingPreventsDefaultEnabled { false };
 #endif
 
     bool m_isITPDatabaseEnabled { false };

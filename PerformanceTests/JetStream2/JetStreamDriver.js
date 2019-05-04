@@ -82,6 +82,10 @@ function toScore(timeValue) {
     return 5000 / timeValue;
 }
 
+function toTimeValue(score) {
+    return 5000 / score;
+}
+
 function updateUI() {
     return new Promise((resolve) => {
         if (isInBrowser)
@@ -246,7 +250,7 @@ class Driver {
             if (isInBrowser) {
                 text +=
                     `<div class="benchmark" id="benchmark-${benchmark.name}">
-                    <h3 class="benchmark-name"><a href="about.html#${benchmark.name}">${benchmark.name}</a></h3>
+                    <h3 class="benchmark-name"><a href="in-depth.html#${benchmark.name}">${benchmark.name}</a></h3>
                     <h4 class="score" id="${overallScoreId}">___</h4><p>`;
                 for (let i = 0; i < scoreIds.length; i++) {
                     let id = scoreIds[i];
@@ -319,7 +323,7 @@ class Driver {
             const subResults = {}
             const subTimes = benchmark.subTimes();
             for (const name in subTimes) {
-                subResults[name] = {"metrics": {"Time": {"current": [subTimes[name]]}}};
+                subResults[name] = {"metrics": {"Time": {"current": [toTimeValue(subTimes[name])]}}};
             }
             results[benchmark.name] = {
                 "metrics" : {

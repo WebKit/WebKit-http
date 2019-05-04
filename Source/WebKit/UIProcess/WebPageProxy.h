@@ -566,7 +566,7 @@ public:
     PageClient& pageClient() const;
 
     void setViewNeedsDisplay(const WebCore::Region&);
-    void requestScroll(const WebCore::FloatPoint& scrollPosition, const WebCore::IntPoint& scrollOrigin, bool isProgrammaticScroll);
+    void requestScroll(const WebCore::FloatPoint& scrollPosition, const WebCore::IntPoint& scrollOrigin);
     
     WebCore::FloatPoint viewScrollPosition() const;
 
@@ -1123,10 +1123,6 @@ public:
     void setSmartInsertDeleteEnabled(bool);
 #endif
 
-#if PLATFORM(GTK)
-    String accessibilityPlugID() const { return m_accessibilityPlugID; }
-#endif
-
     void setCanRunModal(bool);
     bool canRunModal();
 
@@ -1506,6 +1502,7 @@ public:
 #endif
 
     void configureLoggingChannel(const String&, WTFLogChannelState, WTFLogLevel);
+    void adjustPoliciesForCompatibilityMode(const API::NavigationAction&, API::WebsitePolicies&);
 
     void addObserver(WebViewDidMoveToWindowObserver&);
     void removeObserver(WebViewDidMoveToWindowObserver&);
@@ -2050,6 +2047,10 @@ private:
     SpeechSynthesisData& speechSynthesisData();
 #endif
 
+#if PLATFORM(IOS_FAMILY)
+    static bool isInHardwareKeyboardMode();
+#endif
+
     WeakPtr<PageClient> m_pageClient;
     Ref<API::PageConfiguration> m_configuration;
 
@@ -2297,10 +2298,6 @@ WEBPAGEPROXY_LOADOPTIMIZER_ADDITIONS_2
 
 #if PLATFORM(COCOA)
     bool m_isSmartInsertDeleteEnabled { false };
-#endif
-
-#if PLATFORM(GTK)
-    String m_accessibilityPlugID;
 #endif
 
     Optional<WebCore::Color> m_backgroundColor;

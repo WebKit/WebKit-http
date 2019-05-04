@@ -41,9 +41,12 @@
 #include <JavaScriptCore/HeapInlines.h>
 #include <JavaScriptCore/JSCJSValueInlines.h>
 #include <JavaScriptCore/StrongInlines.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 using namespace JSC;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(IDBCursor);
 
 Ref<IDBCursor> IDBCursor::create(IDBObjectStore& objectStore, const IDBCursorInfo& info)
 {
@@ -341,8 +344,10 @@ bool IDBCursor::setGetResult(IDBRequest& request, const IDBGetResult& getResult)
     m_primaryKeyData = getResult.primaryKeyData();
     m_primaryKey = m_primaryKeyData.maybeCreateIDBKey();
 
-    if (isKeyCursorWithValue())
+    if (isKeyCursorWithValue()) {
         m_value = getResult.value();
+        m_keyPath = getResult.keyPath();
+    }
 
     m_gotValue = true;
     return true;

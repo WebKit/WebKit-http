@@ -52,16 +52,6 @@
 
 namespace WebKit {
 
-bool WebPaymentCoordinatorProxy::platformCanMakePayments()
-{
-#if PLATFORM(MAC)
-    if (!PAL::isPassKitFrameworkAvailable())
-        return false;
-#endif
-
-    return [PAL::getPKPaymentAuthorizationViewControllerClass() canMakePayments];
-}
-
 void WebPaymentCoordinatorProxy::platformCanMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, PAL::SessionID sessionID, WTF::Function<void(bool)>&& completionHandler)
 {
 #if PLATFORM(MAC)
@@ -357,21 +347,6 @@ void WebPaymentCoordinatorProxy::platformCompleteShippingContactSelection(const 
 void WebPaymentCoordinatorProxy::platformCompletePaymentMethodSelection(const Optional<WebCore::PaymentMethodUpdate>& update)
 {
     m_authorizationPresenter->completePaymentMethodSelection(update);
-}
-
-Vector<String> WebPaymentCoordinatorProxy::platformAvailablePaymentNetworks()
-{
-#if PLATFORM(MAC)
-    if (!PAL::isPassKitFrameworkAvailable())
-        return { };
-#endif
-
-    NSArray<PKPaymentNetwork> *availableNetworks = [PAL::getPKPaymentRequestClass() availableNetworks];
-    Vector<String> result;
-    result.reserveInitialCapacity(availableNetworks.count);
-    for (PKPaymentNetwork network in availableNetworks)
-        result.uncheckedAppend(network);
-    return result;
 }
 
 } // namespace WebKit

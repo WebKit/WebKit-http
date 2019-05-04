@@ -33,6 +33,7 @@
 #include "NicosiaPlatformLayer.h"
 #include "TextureMapperAnimation.h"
 #include "TransformationMatrix.h"
+#include <wtf/RunLoop.h>
 #include <wtf/text/StringHash.h>
 
 namespace Nicosia {
@@ -124,7 +125,7 @@ public:
     const RefPtr<Nicosia::CompositionLayer>& compositionLayer() const;
 
 private:
-    bool isCoordinatedGraphicsLayer() const;
+    bool isCoordinatedGraphicsLayer() const override;
 
     void updatePlatformLayer();
 
@@ -149,6 +150,7 @@ private:
     float effectiveContentsScale();
 
     void animationStartedTimerFired();
+    void requestPendingTileCreationTimerFired();
 
     bool filtersCanBeComposited(const FilterOperations&) const;
 
@@ -166,7 +168,6 @@ private:
     bool m_isPurging;
 #endif
     bool m_shouldUpdateVisibleRect: 1;
-    bool m_shouldSyncLayerState: 1;
     bool m_movingVisibleRect : 1;
     bool m_pendingContentsScaleAdjustment : 1;
     bool m_pendingVisibleRectAdjustment : 1;
@@ -183,6 +184,7 @@ private:
     NativeImagePtr m_compositedNativeImagePtr;
 
     Timer m_animationStartedTimer;
+    RunLoop::Timer<CoordinatedGraphicsLayer> m_requestPendingTileCreationTimer;
     TextureMapperAnimations m_animations;
     MonotonicTime m_lastAnimationStartTime;
 

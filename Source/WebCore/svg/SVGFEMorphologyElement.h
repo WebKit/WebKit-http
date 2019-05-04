@@ -21,7 +21,6 @@
 #pragma once
 
 #include "FEMorphology.h"
-#include "SVGAnimatedEnumeration.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 
 namespace WebCore {
@@ -63,30 +62,20 @@ public:
     void setRadius(float radiusX, float radiusY);
 
     String in1() const { return m_in1->currentValue(); }
-    MorphologyOperatorType svgOperator() const { return m_svgOperator.currentValue(attributeOwnerProxy()); }
+    MorphologyOperatorType svgOperator() const { return m_svgOperator->currentValue<MorphologyOperatorType>(); }
     float radiusX() const { return m_radiusX->currentValue(); }
     float radiusY() const { return m_radiusY->currentValue(); }
 
     SVGAnimatedString& in1Animated() { return m_in1; }
-    RefPtr<SVGAnimatedEnumeration> svgOperatorAnimated() { return m_svgOperator.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedEnumeration& svgOperatorAnimated() { return m_svgOperator; }
     SVGAnimatedNumber& radiusXAnimated() { return m_radiusX; }
     SVGAnimatedNumber& radiusYAnimated() { return m_radiusY; }
 
 private:
     SVGFEMorphologyElement(const QualifiedName&, Document&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGFEMorphologyElement, SVGFilterPrimitiveStandardAttributes>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
-    static void registerAttributes();
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-
     using PropertyRegistry = SVGPropertyOwnerRegistry<SVGFEMorphologyElement, SVGFilterPrimitiveStandardAttributes>;
     const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
-
-    static bool isKnownAttribute(const QualifiedName& attributeName)
-    {
-        return AttributeOwnerProxy::isKnownAttribute(attributeName) || PropertyRegistry::isKnownAttribute(attributeName);
-    }
 
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
@@ -94,10 +83,9 @@ private:
     bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
     RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) const override;
 
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
     PropertyRegistry m_propertyRegistry { *this };
     Ref<SVGAnimatedString> m_in1 { SVGAnimatedString::create(this) };
-    SVGAnimatedEnumerationAttribute<MorphologyOperatorType> m_svgOperator { FEMORPHOLOGY_OPERATOR_ERODE };
+    Ref<SVGAnimatedEnumeration> m_svgOperator { SVGAnimatedEnumeration::create(this, FEMORPHOLOGY_OPERATOR_ERODE) };
     Ref<SVGAnimatedNumber> m_radiusX { SVGAnimatedNumber::create(this) };
     Ref<SVGAnimatedNumber> m_radiusY { SVGAnimatedNumber::create(this) };
 };

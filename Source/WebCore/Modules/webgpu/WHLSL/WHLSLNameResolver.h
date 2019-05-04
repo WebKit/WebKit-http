@@ -29,6 +29,7 @@
 
 #include "WHLSLNameContext.h"
 #include "WHLSLVisitor.h"
+#include <wtf/HashSet.h>
 
 namespace WebCore {
 

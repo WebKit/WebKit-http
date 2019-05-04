@@ -77,7 +77,7 @@ set(TestNetscapePlugIn_SOURCES
 
 set(TestNetscapePlugIn_LIBRARIES
     JavaScriptCore
-    WTF
+    WTFFramework
     WebCoreTestSupport
 )
 

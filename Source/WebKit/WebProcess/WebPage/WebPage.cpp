@@ -173,7 +173,9 @@
 #include <WebCore/HTMLOListElement.h>
 #include <WebCore/HTMLPlugInElement.h>
 #include <WebCore/HTMLPlugInImageElement.h>
+#include <WebCore/HTMLSelectElement.h>
 #include <WebCore/HTMLTextAreaElement.h>
+#include <WebCore/HTMLTextFormControlElement.h>
 #include <WebCore/HTMLUListElement.h>
 #include <WebCore/HistoryController.h>
 #include <WebCore/HistoryItem.h>
@@ -406,6 +408,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_availableScreenSize(parameters.availableScreenSize)
     , m_overrideScreenSize(parameters.overrideScreenSize)
     , m_deviceOrientation(parameters.deviceOrientation)
+    , m_keyboardIsAttached(parameters.keyboardIsAttached)
 #endif
     , m_layerVolatilityTimer(*this, &WebPage::layerVolatilityTimerFired)
     , m_activityState(parameters.activityState)
@@ -724,10 +727,10 @@ void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
 
     setSize(parameters.viewSize);
 
-    if (m_shouldResetDrawingAreaAfterSuspend) {
+    // If the UIProcess created a new DrawingArea, then we need to do the same.
+    if (m_drawingArea->identifier() != parameters.drawingAreaIdentifier) {
         auto oldDrawingArea = std::exchange(m_drawingArea, nullptr);
         oldDrawingArea->removeMessageReceiverIfNeeded();
-        m_shouldResetDrawingAreaAfterSuspend = false;
 
         m_drawingArea = DrawingArea::create(*this, parameters);
         m_drawingArea->setPaintingEnabled(false);
@@ -739,7 +742,6 @@ void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
 
         unfreezeLayerTree(LayerTreeFreezeReason::PageSuspended);
     }
-    RELEASE_ASSERT(m_drawingArea->identifier() == parameters.drawingAreaIdentifier);
 
     setViewLayoutSize(parameters.viewLayoutSize);
 
@@ -4605,8 +4607,10 @@ void WebPage::beginPrinting(uint64_t frameID, const PrintInfo& printInfo)
         return;
 #endif
 
-    if (!m_printContext)
+    if (!m_printContext) {
         m_printContext = std::make_unique<PrintContext>(coreFrame);
+        m_page->dispatchBeforePrintEvent();
+    }
 
     freezeLayerTree(LayerTreeFreezeReason::Printing);
 
@@ -4625,7 +4629,10 @@ void WebPage::endPrinting()
 {
     unfreezeLayerTree(LayerTreeFreezeReason::Printing);
 
-    m_printContext = nullptr;
+    if (m_printContext) {
+        m_printContext = nullptr;
+        m_page->dispatchAfterPrintEvent();
+    }
 }
 
 void WebPage::computePagesForPrinting(uint64_t frameID, const PrintInfo& printInfo, CallbackID callbackID)
@@ -5345,6 +5352,11 @@ bool WebPage::shouldDispatchUpdateAfterFocusingElement(const Element& element) c
     return true;
 }
 
+static bool isTextFormControlOrEditableContent(const WebCore::Element& element)
+{
+    return is<HTMLTextFormControlElement>(element) || element.hasEditableStyle();
+}
+
 void WebPage::elementDidFocus(WebCore::Element& element)
 {
     if (!shouldDispatchUpdateAfterFocusingElement(element)) {
@@ -5353,7 +5365,7 @@ void WebPage::elementDidFocus(WebCore::Element& element)
         return;
     }
 
-    if (element.hasTagName(WebCore::HTMLNames::selectTag) || element.hasTagName(WebCore::HTMLNames::inputTag) || element.hasTagName(WebCore::HTMLNames::textareaTag) || element.hasEditableStyle()) {
+    if (is<HTMLSelectElement>(element) || isTextFormControlOrEditableContent(element)) {
         m_focusedElement = &element;
 
 #if PLATFORM(IOS_FAMILY)
@@ -5399,17 +5411,18 @@ void WebPage::elementDidBlur(WebCore::Element& element)
 
 void WebPage::focusedElementDidChangeInputMode(WebCore::Element& element, WebCore::InputMode mode)
 {
+    if (m_focusedElement != &element)
+        return;
+
 #if PLATFORM(IOS_FAMILY)
-    ASSERT(m_focusedElement == &element);
     ASSERT(is<HTMLElement>(element));
     ASSERT(downcast<HTMLElement>(element).canonicalInputMode() == mode);
 
-    if (!is<HTMLTextAreaElement>(*m_focusedElement) && !is<HTMLInputElement>(*m_focusedElement) && !m_focusedElement->hasEditableStyle())
+    if (!isTextFormControlOrEditableContent(element))
         return;
 
     send(Messages::WebPageProxy::FocusedElementDidChangeInputMode(mode));
 #else
-    UNUSED_PARAM(element);
     UNUSED_PARAM(mode);
 #endif
 }
@@ -6321,15 +6334,15 @@ void WebPage::setIsSuspended(bool suspended)
 
     m_isSuspended = suspended;
 
-    if (m_isSuspended) {
-        // Unfrozen on drawing area reset.
-        freezeLayerTree(LayerTreeFreezeReason::PageSuspended);
+    if (!suspended)
+        return;
 
-        WebProcess::singleton().sendPrewarmInformation(mainWebFrame()->url());
+    // Unfrozen on drawing area reset.
+    freezeLayerTree(LayerTreeFreezeReason::PageSuspended);
 
-        suspendForProcessSwap();
-    } else
-        m_shouldResetDrawingAreaAfterSuspend = true;
+    WebProcess::singleton().sendPrewarmInformation(mainWebFrame()->url());
+
+    suspendForProcessSwap();
 }
 
 void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remoteFrameIdentifier, GlobalWindowIdentifier&& remoteWindowIdentifier)

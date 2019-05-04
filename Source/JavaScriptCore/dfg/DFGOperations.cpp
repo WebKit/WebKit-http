@@ -547,7 +547,7 @@ uint32_t JIT_OPERATION operationArithClz32(ExecState* exec, EncodedJSValue encod
     JSValue op1 = JSValue::decode(encodedOp1);
     uint32_t value = op1.toUInt32(exec);
     RETURN_IF_EXCEPTION(scope, 0);
-    return clz32(value);
+    return clz(value);
 }
 
 double JIT_OPERATION operationArithFRound(ExecState* exec, EncodedJSValue encodedOp1)
@@ -2561,9 +2561,10 @@ int32_t JIT_OPERATION operationArrayIndexOfValueInt32OrContiguous(ExecState* exe
         JSValue value = data[index].get();
         if (!value)
             continue;
-        if (JSValue::strictEqual(exec, searchElement, value))
-            return index;
+        bool isEqual = JSValue::strictEqual(exec, searchElement, value);
         RETURN_IF_EXCEPTION(scope, { });
+        if (isEqual)
+            return index;
     }
     return -1;
 }

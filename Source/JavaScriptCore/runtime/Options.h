@@ -283,6 +283,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(bool, useMovHintRemoval, true, Normal, nullptr) \
     v(bool, usePutStackSinking, true, Normal, nullptr) \
     v(bool, useObjectAllocationSinking, true, Normal, nullptr) \
+    v(bool, useValueRepElimination, true, Normal, nullptr) \
     v(bool, useArityFixupInlining, true, Normal, nullptr) \
     v(bool, logExecutableAllocation, false, Normal, nullptr) \
     \
@@ -433,6 +434,10 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(unsigned, fireOSRExitFuzzAt, 0, Normal, nullptr) \
     v(unsigned, fireOSRExitFuzzAtOrAfter, 0, Normal, nullptr) \
     \
+    v(bool, useRandomizingFuzzerAgent, false, Normal, nullptr) \
+    v(unsigned, seedOfRandomizingFuzzerAgent, 1, Normal, nullptr) \
+    v(bool, dumpRandomizingFuzzerAgentPredictions, false, Normal, nullptr) \
+    \
     v(bool, logPhaseTimes, false, Normal, nullptr) \
     v(double, rareBlockPenalty, 0.001, Normal, nullptr) \
     v(bool, airLinearScanVerbose, false, Normal, nullptr) \
@@ -510,6 +515,8 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(unsigned, thresholdForGlobalLexicalBindingEpoch, UINT_MAX, Normal, "Threshold for global lexical binding epoch. If the epoch reaches to this value, CodeBlock metadata for scope operations will be revised globally. It needs to be greater than 1.") \
     v(optionString, diskCachePath, nullptr, Restricted, nullptr) \
     v(bool, forceDiskCache, false, Restricted, nullptr) \
+    v(bool, validateAbstractInterpreterState, false, Restricted, nullptr) \
+    v(double, validateAbstractInterpreterStateProbability, 0.5, Normal, nullptr) \
 
 
 enum OptionEquivalence {

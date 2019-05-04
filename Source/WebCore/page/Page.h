@@ -296,6 +296,9 @@ public:
 
     WEBCORE_EXPORT void unmarkAllTextMatches();
 
+    WEBCORE_EXPORT void dispatchBeforePrintEvent();
+    WEBCORE_EXPORT void dispatchAfterPrintEvent();
+
     // find all the Ranges for the matching text.
     // Upon return, indexForSelection will be one of the following:
     // 0 if there is no user selection
@@ -469,6 +472,17 @@ public:
     void addDocumentNeedingIntersectionObservationUpdate(Document&);
     void scheduleForcedIntersectionObservationUpdate(Document&);
     void updateIntersectionObservations();
+#endif
+
+#if ENABLE(RESIZE_OBSERVER)
+    WEBCORE_EXPORT void checkResizeObservations();
+    bool hasResizeObservers() const;
+    void gatherDocumentsNeedingResizeObservationCheck(Vector<WeakPtr<Document>>&);
+    void scheduleResizeObservations();
+    void notifyResizeObservers(WeakPtr<Document>);
+    void setNeedsCheckResizeObservations(bool check) { m_needsCheckResizeObservations = check; }
+    bool needsCheckResizeObservations() const { return m_needsCheckResizeObservations; }
+
 #endif
 
     WEBCORE_EXPORT void suspendScriptedAnimations();
@@ -935,6 +949,11 @@ private:
 
 #if ENABLE(VIDEO)
     Timer m_playbackControlsManagerUpdateTimer;
+#endif
+
+#if ENABLE(RESIZE_OBSERVER)
+    Timer m_resizeObserverTimer;
+    bool m_needsCheckResizeObservations { false };
 #endif
 
     bool m_allowsMediaDocumentInlinePlayback { false };

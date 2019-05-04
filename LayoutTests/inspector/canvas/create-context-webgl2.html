@@ -9,21 +9,21 @@ if (window.internals)
     window.internals.settings.setWebGL2Enabled(true);
 
 function test() {
-    let suite = initializeTestSuite("Canvas.CreateContextWebGL2");
+    let suite = InspectorTest.CreateContextUtilities.initializeTestSuite("Canvas.CreateContextWebGL2");
 
-    addSimpleTestCase({
+    InspectorTest.CreateContextUtilities.addSimpleTestCase({
         name: "Attached",
         expression: `createAttachedCanvas("webgl2")`,
         contextType: WI.Canvas.ContextType.WebGL2,
     });
 
-    addSimpleTestCase({
+    InspectorTest.CreateContextUtilities.addSimpleTestCase({
         name: "Detached",
         expression: `createDetachedCanvas("webgl2")`,
         contextType: WI.Canvas.ContextType.WebGL2,
     });
 
-    addCSSCanvasTestCase(WI.Canvas.ContextType.WebGL2);
+    InspectorTest.CreateContextUtilities.addCSSCanvasTestCase(WI.Canvas.ContextType.WebGL2);
 
     suite.runTestCasesAndFinish();
 }

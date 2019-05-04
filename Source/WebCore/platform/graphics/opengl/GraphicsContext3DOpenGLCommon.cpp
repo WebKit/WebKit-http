@@ -55,6 +55,7 @@
 #include <wtf/MainThread.h>
 #include <wtf/ThreadSpecific.h>
 #include <wtf/UniqueArray.h>
+#include <wtf/Vector.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -2017,7 +2018,7 @@ void GraphicsContext3D::markLayerComposited()
 {
     m_layerComposited = true;
 
-    for (auto* client : m_clients)
+    for (auto* client : copyToVector(m_clients))
         client->didComposite();
 }
 
@@ -2028,19 +2029,19 @@ bool GraphicsContext3D::layerComposited() const
 
 void GraphicsContext3D::forceContextLost()
 {
-    for (auto* client : m_clients)
+    for (auto* client : copyToVector(m_clients))
         client->forceContextLost();
 }
 
 void GraphicsContext3D::recycleContext()
 {
-    for (auto* client : m_clients)
+    for (auto* client : copyToVector(m_clients))
         client->recycleContext();
 }
 
 void GraphicsContext3D::dispatchContextChangedNotification()
 {
-    for (auto* client : m_clients)
+    for (auto* client : copyToVector(m_clients))
         client->dispatchContextChangedNotification();
 }
 

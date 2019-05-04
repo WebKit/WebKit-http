@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,14 +37,7 @@ void ObjectPropertyCondition::dumpInContext(PrintStream& out, DumpContext* conte
         out.print("<invalid>");
         return;
     }
-
-    // FIXME: The m_key.isStillLive() check should not be needed if the watchpoint using this
-    // condition was removed when m_object died. https://bugs.webkit.org/show_bug.cgi?id=195829
-    if (!isStillLive()) {
-        out.print("<not live>");
-        return;
-    }
-
+    
     out.print("<", inContext(JSValue(m_object), context), ": ", inContext(m_condition, context), ">");
 }
 
@@ -149,15 +142,15 @@ bool ObjectPropertyCondition::isWatchable(PropertyCondition::WatchabilityEffort 
     return isWatchable(m_object->structure(), effort);
 }
 
-bool ObjectPropertyCondition::isStillLive() const
+bool ObjectPropertyCondition::isStillLive(VM& vm) const
 {
     if (!*this)
         return false;
     
-    if (!Heap::isMarked(m_object))
+    if (!vm.heap.isMarked(m_object))
         return false;
     
-    return m_condition.isStillLive();
+    return m_condition.isStillLive(vm);
 }
 
 void ObjectPropertyCondition::validateReferences(const TrackedReferences& tracked) const

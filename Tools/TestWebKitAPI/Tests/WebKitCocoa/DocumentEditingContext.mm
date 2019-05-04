@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if PLATFORM(IOS_FAMILY)
+#if PLATFORM(IOS_FAMILY) && HAVE(UI_WK_DOCUMENT_CONTEXT)
 
 #import "PlatformUtilities.h"
 #import "Test.h"
@@ -59,7 +59,7 @@
 
 static UIWKDocumentRequest *makeRequest(UIWKDocumentRequestFlags flags, UITextGranularity granularity, NSInteger granularityCount, CGRect documentRect = CGRectZero, id <NSCopying> inputElementIdentifier = nil)
 {
-    RetainPtr<UIWKDocumentRequest> request = adoptNS([[NSClassFromString(@"UIWKDocumentRequest") alloc] init]);
+    auto request = adoptNS([[UIWKDocumentRequest alloc] init]);
     [request setFlags:flags];
     [request setSurroundingGranularity:granularity];
     [request setGranularityCount:granularityCount];
@@ -117,9 +117,6 @@ static NSString *applyAhemStyle(NSString *HTMLString)
 
 TEST(WebKit, DocumentEditingContext)
 {
-    if (!NSClassFromString(@"UIWKDocumentRequest"))
-        return;
-
     RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
 
     UIWKDocumentContext *context;
@@ -209,9 +206,14 @@ TEST(WebKit, DocumentEditingContext)
     EXPECT_NSSTRING_EQ("MMMM", context.selectedText);
     EXPECT_NULL(context.contextAfter);
 
-    NSArray<NSValue *> *rects = [context characterRectsForCharacterRange:NSMakeRange(0, 1)];
-    EXPECT_EQ(1UL, rects.count);
-    EXPECT_RECT_EQ(0, 0, 92, 24, rects.firstObject.CGRectValue);
+    NSArray<NSValue *> *rects = [[context characterRectsForCharacterRange:NSMakeRange(0, 4)] sortedArrayUsingComparator:^(NSValue *a, NSValue *b) {
+        return [@(a.CGRectValue.origin.x) compare:@(b.CGRectValue.origin.x)];
+    }];
+    EXPECT_EQ(4UL, rects.count);
+    EXPECT_RECT_EQ(0, 0, 23, 24, rects[0].CGRectValue);
+    EXPECT_RECT_EQ(23, 0, 23, 24, rects[1].CGRectValue);
+    EXPECT_RECT_EQ(46, 0, 23, 24, rects[2].CGRectValue);
+    EXPECT_RECT_EQ(69, 0, 23, 24, rects[3].CGRectValue);
     rects = [context characterRectsForCharacterRange:NSMakeRange(5, 1)];
     EXPECT_EQ(0UL, rects.count);
 
@@ -219,10 +221,10 @@ TEST(WebKit, DocumentEditingContext)
     EXPECT_NSSTRING_EQ(" MMM", context.contextAfter);
     rects = [context characterRectsForCharacterRange:NSMakeRange(0, 1)];
     EXPECT_EQ(1UL, rects.count);
-    EXPECT_RECT_EQ(0, 0, 92, 24, rects.firstObject.CGRectValue);
+    EXPECT_RECT_EQ(0, 0, 23, 24, rects.firstObject.CGRectValue);
     rects = [context characterRectsForCharacterRange:NSMakeRange(6, 1)];
     EXPECT_EQ(1UL, rects.count);
-    EXPECT_RECT_EQ(92, 0, 92, 24, rects.firstObject.CGRectValue);
+    EXPECT_RECT_EQ(138, 0, 23, 24, rects.firstObject.CGRectValue);
 
     // Text Input Context
     [webView synchronouslyLoadHTMLString:applyStyle(@"<input type='text' style='width: 50px; height: 50px;' value='hello, world'>")];
@@ -236,4 +238,4 @@ TEST(WebKit, DocumentEditingContext)
     EXPECT_NSSTRING_EQ(" world", context.contextAfter);
 }
 
-#endif // PLATFORM(IOS_FAMILY)
+#endif // PLATFORM(IOS_FAMILY) && HAVE(UI_WK_DOCUMENT_CONTEXT)

@@ -24,14 +24,15 @@
  */
 // https://github.com/gpuweb/gpuweb/blob/master/design/sketch.webidl
 
+typedef unsigned long GPUColorWriteFlags;
+
 [
     Conditional=WEBGPU,
     EnabledAtRuntime=WebGPU
 ] dictionary GPUColorStateDescriptor {
     GPUTextureFormat format;
 
-    // Not yet implemented.
-    // GPUBlendDescriptor alphaBlend;
-    // GPUBlendDescriptor colorBlend;
-    // GPUColorWriteFlags writeMask;
+    GPUBlendDescriptor alphaBlend;
+    GPUBlendDescriptor colorBlend;
+    GPUColorWriteFlags writeMask;
 };

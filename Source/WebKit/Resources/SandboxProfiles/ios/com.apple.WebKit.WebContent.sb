@@ -291,6 +291,9 @@
     (iokit-property "software-behavior")
     (iokit-property "vendor-id")
     (iokit-property "ui-pip") ;; <rdar://problem/48867037>
+    (iokit-property "product-description") ;; <rdar://problem/49497788>
+    (iokit-property "artwork-display-gamut") ;; <rdar://problem/49497788>
+    (iokit-property "artwork-scale-factor") ;; <rdar://problem/49497788>
 )
 
 ;; Read-only preferences and data
@@ -597,6 +600,8 @@
         (syscall-number SYS_open_dprotected_np)
         (syscall-number SYS_pread_nocancel)
         (syscall-number SYS___semwait_signal_nocancel)
-        (syscall-number SYS_kdebug_trace_string) ;; Needed for performance sampling, see <rdar://problem/48829655>.
+    )
+    (with-filter (system-attribute apple-internal)
+        (allow syscall-unix (syscall-number SYS_kdebug_trace_string)) ;; <rdar://problem/49531420>
     )
 )

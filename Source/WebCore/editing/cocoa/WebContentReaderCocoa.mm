@@ -222,6 +222,12 @@ static bool shouldReplaceRichContentWithAttachments()
 
 static String mimeTypeFromContentType(const String& contentType)
 {
+    if (contentType == String(kUTTypeVCard)) {
+        // CoreServices erroneously reports that "public.vcard" maps to "text/directory", rather
+        // than either "text/vcard" or "text/x-vcard". Work around this by special casing the
+        // "public.vcard" UTI type. See <rdar://problem/49478229> for more detail.
+        return "text/vcard"_s;
+    }
     return isDeclaredUTI(contentType) ? MIMETypeFromUTI(contentType) : contentType;
 }
 
@@ -769,28 +775,6 @@ bool WebContentReader::readFilePaths(const Vector<String>& paths)
         for (auto& path : paths)
             fragment->appendChild(attachmentForFilePath(frame, path));
     }
-#endif
-
-    return true;
-}
-
-bool WebContentReader::readVirtualContactFile(const String& filePath, const URL& url, const String& urlTitle)
-{
-    if (filePath.isEmpty() || !frame.document())
-        return false;
-
-    auto& document = *frame.document();
-    if (!fragment)
-        fragment = document.createDocumentFragment();
-
-#if ENABLE(ATTACHMENT_ELEMENT)
-    if (!url.isEmpty())
-        readURL(url, urlTitle);
-
-    auto attachmentContainer = HTMLDivElement::create(*frame.document());
-    attachmentContainer->setInlineStyleProperty(CSSPropertyDisplay, CSSValueBlock, true);
-    attachmentContainer->appendChild(attachmentForFilePath(frame, filePath));
-    fragment->appendChild(WTFMove(attachmentContainer));
 #endif
 
     return true;

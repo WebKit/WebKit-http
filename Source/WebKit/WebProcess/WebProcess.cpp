@@ -61,10 +61,10 @@
 #include "WebPlatformStrategies.h"
 #include "WebPluginInfoProvider.h"
 #include "WebProcessCreationParameters.h"
+#include "WebProcessDataStoreParameters.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPoolMessages.h"
 #include "WebProcessProxyMessages.h"
-#include "WebResourceLoadStatisticsStoreMessages.h"
 #include "WebSWContextManagerConnection.h"
 #include "WebSWContextManagerConnectionMessages.h"
 #include "WebServiceWorkerProvider.h"
@@ -149,10 +149,6 @@
 #include <JavaScriptCore/RemoteInspector.h>
 #endif
 
-#if PLATFORM(IOS_FAMILY)
-#include <bmalloc/MemoryStatusSPI.h>
-#endif
-
 // This should be less than plugInAutoStartExpirationTimeThreshold in PlugInAutoStartProvider.
 static const Seconds plugInAutoStartExpirationTimeUpdateThreshold { 29 * 24 * 60 * 60 };
 
@@ -214,14 +210,12 @@ WebProcess::WebProcess()
     m_plugInAutoStartOriginHashes.add(PAL::SessionID::defaultSessionID(), HashMap<unsigned, WallTime>());
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    ResourceLoadObserver::shared().setNotificationCallback([this] (Vector<ResourceLoadStatistics>&& statistics) {
-        parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::ResourceLoadStatisticsUpdated(WTFMove(statistics)), 0);
-
-        ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RequestResourceLoadStatisticsUpdate(), 0);
+    ResourceLoadObserver::shared().setStatisticsUpdatedCallback([this] (Vector<ResourceLoadStatistics>&& statistics) {
+        ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::ResourceLoadStatisticsUpdated(WTFMove(statistics)), 0);
     });
 
-    ResourceLoadObserver::shared().setRequestStorageAccessUnderOpenerCallback([this] (const RegistrableDomain& domainInNeedOfStorageAccess, uint64_t openerPageID, const RegistrableDomain& openerDomain) {
-        parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::RequestStorageAccessUnderOpener(domainInNeedOfStorageAccess, openerPageID, openerDomain), 0);
+    ResourceLoadObserver::shared().setRequestStorageAccessUnderOpenerCallback([this] (PAL::SessionID sessionID, const RegistrableDomain& domainInNeedOfStorageAccess, uint64_t openerPageID, const RegistrableDomain& openerDomain) {
+        ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RequestStorageAccessUnderOpener(sessionID, domainInNeedOfStorageAccess, openerPageID, openerDomain), 0);
     });
 #endif
     
@@ -285,7 +279,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
 #endif
 
-    platformInitializeWebProcess(WTFMove(parameters));
+    platformInitializeWebProcess(parameters);
 
     // Match the QoS of the UIProcess and the scrolling thread but use a slightly lower priority.
     WTF::Thread::setCurrentThreadIsUserInteractive(-1);
@@ -341,20 +335,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     for (auto& supplement : m_supplements.values())
         supplement->initialize(parameters);
 
-    auto& databaseManager = DatabaseManager::singleton();
-    databaseManager.initialize(parameters.webSQLDatabaseDirectory);
-
-    // FIXME: This should be constructed per data store, not per process.
-    m_applicationCacheStorage = ApplicationCacheStorage::create(parameters.applicationCacheDirectory, parameters.applicationCacheFlatFileSubdirectoryName);
-#if PLATFORM(IOS_FAMILY)
-    m_applicationCacheStorage->setDefaultOriginQuota(25ULL * 1024 * 1024);
-#endif
-
-#if ENABLE(VIDEO)
-    if (!parameters.mediaCacheDirectory.isEmpty())
-        WebCore::HTMLMediaElement::setMediaCacheDirectory(parameters.mediaCacheDirectory);
-#endif
-
     setCacheModel(parameters.cacheModel);
 
     if (!parameters.languages.isEmpty())
@@ -401,8 +381,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
         registerURLSchemeAsCanDisplayOnlyIfCanRequest(scheme);
 
     setDefaultRequestTimeoutInterval(parameters.defaultRequestTimeoutInterval);
-
-    setResourceLoadStatisticsEnabled(parameters.resourceLoadStatisticsEnabled);
 
     setAlwaysUsesComplexTextCodePath(parameters.shouldAlwaysUseComplexTextCodePath);
 
@@ -472,6 +450,30 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     RELEASE_LOG(Process, "%p - WebProcess::initializeWebProcess: Presenting process = %d", this, WebCore::presentingApplicationPID());
 }
 
+void WebProcess::setWebsiteDataStoreParameters(WebProcessDataStoreParameters&& parameters)
+{
+    auto& databaseManager = DatabaseManager::singleton();
+    databaseManager.initialize(parameters.webSQLDatabaseDirectory);
+
+    // FIXME: This should be constructed per data store, not per process.
+    m_applicationCacheStorage = ApplicationCacheStorage::create(parameters.applicationCacheDirectory, parameters.applicationCacheFlatFileSubdirectoryName);
+#if PLATFORM(IOS_FAMILY)
+    m_applicationCacheStorage->setDefaultOriginQuota(25ULL * 1024 * 1024);
+#endif
+
+#if ENABLE(VIDEO)
+    if (!parameters.mediaCacheDirectory.isEmpty())
+        WebCore::HTMLMediaElement::setMediaCacheDirectory(parameters.mediaCacheDirectory);
+#endif
+
+    setResourceLoadStatisticsEnabled(parameters.resourceLoadStatisticsEnabled);
+
+    for (auto& supplement : m_supplements.values())
+        supplement->setWebsiteDataStore(parameters);
+
+    platformSetWebsiteDataStoreParameters(WTFMove(parameters));
+}
+
 bool WebProcess::hasPageRequiringPageCacheWhileSuspended() const
 {
     for (auto& page : m_pageMap.values()) {
@@ -498,7 +500,7 @@ void WebProcess::setHasSuspendedPageProxy(bool hasSuspendedPageProxy)
 
 void WebProcess::setIsInProcessCache(bool isInProcessCache)
 {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     if (isInProcessCache) {
         ASSERT(m_processType == ProcessType::WebContent);
         m_processType = ProcessType::CachedWebContent;
@@ -515,7 +517,7 @@ void WebProcess::setIsInProcessCache(bool isInProcessCache)
 
 void WebProcess::markIsNoLongerPrewarmed()
 {
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     ASSERT(m_processType == ProcessType::PrewarmedWebContent);
     m_processType = ProcessType::WebContent;
 
@@ -1460,6 +1462,7 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
 
 #if PLATFORM(IOS_FAMILY)
     accessibilityProcessSuspendedNotification(true);
+    updateFreezerStatus();
 #endif
 
     markAllLayersVolatile([this, shouldAcknowledgeWhenReadyToSuspend](bool success) {
@@ -1873,14 +1876,6 @@ void WebProcess::resumeAllMediaBuffering()
 void WebProcess::clearCurrentModifierStateForTesting()
 {
     PlatformKeyboardEvent::setCurrentModifierState({ });
-}
-
-void WebProcess::setFreezable(bool freezable)
-{
-#if PLATFORM(IOS_FAMILY)
-    auto result = memorystatus_control(MEMORYSTATUS_CMD_SET_PROCESS_IS_FREEZABLE, getpid(), freezable ? 1 : 0, nullptr, 0);
-    ASSERT_UNUSED(result, !result);
-#endif
 }
 
 #if PLATFORM(IOS_FAMILY)

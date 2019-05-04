@@ -1,3 +1,293 @@
+2019-04-04  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WebCore] Put most of derived classes of ScriptWrappable into IsoHeap
+        https://bugs.webkit.org/show_bug.cgi?id=196475
+
+        Reviewed by Saam Barati.
+
+        * wtf/ForbidHeapAllocation.h:
+        * wtf/IsoMalloc.h:
+        * wtf/IsoMallocInlines.h:
+
+2019-04-03  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][WTF] Mirror XCode header directories
+        https://bugs.webkit.org/show_bug.cgi?id=191662
+
+        Reviewed by Konstantin Tokarev.
+
+        Rename WTF forwarding header target to WTFFramework and update the install location
+        to WTF_FRAMEWORK_HEADERS_DIR.
+
+        * wtf/CMakeLists.txt:
+
+2019-04-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remote Inspector indicate callback should always happen on the main thread
+        https://bugs.webkit.org/show_bug.cgi?id=196513
+        <rdar://problem/49498284>
+
+        Reviewed by Devin Rousso.
+
+        * wtf/MainThread.h:
+        * wtf/cocoa/MainThreadCocoa.mm:
+        (WTF::dispatchAsyncOnMainThreadWithWebThreadLockIfNeeded):
+        * wtf/ios/WebCoreThread.cpp:
+        * wtf/ios/WebCoreThread.h:
+
+2019-04-02  Keith Rollin  <krollin@apple.com>
+
+        Inhibit CFNetwork logging in private sessions
+        https://bugs.webkit.org/show_bug.cgi?id=196268
+        <rdar://problem/48210793>
+
+        Fix a conditional in Platform.h where IOS should have been used
+        instead of IOS_FAMILY. The latter happened to work, but we really want
+        to be using the proper symbol here.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/Platform.h:
+
+2019-04-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Stop trying to support building JSC with clang 3.8
+        https://bugs.webkit.org/show_bug.cgi?id=195947
+        <rdar://problem/49069219>
+
+        Reviewed by Darin Adler.
+
+        It seems WebKit hasn't built with clang 3.8 in a while, no devs are using this compiler, we
+        don't know how much effort it would be to make JSC work again, and it's making the code
+        worse. Remove my hacks to support clang 3.8 from WTF.
+
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::allocate):
+        * wtf/text/StringConcatenate.h:
+        (WTF::tryMakeStringFromAdapters):
+
+2019-03-31  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Butterfly allocation from LargeAllocation should try "realloc" behavior if collector thread is not active
+        https://bugs.webkit.org/show_bug.cgi?id=196160
+
+        Reviewed by Saam Barati.
+
+        * wtf/FastMalloc.h:
+        (WTF::FastMalloc::tryRealloc):
+        * wtf/Gigacage.cpp:
+        (Gigacage::tryRealloc):
+        * wtf/Gigacage.h:
+
+2019-03-31  Andy Estes  <aestes@apple.com>
+
+        [iOS] WebKit should consult the navigation response policy delegate before previewing a QuickLook document
+        https://bugs.webkit.org/show_bug.cgi?id=196433
+        <rdar://problem/49293305>
+
+        Reviewed by Tim Horton.
+
+        * wtf/NeverDestroyed.h:
+        (WTF::NeverDestroyed::operator->):
+        (WTF::NeverDestroyed::operator-> const):
+
+2019-03-28  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed build fix.
+
+        * wtf/CMakeLists.txt: Added SpanningTree.h to WTF_PUBLIC_HEADERS.
+
+2019-03-28  Saam Barati  <sbarati@apple.com>
+
+        BackwardsGraph needs to consider back edges as the backward's root successor
+        https://bugs.webkit.org/show_bug.cgi?id=195991
+
+        Reviewed by Filip Pizlo.
+
+        Previously, our backwards graph analysis was slightly wrong. The idea of
+        backwards graph is that the root of the graph has edges to terminals in
+        the original graph. And then the original directed edges in the graph are flipped.
+        
+        However, we weren't considering loops as a form of terminality. For example,
+        we wouldn't consider an infinite loop as a terminal. So there were no edges
+        from the root to a node in the infinite loop. This lead us to make mistakes
+        when we used backwards dominators to compute control flow equivalence.
+        
+        This is better understood in an example:
+        
+        ```
+        preheader:
+        while (1) {
+            if (!isCell(v))
+                continue;
+            load structure ID
+            if (cond)
+               continue;
+            return
+        }
+        ```
+        
+        In the previous version of this algorithm, the only edge from the backwards
+        root would be to the block containing the return. This would lead us to
+        believe that the loading of the structureID backwards dominates the preheader,
+        leading us to believe it's control flow equivalent to preheader. This is
+        obviously wrong, since we can loop forever if "v" isn't a cell.
+        
+        The solution here is to treat any backedge in the graph as a "terminal" node.
+        Since a backedge implies the existence of a loop.
+        
+        In the above example, the backwards root now has an edge to both blocks with
+        "continue". This prevents us from falsely claiming that the return is control
+        flow equivalent with the preheader.
+        
+        This patch uses DFS spanning trees to compute back edges. An edge
+        u->v is a back edge when u is a descendent of v in the DFS spanning
+        tree of the Graph.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BackwardsGraph.h:
+        (WTF::BackwardsGraph::BackwardsGraph):
+        * wtf/SpanningTree.h: Added.
+        (SpanningTree::SpanningTree):
+        (SpanningTree::isDescendent):
+
+2019-03-28  Tim Horton  <timothy_horton@apple.com>
+
+        Un-fix the build
+
+        * wtf/Platform.h:
+        It is no longer necessary to exclude this from PLATFORM(IOSMAC).
+
+2019-03-27  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test js/math-clz32.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=196209
+
+        Reviewed by Ross Kirsling.
+
+        Use the correct number of loop iterations when counting leading zeros. Also, the
+        count was off by one for the Win64 case.
+
+        * wtf/MathExtras.h:
+        (WTF::clz):
+
+2019-03-26  Keith Rollin  <krollin@apple.com>
+
+        Inhibit CFNetwork logging in private sessions
+        https://bugs.webkit.org/show_bug.cgi?id=196268
+        <rdar://problem/48210793>
+
+        Reviewed by Alex Christensen.
+
+        Before performing any logging, the NetworkProcess checks to see if
+        it's performing an operation associated with a private (ephemeral)
+        browsing session. If so, it skips the logging. However, networking
+        layers below the NetworkProcess don't know about private browsing, so
+        they would still perform their own logging. CFNetwork now has a flag
+        that lets us control that, so set it to False if private browsing.
+
+        * wtf/Platform.h:
+
+2019-03-25  Alex Christensen  <achristensen@webkit.org>
+
+        Expected shouldn't assume its contained types are copyable
+        https://bugs.webkit.org/show_bug.cgi?id=195986
+
+        Reviewed by JF Bastien.
+
+        * wtf/Expected.h:
+        (std::experimental::fundamentals_v3::__expected_detail::constexpr_base::constexpr_base):
+        (std::experimental::fundamentals_v3::operator==):
+        (std::experimental::fundamentals_v3::operator!=):
+        * wtf/Unexpected.h:
+        (std::experimental::fundamentals_v3::unexpected::unexpected):
+
+2019-03-24  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, forgot to refactor variable name for windows build in
+        r243418.
+
+        * wtf/MathExtras.h:
+        (WTF::clz):
+        (WTF::ctz):
+
+2019-03-24  Andy Estes  <aestes@apple.com>
+
+        [watchOS] Remove unused Proximity Networking code
+        https://bugs.webkit.org/show_bug.cgi?id=196188
+
+        Reviewed by Tim Horton.
+
+        * wtf/FeatureDefines.h:
+
+2019-03-23  Keith Miller  <keith_miller@apple.com>
+
+        Refactor clz/ctz and fix getLSBSet.
+        https://bugs.webkit.org/show_bug.cgi?id=196162
+
+        Reviewed by Saam Barati.
+
+        This patch makes clz32/64 and ctz32 generic so they work on any
+        numeric type. Since these methods work on any type we don't need
+        to have a separate implementation of getLSBSet, which also
+        happened to be getMSBSet. This patch also adds getMSBSet as there
+        may be users who want that in the future.
+
+        * wtf/MathExtras.h:
+        (WTF::clz):
+        (WTF::ctz):
+        (WTF::getLSBSet):
+        (WTF::getMSBSet):
+        (getLSBSet): Deleted.
+        (WTF::clz32): Deleted.
+        (WTF::clz64): Deleted.
+        (WTF::ctz32): Deleted.
+
+2019-03-22  Keith Rollin  <krollin@apple.com>
+
+        Enable ThinLTO support in Production builds
+        https://bugs.webkit.org/show_bug.cgi?id=190758
+        <rdar://problem/45413233>
+
+        Reviewed by Daniel Bates.
+
+        Enable building with Thin LTO in Production when using Xcode 10.2 or
+        later. This change results in a 1.45% progression in PLT5. Full
+        Production build times increase about 2-3%. Incremental build times
+        are more severely affected, and so LTO is not enabled for local
+        engineering builds.
+
+        LTO is enabled only on macOS for now, until rdar://problem/49013399,
+        which affects ARM builds, is fixed.
+
+        To change the LTO setting when building locally:
+
+        - If building with `make`, specify WK_LTO_MODE={none,thin,full} on the
+          command line.
+        - If building with `build-webkit`, specify --lto-mode={none,thin,full}
+          on the command line.
+        - If building with `build-root`, specify --lto={none,thin,full} on the
+          command line.
+        - If building with Xcode, create a LocalOverrides.xcconfig file at the
+          top level of your repository directory (if needed) and define
+          WK_LTO_MODE to full, thin, or none.
+
+        * Configurations/Base.xcconfig:
+
+2019-03-22  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build after r243354
+
+        * wtf/Platform.h:
+
+2019-03-22  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build after r243354
+        https://bugs.webkit.org/show_bug.cgi?id=196138
+        <rdar://problem/49145951>
+
+        * wtf/Platform.h:
+
 2019-03-21  Eric Carlson  <eric.carlson@apple.com>
 
         Add UI process WebRTC runtime logging.

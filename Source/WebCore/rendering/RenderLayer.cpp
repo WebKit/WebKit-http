@@ -2321,13 +2321,13 @@ void RenderLayer::applyPostLayoutScrollPositionIfNeeded()
     m_postLayoutScrollPosition = WTF::nullopt;
 }
 
-void RenderLayer::scrollToXPosition(int x, ScrollClamping clamping)
+void RenderLayer::scrollToXPosition(int x, ScrollType, ScrollClamping clamping)
 {
     ScrollPosition position(x, m_scrollPosition.y());
     scrollToOffset(scrollOffsetFromPosition(position), clamping);
 }
 
-void RenderLayer::scrollToYPosition(int y, ScrollClamping clamping)
+void RenderLayer::scrollToYPosition(int y, ScrollType, ScrollClamping clamping)
 {
     ScrollPosition position(m_scrollPosition.x(), y);
     scrollToOffset(scrollOffsetFromPosition(position), clamping);
@@ -3117,6 +3117,26 @@ void RenderLayer::invalidateScrollCornerRect(const IntRect& rect)
         m_scrollCorner->repaintRectangle(rect);
     if (m_resizer)
         m_resizer->repaintRectangle(rect);
+}
+
+static bool scrollbarHiddenByStyle(Scrollbar* scrollbar)
+{
+    if (!scrollbar || !scrollbar->isCustomScrollbar())
+        return false;
+
+    std::unique_ptr<RenderStyle> scrollbarStyle = static_cast<RenderScrollbar*>(scrollbar)->getScrollbarPseudoStyle(ScrollbarBGPart, PseudoId::Scrollbar);
+
+    return scrollbarStyle && scrollbarStyle->display() == DisplayType::None;
+}
+
+bool RenderLayer::horizontalScrollbarHiddenByStyle() const
+{
+    return scrollbarHiddenByStyle(horizontalScrollbar());
+}
+
+bool RenderLayer::verticalScrollbarHiddenByStyle() const
+{
+    return scrollbarHiddenByStyle(verticalScrollbar());
 }
 
 static inline RenderElement* rendererForScrollbar(RenderLayerModelObject& renderer)
@@ -4466,9 +4486,6 @@ void RenderLayer::paintList(LayerList layerIterator, GraphicsContext& context, c
         return;
 
     if (!hasSelfPaintingLayerDescendant())
-        return;
-
-    if (paintFlags.contains(PaintLayerCollectingEventRegion) && renderBox() && !renderBox()->hasRenderOverflow())
         return;
 
 #if !ASSERT_DISABLED
@@ -6628,12 +6645,27 @@ bool RenderLayer::isTransparentOrFullyClippedRespectingParentFrames() const
             return true;
     }
 
-    for (auto* layer = this; layer; layer = enclosingFrameRenderLayer(*layer)) {
-        if (layer->selfClipRect().isEmpty())
+    RenderLayer* enclosingClipLayer = nullptr;
+    for (auto* layer = this; layer; layer = enclosingClipLayer ? enclosingClipLayer->parent() : enclosingFrameRenderLayer(*layer)) {
+        enclosingClipLayer = layer->enclosingOverflowClipLayer(IncludeSelfOrNot::IncludeSelf);
+        if (!enclosingClipLayer)
+            continue;
+
+        LayoutRect layerBounds;
+        ClipRect backgroundRect;
+        ClipRect foregroundRect;
+        layer->calculateRects({ enclosingClipLayer, TemporaryClipRects }, LayoutRect::infiniteRect(), layerBounds, backgroundRect, foregroundRect, layer->offsetFromAncestor(enclosingClipLayer));
+        if (backgroundRect.isEmpty())
             return true;
     }
 
     return false;
+}
+
+void RenderLayer::invalidateEventRegion()
+{
+    if (auto* compositingLayer = enclosingCompositingLayerForRepaint())
+        compositingLayer->setNeedsCompositingConfigurationUpdate();
 }
 
 TextStream& operator<<(TextStream& ts, const RenderLayer& layer)

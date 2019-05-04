@@ -25,18 +25,21 @@
 
 #pragma once
 
-#include "SVGAnimatedAngle.h"
-#include "SVGAnimatedEnumeration.h"
-#include "SVGAnimatedLength.h"
-#include "SVGAnimatedLengthList.h"
+#include "SVGAngle.h"
+#include "SVGAnimatedDecoratedProperty.h"
 #include "SVGAnimatedPrimitiveProperty.h"
 #include "SVGAnimatedPropertyList.h"
-#include "SVGAnimatedTransformList.h"
 #include "SVGAnimatedValueProperty.h"
+#include "SVGDecoratedEnumeration.h"
+#include "SVGLength.h"
+#include "SVGLengthList.h"
+#include "SVGMarkerTypes.h"
 #include "SVGNumberList.h"
+#include "SVGPathSegList.h"
 #include "SVGPointList.h"
 #include "SVGPreserveAspectRatio.h"
 #include "SVGRect.h"
+#include "SVGTransformList.h"
 
 namespace WebCore {
 
@@ -45,10 +48,54 @@ using SVGAnimatedInteger = SVGAnimatedPrimitiveProperty<int>;
 using SVGAnimatedNumber = SVGAnimatedPrimitiveProperty<float>;
 using SVGAnimatedString = SVGAnimatedPrimitiveProperty<String>;
 
+using SVGAnimatedEnumeration = SVGAnimatedDecoratedProperty<SVGDecoratedEnumeration, unsigned>;
+
+using SVGAnimatedAngle = SVGAnimatedValueProperty<SVGAngle>;
+using SVGAnimatedLength = SVGAnimatedValueProperty<SVGLength>;
 using SVGAnimatedRect = SVGAnimatedValueProperty<SVGRect>;
 using SVGAnimatedPreserveAspectRatio = SVGAnimatedValueProperty<SVGPreserveAspectRatio>;
 
+using SVGAnimatedLengthList = SVGAnimatedPropertyList<SVGLengthList>;
 using SVGAnimatedNumberList = SVGAnimatedPropertyList<SVGNumberList>;
 using SVGAnimatedPointList = SVGAnimatedPropertyList<SVGPointList>;
+using SVGAnimatedTransformList = SVGAnimatedPropertyList<SVGTransformList>;
+
+class SVGAnimatedOrientType : public SVGAnimatedEnumeration {
+public:
+    using SVGAnimatedEnumeration::SVGAnimatedEnumeration;
+
+    static Ref<SVGAnimatedOrientType> create(SVGElement* contextElement, SVGMarkerOrientType baseValue)
+    {
+        return SVGAnimatedEnumeration::create<SVGMarkerOrientType, SVGAnimatedOrientType>(contextElement, baseValue);
+    }
+};
+
+class SVGAnimatedPathSegList : public SVGAnimatedPropertyList<SVGPathSegList> {
+    using Base = SVGAnimatedPropertyList<SVGPathSegList>;
+    using Base::Base;
+
+public:
+    static Ref<SVGAnimatedPathSegList> create(SVGElement* contextElement)
+    {
+        return adoptRef(*new SVGAnimatedPathSegList(contextElement));
+    }
+
+    SVGPathByteStream& currentPathByteStream()
+    {
+        return isAnimating() ? animVal()->pathByteStream() : baseVal()->pathByteStream();
+    }
+
+    Path currentPath()
+    {
+        return isAnimating() ? animVal()->path() : baseVal()->path();
+    }
+
+    size_t approximateMemoryCost() const
+    {
+        if (isAnimating())
+            return baseVal()->approximateMemoryCost() + animVal()->approximateMemoryCost();
+        return baseVal()->approximateMemoryCost();
+    }
+};
 
 }

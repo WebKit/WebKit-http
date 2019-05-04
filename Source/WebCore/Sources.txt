@@ -175,6 +175,7 @@ Modules/mediastream/RTCDTMFToneChangeEvent.cpp
 Modules/mediastream/RTCDataChannel.cpp
 Modules/mediastream/RTCDataChannelEvent.cpp
 Modules/mediastream/RTCIceCandidate.cpp
+Modules/mediastream/RTCIceTransport.cpp
 Modules/mediastream/RTCPeerConnection.cpp
 Modules/mediastream/RTCPeerConnectionIceEvent.cpp
 Modules/mediastream/RTCRtpReceiver.cpp
@@ -186,8 +187,6 @@ Modules/mediastream/UserMediaController.cpp
 Modules/mediastream/UserMediaRequest.cpp
 
 Modules/mediastream/libwebrtc/LibWebRTCCertificateGenerator.cpp
-
-Modules/navigatorcontentutils/NavigatorContentUtils.cpp
 
 Modules/notifications/Notification.cpp
 Modules/notifications/NotificationController.cpp
@@ -350,16 +349,21 @@ Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteral.cpp
 Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteral.cpp
 Modules/webgpu/WHLSL/WHLSLPrepare.cpp
 Modules/webgpu/WebGPU.cpp
+Modules/webgpu/WebGPUAdapter.cpp
 Modules/webgpu/WebGPUBindGroup.cpp
 Modules/webgpu/WebGPUBindGroupDescriptor.cpp
-Modules/webgpu/WebGPUCommandBuffer.cpp
-Modules/webgpu/WebGPUCommandEncoder.cpp
-Modules/webgpu/WebGPUAdapter.cpp
 Modules/webgpu/WebGPUBindGroupLayout.cpp
 Modules/webgpu/WebGPUBuffer.cpp
+Modules/webgpu/WebGPUCommandBuffer.cpp
+Modules/webgpu/WebGPUCommandEncoder.cpp
+Modules/webgpu/WebGPUComputePassEncoder.cpp
+Modules/webgpu/WebGPUComputePipeline.cpp
+Modules/webgpu/WebGPUComputePipelineDescriptor.cpp
 Modules/webgpu/WebGPUDevice.cpp
 Modules/webgpu/WebGPUQueue.cpp
 Modules/webgpu/WebGPUPipelineLayout.cpp
+Modules/webgpu/WebGPUPipelineLayoutDescriptor.cpp
+Modules/webgpu/WebGPUPipelineStageDescriptor.cpp
 Modules/webgpu/WebGPUProgrammablePassEncoder.cpp
 Modules/webgpu/WebGPURenderPassDescriptor.cpp
 Modules/webgpu/WebGPURenderPassEncoder.cpp
@@ -543,8 +547,6 @@ bindings/js/JSVideoTrackListCustom.cpp
 bindings/js/JSWebAnimationCustom.cpp
 bindings/js/JSWebGL2RenderingContextCustom.cpp
 bindings/js/JSWebGLRenderingContextCustom.cpp
-bindings/js/JSWebMetalRenderPassAttachmentDescriptorCustom.cpp
-bindings/js/JSWebMetalRenderingContextCustom.cpp
 bindings/js/JSWindowProxy.cpp
 bindings/js/JSWorkerGlobalScopeBase.cpp
 bindings/js/JSWorkerGlobalScopeCustom.cpp
@@ -780,6 +782,11 @@ css/parser/SizesAttributeParser.cpp
 css/parser/SizesCalcParser.cpp
 
 css/typedom/StylePropertyMapReadOnly.cpp
+css/typedom/TypedOMCSSImageValue.cpp
+css/typedom/TypedOMCSSNumericValue.cpp
+css/typedom/TypedOMCSSStyleValue.cpp
+css/typedom/TypedOMCSSUnitValue.cpp
+css/typedom/TypedOMCSSUnparsedValue.cpp
 
 cssjit/SelectorCompiler.cpp
 
@@ -788,6 +795,7 @@ dom/AbortSignal.cpp
 dom/ActiveDOMCallback.cpp
 dom/ActiveDOMCallbackMicrotask.cpp
 dom/ActiveDOMObject.cpp
+dom/AllDescendantsCollection.cpp
 dom/AnimationEvent.cpp
 dom/Attr.cpp
 dom/BeforeTextInsertedEvent.cpp
@@ -814,6 +822,7 @@ dom/DOMImplementation.cpp
 dom/DOMPointReadOnly.cpp
 dom/DOMQuad.cpp
 dom/DOMRectList.cpp
+dom/DOMRectReadOnly.cpp
 dom/DOMStringList.cpp
 dom/DataTransfer.cpp
 dom/DataTransferItem.cpp
@@ -878,6 +887,7 @@ dom/NativeNodeFilter.cpp
 dom/Node.cpp
 dom/NodeFilterCondition.cpp
 dom/NodeIterator.cpp
+dom/NodeList.cpp
 dom/NodeRareData.cpp
 dom/NodeTraversal.cpp
 dom/OverflowEvent.cpp
@@ -1213,28 +1223,6 @@ html/canvas/OffscreenCanvasRenderingContext2D.cpp
 html/canvas/PaintRenderingContext2D.cpp
 html/canvas/Path2D.cpp
 html/canvas/PlaceholderRenderingContext.cpp
-html/canvas/WebMetalBuffer.cpp
-html/canvas/WebMetalCommandBuffer.cpp
-html/canvas/WebMetalCommandQueue.cpp
-html/canvas/WebMetalComputeCommandEncoder.cpp
-html/canvas/WebMetalComputePipelineState.cpp
-html/canvas/WebMetalDepthStencilDescriptor.cpp
-html/canvas/WebMetalDepthStencilState.cpp
-html/canvas/WebMetalDrawable.cpp
-html/canvas/WebMetalEnums.cpp
-html/canvas/WebMetalFunction.cpp
-html/canvas/WebMetalLibrary.cpp
-html/canvas/WebMetalRenderCommandEncoder.cpp
-html/canvas/WebMetalRenderPassAttachmentDescriptor.cpp
-html/canvas/WebMetalRenderPassColorAttachmentDescriptor.cpp
-html/canvas/WebMetalRenderPassDepthAttachmentDescriptor.cpp
-html/canvas/WebMetalRenderPassDescriptor.cpp
-html/canvas/WebMetalRenderPipelineColorAttachmentDescriptor.cpp
-html/canvas/WebMetalRenderPipelineDescriptor.cpp
-html/canvas/WebMetalRenderPipelineState.cpp
-html/canvas/WebMetalRenderingContext.cpp
-html/canvas/WebMetalTexture.cpp
-html/canvas/WebMetalTextureDescriptor.cpp
 
 html/forms/FileIconLoader.cpp
 
@@ -1544,6 +1532,8 @@ page/ProcessWarming.cpp
 page/Quirks.cpp
 page/RemoteDOMWindow.cpp
 page/RemoteFrame.cpp
+page/ResizeObservation.cpp
+page/ResizeObserver.cpp
 page/ResourceUsageOverlay.cpp
 page/ResourceUsageThread.cpp
 page/RuntimeEnabledFeatures.cpp
@@ -1820,27 +1810,6 @@ platform/graphics/filters/SpotLightSource.cpp
 platform/graphics/gpu/GPUDevice.cpp
 platform/graphics/gpu/GPUPipelineLayout.cpp
 platform/graphics/gpu/GPUProgrammablePassEncoder.cpp
-platform/graphics/gpu/legacy/GPULegacyBuffer.cpp
-platform/graphics/gpu/legacy/GPULegacyCommandBuffer.cpp
-platform/graphics/gpu/legacy/GPULegacyCommandQueue.cpp
-platform/graphics/gpu/legacy/GPULegacyComputeCommandEncoder.cpp
-platform/graphics/gpu/legacy/GPULegacyComputePipelineState.cpp
-platform/graphics/gpu/legacy/GPULegacyDepthStencilDescriptor.cpp
-platform/graphics/gpu/legacy/GPULegacyDepthStencilState.cpp
-platform/graphics/gpu/legacy/GPULegacyDevice.cpp
-platform/graphics/gpu/legacy/GPULegacyDrawable.cpp
-platform/graphics/gpu/legacy/GPULegacyFunction.cpp
-platform/graphics/gpu/legacy/GPULegacyLibrary.cpp
-platform/graphics/gpu/legacy/GPULegacyRenderCommandEncoder.cpp
-platform/graphics/gpu/legacy/GPULegacyRenderPassAttachmentDescriptor.cpp
-platform/graphics/gpu/legacy/GPULegacyRenderPassColorAttachmentDescriptor.cpp
-platform/graphics/gpu/legacy/GPULegacyRenderPassDepthAttachmentDescriptor.cpp
-platform/graphics/gpu/legacy/GPULegacyRenderPassDescriptor.cpp
-platform/graphics/gpu/legacy/GPULegacyRenderPipelineColorAttachmentDescriptor.cpp
-platform/graphics/gpu/legacy/GPULegacyRenderPipelineDescriptor.cpp
-platform/graphics/gpu/legacy/GPULegacyRenderPipelineState.cpp
-platform/graphics/gpu/legacy/GPULegacyTexture.cpp
-platform/graphics/gpu/legacy/GPULegacyTextureDescriptor.cpp
 
 platform/graphics/iso/ISOBox.cpp
 platform/graphics/iso/ISOOriginalFormatBox.cpp
@@ -2269,16 +2238,7 @@ svg/SVGAnimateElement.cpp
 svg/SVGAnimateElementBase.cpp
 svg/SVGAnimateMotionElement.cpp
 svg/SVGAnimateTransformElement.cpp
-svg/SVGAnimatedAngle.cpp
-svg/SVGAnimatedEnumeration.cpp
-svg/SVGAnimatedLength.cpp
-svg/SVGAnimatedLengthList.cpp
-svg/SVGAnimatedPath.cpp
-svg/SVGAnimatedTransformList.cpp
-svg/SVGAnimatedTypeAnimator.cpp
 svg/SVGAnimationElement.cpp
-svg/SVGAttributeAnimationController.cpp
-svg/SVGAttributeAnimationControllerBase.cpp
 svg/SVGCircleElement.cpp
 svg/SVGClipPathElement.cpp
 svg/SVGComponentTransferFunctionElement.cpp
@@ -2336,9 +2296,7 @@ svg/SVGHKernElement.cpp
 svg/SVGImageElement.cpp
 svg/SVGImageLoader.cpp
 svg/SVGLangSpace.cpp
-svg/SVGLegacyAttributeAnimationController.cpp
 svg/SVGLengthContext.cpp
-svg/SVGLengthListValues.cpp
 svg/SVGLengthValue.cpp
 svg/SVGLineElement.cpp
 svg/SVGLinearGradientElement.cpp
@@ -2355,10 +2313,8 @@ svg/SVGPathByteStreamBuilder.cpp
 svg/SVGPathByteStreamSource.cpp
 svg/SVGPathElement.cpp
 svg/SVGPathParser.cpp
-svg/SVGPathSegList.cpp
 svg/SVGPathSegListBuilder.cpp
 svg/SVGPathSegListSource.cpp
-svg/SVGPathSegListValues.cpp
 svg/SVGPathStringBuilder.cpp
 svg/SVGPathStringSource.cpp
 svg/SVGPathTraversalStateBuilder.cpp
@@ -2386,10 +2342,7 @@ svg/SVGTextPathElement.cpp
 svg/SVGTextPositioningElement.cpp
 svg/SVGTitleElement.cpp
 svg/SVGToOTFFontConversion.cpp
-svg/SVGTransform.cpp
 svg/SVGTransformDistance.cpp
-svg/SVGTransformListValues.cpp
-svg/SVGTransformValue.cpp
 svg/SVGTransformable.cpp
 svg/SVGURIReference.cpp
 svg/SVGUnknownElement.cpp
@@ -2412,12 +2365,9 @@ svg/graphics/filters/SVGFEImage.cpp
 svg/graphics/filters/SVGFilter.cpp
 svg/graphics/filters/SVGFilterBuilder.cpp
 
-svg/properties/SVGAnimatedPathSegListPropertyTearOff.cpp
 svg/properties/SVGAnimatedProperty.cpp
 svg/properties/SVGAnimationAdditiveValueFunctionImpl.cpp
 svg/properties/SVGAttributeAnimator.cpp
-svg/properties/SVGAttributeOwnerProxy.cpp
-svg/properties/SVGLegacyAnimatedProperty.cpp
 
 workers/AbstractWorker.cpp
 workers/DedicatedWorkerGlobalScope.cpp
@@ -2775,8 +2725,10 @@ JSFontFaceSet.cpp
 JSGPUCanvasContext.cpp
 JSGPUColor.cpp
 JSGPUColorStateDescriptor.cpp
+JSGPUColorWriteBits.cpp
 JSGPUBindGroupLayoutBinding.cpp
 JSGPUBindGroupLayoutDescriptor.cpp
+JSGPUBlendDescriptor.cpp
 JSGPUBufferDescriptor.cpp
 JSGPUBufferUsage.cpp
 JSGPUCompareFunction.cpp
@@ -2963,7 +2915,6 @@ JSMutationRecord.cpp
 JSNamedNodeMap.cpp
 JSNavigator.cpp
 JSNavigatorBeacon.cpp
-// JSNavigatorContentUtils.cpp
 JSNavigatorCredentials.cpp
 JSNavigatorGeolocation.cpp
 JSNavigatorID.cpp
@@ -3097,6 +3048,9 @@ JSReadableStreamSink.cpp
 JSReadableStreamSource.cpp
 JSRemoteDOMWindow.cpp
 JSRequestAnimationFrameCallback.cpp
+JSResizeObserver.cpp
+JSResizeObserverCallback.cpp
+JSResizeObserverEntry.cpp
 JSRsaHashedImportParams.cpp
 JSRsaHashedKeyGenParams.cpp
 JSRsaKeyGenParams.cpp
@@ -3335,6 +3289,9 @@ JSWebGPUBuffer.cpp
 JSWebGPUBufferBinding.cpp
 JSWebGPUCommandBuffer.cpp
 JSWebGPUCommandEncoder.cpp
+JSWebGPUComputePassEncoder.cpp
+JSWebGPUComputePipeline.cpp
+JSWebGPUComputePipelineDescriptor.cpp
 JSWebGPUDevice.cpp
 JSWebGPUQueue.cpp
 JSWebGPUPipelineDescriptorBase.cpp
@@ -3352,28 +3309,6 @@ JSWebGPUShaderModuleDescriptor.cpp
 JSWebGPUSwapChain.cpp
 JSWebGPUTexture.cpp
 JSWebGPUTextureView.cpp
-JSWebMetalBuffer.cpp
-JSWebMetalCommandBuffer.cpp
-JSWebMetalCommandQueue.cpp
-JSWebMetalComputeCommandEncoder.cpp
-JSWebMetalComputePipelineState.cpp
-JSWebMetalDepthStencilDescriptor.cpp
-JSWebMetalDepthStencilState.cpp
-JSWebMetalDrawable.cpp
-JSWebMetalFunction.cpp
-JSWebMetalLibrary.cpp
-JSWebMetalRenderCommandEncoder.cpp
-JSWebMetalRenderPassAttachmentDescriptor.cpp
-JSWebMetalRenderPassColorAttachmentDescriptor.cpp
-JSWebMetalRenderPassDepthAttachmentDescriptor.cpp
-JSWebMetalRenderPassDescriptor.cpp
-JSWebMetalRenderPipelineColorAttachmentDescriptor.cpp
-JSWebMetalRenderPipelineDescriptor.cpp
-JSWebMetalRenderPipelineState.cpp
-JSWebMetalRenderingContext.cpp
-JSWebMetalSize.cpp
-JSWebMetalTexture.cpp
-JSWebMetalTextureDescriptor.cpp
 JSWebKitAnimationEvent.cpp
 JSWebKitCSSMatrix.cpp
 JSWebKitCSSViewportRule.cpp

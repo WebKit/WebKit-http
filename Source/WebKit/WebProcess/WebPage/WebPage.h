@@ -85,7 +85,7 @@
 #include <wtf/text/WTFString.h>
 
 #if HAVE(ACCESSIBILITY) && PLATFORM(GTK)
-#include "WebPageAccessibilityObject.h"
+typedef struct _AtkObject AtkObject;
 #include <wtf/glib/GRefPtr.h>
 #endif
 
@@ -1561,7 +1561,6 @@ private:
 
     WebCore::IntSize m_viewSize;
     std::unique_ptr<DrawingArea> m_drawingArea;
-    bool m_shouldResetDrawingAreaAfterSuspend { false };
 
     HashSet<PluginView*> m_pluginViews;
     bool m_hasSeenPlugin { false };
@@ -1635,7 +1634,7 @@ private:
 #endif
 
 #if HAVE(ACCESSIBILITY) && PLATFORM(GTK)
-    GRefPtr<WebPageAccessibilityObject> m_accessibilityObject;
+    GRefPtr<AtkObject> m_accessibilityObject;
 #endif
 
 #if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
@@ -1805,6 +1804,7 @@ private:
     WebCore::IntSize m_blockSelectionDesiredSize;
     WebCore::FloatSize m_maximumUnobscuredSize;
     int32_t m_deviceOrientation { 0 };
+    bool m_keyboardIsAttached { false };
     bool m_inDynamicSizeUpdate { false };
     HashMap<std::pair<WebCore::IntSize, double>, WebCore::IntPoint> m_dynamicSizeUpdateHistory;
     RefPtr<WebCore::Node> m_pendingSyntheticClickNode;
@@ -1885,9 +1885,6 @@ private:
     OptionSet<LayerTreeFreezeReason> m_LayerTreeFreezeReasons;
     bool m_isSuspended { false };
     bool m_needsFontAttributes { false };
-#if PLATFORM(IOS_FAMILY)
-    bool m_keyboardIsAttached { false };
-#endif
 };
 
 } // namespace WebKit

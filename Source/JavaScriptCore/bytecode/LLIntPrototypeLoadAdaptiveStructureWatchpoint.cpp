@@ -32,8 +32,9 @@
 
 namespace JSC {
 
-LLIntPrototypeLoadAdaptiveStructureWatchpoint::LLIntPrototypeLoadAdaptiveStructureWatchpoint(const ObjectPropertyCondition& key, OpGetById::Metadata& getByIdMetadata)
-    : m_key(key)
+LLIntPrototypeLoadAdaptiveStructureWatchpoint::LLIntPrototypeLoadAdaptiveStructureWatchpoint(CodeBlock* owner, const ObjectPropertyCondition& key, OpGetById::Metadata& getByIdMetadata)
+    : m_owner(owner)
+    , m_key(key)
     , m_getByIdMetadata(getByIdMetadata)
 {
     RELEASE_ASSERT(key.watchingRequiresStructureTransitionWatchpoint());
@@ -49,9 +50,10 @@ void LLIntPrototypeLoadAdaptiveStructureWatchpoint::install(VM& vm)
 
 void LLIntPrototypeLoadAdaptiveStructureWatchpoint::fireInternal(VM& vm, const FireDetail&)
 {
-    // FIXME: The m_key.isStillLive() check should not be needed if this watchpoint was removed
-    // when m_key's m_object died. https://bugs.webkit.org/show_bug.cgi?id=195829
-    if (m_key.isStillLive() && m_key.isWatchable(PropertyCondition::EnsureWatchability)) {
+    if (!m_owner->isLive())
+        return;
+
+    if (m_key.isWatchable(PropertyCondition::EnsureWatchability)) {
         install(vm);
         return;
     }

@@ -26,7 +26,7 @@
 
 WI.Resource = class Resource extends WI.SourceCode
 {
-    constructor(url, {mimeType, type, loaderIdentifier, targetId, requestIdentifier, requestMethod, requestHeaders, requestData, requestSentTimestamp, requestSentWalltime, initiatorSourceCodeLocation, initiatorNode, originalRequestWillBeSentTimestamp} = {})
+    constructor(url, {mimeType, type, loaderIdentifier, targetId, requestIdentifier, requestMethod, requestHeaders, requestData, requestSentTimestamp, requestSentWalltime, initiatorCallFrames, initiatorSourceCodeLocation, initiatorNode, originalRequestWillBeSentTimestamp} = {})
     {
         super();
 
@@ -52,6 +52,7 @@ WI.Resource = class Resource extends WI.SourceCode
         this._responseCookies = null;
         this._serverTimingEntries = null;
         this._parentFrame = null;
+        this._initiatorCallFrames = initiatorCallFrames || null;
         this._initiatorSourceCodeLocation = initiatorSourceCodeLocation || null;
         this._initiatorNode = initiatorNode || null;
         this._initiatedResources = [];
@@ -301,6 +302,7 @@ WI.Resource = class Resource extends WI.SourceCode
     get requestIdentifier() { return this._requestIdentifier; }
     get requestMethod() { return this._requestMethod; }
     get requestData() { return this._requestData; }
+    get initiatorCallFrames() { return this._initiatorCallFrames; }
     get initiatorSourceCodeLocation() { return this._initiatorSourceCodeLocation; }
     get initiatorNode() { return this._initiatorNode; }
     get initiatedResources() { return this._initiatedResources; }
@@ -788,6 +790,10 @@ WI.Resource = class Resource extends WI.SourceCode
             console.assert(this._responseHeadersTransferSize >= 0);
             console.assert(this._responseBodyTransferSize >= 0);
             console.assert(this._responseBodySize >= 0);
+
+            // There may have been no size updates received during load if Content-Length was 0.
+            if (isNaN(this._estimatedSize))
+                this._estimatedSize = 0;
 
             this.dispatchEventToListeners(WI.Resource.Event.SizeDidChange, {previousSize: this._estimatedSize});
             this.dispatchEventToListeners(WI.Resource.Event.TransferSizeDidChange);

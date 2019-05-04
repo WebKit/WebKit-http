@@ -26,8 +26,10 @@
 #pragma once
 
 #include "APIObject.h"
+#include "WebCompatibilityMode.h"
 #include "WebsiteAutoplayPolicy.h"
 #include "WebsiteAutoplayQuirk.h"
+#include "WebsiteMetaViewportPolicy.h"
 #include "WebsitePopUpPolicy.h"
 #include <WebCore/HTTPHeaderField.h>
 #include <wtf/OptionSet.h>
@@ -80,6 +82,12 @@ public:
     void setCustomNavigatorPlatform(const WTF::String& customNavigatorPlatform) { m_customNavigatorPlatform = customNavigatorPlatform; }
     const WTF::String& customNavigatorPlatform() const { return m_customNavigatorPlatform; }
 
+    WebKit::WebCompatibilityMode preferredCompatibilityMode() const { return m_preferredCompatibilityMode; }
+    void setPreferredCompatibilityMode(WebKit::WebCompatibilityMode mode) { m_preferredCompatibilityMode = mode; }
+
+    WebKit::WebsiteMetaViewportPolicy metaViewportPolicy() const { return m_metaViewportPolicy; }
+    void setMetaViewportPolicy(WebKit::WebsiteMetaViewportPolicy policy) { m_metaViewportPolicy = policy; }
+
 private:
     WebsitePolicies(bool contentBlockersEnabled, OptionSet<WebKit::WebsiteAutoplayQuirk>, WebKit::WebsiteAutoplayPolicy, Vector<WebCore::HTTPHeaderField>&&, WebKit::WebsitePopUpPolicy, RefPtr<WebsiteDataStore>&&);
 
@@ -93,6 +101,8 @@ private:
     WTF::String m_customUserAgent;
     WTF::String m_customJavaScriptUserAgentAsSiteSpecificQuirks;
     WTF::String m_customNavigatorPlatform;
+    WebKit::WebCompatibilityMode m_preferredCompatibilityMode { WebKit::WebCompatibilityMode::Default };
+    WebKit::WebsiteMetaViewportPolicy m_metaViewportPolicy { WebKit::WebsiteMetaViewportPolicy::Default };
 };
 
 } // namespace API

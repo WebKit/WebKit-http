@@ -635,9 +635,6 @@ public:
 #if ENABLE(WEBGPU)
         [NSNumber numberWithBool:NO], WebKitWebGPUEnabledPreferenceKey,
 #endif
-#if ENABLE(WEBMETAL)
-        [NSNumber numberWithBool:NO], WebKitWebMetalEnabledPreferenceKey,
-#endif
         [NSNumber numberWithBool:NO], WebKitCacheAPIEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitFetchAPIEnabledPreferenceKey,
 
@@ -695,6 +692,9 @@ public:
         @NO, WebKitFetchAPIKeepAliveEnabledPreferenceKey,
         @NO, WebKitServerTimingEnabledPreferenceKey,
         @NO, WebKitReferrerPolicyAttributeEnabledPreferenceKey,
+#if ENABLE(RESIZE_OBSERVER)
+        @NO, WebKitResizeObserverEnabledPreferenceKey,
+#endif
         nil];
 
 #if !PLATFORM(IOS_FAMILY)
@@ -2176,16 +2176,6 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitWebGPUEnabledPreferenceKey];
 }
 
-- (BOOL)webMetalEnabled
-{
-    return [self _boolValueForKey:WebKitWebMetalEnabledPreferenceKey];
-}
-
-- (void)setWebMetalEnabled:(BOOL)enabled
-{
-    [self _setBoolValue:enabled forKey:WebKitWebMetalEnabledPreferenceKey];
-}
-
 - (BOOL)accelerated2dCanvasEnabled
 {
     return [self _boolValueForKey:WebKitAccelerated2dCanvasEnabledPreferenceKey];
@@ -3463,6 +3453,15 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitReferrerPolicyAttributeEnabledPreferenceKey];
 }
 
+- (BOOL)resizeObserverEnabled
+{
+    return [self _boolValueForKey:WebKitResizeObserverEnabledPreferenceKey];
+}
+
+- (void)setResizeObserverEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitResizeObserverEnabledPreferenceKey];
+}
 @end
 
 @implementation WebPreferences (WebInternal)

@@ -31,11 +31,11 @@
 #include "Element.h"
 #include "FloatRect.h"
 #include "InspectorInstrumentation.h"
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
-CanvasBase::CanvasBase(ScriptExecutionContext* scriptExecutionContext)
-    : m_scriptExecutionContext(scriptExecutionContext)
+CanvasBase::CanvasBase()
 {
 }
 
@@ -69,13 +69,13 @@ void CanvasBase::removeObserver(CanvasObserver& observer)
 
 void CanvasBase::notifyObserversCanvasChanged(const FloatRect& rect)
 {
-    for (auto& observer : m_observers)
+    for (auto& observer : copyToVector(m_observers))
         observer->canvasChanged(*this, rect);
 }
 
 void CanvasBase::notifyObserversCanvasResized()
 {
-    for (auto& observer : m_observers)
+    for (auto& observer : copyToVector(m_observers))
         observer->canvasResized(*this);
 }
 
@@ -83,7 +83,7 @@ void CanvasBase::notifyObserversCanvasDestroyed()
 {
     ASSERT(!m_didNotifyObserversCanvasDestroyed);
 
-    for (auto& observer : m_observers)
+    for (auto& observer : copyToVector(m_observers))
         observer->canvasDestroyed(*this);
 
     m_observers.clear();

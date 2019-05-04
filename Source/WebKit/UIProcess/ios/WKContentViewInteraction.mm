@@ -48,7 +48,6 @@
 #import "WKFormInputControl.h"
 #import "WKFormSelectControl.h"
 #import "WKImagePreviewViewController.h"
-#import "WKInkPickerView.h"
 #import "WKInspectorNodeSearchGestureRecognizer.h"
 #import "WKNSURLExtras.h"
 #import "WKPreviewActionItemIdentifiers.h"
@@ -1170,6 +1169,26 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     return [_webView resignFirstResponder];
 }
 
+typedef NS_ENUM(NSInteger, EndEditingReason) {
+    EndEditingReasonAccessoryDone,
+    EndEditingReasonResigningFirstResponder,
+};
+
+- (void)endEditingAndUpdateFocusAppearanceWithReason:(EndEditingReason)reason
+{
+    if (!_webView._retainingActiveFocusedState) {
+        // We need to complete the editing operation before we blur the element.
+        [self _endEditing];
+        if ((reason == EndEditingReasonAccessoryDone && !currentUserInterfaceIdiomIsPad()) || _keyboardDidRequestDismissal)
+            _page->blurFocusedElement();
+    }
+
+    [self _cancelInteraction];
+    [_textSelectionAssistant deactivateSelection];
+
+    [self _resetInputViewDeferral];
+}
+
 - (BOOL)resignFirstResponderForWebView
 {
     // FIXME: Maybe we should call resignFirstResponder on the superclass
@@ -1177,17 +1196,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
     SetForScope<BOOL> resigningFirstResponderScope { _resigningFirstResponder, YES };
 
-    if (!_webView._retainingActiveFocusedState) {
-        // We need to complete the editing operation before we blur the element.
-        [self _endEditing];
-        if (_dismissingAccessory || _keyboardDidRequestDismissal)
-            _page->blurFocusedElement();
-    }
-
-    [self _cancelInteraction];
-    [_textSelectionAssistant deactivateSelection];
-    
-    [self _resetInputViewDeferral];
+    [self endEditingAndUpdateFocusAppearanceWithReason:EndEditingReasonResigningFirstResponder];
 
     // If the user explicitly dismissed the keyboard then we will lose first responder
     // status only to gain it back again. Just don't resign in that case.
@@ -1643,21 +1652,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     if (!hasFocusedElement(_focusedElementInformation))
         return nil;
 
-    if (!_inputPeripheral) {
-        switch (_focusedElementInformation.elementType) {
-        case WebKit::InputType::Select:
-            _inputPeripheral = adoptNS([[WKFormSelectControl alloc] initWithView:self]);
-            break;
-#if ENABLE(INPUT_TYPE_COLOR)
-        case WebKit::InputType::Color:
-            _inputPeripheral = adoptNS([[WKFormColorControl alloc] initWithView:self]);
-            break;
-#endif
-        default:
-            _inputPeripheral = adoptNS([[WKFormInputControl alloc] initWithView:self]);
-            break;
-        }
-    } else {
+    if (_inputPeripheral) {
         // FIXME: UIKit may invoke -[WKContentView inputView] at any time when WKContentView is the first responder;
         // as such, it doesn't make sense to change the enclosing scroll view's zoom scale and content offset to reveal
         // the focused element here. It seems this behavior was added to match logic in legacy WebKit (refer to
@@ -1667,6 +1662,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         // For instance, one use case that currently relies on this detail is adjusting the zoom scale and viewport upon
         // rotation, when a select element is focused. See <https://webkit.org/b/192878> for more information.
         [self _zoomToRevealFocusedElement];
+
         [self _updateAccessory];
     }
 
@@ -2382,6 +2378,14 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     }
 }
 
+- (void)pasteWithCompletionHandler:(void (^)(void))completionHandler
+{
+    _page->executeEditCommand("Paste"_s, { }, [completion = makeBlockPtr(completionHandler)] (auto) {
+        if (completion)
+            completion();
+    });
+}
+
 - (void)clearSelection
 {
     [self _elementDidBlur];
@@ -2832,7 +2836,14 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 #if PLATFORM(IOS)
         if (editorState.isContentRichlyEditable && _webView.configuration._attachmentElementEnabled) {
             for (NSItemProvider *itemProvider in pasteboard.itemProviders) {
-                if (itemProvider.preferredPresentationStyle == UIPreferredPresentationStyleAttachment && itemProvider.web_fileUploadContentTypes.count)
+                auto preferredPresentationStyle = itemProvider.preferredPresentationStyle;
+                if (preferredPresentationStyle == UIPreferredPresentationStyleInline)
+                    continue;
+
+                if (preferredPresentationStyle == UIPreferredPresentationStyleUnspecified && !itemProvider.suggestedName.length)
+                    continue;
+
+                if (itemProvider.web_fileUploadContentTypes.count)
                     return YES;
             }
         }
@@ -3757,14 +3768,19 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)accessoryDone
 {
-    SetForScope<BOOL> dismissingAccessoryScope { _dismissingAccessory, YES };
-    [self resignFirstResponder];
+    [self endEditingAndUpdateFocusAppearanceWithReason:EndEditingReasonAccessoryDone];
+    _page->setIsShowingInputViewForFocusedElement(false);
 }
 
 - (void)accessoryTab:(BOOL)isNext
 {
+    // The input peripheral may need to update the focused DOM node before we switch focus. The UI process does
+    // not maintain a handle to the actual focused DOM node – only the web process has such a handle. So, we need
+    // to end the editing session now before we tell the web process to switch focus. Once the web process tells
+    // us the newly focused element we are no longer are in a position to effect the previously focused element.
+    // See <https://bugs.webkit.org/show_bug.cgi?id=134409>.
     [self _endEditing];
-    _inputPeripheral = nil;
+    _inputPeripheral = nil; // Nullify so that we don't tell the input peripheral to end editing again in -_elementDidBlur.
 
     _isChangingFocusUsingAccessoryTab = YES;
     [self beginSelectionChange];
@@ -4356,21 +4372,28 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     return YES;
 }
 
-#if !USE(UIKIT_KEYBOARD_ADDITIONS)
 - (void)_handleKeyUIEvent:(::UIEvent *)event
 {
     bool isHardwareKeyboardEvent = !!event._hidEvent;
-
     // We only want to handle key event from the hardware keyboard when we are
     // first responder and we are not interacting with editable content.
-    if ([self isFirstResponder] && isHardwareKeyboardEvent && !_page->editorState().isContentEditable) {
+    if ([self isFirstResponder] && isHardwareKeyboardEvent && (_inputPeripheral || !_page->editorState().isContentEditable)) {
+        if ([_inputPeripheral respondsToSelector:@selector(handleKeyEvent:)]) {
+            if ([_inputPeripheral handleKeyEvent:event])
+                return;
+        }
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+        [super _handleKeyUIEvent:event];
+#else
         [self handleKeyEvent:event];
+#endif
         return;
     }
 
     [super _handleKeyUIEvent:event];
 }
 
+#if !USE(UIKIT_KEYBOARD_ADDITIONS)
 - (void)handleKeyEvent:(::UIEvent *)event
 {
     // WebCore has already seen the event, no need for custom processing.
@@ -4449,7 +4472,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if (!contentEditable && event.isTabKey)
         return NO;
 
-    if ([_keyboardScrollingAnimator beginWithEvent:event])
+    if ([_keyboardScrollingAnimator beginWithEvent:event] || [_keyboardScrollingAnimator scrollTriggeringKeyIsPressed])
         return YES;
 
     UIKeyboardImpl *keyboard = [UIKeyboardImpl sharedInstance];
@@ -4499,6 +4522,11 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     }
 
     return NO;
+}
+
+- (void)dismissFilePicker
+{
+    [_fileUploadPanel dismiss];
 }
 
 - (BOOL)isScrollableForKeyboardScrollViewAnimator:(WKKeyboardScrollViewAnimator *)animator
@@ -4804,22 +4832,36 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     return _focusedElementInformation.selectOptions;
 }
 
-static bool shouldDeferZoomingToSelectionWhenRevealingFocusedElement(WebKit::InputType type)
+// Note that selectability is also affected by the CSS property user-select.
+static bool mayContainSelectableText(WebKit::InputType type)
 {
     switch (type) {
+    case WebKit::InputType::None:
+    // The following types have custom UI and do not look or behave like a text field.
+#if ENABLE(INPUT_TYPE_COLOR)
+    case WebKit::InputType::Color:
+#endif
+    case WebKit::InputType::Date:
+    case WebKit::InputType::DateTimeLocal:
+    case WebKit::InputType::Drawing:
+    case WebKit::InputType::Month:
+    case WebKit::InputType::Select:
+    case WebKit::InputType::Time:
+        return false;
+    // The following types look and behave like a text field.
     case WebKit::InputType::ContentEditable:
-    case WebKit::InputType::Text:
-    case WebKit::InputType::Password:
-    case WebKit::InputType::TextArea:
-    case WebKit::InputType::Search:
+    case WebKit::InputType::DateTime:
     case WebKit::InputType::Email:
-    case WebKit::InputType::URL:
-    case WebKit::InputType::Phone:
     case WebKit::InputType::Number:
     case WebKit::InputType::NumberPad:
+    case WebKit::InputType::Password:
+    case WebKit::InputType::Phone:
+    case WebKit::InputType::Search:
+    case WebKit::InputType::Text:
+    case WebKit::InputType::TextArea:
+    case WebKit::InputType::URL:
+    case WebKit::InputType::Week:
         return true;
-    default:
-        return false;
     }
 }
 
@@ -4829,7 +4871,7 @@ static WebCore::FloatRect rectToRevealWhenZoomingToFocusedElement(const WebKit::
     if (elementInfo.elementRect.contains(elementInfo.lastInteractionLocation))
         elementInteractionRect = { elementInfo.lastInteractionLocation, { 1, 1 } };
 
-    if (!shouldDeferZoomingToSelectionWhenRevealingFocusedElement(elementInfo.elementType))
+    if (!mayContainSelectableText(elementInfo.elementType))
         return elementInteractionRect;
 
     if (editorState.isMissingPostLayoutData) {
@@ -4850,6 +4892,20 @@ static WebCore::FloatRect rectToRevealWhenZoomingToFocusedElement(const WebKit::
 
     selectionBoundingRect.intersect(elementInfo.elementRect);
     return selectionBoundingRect;
+}
+
+static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebKit::InputType type, WKContentView *view)
+{
+    switch (type) {
+    case WebKit::InputType::Select:
+        return adoptNS([[WKFormSelectControl alloc] initWithView:view]);
+#if ENABLE(INPUT_TYPE_COLOR)
+    case WebKit::InputType::Color:
+        return adoptNS([[WKFormColorControl alloc] initWithView:view]);
+#endif
+    default:
+        return adoptNS([[WKFormInputControl alloc] initWithView:view]);
+    }
 }
 
 - (void)_elementDidFocus:(const WebKit::FocusedElementInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode changingActivityState:(BOOL)changingActivityState userObject:(NSObject <NSSecureCoding> *)userObject
@@ -4898,7 +4954,7 @@ static WebCore::FloatRect rectToRevealWhenZoomingToFocusedElement(const WebKit::
                 if (_isChangingFocus)
                     return YES;
 
-                if (_page->process().keyboardIsAttached())
+                if ([UIKeyboard isInHardwareKeyboardMode])
                     return YES;
 #endif
             }
@@ -4930,8 +4986,16 @@ static WebCore::FloatRect rectToRevealWhenZoomingToFocusedElement(const WebKit::
 
     // FIXME: We should remove this check when we manage to send ElementDidFocus from the WebProcess
     // only when it is truly time to show the keyboard.
-    if (_focusedElementInformation.elementType == information.elementType && _focusedElementInformation.elementRect == information.elementRect)
+    if (_focusedElementInformation.elementType == information.elementType && _focusedElementInformation.elementRect == information.elementRect) {
+        if (_inputPeripheral) {
+            if (!self.isFirstResponder)
+                [self becomeFirstResponder];
+            [self _zoomToRevealFocusedElement];
+            [self _updateAccessory];
+            [_inputPeripheral beginEditing];
+        }
         return;
+    }
 
     [_webView _resetFocusPreservationCount];
 
@@ -4950,13 +5014,15 @@ static WebCore::FloatRect rectToRevealWhenZoomingToFocusedElement(const WebKit::
     if (delegateImplementsWillStartInputSession)
         [inputDelegate _webView:_webView willStartInputSession:_formInputSession.get()];
 
-    BOOL editableChanged = [self setIsEditable:YES];
+    BOOL isSelectable = mayContainSelectableText(information.elementType);
+    BOOL editableChanged = [self setIsEditable:isSelectable];
     _focusedElementInformation = information;
-    _inputPeripheral = nil;
     _traits = nil;
 
     if (![self isFirstResponder])
         [self becomeFirstResponder];
+
+    _inputPeripheral = createInputPeripheralWithView(_focusedElementInformation.elementType, self);
 
 #if PLATFORM(WATCHOS)
     [self addFocusedFormControlOverlay];
@@ -4965,28 +5031,19 @@ static WebCore::FloatRect rectToRevealWhenZoomingToFocusedElement(const WebKit::
 #else
     [self reloadInputViews];
 #endif
-    
-    switch (information.elementType) {
-    case WebKit::InputType::Select:
-    case WebKit::InputType::DateTimeLocal:
-    case WebKit::InputType::Time:
-    case WebKit::InputType::Month:
-    case WebKit::InputType::Date:
-    case WebKit::InputType::Drawing:
-#if ENABLE(INPUT_TYPE_COLOR)
-    case WebKit::InputType::Color:
-#endif
-        break;
-    default:
+
+    if (isSelectable)
         [self _showKeyboard];
-        break;
-    }
-    
+
     // The custom fixed position rect behavior is affected by -isFocusingElement, so if that changes we need to recompute rects.
     if (editableChanged)
         [_webView _scheduleVisibleContentRectUpdate];
-    
-    if (!shouldDeferZoomingToSelectionWhenRevealingFocusedElement(_focusedElementInformation.elementType))
+
+    // For elements that have selectable content (e.g. text field) we need to wait for the web process to send an up-to-date
+    // selection rect before we can zoom and reveal the selection. Non-selectable elements (e.g. <select>) can be zoomed
+    // immediately because they have no selection to reveal.
+    BOOL needsEditorStateUpdate = mayContainSelectableText(_focusedElementInformation.elementType);
+    if (!needsEditorStateUpdate)
         [self _zoomToRevealFocusedElement];
 
     [self _updateAccessory];
@@ -5138,7 +5195,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 
     // FIXME: If the initial writing direction just changed, we should wait until we get the next post-layout editor state
     // before zooming to reveal the selection rect.
-    if (shouldDeferZoomingToSelectionWhenRevealingFocusedElement(_focusedElementInformation.elementType))
+    if (mayContainSelectableText(_focusedElementInformation.elementType))
         [self _zoomToRevealFocusedElement];
 }
 
@@ -5825,9 +5882,12 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 #else
             BOOL shouldCancelAllTouches = YES;
 #endif
+
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             // Prevent tap-and-hold and panning.
             if (shouldCancelAllTouches)
                 [UIApp _cancelAllTouches];
+ALLOW_DEPRECATED_DECLARATIONS_END
 
             return YES;
         }
@@ -6284,6 +6344,7 @@ static NSArray<NSItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     return nil;
 }
 
+#if HAVE(UI_WK_DOCUMENT_CONTEXT)
 
 static inline OptionSet<WebKit::DocumentEditingContextRequest::Options> toWebDocumentRequestOptions(UIWKDocumentRequestFlags flags)
 {
@@ -6345,6 +6406,7 @@ static WebKit::DocumentEditingContextRequest toWebRequest(UIWKDocumentRequest *r
     }];
 }
 
+#endif
 
 #pragma mark - UIDragInteractionDelegate
 
@@ -7004,6 +7066,12 @@ static WebEventFlags webEventFlagsForUIKeyModifierFlags(UIKeyModifierFlags flags
         return @{ userInterfaceItem: @{ @"pageURL": url } };
     }
 #endif
+
+    if ([userInterfaceItem isEqualToString:@"fileUploadPanelMenu"]) {
+        if (!_fileUploadPanel)
+            return @{ userInterfaceItem: @[] };
+        return @{ userInterfaceItem: [_fileUploadPanel currentAvailableActionTitles] };
+    }
     
     return nil;
 }

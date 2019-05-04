@@ -39,11 +39,10 @@ fullscreen
 http/tests/fullscreen
 compositing/no-compositing-when-fulll-screen-is-present.html
 
-# WebMetal and WebGPU are not enabled on iOS Simulator.
-fast/canvas/webmetal
-inspector/canvas/create-context-webmetal.html [ Skip ]
-inspector/canvas/resolveCanvasContext-webmetal.html [ Skip ]
+# WebGPU is not enabled on iOS Simulator.
 webgpu [ Skip ]
+inspector/canvas/create-context-webgpu.html [ Skip ]
+inspector/canvas/resolveCanvasContext-webgpu.html [ Skip ]
 
 # Encrypted Media Extensions are not enabled
 media/encrypted-media/
@@ -270,6 +269,12 @@ fast/images/animated-webp-expected.html
 editing/pasteboard/datatransfer-items-drop-plaintext-file.html [ Skip ]
 editing/pasteboard/drag-link-with-data-transfer-adds-trusted-link-to-pasteboard.html [ Skip ]
 editing/selection/drag-to-contenteditable-iframe.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-mixed-editability-1.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-mixed-editability-2.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-mixed-editability-3.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-mixed-editability-4.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-mixed-editability-5.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-user-select-all-1.html [ Skip ]
 fast/events/bogus-dropEffect-effectAllowed.html [ Skip ]
 fast/events/clear-drag-state.html [ Skip ]
 fast/events/clear-edit-drag-state.html [ Skip ]
@@ -1600,7 +1605,6 @@ fast/dom/HTMLHeadElement/textInHead5.html [ Failure ]
 fast/dom/HTMLImageElement/sizes/image-sizes-1x.html [ Failure ]
 fast/dom/HTMLInputElement/input-slider-update-styled.html [ Failure ]
 fast/dom/HTMLInputElement/input-slider-update.html [ Failure ]
-fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Failure ]
 fast/dom/Range/getBoundingClientRect.html [ Failure ]
 fast/dom/Range/getClientRects.html [ Failure ]
 fast/dom/Range/range-expand.html [ Failure ]
@@ -2768,6 +2772,9 @@ fast/canvas/webgl/texImage2D-mse-flipY-false.html [ Skip ]
 fast/canvas/webgl/texImage2D-mse-flipY-true.html [ Skip ]
 fast/canvas/webgl/texImage2D-video-flipY-false.html [ Skip ]
 fast/canvas/webgl/texImage2D-video-flipY-true.html [ Skip ]
+
+# rendering to floating point FBOs not supported on iOS
+fast/canvas/webgl/readPixels-float.html [ Skip ]
 
 # Skipped on iOS since UIHelper.activateAt() doesn't produce a user gesture that ITP captures on iOS
 webkit.org/b/174120 http/tests/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Skip ]

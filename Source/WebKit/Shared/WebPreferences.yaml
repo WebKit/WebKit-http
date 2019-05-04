@@ -1060,6 +1060,14 @@ DisableScreenSizeOverride:
   category: debug
   condition: PLATFORM(IOS_FAMILY)
 
+UseModernCompatibilityModeByDefault:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Use Modern Compatibility Mode"
+  humanReadableDescription: "Use modern compatibility mode by default"
+  webcoreBinding: none
+  category: debug
+
 SimpleLineLayoutDebugBordersEnabled:
   type: bool
   defaultValue: false
@@ -1192,6 +1200,10 @@ EditableImagesEnabled:
   type: bool
   defaultValue: false
 
+ShouldDecidePolicyBeforeLoadingQuickLookPreview:
+  defaultValue: false
+  type: bool
+
 # For experimental features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableDescription for all experimental features. They
@@ -1288,15 +1300,6 @@ WebGPUEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEBGPU)
 
-WebMetalEnabled:
-  type: bool
-  defaultValue: false
-  humanReadableName: "WebMetal"
-  humanReadableDescription: "WebMetal prototype"
-  category: experimental
-  webcoreBinding: RuntimeEnabledFeatures
-  condition: ENABLE(WEBMETAL)
-
 AccessibilityObjectModelEnabled:
   type: bool
   defaultValue: false
@@ -1388,6 +1391,14 @@ IsITPFirstPartyWebsiteDataRemovalEnabled:
     humanReadableDescription: "Enable Intelligent Tracking Prevention First Party Website Data Removal"
     webcoreBinding: RuntimeEnabledFeatures
     category: experimental
+
+ResizeObserverEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Resize Observer"
+  humanReadableDescription: "Enable Resize Observer support"
+  category: experimental
+  condition: ENABLE(RESIZE_OBSERVER)
 
 # For internal features:
 # The type should be boolean.
@@ -1607,15 +1618,6 @@ MouseEventsSimulationEnabled:
   defaultValue: false
   humanReadableName: "Mouse events simulation"
   humanReadableDescription: "Enable mouse events dispatch along with touch events on iOS"
-  webcoreBinding: RuntimeEnabledFeatures
-  category: internal
-  condition: ENABLE(TOUCH_EVENTS)
-
-MousemoveEventHandlingPreventsDefaultEnabled:
-  type: bool
-  defaultValue: false
-  humanReadableName: "Prevent default for mousemove events"
-  humanReadableDescription: "Allows handling of mousemove events to implicitly call preventDefault() on iOS"
   webcoreBinding: RuntimeEnabledFeatures
   category: internal
   condition: ENABLE(TOUCH_EVENTS)

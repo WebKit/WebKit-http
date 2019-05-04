@@ -77,6 +77,7 @@
 #import "WKUserContentControllerInternal.h"
 #import "WKWebViewConfigurationInternal.h"
 #import "WKWebViewContentProvider.h"
+#import "WKWebpagePreferencesInternal.h"
 #import "WKWebsiteDataStoreInternal.h"
 #import "WebBackForwardList.h"
 #import "WebCertificateInfo.h"
@@ -573,6 +574,7 @@ static void validate(WKWebViewConfiguration *configuration)
     pageConfiguration->setUserContentController([_configuration userContentController]->_userContentControllerProxy.get());
     pageConfiguration->setVisitedLinkStore([_configuration _visitedLinkStore]->_visitedLinkStore.get());
     pageConfiguration->setWebsiteDataStore([_configuration websiteDataStore]->_websiteDataStore.get());
+    pageConfiguration->setDefaultWebsitePolicies([_configuration defaultWebpagePreferences]->_websitePolicies.get());
 
 #if PLATFORM(MAC)
     if (auto pageGroup = WebKit::toImpl([configuration _pageGroup])) {
@@ -626,6 +628,7 @@ static void validate(WKWebViewConfiguration *configuration)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::userInterfaceDirectionPolicyKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::UserInterfaceDirectionPolicy::Content)));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::TextDirection::LTR)));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowSettingAnyXHRHeaderFromFileURLsKey(), WebKit::WebPreferencesStore::Value(shouldAllowSettingAnyXHRHeaderFromFileURLs()));
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldDecidePolicyBeforeLoadingQuickLookPreviewKey(), WebKit::WebPreferencesStore::Value(!![_configuration _shouldDecidePolicyBeforeLoadingQuickLookPreview]));
 #if USE(SYSTEM_PREVIEW)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::systemPreviewEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _systemPreviewEnabled]));
 #endif
@@ -3322,9 +3325,7 @@ static void hardwareKeyboardAvailabilityChangedCallback(CFNotificationCenterRef,
 {
     ASSERT(observer);
     WKWebView *webView = (__bridge WKWebView *)observer;
-    auto keyboardIsAttached = GSEventIsHardwareKeyboardAttached();
-    webView._page->process().setKeyboardIsAttached(keyboardIsAttached);
-    webView._page->hardwareKeyboardAvailabilityChanged(keyboardIsAttached);
+    webView._page->hardwareKeyboardAvailabilityChanged(GSEventIsHardwareKeyboardAttached());
 }
 
 - (void)_windowDidRotate:(NSNotification *)notification
@@ -5129,7 +5130,7 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 
 - (void)_updateWebsitePolicies:(_WKWebsitePolicies *)websitePolicies
 {
-    auto data = websitePolicies->_websitePolicies->data();
+    auto data = websitePolicies.webpagePreferences->_websitePolicies->data();
     if (data.websiteDataStoreParameters)
         [NSException raise:NSInvalidArgumentException format:@"Updating WKWebsiteDataStore is only supported during decidePolicyForNavigationAction."];
     _page->updateWebsitePolicies(WTFMove(data));
@@ -6667,6 +6668,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)dismissFormAccessoryView
 {
     [_contentView accessoryDone];
+}
+
+- (void)_dismissFilePicker
+{
+    [_contentView dismissFilePicker];
 }
 
 - (void)setTimePickerValueToHour:(NSInteger)hour minute:(NSInteger)minute

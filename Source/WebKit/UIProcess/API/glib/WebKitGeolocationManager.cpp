@@ -21,16 +21,12 @@
 #include "WebKitGeolocationManager.h"
 
 #include "APIGeolocationProvider.h"
+#include "GeoclueGeolocationProvider.h"
 #include "WebGeolocationPosition.h"
 #include "WebKitGeolocationManagerPrivate.h"
 #include <glib/gi18n-lib.h>
 #include <wtf/WallTime.h>
 #include <wtf/glib/WTFGType.h>
-
-#if USE(GEOCLUE)
-#include <WebCore/GeolocationProviderGeoclue.h>
-#include <WebCore/GeolocationProviderGeoclueClient.h>
-#endif
 
 using namespace WebKit;
 using namespace WebCore;
@@ -45,7 +41,7 @@ using namespace WebCore;
  * Once a #WebKitGeolocationPermissionRequest is allowed, when WebKit needs to know the
  * user location #WebKitGeolocationManager::start signal is emitted. If the signal is handled
  * and returns %TRUE, the application is responsible for providing the position every time it's
- * updated by calling webkit_gelocation_manager_update_position(). The signal #WebKitGeolocationManager::stop
+ * updated by calling webkit_geolocation_manager_update_position(). The signal #WebKitGeolocationManager::stop
  * will be emitted when location updates are no longer needed.
  *
  * Since: 2.26
@@ -66,12 +62,17 @@ enum {
 struct _WebKitGeolocationPosition {
     _WebKitGeolocationPosition() = default;
 
-    _WebKitGeolocationPosition(double latitude, double longitude, double accuracy, Optional<double> timestamp = WTF::nullopt)
+    _WebKitGeolocationPosition(double latitude, double longitude, double accuracy)
     {
-        position.timestamp = timestamp.valueOr(WallTime::now().secondsSinceEpoch().value());
+        position.timestamp = WallTime::now().secondsSinceEpoch().value();
         position.latitude = latitude;
         position.longitude = longitude;
         position.accuracy = accuracy;
+    }
+
+    explicit _WebKitGeolocationPosition(GeolocationPosition&& corePosition)
+        : position(WTFMove(corePosition))
+    {
     }
 
     explicit _WebKitGeolocationPosition(const GeolocationPosition& other)
@@ -86,7 +87,7 @@ struct _WebKitGeolocationPosition {
  * WebKitGeolocationPosition:
  *
  * WebKitGeolocationPosition is an opaque struct used to provide position updates to a
- * #WebKitGeolocationManager using webkit_gelocation_manager_update_position().
+ * #WebKitGeolocationManager using webkit_geolocation_manager_update_position().
  *
  * Since: 2.26
  */
@@ -228,38 +229,10 @@ void webkit_geolocation_position_set_speed(WebKitGeolocationPosition* position, 
     position->position.speed = speed;
 }
 
-#if USE(GEOCLUE)
-class GeoclueProviderClient final : public GeolocationProviderGeoclueClient {
-public:
-    explicit GeoclueProviderClient(WebKitGeolocationManager* manager)
-        : m_manager(manager)
-    {
-    }
-
-private:
-    void notifyPositionChanged(int timestamp, double latitude, double longitude, double altitude, double accuracy, double) override
-    {
-        WebKitGeolocationPosition position(latitude, longitude, accuracy, static_cast<double>(timestamp));
-        webkit_geolocation_position_set_altitude(&position, altitude);
-        webkit_gelocation_manager_update_position(m_manager, &position);
-    }
-
-    void notifyErrorOccurred(const char* message) override
-    {
-        webkit_gelocation_manager_failed(m_manager, message);
-    }
-
-    WebKitGeolocationManager* m_manager;
-};
-#endif
-
 struct _WebKitGeolocationManagerPrivate {
     RefPtr<WebGeolocationManagerProxy> manager;
     bool highAccuracyEnabled;
-#if USE(GEOCLUE)
-    std::unique_ptr<GeoclueProviderClient> providerClient;
-    std::unique_ptr<GeolocationProviderGeoclue> provider;
-#endif
+    std::unique_ptr<GeoclueGeolocationProvider> geoclueProvider;
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -271,30 +244,31 @@ static void webkitGeolocationManagerStart(WebKitGeolocationManager* manager)
     gboolean returnValue;
     g_signal_emit(manager, signals[START], 0, &returnValue);
     if (returnValue) {
-#if USE(GEOCLUE)
-        manager->priv->provider = nullptr;
-        manager->priv->providerClient = nullptr;
-#endif
+        manager->priv->geoclueProvider = nullptr;
         return;
     }
 
-#if USE(GEOCLUE)
-    if (!manager->priv->provider) {
-        manager->priv->providerClient = std::make_unique<GeoclueProviderClient>(manager);
-        manager->priv->provider = std::make_unique<GeolocationProviderGeoclue>(manager->priv->providerClient.get());
+    if (!manager->priv->geoclueProvider) {
+        manager->priv->geoclueProvider = std::make_unique<GeoclueGeolocationProvider>();
+        manager->priv->geoclueProvider->setEnableHighAccuracy(manager->priv->highAccuracyEnabled);
     }
-    manager->priv->provider->startUpdating();
-#endif
+    manager->priv->geoclueProvider->start([manager](GeolocationPosition&& corePosition, Optional<CString> error) {
+        if (error) {
+            webkit_geolocation_manager_failed(manager, error->data());
+            return;
+        }
+
+        WebKitGeolocationPosition position(WTFMove(corePosition));
+        webkit_geolocation_manager_update_position(manager, &position);
+    });
 }
 
 static void webkitGeolocationManagerStop(WebKitGeolocationManager* manager)
 {
     g_signal_emit(manager, signals[STOP], 0, nullptr);
 
-#if USE(GEOCLUE)
-    if (manager->priv->provider)
-        manager->priv->provider->stopUpdating();
-#endif
+    if (manager->priv->geoclueProvider)
+        manager->priv->geoclueProvider->stop();
 }
 
 static void webkitGeolocationManagerSetEnableHighAccuracy(WebKitGeolocationManager* manager, bool enabled)
@@ -304,10 +278,8 @@ static void webkitGeolocationManagerSetEnableHighAccuracy(WebKitGeolocationManag
 
     manager->priv->highAccuracyEnabled = enabled;
     g_object_notify(G_OBJECT(manager), "enable-high-accuracy");
-#if USE(GEOCLUE)
-    if (manager->priv->provider)
-        manager->priv->provider->setEnableHighAccuracy(enabled);
-#endif
+    if (manager->priv->geoclueProvider)
+        manager->priv->geoclueProvider->setEnableHighAccuracy(enabled);
 }
 
 class GeolocationProvider final : public API::GeolocationProvider {
@@ -387,8 +359,8 @@ static void webkit_geolocation_manager_class_init(WebKitGeolocationManagerClass*
      *
      * The signal is emitted to notify that @manager needs to start receiving
      * position updates. After this signal is emitted the user should provide
-     * the updates using webkit_gelocation_manager_update_position() every time
-     * the position changes, or use webkit_gelocation_manager_failed() in case
+     * the updates using webkit_geolocation_manager_update_position() every time
+     * the position changes, or use webkit_geolocation_manager_failed() in case
      * it isn't possible to determine the current position.
      *
      * If the signal is not handled, WebKit will try to determine the position
@@ -428,7 +400,7 @@ static void webkit_geolocation_manager_class_init(WebKitGeolocationManagerClass*
 }
 
 /**
- * webkit_gelocation_manager_update_position:
+ * webkit_geolocation_manager_update_position:
  * @manager: a #WebKitGeolocationManager
  * @position: a #WebKitGeolocationPosition
  *
@@ -436,7 +408,7 @@ static void webkit_geolocation_manager_class_init(WebKitGeolocationManagerClass*
  *
  * Since: 2.26
  */
-void webkit_gelocation_manager_update_position(WebKitGeolocationManager* manager, WebKitGeolocationPosition* position)
+void webkit_geolocation_manager_update_position(WebKitGeolocationManager* manager, WebKitGeolocationPosition* position)
 {
     g_return_if_fail(WEBKIT_IS_GEOLOCATION_MANAGER(manager));
     g_return_if_fail(position);
@@ -447,7 +419,7 @@ void webkit_gelocation_manager_update_position(WebKitGeolocationManager* manager
 }
 
 /**
- * webkit_gelocation_manager_failed:
+ * webkit_geolocation_manager_failed:
  * @manager: a #WebKitGeolocationManager
  * @error_message: the error message
  *
@@ -455,7 +427,7 @@ void webkit_gelocation_manager_update_position(WebKitGeolocationManager* manager
  *
  * Since: 2.26
  */
-void webkit_gelocation_manager_failed(WebKitGeolocationManager* manager, const char* errorMessage)
+void webkit_geolocation_manager_failed(WebKitGeolocationManager* manager, const char* errorMessage)
 {
     g_return_if_fail(WEBKIT_IS_GEOLOCATION_MANAGER(manager));
 

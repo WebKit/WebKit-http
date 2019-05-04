@@ -106,6 +106,7 @@ class WebProcessCache;
 struct NetworkProcessCreationParameters;
 struct StatisticsData;
 struct WebProcessCreationParameters;
+struct WebProcessDataStoreParameters;
     
 typedef GenericCallback<API::Dictionary*> DictionaryCallback;
 
@@ -231,6 +232,7 @@ public:
     void clearSupportedPlugins();
 
     ProcessID networkProcessIdentifier();
+    ProcessID prewarmedProcessIdentifier();
     void activePagesOriginsInWebProcessForTesting(ProcessID, CompletionHandler<void(Vector<String>&&)>&&);
     bool networkProcessHasEntitlementForTesting(const String&);
 
@@ -311,8 +313,7 @@ public:
 
     WebProcessProxy& processForRegistrableDomain(WebsiteDataStore&, WebPageProxy*, const WebCore::RegistrableDomain&); // Will return an existing one if limit is met or due to caching.
 
-    enum class MayCreateDefaultDataStore { No, Yes };
-    void prewarmProcess(WebsiteDataStore*, MayCreateDefaultDataStore);
+    void prewarmProcess();
 
     bool shouldTerminate(WebProcessProxy*);
 
@@ -477,7 +478,7 @@ public:
 
     void clearSuspendedPages(AllowProcessCaching);
 
-    void didReachGoodTimeToPrewarm(WebsiteDataStore&);
+    void didReachGoodTimeToPrewarm();
 
     void didCollectPrewarmInformation(const WebCore::RegistrableDomain&, const WebCore::PrewarmInformation&);
 
@@ -505,6 +506,8 @@ public:
     void setWebProcessHasUploads(WebCore::ProcessIdentifier);
     void clearWebProcessHasUploads(WebCore::ProcessIdentifier);
 
+    void disableDelayedWebProcessLaunch() { m_isDelayedWebProcessLaunchDisabled = true; }
+
 private:
     void platformInitialize();
 
@@ -515,8 +518,9 @@ private:
 
     RefPtr<WebProcessProxy> tryTakePrewarmedProcess(WebsiteDataStore&);
 
-    WebProcessProxy& createNewWebProcess(WebsiteDataStore&, WebProcessProxy::IsPrewarmed = WebProcessProxy::IsPrewarmed::No);
-    void initializeNewWebProcess(WebProcessProxy&, WebsiteDataStore&, WebProcessProxy::IsPrewarmed = WebProcessProxy::IsPrewarmed::No);
+    WebProcessProxy& createNewWebProcess(WebsiteDataStore*, WebProcessProxy::IsPrewarmed = WebProcessProxy::IsPrewarmed::No);
+    void initializeNewWebProcess(WebProcessProxy&, WebsiteDataStore*, WebProcessProxy::IsPrewarmed = WebProcessProxy::IsPrewarmed::No);
+    void sendWebProcessDataStoreParameters(WebProcessProxy&, WebsiteDataStore&);
 
     void requestWebContentStatistics(StatisticsRequest&);
     void requestNetworkingStatistics(StatisticsRequest&);
@@ -785,6 +789,12 @@ private:
 
     HashMap<WebCore::ProcessIdentifier, std::unique_ptr<ProcessAssertion>> m_processesWithUploads;
     std::unique_ptr<ProcessAssertion> m_uiProcessUploadAssertion;
+#if PLATFORM(IOS)
+    // FIXME: Delayed process launch is currently disabled on iOS for performance reasons (rdar://problem/49074131).
+    bool m_isDelayedWebProcessLaunchDisabled { true };
+#else
+    bool m_isDelayedWebProcessLaunchDisabled { false };
+#endif
 };
 
 template<typename T>
@@ -834,7 +844,7 @@ void WebProcessPool::sendToOneProcess(T&& message)
     }
 
     if (!messageSent) {
-        prewarmProcess(nullptr, MayCreateDefaultDataStore::No);
+        prewarmProcess();
         RefPtr<WebProcessProxy> process = m_processes.last();
         if (process->canSendMessage())
             process->send(std::forward<T>(message), 0);

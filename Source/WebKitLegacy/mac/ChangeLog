@@ -1,3 +1,164 @@
+2019-04-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        -apple-trailing-word is needed for browser detection
+        https://bugs.webkit.org/show_bug.cgi?id=196575
+
+        Unreviewed.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-04-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove support for -apple-trailing-word
+        https://bugs.webkit.org/show_bug.cgi?id=196525
+
+        Reviewed by Zalan Bujtas.
+
+        This CSS property is nonstandard and not used.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-04-01  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to canonicalize NSURLs with WTF::URL
+        https://bugs.webkit.org/show_bug.cgi?id=196415
+        <rdar://problem/44980271>
+
+        Reviewed by Darin Adler.
+
+        * Misc/WebNSURLExtras.h:
+        * Misc/WebNSURLExtras.mm:
+        (-[NSURL _webkit_canonicalize_with_wtf]):
+        _webkit_canonicalize is old and changing it causes strange bugs like rdar://problem/5315926
+        Instead, make a new version that uses WTF::URL to canonicalize an NSURL.
+
+2019-03-31  Sam Weinig  <weinig@apple.com>
+
+        Remove more i386 specific configurations
+        https://bugs.webkit.org/show_bug.cgi?id=196430
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/FeatureDefines.xcconfig:
+        ENABLE_WEB_AUTHN_macosx can now be enabled unconditionally on macOS.
+
+2019-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete WebMetal implementation in favor of WebGPU
+        https://bugs.webkit.org/show_bug.cgi?id=195418
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences webMetalEnabled]): Deleted.
+        (-[WebPreferences setWebMetalEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-03-29  Cathie Chen  <cathiechen@igalia.com>
+
+        Implement ResizeObserver.
+        https://bugs.webkit.org/show_bug.cgi?id=157743
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences resizeObserverEnabled]):
+        (-[WebPreferences setResizeObserverEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        (-[WebView _flushCompositingChanges]): checkResizeObservations() in the begining.
+
+2019-03-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [macOS] Select element doesn't show popup if select element had lost focus while popup was previosuly shown
+        https://bugs.webkit.org/show_bug.cgi?id=196336
+
+        Reviewed by Tim Horton.
+
+        Fixed the bug that we were not actually dismissing the popup in PopupMenuMac::hide as done in WebKit2.
+
+        Unfortunately no new tests since intenals.isSelectPopupVisible would always return false in WebKit1.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::hide):
+
+2019-03-25  Andy Estes  <aestes@apple.com>
+
+        [iOS] Break a reference cycle between PreviewLoader and ResourceLoader
+        https://bugs.webkit.org/show_bug.cgi?id=194964
+        <rdar://problem/48279441>
+
+        Reviewed by Alex Christensen.
+
+        The WebDataSource._quickLookContent SPI accidentally relied on PreviewLoaders being leaked
+        to keep the temporary file referenced by WebQuickLookFileNameKey in existence. Since
+        PreviewLoaders are now being deleted properly, we teach WebDataSource to keep the
+        PreviewLoaderClient alive for its lifetime. This ensures that as long as
+        WebDataSource._quickLookContent can be called, the associated temp file will not be deleted
+        by WebKit.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::createPreviewLoaderClient):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource _quickLookPreviewLoaderClient]):
+        (-[WebDataSource _setQuickLookPreviewLoaderClient:]):
+        * WebView/WebDataSourceInternal.h:
+
+2019-03-25  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Remove NavigatorContentUtils in WebCore/Modules
+        https://bugs.webkit.org/show_bug.cgi?id=196070
+
+        Reviewed by Alex Christensen.
+
+        NavigatorContentUtils was to support the custom scheme spec [1].
+        However, in WebKit side, no port has supported the feature in
+        WebKit layer after EFL port was removed. So there has been the
+        only IDL implementation of the NavigatorContentUtils in WebCore.
+        So we don't need to keep the implementation in WebKit.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-03-22  Keith Rollin  <krollin@apple.com>
+
+        Enable ThinLTO support in Production builds
+        https://bugs.webkit.org/show_bug.cgi?id=190758
+        <rdar://problem/45413233>
+
+        Reviewed by Daniel Bates.
+
+        Enable building with Thin LTO in Production when using Xcode 10.2 or
+        later. This change results in a 1.45% progression in PLT5. Full
+        Production build times increase about 2-3%. Incremental build times
+        are more severely affected, and so LTO is not enabled for local
+        engineering builds.
+
+        LTO is enabled only on macOS for now, until rdar://problem/49013399,
+        which affects ARM builds, is fixed.
+
+        To change the LTO setting when building locally:
+
+        - If building with `make`, specify WK_LTO_MODE={none,thin,full} on the
+          command line.
+        - If building with `build-webkit`, specify --lto-mode={none,thin,full}
+          on the command line.
+        - If building with `build-root`, specify --lto={none,thin,full} on the
+          command line.
+        - If building with Xcode, create a LocalOverrides.xcconfig file at the
+          top level of your repository directory (if needed) and define
+          WK_LTO_MODE to full, thin, or none.
+
+        * Configurations/Base.xcconfig:
+
 2019-03-21  Andy Estes  <aestes@apple.com>
 
         [iOS] Apple Pay should be available in documents with no user agent scripts

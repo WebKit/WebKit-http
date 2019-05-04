@@ -1,3 +1,135 @@
+2019-04-03  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][WTF] Mirror XCode header directories
+        https://bugs.webkit.org/show_bug.cgi?id=191662
+
+        Reviewed by Konstantin Tokarev.
+
+        Add WTF_FRAMEWORK_HEADERS_DIR to place WTF headers into. Add frameworks/WTF.cmake
+        which creates an interface target which will populate dependencies for consumers.
+        This file is added here to support AppleWin internal builds which invoke CMake on
+        each directory.
+
+        * Source/cmake/WebKitFS.cmake:
+        * Source/cmake/frameworks/WTF.cmake: Added.
+
+2019-04-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove support for -apple-trailing-word
+        https://bugs.webkit.org/show_bug.cgi?id=196525
+
+        Reviewed by Zalan Bujtas.
+
+        This CSS property is nonstandard and not used.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2019-04-02  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake] WEBKIT_MAKE_FORWARDING_HEADERS shouldn't use POST_BUILD to copy generated headers
+        https://bugs.webkit.org/show_bug.cgi?id=182757
+
+        Reviewed by Don Olmstead.
+
+        Some generated headers need to be exported to its client modules.
+        Before this change, WEBKIT_MAKE_FORWARDING_HEADERS copies all *.h
+        files in the directory specified by DERIVED_SOURCE_DIRECTORIES
+        parameter. The copy operation was triggered by POST_BUILD event.
+
+        This caused build dependency issues for Ninja builds. This change
+        remove the DERIVED_SOURCE_DIRECTORIES parameter. And list all
+        generated headers explicitly which need to be copied.
+
+        * Source/cmake/WebKitMacros.cmake: Removed
+        DERIVED_SOURCE_DIRECTORIES parameter of
+        WEBKIT_MAKE_FORWARDING_HEADERS. Accept absolute paths for FILES
+        parameter.
+
+2019-04-01  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake] Remove EXTRA_DIRECTORIES parameter of WEBKIT_MAKE_FORWARDING_HEADERS
+        https://bugs.webkit.org/show_bug.cgi?id=196436
+
+        Reviewed by Darin Adler.
+
+        The parameter was only for WebCore/ForwardingHeaders which was
+        removed in Bug 182347.
+
+        * Source/cmake/WebKitMacros.cmake: Remove unused EXTRA_DIRECTORIES parameter.
+
+2019-04-01  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [PlayStation] Add initialization for JSC shell for PlayStation port
+        https://bugs.webkit.org/show_bug.cgi?id=195411
+
+        Reviewed by Ross Kirsling.
+
+        Add functions for doing the automatic libc, floating point
+        initializations, signing of binaries and libraries and 
+        wrapping of libc functions on PlayStation port.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+
+2019-03-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete WebMetal implementation in favor of WebGPU
+        https://bugs.webkit.org/show_bug.cgi?id=195418
+
+        Reviewed by Dean Jackson.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2019-03-29  Cathie Chen  <cathiechen@igalia.com>
+
+        Implement ResizeObserver.
+        https://bugs.webkit.org/show_bug.cgi?id=157743
+
+        Reviewed by Simon Fraser.
+
+        Add ENABLE_RESIZE_OBSERVER.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2019-03-25  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE][GTK] Make building WebVR (w/OpenVR) not depend on ENABLE_EXPERIMENTAL_FEATURES
+        https://bugs.webkit.org/show_bug.cgi?id=196223
+
+        Reviewed by Michael Catanzaro.
+
+        Disentangle USE_OPENVR from ENABLE_EXPERIMENTAL_FEATURES, making it
+        unneeded to include ThirdParty/openvr/ in release tarballs.
+
+        * Source/cmake/OptionsGTK.cmake: Set USE_OPENVR to OFF by default,
+        instead of making it use the value of ENABLE_EXPERIMENTAL_FEATURES.
+        * Source/cmake/OptionsWPE.cmake: Ditto.
+
+2019-03-25  Xan López  <xan@igalia.com>
+
+        [WTF] Fix typo when forcing WTF_CPU_X86
+        https://bugs.webkit.org/show_bug.cgi?id=196204
+
+        Reviewed by Michael Catanzaro.
+
+        Fix a typo when setting the WTF_CPU variable for X86.
+
+        * CMakeLists.txt:
+
+2019-03-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove build time dependency on Geoclue2
+        https://bugs.webkit.org/show_bug.cgi?id=195994
+
+        Reviewed by Michael Catanzaro.
+
+        Remove USE_GEOCLUE build option.
+
+        * Source/cmake/FindGeoClue2.cmake: Removed.
+        * Source/cmake/OptionsGTK.cmake:
+
 2019-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK][WPE] Add API to provide geolocation information

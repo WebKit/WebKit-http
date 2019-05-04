@@ -38,6 +38,7 @@
 #include "ExceptionEventLocation.h"
 #include "ExecutableAllocator.h"
 #include "FunctionHasExecutedCache.h"
+#include "FuzzerAgent.h"
 #include "Heap.h"
 #include "Intrinsic.h"
 #include "IsoCellSet.h"
@@ -157,6 +158,7 @@ class VMEntryScope;
 class Watchdog;
 class Watchpoint;
 class WatchpointSet;
+class WebAssemblyFunctionHeapCellType;
 
 #if ENABLE(FTL_JIT)
 namespace FTL {
@@ -294,6 +296,12 @@ public:
     JS_EXPORT_PRIVATE SamplingProfiler& ensureSamplingProfiler(RefPtr<Stopwatch>&&);
 #endif
 
+    FuzzerAgent* fuzzerAgent() const { return m_fuzzerAgent.get(); }
+    void setFuzzerAgent(std::unique_ptr<FuzzerAgent>&& fuzzerAgent)
+    {
+        m_fuzzerAgent = WTFMove(fuzzerAgent);
+    }
+
     static unsigned numberOfIDs() { return s_numberOfIDs.load(); }
     unsigned id() const { return m_id; }
     bool isEntered() const { return !!entryScope; }
@@ -330,6 +338,7 @@ public:
     std::unique_ptr<JSDestructibleObjectHeapCellType> destructibleObjectHeapCellType;
 #if ENABLE(WEBASSEMBLY)
     std::unique_ptr<JSWebAssemblyCodeBlockHeapCellType> webAssemblyCodeBlockHeapCellType;
+    std::unique_ptr<WebAssemblyFunctionHeapCellType> webAssemblyFunctionHeapCellType;
 #endif
     
     CompleteSubspace primitiveGigacageAuxiliarySpace; // Typed arrays, strings, bitvectors, etc go here.
@@ -804,6 +813,10 @@ public:
     RTTraceList* m_rtTraceList;
 #endif
 
+#if JSC_OBJC_API_ENABLED
+    void* m_apiWrapper { nullptr };
+#endif
+
     JS_EXPORT_PRIVATE void resetDateCache();
 
     RegExpCache* regExpCache() { return m_regExpCache; }
@@ -1020,6 +1033,7 @@ private:
 #if ENABLE(SAMPLING_PROFILER)
     RefPtr<SamplingProfiler> m_samplingProfiler;
 #endif
+    std::unique_ptr<FuzzerAgent> m_fuzzerAgent;
     std::unique_ptr<ShadowChicken> m_shadowChicken;
     std::unique_ptr<BytecodeIntrinsicRegistry> m_bytecodeIntrinsicRegistry;
 
