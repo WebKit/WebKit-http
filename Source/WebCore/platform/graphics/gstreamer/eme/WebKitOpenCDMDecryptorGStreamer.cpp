@@ -213,7 +213,7 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
 
     // Decrypt cipher.
     GST_TRACE_OBJECT(self, "decrypting");
-    if (int errorCode = adapter_session_decrypt(priv->m_openCdm.get(), reinterpret_cast<void*>(buffer), reinterpret_cast<void*>(subSamplesBuffer), subSampleCount, mappedIV.data(), static_cast<uint32_t>(mappedIV.size()))) {
+    if (int errorCode = adapter_session_decrypt(priv->m_openCdm.get(), reinterpret_cast<void*>(buffer), reinterpret_cast<void*>(subSamplesBuffer), subSampleCount, mappedIV.data(), static_cast<uint32_t>(mappedIV.size()), mappedKeyID.data(), mappedKeyID.size())) {
         GST_ERROR_OBJECT(self, "subsample decryption failed, error code %d", errorCode);
         return false;
     }
