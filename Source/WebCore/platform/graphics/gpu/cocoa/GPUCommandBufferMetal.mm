@@ -95,7 +95,7 @@ void GPUCommandBuffer::endBlitEncoding()
 
 void GPUCommandBuffer::copyBufferToBuffer(Ref<GPUBuffer>&& src, uint64_t srcOffset, Ref<GPUBuffer>&& dst, uint64_t dstOffset, uint64_t size)
 {
-    if (!src->isTransferSource() || !dst->isTransferDestination()) {
+    if (isEncodingPass() || !src->isTransferSource() || !dst->isTransferDestination()) {
         LOG(WebGPU, "GPUCommandBuffer::copyBufferToBuffer(): Invalid operation!");
         return;
     }
@@ -107,8 +107,9 @@ void GPUCommandBuffer::copyBufferToBuffer(Ref<GPUBuffer>&& src, uint64_t srcOffs
     }
 #endif
 
-    auto srcLength = checkedSum<uint64_t>(size, srcOffset);
-    auto dstLength = checkedSum<uint64_t>(size, dstOffset);
+    // This call ensures that size, offset, and size + offset can safely fit in NSUInteger regardless of platform.
+    auto srcLength = checkedSum<NSUInteger>(size, srcOffset);
+    auto dstLength = checkedSum<NSUInteger>(size, dstOffset);
     if (srcLength.hasOverflowed() || dstLength.hasOverflowed()
         || srcLength.unsafeGet() > src->byteLength() || dstLength.unsafeGet() > dst->byteLength()) {
         LOG(WebGPU, "GPUCommandBuffer::copyBufferToBuffer(): Invalid offset or copy size!");
@@ -117,12 +118,13 @@ void GPUCommandBuffer::copyBufferToBuffer(Ref<GPUBuffer>&& src, uint64_t srcOffs
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
+    // These casts are safe due to earlier checkedSum() checks.
     [blitEncoder()
         copyFromBuffer:src->platformBuffer()
-        sourceOffset:srcOffset
+        sourceOffset:static_cast<NSUInteger>(srcOffset)
         toBuffer:dst->platformBuffer()
-        destinationOffset:dstOffset
-        size:size];
+        destinationOffset:static_cast<NSUInteger>(dstOffset)
+        size:static_cast<NSUInteger>(size)];
 
     END_BLOCK_OBJC_EXCEPTIONS;
 
@@ -132,8 +134,15 @@ void GPUCommandBuffer::copyBufferToBuffer(Ref<GPUBuffer>&& src, uint64_t srcOffs
 
 void GPUCommandBuffer::copyBufferToTexture(GPUBufferCopyView&& srcBuffer, GPUTextureCopyView&& dstTexture, const GPUExtent3D& size)
 {
-    if (!srcBuffer.buffer->isTransferSource() || !dstTexture.texture->isTransferDestination()) {
+    if (isEncodingPass() || !srcBuffer.buffer->isTransferSource() || !dstTexture.texture->isTransferDestination()) {
         LOG(WebGPU, "GPUComandBuffer::copyBufferToTexture(): Invalid operation!");
+        return;
+    }
+
+    // MTLBuffer size (NSUInteger) is 32 bits on some platforms.
+    NSUInteger sourceOffset = 0;
+    if (!WTF::convertSafely(srcBuffer.offset, sourceOffset)) {
+        LOG(WebGPU, "GPUCommandBuffer::copyBufferToTexture(): Source offset is too large!");
         return;
     }
 
@@ -153,7 +162,7 @@ void GPUCommandBuffer::copyBufferToTexture(GPUBufferCopyView&& srcBuffer, GPUTex
 
     [blitEncoder()
         copyFromBuffer:srcBuffer.buffer->platformBuffer()
-        sourceOffset:srcBuffer.offset
+        sourceOffset:sourceOffset
         sourceBytesPerRow:srcBuffer.rowPitch
         sourceBytesPerImage:srcBuffer.imageHeight
         sourceSize:MTLSizeMake(size.width, size.height, size.depth)
@@ -170,8 +179,14 @@ void GPUCommandBuffer::copyBufferToTexture(GPUBufferCopyView&& srcBuffer, GPUTex
 
 void GPUCommandBuffer::copyTextureToBuffer(GPUTextureCopyView&& srcTexture, GPUBufferCopyView&& dstBuffer, const GPUExtent3D& size)
 {
-    if (!srcTexture.texture->isTransferSource() || !dstBuffer.buffer->isTransferDestination()) {
+    if (isEncodingPass() || !srcTexture.texture->isTransferSource() || !dstBuffer.buffer->isTransferDestination()) {
         LOG(WebGPU, "GPUCommandBuffer::copyTextureToBuffer(): Invalid operation!");
+        return;
+    }
+    // MTLBuffer size (NSUInteger) is 32 bits on some platforms.
+    NSUInteger destinationOffset = 0;
+    if (!WTF::convertSafely(dstBuffer.offset, destinationOffset)) {
+        LOG(WebGPU, "GPUCommandBuffer::copyTextureToBuffer(): Destination offset is too large!");
         return;
     }
 
@@ -186,7 +201,7 @@ void GPUCommandBuffer::copyTextureToBuffer(GPUTextureCopyView&& srcTexture, GPUB
         sourceOrigin:MTLOriginMake(srcTexture.origin.x, srcTexture.origin.y, srcTexture.origin.z)
         sourceSize:MTLSizeMake(size.width, size.height, size.depth)
         toBuffer:dstBuffer.buffer->platformBuffer()
-        destinationOffset:dstBuffer.offset
+        destinationOffset:destinationOffset
         destinationBytesPerRow:dstBuffer.rowPitch
         destinationBytesPerImage:dstBuffer.imageHeight];
 
@@ -198,7 +213,7 @@ void GPUCommandBuffer::copyTextureToBuffer(GPUTextureCopyView&& srcTexture, GPUB
 
 void GPUCommandBuffer::copyTextureToTexture(GPUTextureCopyView&& src, GPUTextureCopyView&& dst, const GPUExtent3D& size)
 {
-    if (!src.texture->isTransferSource() || !dst.texture->isTransferDestination()) {
+    if (isEncodingPass() || !src.texture->isTransferSource() || !dst.texture->isTransferDestination()) {
         LOG(WebGPU, "GPUCommandBuffer::copyTextureToTexture(): Invalid operation!");
         return;
     }

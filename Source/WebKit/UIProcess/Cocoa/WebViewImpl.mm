@@ -2610,7 +2610,7 @@ NSView *WebViewImpl::fullScreenPlaceholderView()
 NSWindow *WebViewImpl::fullScreenWindow()
 {
 #if ENABLE(FULLSCREEN_API)
-    return [[[WebCoreFullScreenWindow alloc] initWithContentRect:[[NSScreen mainScreen] frame] styleMask:(NSWindowStyleMaskBorderless | NSWindowStyleMaskResizable) backing:NSBackingStoreBuffered defer:NO] autorelease];
+    return [[[WebCoreFullScreenWindow alloc] initWithContentRect:[[NSScreen mainScreen] frame] styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskUnifiedTitleAndToolbar | NSWindowStyleMaskFullSizeContentView | NSWindowStyleMaskResizable) backing:NSBackingStoreBuffered defer:NO] autorelease];
 #else
     return nil;
 #endif
@@ -2782,7 +2782,7 @@ void WebViewImpl::showShareSheet(const WebCore::ShareDataWithParsedURL& data, WT
     _shareSheet = adoptNS([[WKShareSheet alloc] initWithView:view]);
     [_shareSheet setDelegate:view];
     
-    [_shareSheet presentWithParameters:data completionHandler:WTFMove(completionHandler)];
+    [_shareSheet presentWithParameters:data inRect:WTF::nullopt completionHandler:WTFMove(completionHandler)];
 }
     
 void WebViewImpl::shareSheetDidDismiss(WKShareSheet *shareSheet)

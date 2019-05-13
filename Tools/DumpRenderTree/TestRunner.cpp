@@ -74,61 +74,9 @@ const unsigned TestRunner::w3cSVGViewWidth = 480;
 const unsigned TestRunner::w3cSVGViewHeight = 360;
 
 TestRunner::TestRunner(const std::string& testURL, const std::string& expectedPixelHash)
-    : m_disallowIncreaseForApplicationCacheQuota(false)
-    , m_dumpApplicationCacheDelegateCallbacks(false)
-    , m_dumpAsAudio(false)
-    , m_dumpAsPDF(false)
-    , m_dumpAsText(false)
-    , m_dumpBackForwardList(false)
-    , m_dumpChildFrameScrollPositions(false)
-    , m_dumpChildFramesAsText(false)
-    , m_dumpDOMAsWebArchive(false)
-    , m_dumpDatabaseCallbacks(false)
-    , m_dumpEditingCallbacks(false)
-    , m_dumpFrameLoadCallbacks(false)
-    , m_dumpProgressFinishedCallback(false)
-    , m_dumpUserGestureInFrameLoadCallbacks(false)
-    , m_dumpHistoryDelegateCallbacks(false)
-    , m_dumpResourceLoadCallbacks(false)
-    , m_dumpResourceResponseMIMETypes(false)
-    , m_dumpSelectionRect(false)
-    , m_dumpSourceAsWebArchive(false)
-    , m_dumpStatusCallbacks(false)
-    , m_dumpTitleChanges(false)
-    , m_dumpVisitedLinksCallback(false)
-    , m_dumpWillCacheResponse(false)
-    , m_generatePixelResults(true)
-    , m_callCloseOnWebViews(true)
-    , m_canOpenWindows(false)
-    , m_closeRemainingWindowsWhenComplete(true)
-    , m_newWindowsCopyBackForwardList(false)
-    , m_stopProvisionalFrameLoads(false)
-    , m_testOnscreen(false)
-    , m_testRepaint(false)
-    , m_testRepaintSweepHorizontally(false)
-    , m_waitToDump(false)
-    , m_willSendRequestReturnsNull(false)
-    , m_willSendRequestReturnsNullOnRedirect(false)
-    , m_windowIsKey(true)
-    , m_alwaysAcceptCookies(false)
-    , m_globalFlag(false)
-    , m_isGeolocationPermissionSet(false)
-    , m_geolocationPermission(false)
-    , m_rejectsProtectionSpaceAndContinueForAuthenticationChallenges(false)
-    , m_handlesAuthenticationChallenges(false)
-    , m_isPrinting(false)
-    , m_useDeferredFrameLoading(false)
-    , m_shouldPaintBrokenImage(true)
-    , m_shouldStayOnPageAfterHandlingBeforeUnload(false)
-    , m_areLegacyWebNotificationPermissionRequestsIgnored(false)
-    , m_customFullScreenBehavior(false) 
-    , m_hasPendingWebNotificationClick(false)
-    , m_databaseDefaultQuota(-1)
-    , m_databaseMaxQuota(-1)
-    , m_testURL(testURL)
+    : m_testURL(testURL)
     , m_expectedPixelHash(expectedPixelHash)
     , m_titleTextDirection("ltr")
-    , m_timeout(0)
 {
 }
 
@@ -157,6 +105,17 @@ static JSValueRef dumpAsPDFCallback(JSContextRef context, JSObjectRef function, 
 {
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
     controller->setDumpAsPDF(true);
+    return JSValueMakeUndefined(context);
+}
+
+static JSValueRef setRenderTreeDumpOptionsCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
+
+    double options = JSValueToNumber(context, arguments[0], exception);
+    ASSERT(!*exception);
+
+    controller->setRenderTreeDumpOptions(static_cast<unsigned>(options));
     return JSValueMakeUndefined(context);
 }
 
@@ -1829,6 +1788,15 @@ static JSValueRef setOpenPanelFilesCallback(JSContextRef context, JSObjectRef fu
     return JSValueMakeUndefined(context);
 }
 
+#if PLATFORM(IOS_FAMILY)
+static JSValueRef SetOpenPanelFilesMediaIconCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    if (argumentCount == 1)
+        static_cast<TestRunner*>(JSObjectGetPrivate(thisObject))->setOpenPanelFilesMediaIcon(context, arguments[0]);
+    return JSValueMakeUndefined(context);
+}
+#endif
+
 // Static Values
 
 static JSValueRef getTimeoutCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef* exception)
@@ -2114,6 +2082,38 @@ JSClassRef TestRunner::getJSClass()
     return JSClassCreate(&classDefinition);
 }
 
+// Constants
+
+static JSValueRef getRENDER_TREE_SHOW_ALL_LAYERS(JSContextRef context, JSObjectRef, JSStringRef, JSValueRef*)
+{
+    return JSValueMakeNumber(context, 1);
+}
+
+static JSValueRef getRENDER_TREE_SHOW_LAYER_NESTING(JSContextRef context, JSObjectRef, JSStringRef, JSValueRef*)
+{
+    return JSValueMakeNumber(context, 2);
+}
+
+static JSValueRef getRENDER_TREE_SHOW_COMPOSITED_LAYERS(JSContextRef context, JSObjectRef, JSStringRef, JSValueRef*)
+{
+    return JSValueMakeNumber(context, 4);
+}
+
+static JSValueRef getRENDER_TREE_SHOW_OVERFLOW(JSContextRef context, JSObjectRef, JSStringRef, JSValueRef*)
+{
+    return JSValueMakeNumber(context, 8);
+}
+
+static JSValueRef getRENDER_TREE_SHOW_SVG_GEOMETRY(JSContextRef context, JSObjectRef, JSStringRef, JSValueRef*)
+{
+    return JSValueMakeNumber(context, 16);
+}
+
+static JSValueRef getRENDER_TREE_SHOW_LAYER_FRAGMENTS(JSContextRef context, JSObjectRef, JSStringRef, JSValueRef*)
+{
+    return JSValueMakeNumber(context, 32);
+}
+
 JSStaticValue* TestRunner::staticValues()
 {
     static JSStaticValue staticValues[] = {
@@ -2126,6 +2126,12 @@ JSStaticValue* TestRunner::staticValues()
         { "databaseDefaultQuota", getDatabaseDefaultQuotaCallback, setDatabaseDefaultQuotaCallback, kJSPropertyAttributeNone },
         { "databaseMaxQuota", getDatabaseMaxQuotaCallback, setDatabaseMaxQuotaCallback, kJSPropertyAttributeNone },
         { "inspectorTestStubURL", getInspectorTestStubURLCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "RENDER_TREE_SHOW_ALL_LAYERS", getRENDER_TREE_SHOW_ALL_LAYERS, 0, kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly },
+        { "RENDER_TREE_SHOW_LAYER_NESTING", getRENDER_TREE_SHOW_LAYER_NESTING, 0, kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly },
+        { "RENDER_TREE_SHOW_COMPOSITED_LAYERS", getRENDER_TREE_SHOW_COMPOSITED_LAYERS, 0, kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly },
+        { "RENDER_TREE_SHOW_OVERFLOW", getRENDER_TREE_SHOW_OVERFLOW, 0, kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly },
+        { "RENDER_TREE_SHOW_SVG_GEOMETRY", getRENDER_TREE_SHOW_SVG_GEOMETRY, 0, kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly },
+        { "RENDER_TREE_SHOW_LAYER_FRAGMENTS", getRENDER_TREE_SHOW_LAYER_FRAGMENTS, 0, kJSPropertyAttributeDontDelete | kJSPropertyAttributeReadOnly },
         { 0, 0, 0, 0 }
     };
     return staticValues;
@@ -2155,6 +2161,7 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "display", displayCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "displayAndTrackRepaints", displayAndTrackRepaintsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "dumpApplicationCacheDelegateCallbacks", dumpApplicationCacheDelegateCallbacksCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "setRenderTreeDumpOptions", setRenderTreeDumpOptionsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "dumpAsText", dumpAsTextCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "dumpBackForwardList", dumpBackForwardListCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "dumpChildFrameScrollPositions", dumpChildFrameScrollPositionsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -2293,6 +2300,9 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "setSpellCheckerLoggingEnabled", setSpellCheckerLoggingEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setSpellCheckerResults", setSpellCheckerResultsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setOpenPanelFiles", setOpenPanelFilesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+#if PLATFORM(IOS_FAMILY)
+        { "setOpenPanelFilesMediaIcon", SetOpenPanelFilesMediaIconCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+#endif
         { "forceImmediateCompletion", forceImmediateCompletionCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { 0, 0, 0 }
     };
@@ -2382,6 +2392,11 @@ const char* TestRunner::redirectionDestinationForURL(const char* origin)
         return nullptr;
 
     return iterator->second.data();
+}
+
+void TestRunner::setRenderTreeDumpOptions(unsigned options)
+{
+    m_renderTreeDumpOptions = options;
 }
 
 void TestRunner::setShouldPaintBrokenImage(bool shouldPaintBrokenImage)
@@ -2525,6 +2540,23 @@ void TestRunner::setOpenPanelFiles(JSContextRef context, JSValueRef filesValue)
         m_openPanelFiles.push_back(fileBuffer.get());
     }
 }
+
+#if PLATFORM(IOS_FAMILY)
+void TestRunner::setOpenPanelFilesMediaIcon(JSContextRef context, JSValueRef mediaIcon)
+{
+    // FIXME (123058): Use a JSC API to get buffer contents once such is exposed.
+    JSC::VM& vm = toJS(context)->vm();
+    JSC::JSLockHolder lock(vm);
+    
+    JSC::JSArrayBufferView* jsBufferView = JSC::jsDynamicCast<JSC::JSArrayBufferView*>(vm, toJS(toJS(context), mediaIcon));
+    ASSERT(jsBufferView);
+    RefPtr<JSC::ArrayBufferView> bufferView = jsBufferView->unsharedImpl();
+    const char* buffer = static_cast<const char*>(bufferView->baseAddress());
+    std::vector<char> mediaIconData(buffer, buffer + bufferView->byteLength());
+    
+    m_openPanelFilesMediaIcon = mediaIconData;
+}
+#endif
 
 void TestRunner::cleanup()
 {

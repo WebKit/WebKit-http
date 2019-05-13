@@ -59,6 +59,8 @@
 #include "EventNames.h"
 #include "Frame.h"
 #include "FrameTree.h"
+#include "FrameView.h"
+#include "FullscreenManager.h"
 #include "HTMLElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLMediaElement.h"
@@ -251,7 +253,7 @@ public:
 
 #if ENABLE(FULLSCREEN_API)
         if (event.type() == eventNames().webkitfullscreenchangeEvent)
-            data->setBoolean("enabled"_s, !!node->document().webkitFullscreenElement());
+            data->setBoolean("enabled"_s, !!node->document().fullscreenManager().fullscreenElement());
 #endif // ENABLE(FULLSCREEN_API)
 
         auto timestamp = m_domAgent.m_environment.executionStopwatch()->elapsedTime().seconds();
@@ -312,16 +314,15 @@ void InspectorDOMAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, 
     for (auto* mediaElement : HTMLMediaElement::allMediaElements())
         addEventListenersToNode(*mediaElement);
 #endif
-
-    if (m_nodeToFocus)
-        focusNode();
 }
 
 void InspectorDOMAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
     m_history.reset();
     m_domEditor.reset();
+    m_nodeToFocus = nullptr;
     m_mousedOverNode = nullptr;
+    m_inspectedNode = nullptr;
 
     ErrorString unused;
     setSearchingForNode(unused, false, nullptr);
@@ -506,6 +507,9 @@ void InspectorDOMAgent::getDocument(ErrorString& errorString, RefPtr<Inspector::
     m_document = document;
 
     root = buildObjectForNode(m_document.get(), 2, &m_documentNodeToIdMap);
+
+    if (m_nodeToFocus)
+        focusNode();
 }
 
 void InspectorDOMAgent::pushChildNodesToFrontend(int nodeId, int depth)
@@ -952,6 +956,9 @@ void InspectorDOMAgent::getEventListenersForNode(ErrorString& errorString, int n
                 addListener(*listener, info);
         }
     }
+
+    if (m_inspectedNode == node)
+        m_suppressEventListenerChangedEvent = false;
 }
 
 void InspectorDOMAgent::setEventListenerDisabled(ErrorString& errorString, int eventListenerId, bool disabled)
@@ -1101,7 +1108,7 @@ void InspectorDOMAgent::inspect(Node* inspectedNode)
 
 void InspectorDOMAgent::focusNode()
 {
-    if (!m_frontendDispatcher)
+    if (!m_documentRequested)
         return;
 
     ASSERT(m_nodeToFocus);
@@ -1398,8 +1405,12 @@ void InspectorDOMAgent::setInspectedNode(ErrorString& errorString, int nodeId)
         return;
     }
 
+    m_inspectedNode = node;
+
     if (CommandLineAPIHost* commandLineAPIHost = static_cast<WebInjectedScriptManager&>(m_injectedScriptManager).commandLineAPIHost())
         commandLineAPIHost->addInspectedObject(std::make_unique<InspectableNode>(node));
+
+    m_suppressEventListenerChangedEvent = false;
 }
 
 void InspectorDOMAgent::resolveNode(ErrorString& errorString, int nodeId, const String* objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result)
@@ -1551,19 +1562,16 @@ Ref<Inspector::Protocol::DOM::Node> InspectorDOMAgent::buildObjectForNode(Node* 
     }
 
     auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
+    if (pageAgent) {
+        if (auto* frameView = node->document().view())
+            value->setFrameId(pageAgent->frameId(&frameView->frame()));
+    }
 
     if (is<Element>(*node)) {
         Element& element = downcast<Element>(*node);
         value->setAttributes(buildArrayForElementAttributes(&element));
         if (is<HTMLFrameOwnerElement>(element)) {
-            HTMLFrameOwnerElement& frameOwner = downcast<HTMLFrameOwnerElement>(element);
-            if (pageAgent) {
-                Frame* frame = frameOwner.contentFrame();
-                if (frame)
-                    value->setFrameId(pageAgent->frameId(frame));
-            }
-            Document* document = frameOwner.contentDocument();
-            if (document)
+            if (auto* document = downcast<HTMLFrameOwnerElement>(element).contentDocument())
                 value->setContentDocument(buildObjectForNode(document, 0, nodesMap));
         }
 
@@ -2128,6 +2136,15 @@ Node* InspectorDOMAgent::innerParentNode(Node* node)
 
 void InspectorDOMAgent::didCommitLoad(Document* document)
 {
+    if (m_nodeToFocus && &m_nodeToFocus->document() == document)
+        m_nodeToFocus = nullptr;
+
+    if (m_mousedOverNode && &m_mousedOverNode->document() == document)
+        m_mousedOverNode = nullptr;
+
+    if (m_inspectedNode && &m_inspectedNode->document() == document)
+        m_inspectedNode = nullptr;
+
     RefPtr<Element> frameOwner = document->ownerElement();
     if (!frameOwner)
         return;
@@ -2304,15 +2321,15 @@ void InspectorDOMAgent::characterDataModified(CharacterData& characterData)
     m_frontendDispatcher->characterDataModified(id, characterData.data());
 }
 
-void InspectorDOMAgent::didInvalidateStyleAttr(Node& node)
+void InspectorDOMAgent::didInvalidateStyleAttr(Element& element)
 {
-    int id = m_documentNodeToIdMap.get(&node);
+    int id = m_documentNodeToIdMap.get(&element);
     if (!id)
         return;
 
     if (!m_revalidateStyleAttrTask)
         m_revalidateStyleAttrTask = std::make_unique<RevalidateStyleAttributeTask>(this);
-    m_revalidateStyleAttrTask->scheduleFor(downcast<Element>(&node));
+    m_revalidateStyleAttrTask->scheduleFor(&element);
 }
 
 void InspectorDOMAgent::didPushShadowRoot(Element& host, ShadowRoot& root)
@@ -2388,9 +2405,18 @@ void InspectorDOMAgent::didAddEventListener(EventTarget& target)
     if (!is<Node>(target))
         return;
 
-    int nodeId = boundNodeId(&downcast<Node>(target));
+    auto& node = downcast<Node>(target);
+    if (!node.contains(m_inspectedNode.get()))
+        return;
+
+    int nodeId = boundNodeId(&node);
     if (!nodeId)
         return;
+
+    if (m_suppressEventListenerChangedEvent)
+        return;
+
+    m_suppressEventListenerChangedEvent = true;
 
     m_frontendDispatcher->didAddEventListener(nodeId);
 }
@@ -2399,7 +2425,10 @@ void InspectorDOMAgent::willRemoveEventListener(EventTarget& target, const Atomi
 {
     if (!is<Node>(target))
         return;
+
     auto& node = downcast<Node>(target);
+    if (!node.contains(m_inspectedNode.get()))
+        return;
 
     int nodeId = boundNodeId(&node);
     if (!nodeId)
@@ -2419,6 +2448,11 @@ void InspectorDOMAgent::willRemoveEventListener(EventTarget& target, const Atomi
     m_eventListenerEntries.removeIf([&] (auto& entry) {
         return entry.value.matches(target, eventType, listener, capture);
     });
+
+    if (m_suppressEventListenerChangedEvent)
+        return;
+
+    m_suppressEventListenerChangedEvent = true;
 
     m_frontendDispatcher->willRemoveEventListener(nodeId);
 }

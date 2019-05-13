@@ -59,11 +59,6 @@
 		1AA83F841A5C4AE400026EC6 /* WebDatabaseProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = 1AA83F821A5C4AE400026EC6 /* WebDatabaseProvider.h */; };
 		1AA879B611CBE9BF003C664F /* WebPlatformStrategies.h in Headers */ = {isa = PBXBuildFile; fileRef = 1AA879B411CBE9BF003C664F /* WebPlatformStrategies.h */; };
 		1AA879B711CBE9BF003C664F /* WebPlatformStrategies.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1AA879B511CBE9BF003C664F /* WebPlatformStrategies.mm */; };
-		1AAF58940EDCCF15008D883D /* WebKitPluginAgent.defs in Headers */ = {isa = PBXBuildFile; fileRef = 1AAF588A0EDCCEA3008D883D /* WebKitPluginAgent.defs */; settings = {ATTRIBUTES = (Private, ); }; };
-		1AAF58950EDCCF15008D883D /* WebKitPluginAgentReply.defs in Headers */ = {isa = PBXBuildFile; fileRef = 1AAF588B0EDCCEA3008D883D /* WebKitPluginAgentReply.defs */; settings = {ATTRIBUTES = (Private, ); }; };
-		1AAF58960EDCCF15008D883D /* WebKitPluginClient.defs in Headers */ = {isa = PBXBuildFile; fileRef = 1AAF588C0EDCCEA3008D883D /* WebKitPluginClient.defs */; settings = {ATTRIBUTES = (Private, ); }; };
-		1AAF58970EDCCF15008D883D /* WebKitPluginHost.defs in Headers */ = {isa = PBXBuildFile; fileRef = 1AAF588D0EDCCEA3008D883D /* WebKitPluginHost.defs */; settings = {ATTRIBUTES = (Private, ); }; };
-		1AAF58980EDCCF15008D883D /* WebKitPluginHostTypes.defs in Headers */ = {isa = PBXBuildFile; fileRef = 1AAF588E0EDCCEA3008D883D /* WebKitPluginHostTypes.defs */; settings = {ATTRIBUTES = (Private, ); }; };
 		1AAF5CEA0EDDE1FE008D883D /* NetscapePluginHostManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 1AAF5CE40EDDE1FE008D883D /* NetscapePluginHostManager.h */; };
 		1AAF5CEB0EDDE1FE008D883D /* NetscapePluginHostManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1AAF5CE50EDDE1FE008D883D /* NetscapePluginHostManager.mm */; };
 		1AAF5CEC0EDDE1FE008D883D /* NetscapePluginHostProxy.h in Headers */ = {isa = PBXBuildFile; fileRef = 1AAF5CE60EDDE1FE008D883D /* NetscapePluginHostProxy.h */; };
@@ -138,6 +133,11 @@
 		51FDC4D30B0AF5C100F84EB3 /* WebHistoryItemPrivate.h in Headers */ = {isa = PBXBuildFile; fileRef = 51FDC4D20B0AF5C100F84EB3 /* WebHistoryItemPrivate.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		5241ADF50B1BC48A004012BD /* WebCache.h in Headers */ = {isa = PBXBuildFile; fileRef = 5241ADF30B1BC48A004012BD /* WebCache.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		5241ADF60B1BC48A004012BD /* WebCache.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5241ADF40B1BC48A004012BD /* WebCache.mm */; };
+		535E08CC225463B200DF00CA /* WebKitPluginAgent.defs in Copy Mig Files into Private Framework Headers */ = {isa = PBXBuildFile; fileRef = 1AAF588A0EDCCEA3008D883D /* WebKitPluginAgent.defs */; };
+		535E08CD225463B200DF00CA /* WebKitPluginAgentReply.defs in Copy Mig Files into Private Framework Headers */ = {isa = PBXBuildFile; fileRef = 1AAF588B0EDCCEA3008D883D /* WebKitPluginAgentReply.defs */; };
+		535E08CE225463B200DF00CA /* WebKitPluginClient.defs in Copy Mig Files into Private Framework Headers */ = {isa = PBXBuildFile; fileRef = 1AAF588C0EDCCEA3008D883D /* WebKitPluginClient.defs */; };
+		535E08CF225463B200DF00CA /* WebKitPluginHost.defs in Copy Mig Files into Private Framework Headers */ = {isa = PBXBuildFile; fileRef = 1AAF588D0EDCCEA3008D883D /* WebKitPluginHost.defs */; };
+		535E08D0225463B200DF00CA /* WebKitPluginHostTypes.defs in Copy Mig Files into Private Framework Headers */ = {isa = PBXBuildFile; fileRef = 1AAF588E0EDCCEA3008D883D /* WebKitPluginHostTypes.defs */; };
 		598AD91A1201CEC900ABAE4E /* WebDeviceOrientationClient.h in Headers */ = {isa = PBXBuildFile; fileRef = 598AD9191201CEC900ABAE4E /* WebDeviceOrientationClient.h */; };
 		598AD91E1201CECF00ABAE4E /* WebDeviceOrientationClient.mm in Sources */ = {isa = PBXBuildFile; fileRef = 598AD91D1201CECF00ABAE4E /* WebDeviceOrientationClient.mm */; };
 		598AD9201201CF0700ABAE4E /* WebDeviceOrientation.h in Headers */ = {isa = PBXBuildFile; fileRef = 598AD91F1201CF0700ABAE4E /* WebDeviceOrientation.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -792,6 +792,38 @@
 		F834AAD80E64B1C700E2737C /* WebTextIterator.mm in Sources */ = {isa = PBXBuildFile; fileRef = F834AAD60E64B1C700E2737C /* WebTextIterator.mm */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXBuildRule section */
+		535E08C322545B4C00DF00CA /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			filePatterns = "*.h";
+			fileType = pattern.proxy;
+			isEditable = 1;
+			outputFiles = (
+				"$(HEADER_OUTPUT_DIR)/$(INPUT_FILE_NAME)",
+			);
+			script = "exec \"${SRCROOT}/scripts/postprocess-header-rule\"\n";
+		};
+/* End PBXBuildRule section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		535E08CB2254637200DF00CA /* Copy Mig Files into Private Framework Headers */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = PrivateHeaders;
+			dstSubfolderSpec = 1;
+			files = (
+				535E08CC225463B200DF00CA /* WebKitPluginAgent.defs in Copy Mig Files into Private Framework Headers */,
+				535E08CD225463B200DF00CA /* WebKitPluginAgentReply.defs in Copy Mig Files into Private Framework Headers */,
+				535E08CE225463B200DF00CA /* WebKitPluginClient.defs in Copy Mig Files into Private Framework Headers */,
+				535E08CF225463B200DF00CA /* WebKitPluginHost.defs in Copy Mig Files into Private Framework Headers */,
+				535E08D0225463B200DF00CA /* WebKitPluginHostTypes.defs in Copy Mig Files into Private Framework Headers */,
+			);
+			name = "Copy Mig Files into Private Framework Headers";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		065AD5A10B0C32C7005A2B1D /* WebContextMenuClient.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = WebContextMenuClient.h; sourceTree = "<group>"; };
 		065AD5A20B0C32C7005A2B1D /* WebContextMenuClient.mm */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.objcpp; path = WebContextMenuClient.mm; sourceTree = "<group>"; };
@@ -970,6 +1002,7 @@
 		51FDC4D20B0AF5C100F84EB3 /* WebHistoryItemPrivate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebHistoryItemPrivate.h; sourceTree = "<group>"; };
 		5241ADF30B1BC48A004012BD /* WebCache.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = WebCache.h; sourceTree = "<group>"; };
 		5241ADF40B1BC48A004012BD /* WebCache.mm */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.objcpp; path = WebCache.mm; sourceTree = "<group>"; };
+		535E08C52254604E00DF00CA /* postprocess-header-rule */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; name = "postprocess-header-rule"; path = "scripts/postprocess-header-rule"; sourceTree = "<group>"; };
 		598AD9191201CEC900ABAE4E /* WebDeviceOrientationClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebDeviceOrientationClient.h; sourceTree = "<group>"; };
 		598AD91D1201CECF00ABAE4E /* WebDeviceOrientationClient.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebDeviceOrientationClient.mm; sourceTree = "<group>"; };
 		598AD91F1201CF0700ABAE4E /* WebDeviceOrientation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebDeviceOrientation.h; sourceTree = "<group>"; };
@@ -1628,6 +1661,7 @@
 				A10C1D8F1820307D0036883A /* WebKit.iOS.exp */,
 				F5C283730284676D018635CA /* WebKitPrefix.h */,
 				A182B74E199E7B8F001FD95A /* migrate-headers.sh */,
+				535E08C52254604E00DF00CA /* postprocess-header-rule */,
 				A182B74F199E7B8F001FD95A /* postprocess-headers.sh */,
 				6508A4A7099B375F00BCBF45 /* Default Delegates */,
 				F57D194A034E732C01A80180 /* DOM */,
@@ -3008,11 +3042,6 @@
 				CD8BFCE815531224005AFB25 /* WebKitFullScreenListener.h in Headers */,
 				9398101D0824BF01008DF038 /* WebKitLogging.h in Headers */,
 				9398101E0824BF01008DF038 /* WebKitNSStringExtras.h in Headers */,
-				1AAF58940EDCCF15008D883D /* WebKitPluginAgent.defs in Headers */,
-				1AAF58950EDCCF15008D883D /* WebKitPluginAgentReply.defs in Headers */,
-				1AAF58960EDCCF15008D883D /* WebKitPluginClient.defs in Headers */,
-				1AAF58970EDCCF15008D883D /* WebKitPluginHost.defs in Headers */,
-				1AAF58980EDCCF15008D883D /* WebKitPluginHostTypes.defs in Headers */,
 				1AAF5D090EDDE71D008D883D /* WebKitPluginHostTypes.h in Headers */,
 				939810470824BF01008DF038 /* WebKitPrefix.h in Headers */,
 				9398101F0824BF01008DF038 /* WebKitStatistics.h in Headers */,
@@ -3136,6 +3165,7 @@
 				5D2F7DB70C687A5A00B5B72B /* Update Info.plist with version information */,
 				1C6CB0510AA63EB000D23BFD /* Migrate Headers */,
 				9398100D0824BF01008DF038 /* Headers */,
+				535E08CB2254637200DF00CA /* Copy Mig Files into Private Framework Headers */,
 				A13EE61D185AE82700556064 /* Postprocess Headers */,
 				939810B20824BF01008DF038 /* Resources */,
 				1C395DE20C6BE8E0000D1E52 /* Generate Export Files */,
@@ -3146,6 +3176,7 @@
 				1A3193D5191856E500E1CF89 /* Symlink WebKitPluginHost */,
 			);
 			buildRules = (
+				535E08C322545B4C00DF00CA /* PBXBuildRule */,
 			);
 			dependencies = (
 			);
@@ -3308,7 +3339,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "exec \"${SRCROOT}/mac/postprocess-headers.sh\"";
+			shellScript = "if [ \"${XCODE_VERSION_MAJOR}\" -ge \"1100\" -a \"${USE_NEW_BUILD_SYSTEM}\" = \"YES\" ]; then\n    # In this configuration, post-processing is performed at the same time as copying in the postprocess-header-rule script, so there's no need for this separate step.\n    exit 0\nfi\n\nexec \"${SRCROOT}/mac/postprocess-headers.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

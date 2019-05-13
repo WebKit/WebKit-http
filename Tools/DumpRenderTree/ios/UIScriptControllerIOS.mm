@@ -381,6 +381,11 @@ bool UIScriptController::isShowingMenu() const
     return false;
 }
 
+bool UIScriptController::isDismissingMenu() const
+{
+    return false;
+}
+
 void UIScriptController::platformSetDidEndScrollingCallback()
 {
 }
@@ -533,6 +538,10 @@ JSRetainPtr<JSStringRef> UIScriptController::firstRedoLabel() const
 NSUndoManager *UIScriptController::platformUndoManager() const
 {
     return nil;
+}
+
+void UIScriptController::setHardwareKeyboardAttached(bool)
+{
 }
 
 }

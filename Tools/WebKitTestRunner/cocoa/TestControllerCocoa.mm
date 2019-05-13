@@ -159,6 +159,9 @@ void TestController::platformCreateWebView(WKPageConfigurationRef, const TestOpt
     if (options.enableUndoManagerAPI)
         [copiedConfiguration _setUndoManagerAPIEnabled:YES];
 
+    if (options.shouldUseModernCompatibilityMode)
+        enableModernCompatibilityMode(copiedConfiguration.get());
+
     if (options.applicationManifest.length()) {
         auto manifestPath = [NSString stringWithUTF8String:options.applicationManifest.c_str()];
         NSString *text = [NSString stringWithContentsOfFile:manifestPath usedEncoding:nullptr error:nullptr];
@@ -397,9 +400,45 @@ bool TestController::canDoServerTrustEvaluationInNetworkProcess() const
 #endif
 }
 
+void TestController::installCustomMenuAction(const String& name, bool dismissesAutomatically)
+{
+#if PLATFORM(IOS_FAMILY)
+    auto* invocation = m_currentInvocation.get();
+    [m_mainWebView->platformView() installCustomMenuAction:name dismissesAutomatically:dismissesAutomatically callback:[invocation] {
+        if (TestController::singleton().isCurrentInvocation(invocation))
+            invocation->performCustomMenuAction();
+    }];
+#else
+    UNUSED_PARAM(name);
+    UNUSED_PARAM(dismissesAutomatically);
+#endif
+}
+
+void TestController::setAllowedMenuActions(const Vector<String>& actions)
+{
+#if PLATFORM(IOS_FAMILY)
+    auto actionNames = adoptNS([[NSMutableArray<NSString *> alloc] initWithCapacity:actions.size()]);
+    for (auto action : actions)
+        [actionNames addObject:action];
+    [m_mainWebView->platformView() setAllowedMenuActions:actionNames.get()];
+#else
+    UNUSED_PARAM(actions);
+#endif
+}
+
 bool TestController::isDoingMediaCapture() const
 {
     return m_mainWebView->platformView()._mediaCaptureState != _WKMediaCaptureStateNone;
 }
+
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/TestControllerCocoaAdditions.mm>
+#else
+
+void TestController::enableModernCompatibilityMode(WKWebViewConfiguration *)
+{
+}
+
+#endif
 
 } // namespace WTR

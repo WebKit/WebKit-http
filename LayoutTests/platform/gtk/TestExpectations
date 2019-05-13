@@ -817,8 +817,6 @@ webkit.org/b/131347 svg/text/hidpi-text-selection-rect-position.html [ ImageOnly
 # No support for Filters Level 2 on GTK yet
 webkit.org/b/169988 css3/filters/backdrop [ Skip ]
 
-webkit.org/b/141072 accessibility/frame-disconnect-textmarker-cache-crash.html [ Failure ]
-
 webkit.org/b/141423 fast/css/font-shorthand-from-longhands.html [ Failure ]
 webkit.org/b/141423 fast/css/font-shorthand-line-height.html [ Failure ]
 webkit.org/b/141423 fast/css/getComputedStyle/computed-style-font.html [ Failure ]
@@ -898,8 +896,6 @@ Bug(GTK) editing/spelling/markers.html [ Skip ]
 # Requires ENABLE(MEDIA_CAPTURE)
 webkit.org/b/85958 fast/forms/file/file-input-capture.html [ Failure ]
 
-webkit.org/b/146718 accessibility/aria-hidden-false-works-in-subtrees.html [ Failure ]
-
 webkit.org/b/146720 media/accessiblity-describes-video.html [ Failure ]
 
 webkit.org/b/146724 fast/text/word-break-keep-all.html [ ImageOnlyFailure ]
@@ -909,6 +905,7 @@ webkit.org/b/146731 fast/backgrounds/hidpi-background-image-contain-cover-scale-
 
 # Text marker tests are not supported
 webkit.org/b/153292 accessibility/text-marker [ Skip ]
+webkit.org/b/141072 accessibility/frame-disconnect-textmarker-cache-crash.html [ Skip ]
 
 # WebKitGTK+ doesn't have killring support.
 webkit.org/b/152379 editing/pasteboard/emacs-killring-alternating-append-prepend.html [ Failure ]
@@ -1323,15 +1320,14 @@ webkit.org/b/190738 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4
 webkit.org/b/191882 fast/forms/validation-message-clone.html [ Failure Crash Pass ]
 webkit.org/b/191882 fast/forms/validation-message-in-relative-body.html [ Failure Crash ]
 
-webkit.org/b/194630 accessibility/removed-anonymous-block-child-causes-crash.html [ Crash ]
-webkit.org/b/194630 accessibility/removed-continuation-element-causes-crash.html [ Crash ]
-
 webkit.org/b/195260 mathml/presentation/tokenElements-dynamic.html [ Crash Pass ]
 
 webkit.org/b/195271 imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/underover-1.html [ Failure Pass ]
 
 webkit.org/b/196542 printing/crash-while-formatting-subframe-for-printing.html [ Timeout Crash ]
 webkit.org/b/196542 printing/printing-events.html [ Timeout Crash ]
+
+webkit.org/b/196799 imported/blink/fast/css/first-letter-crash-document-disposal.html [ Pass Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -2152,6 +2148,8 @@ webkit.org/b/194044 imported/w3c/web-platform-tests/media-source/mediasource-add
 webkit.org/b/194044 imported/w3c/web-platform-tests/media-source/mediasource-addsourcebuffer-mode.html [ Crash Pass ]
 
 webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay.html [ Failure Pass ]
+
+webkit.org/b/196798 media/track/track-cue-css.html [ Failure Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -3111,14 +3109,6 @@ webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 webkit.org/b/148932 imported/w3c/web-platform-tests/css/css-color/t424-hsl-basic-a.xht [ ImageOnlyFailure Pass ]
 webkit.org/b/148932 imported/w3c/web-platform-tests/css/css-color/t425-hsla-clip-outside-device-gamut-b.xht [ ImageOnlyFailure ]
 
-webkit.org/b/148935 accessibility/scroll-to-global-point-iframe-nested.html [ Failure ]
-webkit.org/b/148935 accessibility/scroll-to-global-point-iframe.html [ Failure ]
-webkit.org/b/148935 accessibility/scroll-to-global-point-main-window.html [ Failure ]
-webkit.org/b/148935 accessibility/scroll-to-global-point-nested.html [ Failure ]
-webkit.org/b/148935 accessibility/scroll-to-make-visible-div-overflow.html [ Failure ]
-webkit.org/b/148935 accessibility/scroll-to-make-visible-iframe.html [ Failure ]
-webkit.org/b/148935 accessibility/scroll-to-make-visible-nested-2.html [ Failure ]
-webkit.org/b/148935 accessibility/scroll-to-make-visible-nested.html [ Failure ]
 webkit.org/b/148935 accessibility/scroll-to-make-visible-with-subfocus.html [ Failure ]
 
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
@@ -3223,7 +3213,7 @@ webkit.org/b/163335 fast/loader/file-URL-with-port-number.html [ Timeout ]
 # Crash is bug #186251
 webkit.org/b/163383 accessibility/meter-element.html [ Failure Crash ]
 
-webkit.org/b/163512 media/media-controls-accessibility.html [ Failure ]
+webkit.org/b/163512 media/media-controls-accessibility.html [ Timeout ]
 webkit.org/b/163521 media/tab-focus-inside-media-elements.html [ Failure ]
 webkit.org/b/163523 media/track/track-manual-mode.html [ Failure Timeout ]
 webkit.org/b/163524 media/track/video-track-alternate-groups.html [ Failure ]

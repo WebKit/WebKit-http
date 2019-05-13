@@ -99,6 +99,7 @@ public:
 
     bool allowFrameAncestors(const Frame&, const URL&, bool overrideContentSecurityPolicy = false) const;
     WEBCORE_EXPORT bool allowFrameAncestors(const Vector<RefPtr<SecurityOrigin>>& ancestorOrigins, const URL&, bool overrideContentSecurityPolicy = false) const;
+    WEBCORE_EXPORT bool overridesXFrameOptions() const;
 
     enum class RedirectResponseReceived { No, Yes };
     WEBCORE_EXPORT bool allowScriptFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
@@ -173,7 +174,7 @@ public:
     void setClient(ContentSecurityPolicyClient* client) { m_client = client; }
 
 private:
-    void logToConsole(const String& message, const String& contextURL = String(), const WTF::OrdinalNumber& contextLine = WTF::OrdinalNumber::beforeFirst(), JSC::ExecState* = nullptr) const;
+    void logToConsole(const String& message, const String& contextURL = String(), const WTF::OrdinalNumber& contextLine = WTF::OrdinalNumber::beforeFirst(), const WTF::OrdinalNumber& contextColumn = WTF::OrdinalNumber::beforeFirst(), JSC::ExecState* = nullptr) const;
     void updateSourceSelf(const SecurityOrigin&);
     void applyPolicyToScriptExecutionContext();
 

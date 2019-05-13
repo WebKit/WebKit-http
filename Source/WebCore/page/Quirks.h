@@ -45,8 +45,10 @@ public:
     bool shouldAutoplayForArbitraryUserGesture() const;
     bool hasBrokenEncryptedMediaAPISupportQuirk() const;
     bool hasWebSQLSupportQuirk() const;
-    bool shouldDispatchSimulateMouseEvents() const;
+    bool shouldDispatchSimulatedMouseEvents() const;
+    bool shouldDisablePointerEventsQuirk() const;
 
+    WEBCORE_EXPORT bool shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() const;
     WEBCORE_EXPORT bool isTouchBarUpdateSupressedForHiddenContentEditable() const;
     WEBCORE_EXPORT bool isNeverRichlyEditableForTouchBar() const;
 

@@ -27,30 +27,39 @@
 
 #include <thread>
 #include <wtf/Function.h>
+#include <wtf/Vector.h>
+
+extern "C" {
+struct SSL;
+int SSL_read(SSL*, void*, int);
+int SSL_write(SSL*, const void*, int);
+}
 
 namespace TestWebKitAPI {
 
 class TCPServer {
 public:
     using Socket = int;
-    static constexpr Socket InvalidSocket = -1;
     using Port = uint16_t;
     static constexpr Port InvalidPort = 0;
     
-    TCPServer(Function<void(Socket)>&&);
+    TCPServer(Function<void(Socket)>&&, size_t connections = 1);
+    enum class Protocol : bool {
+        HTTPS, HTTPSProxy
+    };
+    TCPServer(Protocol, Function<void(SSL*)>&&);
     ~TCPServer();
     
     Port port() const { return m_port; }
     
 private:
-    void socketBindListen();
-    void waitForAndReplyToRequests();
+    Optional<Socket> socketBindListen(size_t connections);
+    void listenForConnections(size_t connections);
 
     Port m_port { InvalidPort };
-    Socket m_listeningSocket { InvalidSocket };
-    Socket m_connectionSocket { InvalidSocket };
-    std::thread m_thread;
-    Function<void(Socket)> m_socketHandler;
+    std::thread m_listeningThread;
+    Vector<std::thread> m_connectionThreads;
+    Function<void(Socket)> m_connectionHandler;
 };
 
 } // namespace TestWebKitAPI

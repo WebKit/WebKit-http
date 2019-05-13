@@ -32,6 +32,10 @@
 #include "WebsitePoliciesData.h"
 #include <wtf/WeakPtr.h>
 
+namespace API {
+class Navigation;
+}
+
 namespace IPC {
 class FormDataReference;
 }
@@ -70,6 +74,8 @@ public:
     DrawingAreaProxy* drawingArea() const { return m_drawingArea.get(); }
     std::unique_ptr<DrawingAreaProxy> takeDrawingArea();
 
+    void setNavigationID(uint64_t navigationID) { m_navigationID = navigationID; }
+
 #if PLATFORM(COCOA)
     Vector<uint8_t> takeAccessibilityToken() { return WTFMove(m_accessibilityToken); }
 #endif
@@ -91,7 +97,7 @@ private:
         uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, IPC::FormDataReference&& requestBody,
         WebCore::ResourceResponse&& redirectResponse, const UserData&, uint64_t listenerID);
     void decidePolicyForResponse(uint64_t frameID, const WebCore::SecurityOriginData&, WebCore::PolicyCheckIdentifier, uint64_t navigationID, const WebCore::ResourceResponse&,
-        const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&);
+        const WebCore::ResourceRequest&, bool canShowMIMEType, const String& downloadAttribute, uint64_t listenerID, const UserData&);
     void didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, URL&&);
     void didPerformServerRedirect(const String& sourceURLString, const String& destinationURLString, uint64_t frameID);
     void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::ResourceRequest&&, const UserData&);
@@ -100,7 +106,7 @@ private:
     void didCreateMainFrame(uint64_t frameID);
     void didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, URL&&, URL&& unreachableURL, const UserData&);
     void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, Optional<WebCore::HasInsecureContent> forcedHasInsecureContent, const UserData&);
-    void didFailProvisionalLoadForFrame(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, const UserData&);
+    void didFailProvisionalLoadForFrame(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, WebCore::WillContinueLoading, const UserData&);
     void startURLSchemeTask(URLSchemeTaskParameters&&);
     void backForwardGoToItem(const WebCore::BackForwardItemIdentifier&, CompletionHandler<void(SandboxExtension::Handle&&)>&&);
     void decidePolicyForNavigationActionSync(uint64_t frameID, bool isMainFrame, WebCore::SecurityOriginData&&, WebCore::PolicyCheckIdentifier, uint64_t navigationID, NavigationActionData&&,
@@ -114,6 +120,7 @@ private:
 #endif
 
     void initializeWebPage();
+    bool validateInput(uint64_t frameID, const Optional<uint64_t>& navigationID = WTF::nullopt);
 
     WebPageProxy& m_page;
     Ref<WebProcessProxy> m_process;

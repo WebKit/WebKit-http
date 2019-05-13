@@ -542,7 +542,11 @@ inline bool RenderStyle::changeAffectsVisualOverflow(const RenderStyle& other) c
         || m_rareInheritedData->textDecorationThickness != other.m_rareInheritedData->textDecorationThickness
         || m_rareInheritedData->textUnderlineOffset != other.m_rareInheritedData->textUnderlineOffset
         || m_rareInheritedData->textUnderlinePosition != other.m_rareInheritedData->textUnderlinePosition) {
-        return true;
+        // Underlines are always drawn outside of their textbox bounds when text-underline-position: under;
+        // is specified. We can take an early out here.
+        if (textUnderlinePosition() == TextUnderlinePosition::Under || other.textUnderlinePosition() == TextUnderlinePosition::Under)
+            return true;
+        return visualOverflowForDecorations(*this, nullptr) != visualOverflowForDecorations(other, nullptr);
     }
 
     if (hasOutlineInVisualOverflow() != other.hasOutlineInVisualOverflow())
@@ -959,7 +963,7 @@ static bool rareInheritedDataChangeRequiresRepaint(const StyleRareInheritedData&
         || first.appleColorFilter != second.appleColorFilter
         || first.imageRendering != second.imageRendering
 #if ENABLE(DARK_MODE_CSS)
-        || first.supportedColorSchemes != second.supportedColorSchemes
+        || first.colorScheme != second.colorScheme
 #endif
     ;
 }

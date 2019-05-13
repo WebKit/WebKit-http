@@ -78,4 +78,10 @@
     return _navigationResponse->request().nsURLRequest(WebCore::HTTPBodyUpdatePolicy::DoNotUpdateHTTPBody);
 }
 
+- (NSString *)_downloadAttribute
+{
+    const String& attribute = _navigationResponse->downloadAttribute();
+    return attribute.isNull() ? nil : (NSString *)attribute;
+}
+
 @end

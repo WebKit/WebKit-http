@@ -82,6 +82,9 @@ SuspendedPageProxy::SuspendedPageProxy(WebPageProxy& page, Ref<WebProcessProxy>&
     : m_page(page)
     , m_process(WTFMove(process))
     , m_mainFrameID(mainFrameID)
+#if PLATFORM(MAC)
+    , m_shouldDelayClosingOnFailure(m_page.drawingArea() && m_page.drawingArea()->type() == DrawingAreaTypeTiledCoreAnimation)
+#endif
     , m_suspensionTimeoutTimer(RunLoop::main(), this, &SuspendedPageProxy::suspensionTimedOut)
 #if PLATFORM(IOS_FAMILY)
     , m_suspensionToken(m_process->throttler().backgroundActivityToken())
@@ -160,9 +163,20 @@ void SuspendedPageProxy::close()
     m_process->send(Messages::WebPage::Close(), m_page.pageID());
 }
 
+void SuspendedPageProxy::pageEnteredAcceleratedCompositingMode()
+{
+    m_shouldDelayClosingOnFailure = false;
+
+    if (m_suspensionState == SuspensionState::FailedToSuspend) {
+        // We needed the failed suspended page to stay alive to avoid flashing. Now we can get rid of it.
+        close();
+    }
+}
+
 void SuspendedPageProxy::didProcessRequestToSuspend(SuspensionState newSuspensionState)
 {
     LOG(ProcessSwapping, "SuspendedPageProxy %s from process %i finished transition to suspended", loggingString(), m_process->processIdentifier());
+    RELEASE_LOG(ProcessSwapping, "%p - SuspendedPageProxy::didProcessRequestToSuspend() success? %d", this, newSuspensionState == SuspensionState::Suspended);
 
     ASSERT(m_suspensionState == SuspensionState::Suspending);
     ASSERT(newSuspensionState == SuspensionState::Suspended || newSuspensionState == SuspensionState::FailedToSuspend);
@@ -177,13 +191,7 @@ void SuspendedPageProxy::didProcessRequestToSuspend(SuspensionState newSuspensio
 
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_page.pageID());
 
-    bool shouldDelayClosingOnFailure = false;
-#if PLATFORM(MAC)
-    // With web process side tiles, we need to keep the suspended page around on failure to avoid flashing.
-    // It is removed by WebPageProxy::enterAcceleratedCompositingMode when the target page is ready.
-    shouldDelayClosingOnFailure = m_page.drawingArea() && m_page.drawingArea()->type() == DrawingAreaTypeTiledCoreAnimation;
-#endif
-    if (m_suspensionState == SuspensionState::FailedToSuspend && !shouldDelayClosingOnFailure)
+    if (m_suspensionState == SuspensionState::FailedToSuspend && !m_shouldDelayClosingOnFailure)
         close();
 
     if (m_readyToUnsuspendHandler)

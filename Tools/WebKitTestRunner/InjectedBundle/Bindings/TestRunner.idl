@@ -39,6 +39,14 @@ interface TestRunner {
     void waitUntilDownloadFinished();
     void setShouldLogDownloadCallbacks(boolean value);
 
+    const unsigned short RENDER_TREE_SHOW_ALL_LAYERS            = 1;
+    const unsigned short RENDER_TREE_SHOW_LAYER_NESTING         = 2;
+    const unsigned short RENDER_TREE_SHOW_COMPOSITED_LAYERS     = 4;
+    const unsigned short RENDER_TREE_SHOW_OVERFLOW              = 8;
+    const unsigned short RENDER_TREE_SHOW_SVG_GEOMETRY          = 16;
+    const unsigned short RENDER_TREE_SHOW_LAYER_FRAGMENTS       = 32;
+    void setRenderTreeDumpOptions(unsigned short options);
+
     // Other dumping.
     void dumpBackForwardList();
     void dumpChildFrameScrollPositions();
@@ -272,6 +280,10 @@ interface TestRunner {
 
     void accummulateLogsForChannel(DOMString channel);
 
+    // Contextual menu actions
+    void setAllowedMenuActions(object actions);
+    void installCustomMenuAction(DOMString name, boolean dismissesAutomatically, object callback);
+
     // Gamepad
     void setMockGamepadDetails(unsigned long index, DOMString id, unsigned long axisCount, unsigned long buttonCount);
     void setMockGamepadAxisValue(unsigned long index, unsigned long axisIndex, double value);
@@ -336,6 +348,7 @@ interface TestRunner {
 
     // Open panel
     void setOpenPanelFiles(object filesArray);
+    void setOpenPanelFilesMediaIcon(object mediaIcon);
 
     // Modal alerts
     void setShouldDismissJavaScriptAlertsAsynchronously(boolean value);
@@ -381,4 +394,7 @@ interface TestRunner {
 
     // Ad Click Attribution
     void clearAdClickAttribution();
+    void clearAdClickAttributionsThroughWebsiteDataRemoval();
+    void setAdClickAttributionOverrideTimerForTesting(boolean value);
+    void setAdClickAttributionConversionURLForTesting(DOMString url);
 };

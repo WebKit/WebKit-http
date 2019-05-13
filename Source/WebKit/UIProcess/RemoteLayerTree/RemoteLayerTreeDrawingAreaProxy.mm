@@ -199,9 +199,6 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
     m_transactionIDForPendingCACommit = layerTreeTransaction.transactionID();
     m_activityStateChangeID = layerTreeTransaction.activityStateChangeID();
 
-    if (layerTreeTransaction.hasEditorState())
-        m_webPageProxy.editorStateChanged(layerTreeTransaction.editorState());
-
     if (m_remoteLayerTreeHost->updateLayerTree(layerTreeTransaction)) {
         if (layerTreeTransaction.transactionID() >= m_transactionIDForUnhidingContent)
             m_webPageProxy.setRemoteLayerTreeRootNode(m_remoteLayerTreeHost->rootNode());
@@ -255,7 +252,10 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
     didRefreshDisplay();
 #endif
 
-    if (auto milestones = layerTreeTransaction.newlyReachedLayoutMilestones())
+    if (layerTreeTransaction.hasEditorState())
+        m_webPageProxy.editorStateChanged(layerTreeTransaction.editorState());
+
+    if (auto milestones = layerTreeTransaction.newlyReachedPaintingMilestones())
         m_webPageProxy.didReachLayoutMilestone(milestones);
 
     for (auto& callbackID : layerTreeTransaction.callbackIDs()) {

@@ -23,7 +23,7 @@
 from buildbot.plugins import steps, util
 from buildbot.process import buildstep, logobserver, properties
 from buildbot.process.results import Results, SUCCESS, FAILURE, WARNINGS, SKIPPED, EXCEPTION, RETRY
-from buildbot.steps import master, shell, transfer
+from buildbot.steps import master, shell, transfer, trigger
 from buildbot.steps.source import git
 from buildbot.steps.worker import CompositeStepMixin
 from twisted.internet import defer
@@ -43,7 +43,7 @@ class ConfigureBuild(buildstep.BuildStep):
     description = ["configuring build"]
     descriptionDone = ["Configured build"]
 
-    def __init__(self, platform, configuration, architectures, buildOnly, additionalArguments):
+    def __init__(self, platform, configuration, architectures, buildOnly, triggers, additionalArguments):
         super(ConfigureBuild, self).__init__()
         self.platform = platform
         if platform != 'jsc-only':
@@ -52,6 +52,7 @@ class ConfigureBuild(buildstep.BuildStep):
         self.configuration = configuration
         self.architecture = " ".join(architectures) if architectures else None
         self.buildOnly = buildOnly
+        self.triggers = triggers
         self.additionalArguments = additionalArguments
 
     def start(self):
@@ -65,6 +66,8 @@ class ConfigureBuild(buildstep.BuildStep):
             self.setProperty('architecture', self.architecture, 'config.json')
         if self.buildOnly:
             self.setProperty("buildOnly", self.buildOnly, 'config.json')
+        if self.triggers:
+            self.setProperty('triggers', self.triggers, 'config.json')
         if self.additionalArguments:
             self.setProperty("additionalArguments", self.additionalArguments, 'config.json')
 
@@ -93,6 +96,7 @@ class CheckOutSource(git.Git):
                                                 retry=self.CHECKOUT_DELAY_AND_MAX_RETRIES_PAIR,
                                                 timeout=2 * 60 * 60,
                                                 alwaysUseLatest=True,
+                                                method='clean',
                                                 progress=True,
                                                 **kwargs)
 
@@ -133,7 +137,6 @@ class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
             return None
 
         d = self.downloadFileContentToWorker('.buildbot-diff', patch)
-        d.addCallback(lambda _: self.downloadFileContentToWorker('.buildbot-patched', 'patched\n'))
         d.addCallback(lambda res: shell.ShellCommand.start(self))
 
     def getResultSummary(self):
@@ -328,7 +331,7 @@ class ValidatePatch(buildstep.BuildStep):
             return -1
 
         bug_title = bug_json.get('summary')
-        self.addURL('Bug {} {}'.format(bug_id, bug_title), '{}show_bug.cgi?id={}'.format(BUG_SERVER_URL, bug_id))
+        self.addURL(u'Bug {} {}'.format(bug_id, bug_title), '{}show_bug.cgi?id={}'.format(BUG_SERVER_URL, bug_id))
         if bug_json.get('status') in self.bug_closed_statuses:
             return 1
         return 0
@@ -381,6 +384,23 @@ class UnApplyPatchIfRequired(CleanWorkingDirectory):
 
     def hideStepIf(self, results, step):
         return not self.doStepIf(step)
+
+
+class Trigger(trigger.Trigger):
+    def __init__(self, schedulerNames, **kwargs):
+        set_properties = self.propertiesToPassToTriggers() or {}
+        super(Trigger, self).__init__(schedulerNames=schedulerNames, set_properties=set_properties, **kwargs)
+
+    def propertiesToPassToTriggers(self):
+        return {
+            'patch_id': properties.Property('patch_id'),
+            'bug_id': properties.Property('bug_id'),
+            'configuration': properties.Property('configuration'),
+            'platform': properties.Property('platform'),
+            'fullPlatform': properties.Property('fullPlatform'),
+            'architecture': properties.Property('architecture'),
+            'owner': properties.Property('owner'),
+        }
 
 
 class TestWithFailureCount(shell.Test):
@@ -665,6 +685,7 @@ class UploadBuiltProduct(transfer.FileUpload):
     name = 'upload-built-product'
     workersrc = WithProperties('WebKitBuild/%(configuration)s.zip')
     masterdest = WithProperties('public_html/archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(patch_id)s.zip')
+    descriptionDone = ['Uploaded built product']
     haltOnFailure = True
 
     def __init__(self, **kwargs):
@@ -673,6 +694,19 @@ class UploadBuiltProduct(transfer.FileUpload):
         kwargs['mode'] = 0644
         kwargs['blocksize'] = 1024 * 256
         transfer.FileUpload.__init__(self, **kwargs)
+
+    def finished(self, results):
+        if results == SUCCESS:
+            triggers = self.getProperty('triggers', None)
+            if triggers:
+                self.build.addStepsAfterCurrentStep([Trigger(schedulerNames=triggers)])
+
+        return super(UploadBuiltProduct, self).finished(results)
+
+    def getResultSummary(self):
+        if self.results != SUCCESS:
+            return {u'step': u'Failed to upload built product'}
+        return super(UploadBuiltProduct, self).getResultSummary()
 
 
 class DownloadBuiltProduct(shell.ShellCommand):
@@ -792,18 +826,23 @@ class AnalyzeAPITestsResults(buildstep.BuildStep):
         second_run_failures = getAPITestFailures(second_run_results)
         clean_tree_failures = getAPITestFailures(clean_tree_results)
 
-        self._addToLog('stderr', '\nFailures in API Test first run: {}'.format(first_run_failures))
-        self._addToLog('stderr', '\nFailures in API Test second run: {}'.format(first_run_failures))
-        self._addToLog('stderr', '\nFailures in API Test on clean tree: {}'.format(clean_tree_failures))
         failures_with_patch = first_run_failures.intersection(second_run_failures)
+        flaky_failures = first_run_failures.union(second_run_failures) - first_run_failures.intersection(second_run_failures)
+        flaky_failures_string = ', '.join([failure_name.replace('TestWebKitAPI.', '') for failure_name in flaky_failures])
         new_failures = failures_with_patch - clean_tree_failures
         new_failures_string = ', '.join([failure_name.replace('TestWebKitAPI.', '') for failure_name in new_failures])
+
+        self._addToLog('stderr', '\nFailures in API Test first run: {}'.format(first_run_failures))
+        self._addToLog('stderr', '\nFailures in API Test second run: {}'.format(second_run_failures))
+        self._addToLog('stderr', '\nFlaky Tests: {}'.format(flaky_failures))
+        self._addToLog('stderr', '\nFailures in API Test on clean tree: {}'.format(clean_tree_failures))
 
         if new_failures:
             self._addToLog('stderr', '\nNew failures: {}\n'.format(new_failures))
             self.finished(FAILURE)
             self.build.results = FAILURE
-            message = 'Found {} new API Tests failures: {}'.format(len(new_failures), new_failures_string)
+            pluralSuffix = 's' if len(new_failures) > 1 else ''
+            message = 'Found {} new API Test failure{}: {}'.format(len(new_failures), pluralSuffix, new_failures_string)
             self.descriptionDone = message
             self.build.buildFinished([message], FAILURE)
         else:
@@ -811,7 +850,10 @@ class AnalyzeAPITestsResults(buildstep.BuildStep):
             self.finished(SUCCESS)
             self.build.results = SUCCESS
             self.descriptionDone = 'Passed API tests'
-            message = 'Found {} pre-existing API tests failures'.format(len(clean_tree_failures))
+            pluralSuffix = 's' if len(clean_tree_failures) > 1 else ''
+            message = 'Found {} pre-existing API test failure{}'.format(len(clean_tree_failures), pluralSuffix)
+            if flaky_failures:
+                message += '. Flaky tests: {}'.format(flaky_failures_string)
             self.build.buildFinished([message], SUCCESS)
 
     @defer.inlineCallbacks
@@ -954,11 +996,8 @@ class PrintConfiguration(steps.ShellSequence):
             os_name = self.convert_build_to_os_name(os_version)
             configuration = u'OS: {} ({})'.format(os_name, os_version)
 
-        sdk_re = 'MacOSX[\s\S]*?SDKVersion:[ \t]*(.+?)\n'
-        is_ios_builder = 'iOS' in self.getProperty('buildername', '')
-        if is_ios_builder:
-            sdk_re = 'iPhoneSimulator[\s\S]*?SDKVersion:[ \t]*(.+?)\n'
-        match = re.search(sdk_re, logText)
+        xcode_re = sdk_re = 'Xcode[ \t]+?([0-9.]+?)\n'
+        match = re.search(xcode_re, logText)
         if match:
             xcode_version = match.group(1).strip()
             configuration += u', Xcode: {}'.format(xcode_version)

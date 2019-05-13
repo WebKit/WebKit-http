@@ -200,11 +200,6 @@ static const Seconds delayBeforeNoVisibleContentsRectsLogging = 1_s;
 #endif // HAVE(TOUCH_BAR)
 #endif // PLATFORM(MAC)
 
-#if ENABLE(ACCESSIBILITY_EVENTS)
-#import "AccessibilitySupportSPI.h"
-#import <wtf/darwin/WeakLinking.h>
-#endif
-
 #if PLATFORM(MAC) && ENABLE(DRAG_SUPPORT)
 
 @interface WKWebView () <NSFilePromiseProviderDelegate, NSDraggingSource>
@@ -412,7 +407,9 @@ static int32_t deviceOrientationForUIInterfaceOrientation(UIInterfaceOrientation
 
 static int32_t deviceOrientation()
 {
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     return deviceOrientationForUIInterfaceOrientation([[UIApplication sharedApplication] statusBarOrientation]);
+ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 - (BOOL)_isShowingVideoPictureInPicture
@@ -552,7 +549,7 @@ static void validate(WKWebViewConfiguration *configuration)
         WKProcessPool *relatedWebViewProcessPool = [relatedWebView->_configuration processPool];
         if (processPool && processPool != relatedWebViewProcessPool)
             [NSException raise:NSInvalidArgumentException format:@"Related web view %@ has process pool %@ but configuration specifies a different process pool %@", relatedWebView, relatedWebViewProcessPool, configuration.processPool];
-        if ([relatedWebView->_configuration websiteDataStore] != [_configuration websiteDataStore])
+        if ([relatedWebView->_configuration websiteDataStore] != [_configuration websiteDataStore] && linkedOnOrAfter(WebKit::SDKVersion::FirstWithExceptionsForRelatedWebViewsUsingDifferentDataStores, WebKit::AssumeSafariIsAlwaysLinkedOnAfter::No))
             [NSException raise:NSInvalidArgumentException format:@"Related web view %@ has data store %@ but configuration specifies a different data store %@", relatedWebView, [relatedWebView->_configuration websiteDataStore], [_configuration websiteDataStore]];
 
         [_configuration setProcessPool:relatedWebViewProcessPool];
@@ -628,6 +625,9 @@ static void validate(WKWebViewConfiguration *configuration)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::TextDirection::LTR)));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowSettingAnyXHRHeaderFromFileURLsKey(), WebKit::WebPreferencesStore::Value(shouldAllowSettingAnyXHRHeaderFromFileURLs()));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldDecidePolicyBeforeLoadingQuickLookPreviewKey(), WebKit::WebPreferencesStore::Value(!![_configuration _shouldDecidePolicyBeforeLoadingQuickLookPreview]));
+#if ENABLE(DEVICE_ORIENTATION)
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::deviceOrientationPermissionAPIEnabledKey(), WebKit::WebPreferencesStore::Value(linkedOnOrAfter(WebKit::SDKVersion::FirstWithDeviceOrientationAndMotionPermissionAPI)));
+#endif
 #if USE(SYSTEM_PREVIEW)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::systemPreviewEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _systemPreviewEnabled]));
 #endif
@@ -743,14 +743,6 @@ static void validate(WKWebViewConfiguration *configuration)
 
     _impl->setAutomaticallyAdjustsContentInsets(true);
     _impl->setRequiresUserActionForEditingControlsManager([configuration _requiresUserActionForEditingControlsManager]);
-#endif
-
-#if ENABLE(ACCESSIBILITY_EVENTS)
-    // Check _AXSWebAccessibilityEventsEnabled here to avoid compiler optimizing
-    // out the null check of kAXSWebAccessibilityEventsEnabledNotification.
-    if (!isNullFunctionPointer(_AXSWebAccessibilityEventsEnabled))
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), accessibilityEventsEnabledChangedCallback, kAXSWebAccessibilityEventsEnabledNotification, 0, CFNotificationSuspensionBehaviorDeliverImmediately);
-    [self _updateAccessibilityEventsEnabled];
 #endif
 
     if (NSString *applicationNameForUserAgent = configuration.applicationNameForUserAgent)
@@ -874,10 +866,6 @@ static void validate(WKWebViewConfiguration *configuration)
     [_scrollView setInternalDelegate:nil];
 
     CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), (CFStringRef)[NSString stringWithUTF8String:kGSEventHardwareKeyboardAvailabilityChangedNotification], nullptr);
-#endif
-
-#if ENABLE(ACCESSIBILITY_EVENTS)
-    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), nullptr, nullptr);
 #endif
 
     pageToViewMap().remove(_page.get());
@@ -1550,6 +1538,11 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
     return [super targetForAction:action withSender:sender];
 }
 
+- (void)willFinishIgnoringCalloutBarFadeAfterPerformingAction
+{
+    [_contentView willFinishIgnoringCalloutBarFadeAfterPerformingAction];
+}
+
 static inline CGFloat floorToDevicePixel(CGFloat input, float deviceScaleFactor)
 {
     return CGFloor(input * deviceScaleFactor) / deviceScaleFactor;
@@ -1697,7 +1690,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     WebCore::Color color = baseScrollViewBackgroundColor(webView);
 
     if (!color.isValid())
-        color = WebCore::Color::white;
+        color = [webView->_contentView backgroundColor].CGColor;
 
     CGFloat zoomScale = contentZoomScale(webView);
     CGFloat minimumZoomScale = [webView->_scrollView minimumZoomScale];
@@ -1862,7 +1855,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     [self _processWillSwapOrDidExit];
 
     [_contentView setFrame:self.bounds];
-    [_scrollView setBackgroundColor:[UIColor whiteColor]];
+    [_scrollView setBackgroundColor:[_contentView backgroundColor]];
     [_scrollView setContentOffset:[self _initialContentOffsetForScrollView]];
     [_scrollView setZoomScale:1];
     _gestureController = nullptr;
@@ -2541,6 +2534,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 {
     [super setBackgroundColor:backgroundColor];
     [_contentView setBackgroundColor:backgroundColor];
+    [self _updateScrollViewBackground];
 }
 
 - (BOOL)_allowsDoubleTapGestures
@@ -3331,6 +3325,7 @@ static void hardwareKeyboardAvailabilityChangedCallback(CFNotificationCenterRef,
 {
     ASSERT(observer);
     WKWebView *webView = (__bridge WKWebView *)observer;
+    [webView->_contentView _hardwareKeyboardAvailabilityChanged];
     webView._page->hardwareKeyboardAvailabilityChanged(GSEventIsHardwareKeyboardAttached());
 }
 
@@ -3460,23 +3455,6 @@ static void hardwareKeyboardAvailabilityChangedCallback(CFNotificationCenterRef,
 }
 
 #endif // PLATFORM(IOS_FAMILY)
-
-#if ENABLE(ACCESSIBILITY_EVENTS)
-
-static void accessibilityEventsEnabledChangedCallback(CFNotificationCenterRef, void* observer, CFStringRef, const void*, CFDictionaryRef)
-{
-    ASSERT(observer);
-    WKWebView *webview = (__bridge WKWebView *)observer;
-    [webview _updateAccessibilityEventsEnabled];
-}
-
-- (void)_updateAccessibilityEventsEnabled
-{
-    if (!isNullFunctionPointer(_AXSWebAccessibilityEventsEnabled))
-        _page->updateAccessibilityEventsEnabled(_AXSWebAccessibilityEventsEnabled());
-}
-
-#endif
 
 #pragma mark OS X-specific methods
 
@@ -4724,6 +4702,13 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 - (NSURL *)_unreachableURL
 {
     return [NSURL _web_URLWithWTFString:_page->pageLoadState().unreachableURL()];
+}
+
+- (NSURL *)_mainFrameURL
+{
+    if (auto* frame = _page->mainFrame())
+        return frame->url();
+    return nil;
 }
 
 - (void)_loadAlternateHTMLString:(NSString *)string baseURL:(NSURL *)baseURL forUnreachableURL:(NSURL *)unreachableURL
@@ -6250,6 +6235,34 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
     _overridesMaximumUnobscuredSize = NO;
     _maximumUnobscuredSizeOverride = CGSizeZero;
+}
+
+static WTF::Optional<WebCore::ViewportArguments> viewportArgumentsFromDictionary(NSDictionary<NSString *, NSString *> *viewportArgumentPairs, bool viewportFitEnabled)
+{
+    if (!viewportArgumentPairs)
+        return WTF::nullopt;
+
+    WebCore::ViewportArguments viewportArguments(WebCore::ViewportArguments::ViewportMeta);
+
+    [viewportArgumentPairs enumerateKeysAndObjectsUsingBlock:makeBlockPtr([&] (NSString *key, NSString *value, BOOL* stop) {
+        if (![key isKindOfClass:[NSString class]] || ![value isKindOfClass:[NSString class]])
+            [NSException raise:NSInvalidArgumentException format:@"-[WKWebView _overrideViewportWithArguments:]: Keys and values must all be NSStrings."];
+        String keyString = key;
+        String valueString = value;
+        WebCore::setViewportFeature(viewportArguments, keyString, valueString, viewportFitEnabled, [] (WebCore::ViewportErrorCode, const String& errorMessage) {
+            NSLog(@"-[WKWebView _overrideViewportWithArguments:]: Error parsing viewport argument: %s", errorMessage.utf8().data());
+        });
+    }).get()];
+
+    return viewportArguments;
+}
+
+- (void)_overrideViewportWithArguments:(NSDictionary<NSString *, NSString *> *)arguments
+{
+    if (!_page)
+        return;
+
+    _page->setOverrideViewportArguments(viewportArgumentsFromDictionary(arguments, _page->preferences().viewportFitEnabled()));
 }
 
 - (UIView *)_viewForFindUI

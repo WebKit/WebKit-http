@@ -62,7 +62,7 @@ bool BlockDirectory::isPagedOut(MonotonicTime deadline)
     unsigned itersSinceLastTimeCheck = 0;
     for (auto* block : m_blocks) {
         if (block)
-            holdLock(block->block().lock());
+            block->block().populatePage();
         ++itersSinceLastTimeCheck;
         if (itersSinceLastTimeCheck >= Heap::s_timeCheckResolution) {
             MonotonicTime currentTime = MonotonicTime::now();

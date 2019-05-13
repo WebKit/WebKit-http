@@ -128,6 +128,24 @@ void PointerCaptureController::pointerLockWasApplied()
     }
 }
 
+void PointerCaptureController::elementWasRemoved(Element& element)
+{
+    for (auto& keyAndValue : m_activePointerIdsToCapturingData) {
+        auto& capturingData = keyAndValue.value;
+        if (capturingData.pendingTargetOverride == &element || capturingData.targetOverride == &element) {
+            // https://w3c.github.io/pointerevents/#implicit-release-of-pointer-capture
+            // When the pointer capture target override is no longer connected, the pending pointer capture target override and pointer capture target
+            // override nodes SHOULD be cleared and also a PointerEvent named lostpointercapture corresponding to the captured pointer SHOULD be fired
+            // at the document.
+            auto pointerId = keyAndValue.key;
+            auto pointerType = capturingData.pointerType;
+            releasePointerCapture(&element, pointerId);
+            element.document().enqueueDocumentEvent(PointerEvent::create(eventNames().lostpointercaptureEvent, pointerId, pointerType));
+            return;
+        }
+    }
+}
+
 void PointerCaptureController::touchEndedOrWasCancelledForIdentifier(PointerID pointerId)
 {
     m_activePointerIdsToCapturingData.remove(pointerId);
@@ -140,16 +158,10 @@ bool PointerCaptureController::hasCancelledPointerEventForIdentifier(PointerID p
 }
 
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS_FAMILY)
-std::pair<bool, bool> PointerCaptureController::dispatchEventForTouchAtIndex(EventTarget& target, const PlatformTouchEvent& platformTouchEvent, unsigned index, bool isPrimary, WindowProxy& view)
+void PointerCaptureController::dispatchEventForTouchAtIndex(EventTarget& target, const PlatformTouchEvent& platformTouchEvent, unsigned index, bool isPrimary, WindowProxy& view)
 {
-    bool defaultPrevented = false;
-    bool defaultHandled = false;
-
     auto dispatchEvent = [&](const String& type) {
-        auto event = PointerEvent::create(type, platformTouchEvent, index, isPrimary, view);
-        target.dispatchEvent(event);
-        defaultPrevented |= event->defaultPrevented();
-        defaultHandled |= event->defaultHandled();
+        target.dispatchEvent(PointerEvent::create(type, platformTouchEvent, index, isPrimary, view));
     };
 
     auto pointerEvent = PointerEvent::create(platformTouchEvent, index, isPrimary, view);
@@ -164,8 +176,6 @@ std::pair<bool, bool> PointerCaptureController::dispatchEventForTouchAtIndex(Eve
 
     pointerEventWillBeDispatched(pointerEvent, &target);
     target.dispatchEvent(pointerEvent);
-    defaultPrevented |= pointerEvent->defaultPrevented();
-    defaultHandled |= pointerEvent->defaultHandled();
     pointerEventWasDispatched(pointerEvent);
 
     if (pointerEvent->type() == eventNames().pointerupEvent) {
@@ -175,8 +185,6 @@ std::pair<bool, bool> PointerCaptureController::dispatchEventForTouchAtIndex(Eve
         dispatchEvent(eventNames().pointeroutEvent);
         dispatchEvent(eventNames().pointerleaveEvent);
     }
-
-    return { defaultPrevented, defaultHandled };
 }
 #endif
 
@@ -231,14 +239,6 @@ void PointerCaptureController::pointerEventWasDispatched(const PointerEvent& eve
         // Pointer Capture steps to fire lostpointercapture if necessary.
         if (event.type() == eventNames().pointerupEvent)
             capturingData.pendingTargetOverride = nullptr;
-
-        // When the pointer capture target override is no longer connected, the pending pointer capture target override and pointer
-        // capture target override nodes SHOULD be cleared and also a PointerEvent named lostpointercapture corresponding to the captured
-        // pointer SHOULD be fired at the document.
-        if (capturingData.targetOverride && !capturingData.targetOverride->isConnected()) {
-            capturingData.pendingTargetOverride = nullptr;
-            capturingData.targetOverride = nullptr;
-        }
     }
 
     processPendingPointerCapture(event);
@@ -281,7 +281,7 @@ void PointerCaptureController::cancelPointer(PointerID pointerId, const IntPoint
     if (!target)
         return;
 
-    auto event = PointerEvent::createPointerCancelEvent(pointerId, capturingData.pointerType);
+    auto event = PointerEvent::create(eventNames().pointercancelEvent, pointerId, capturingData.pointerType);
     target->dispatchEvent(event);
     processPendingPointerCapture(WTFMove(event));
 }

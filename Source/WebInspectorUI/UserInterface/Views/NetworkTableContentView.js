@@ -162,6 +162,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         WI.Target.addEventListener(WI.Target.Event.ResourceAdded, this._handleResourceAdded, this);
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
         WI.Frame.addEventListener(WI.Frame.Event.ResourceWasAdded, this._handleResourceAdded, this);
+        WI.Frame.addEventListener(WI.Frame.Event.ChildFrameWasAdded, this._handleFrameWasAdded, this);
         WI.Resource.addEventListener(WI.Resource.Event.LoadingDidFinish, this._resourceLoadingDidFinish, this);
         WI.Resource.addEventListener(WI.Resource.Event.LoadingDidFail, this._resourceLoadingDidFail, this);
         WI.Resource.addEventListener(WI.Resource.Event.TransferSizeDidChange, this._resourceTransferSizeDidChange, this);
@@ -305,12 +306,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
     reset()
     {
         this._runForMainCollection((collection) => {
-            collection.entries = [];
-            collection.filteredEntries = [];
-            collection.pendingInsertions = [];
-            collection.pendingUpdates = [];
-            collection.waterfallStartTime = NaN;
-            collection.waterfallEndTime = NaN;
+            this._resetCollection(collection);
         });
 
         for (let detailView of this._detailViewMap.values())
@@ -525,18 +521,20 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
     _addCollection()
     {
-        let collection = {
-            entries: [],
-            filteredEntries: [],
-            pendingInsertions: [],
-            pendingUpdates: [],
-            waterfallStartTime: NaN,
-            waterfallEndTime: NaN,
-        };
-
+        let collection = {};
+        this._resetCollection(collection);
         this._collections.push(collection);
-
         return collection;
+    }
+
+    _resetCollection(collection)
+    {
+        collection.entries = [];
+        collection.filteredEntries = [];
+        collection.pendingInsertions = [];
+        collection.pendingUpdates = [];
+        collection.waterfallStartTime = NaN;
+        collection.waterfallEndTime = NaN;
     }
 
     _setActiveCollection(collection)
@@ -585,7 +583,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
         let isMain = collection === this._mainCollection;
         this._checkboxesNavigationItemGroup.hidden = !isMain;
-        this._groupByDOMNodeNavigationItem.hidden = !isMain;
+        this._groupMediaRequestsByDOMNodeNavigationItem.hidden = !isMain;
         this._clearNetworkItemsNavigationItem.enabled = isMain;
         this._collectionsPathNavigationItem.components = [this._pathComponentsMap.get(collection)];
 
@@ -1241,6 +1239,23 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             this._waterfallPopover.resize();
     }
 
+    processHAR(result)
+    {
+        let resources = WI.networkManager.processHAR(result);
+        if (!resources)
+            return;
+
+        let importedCollection = this._addCollection();
+
+        let displayName = WI.UIString("Imported - %s").format(result.filename);
+        this._addCollectionPathComponent(importedCollection, displayName, "network-har-icon");
+
+        this._changeCollection(importedCollection);
+
+        for (let resource of resources)
+            this._insertResourceAndReloadTable(resource);
+    }
+
     handleClearShortcut(event)
     {
         if (!this._isShowingMainCollection())
@@ -1570,13 +1585,11 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
     _mainResourceDidChange(event)
     {
-        let frame = event.target;
-        if (!frame.isMainFrame() || !WI.settings.clearNetworkOnNavigate.value)
-            return;
-
-        this.reset();
-
         this._runForMainCollection((collection) => {
+            let frame = event.target;
+            if (frame.isMainFrame() && WI.settings.clearNetworkOnNavigate.value)
+                this._resetCollection(collection);
+
             if (this._transitioningPageTarget) {
                 this._transitioningPageTarget = false;
                 this._needsInitialPopulate = true;
@@ -1664,6 +1677,22 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
     {
         this._runForMainCollection((collection) => {
             this._insertResourceAndReloadTable(event.data.resource);
+        });
+    }
+
+    _handleFrameWasAdded(event)
+    {
+        if (this._needsInitialPopulate)
+            return;
+
+        this._runForMainCollection((collection) => {
+            let frame = event.data.childFrame;
+            let mainResource = frame.provisionalMainResource || frame.mainResource;
+            console.assert(mainResource, "Frame should have a main resource.");
+            this._insertResourceAndReloadTable(mainResource);
+
+            console.assert(!frame.resourceCollection.size, "New frame should be empty.");
+            console.assert(!frame.childFrameCollection.size, "New frame should be empty.");
         });
     }
 
@@ -2057,7 +2086,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
         if (this._hasURLFilter()) {
             for (let entry of this._activeCollection.entries)
-                this._checkURLFilterAgainstResource(entry.resource);            
+                this._checkURLFilterAgainstResource(entry.resource);
         }
     }
 
@@ -2118,21 +2147,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
     _importHAR()
     {
-        WI.FileUtilities.importJSON((result) => {
-            let resources = WI.networkManager.processHAR(result);
-            if (!resources)
-                return;
-
-            let importedCollection = this._addCollection();
-
-            let displayName = WI.UIString("Imported - %s").format(result.filename);
-            this._addCollectionPathComponent(importedCollection, displayName, "network-har-icon");
-
-            this._changeCollection(importedCollection);
-
-            for (let resource of resources)
-                this._insertResourceAndReloadTable(resource);
-        });
+        WI.FileUtilities.importJSON((result) => this.processHAR(result));
     }
 
     _waterfallPopoverContent()

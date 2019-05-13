@@ -73,6 +73,10 @@ static bool applicationHasAppLinkEntitlements()
 
 static LSAppLink *appLinkForURL(NSURL *url)
 {
+#if HAVE(APP_LINKS_WITH_ISENABLED)
+    NSArray<LSAppLink *> *appLinks = [LSAppLink appLinksWithURL:url limit:1 error:nil];
+    return appLinks.firstObject;
+#else
     BinarySemaphore semaphore;
     __block LSAppLink *syncAppLink = nil;
     __block BinarySemaphore* semaphorePtr = &semaphore;
@@ -84,6 +88,7 @@ static LSAppLink *appLinkForURL(NSURL *url)
     semaphore.wait();
 
     return [syncAppLink autorelease];
+#endif
 }
 #endif
 
@@ -392,10 +397,11 @@ static const CGFloat presentationElementRectPadding = 15;
 
     void (^showImageSheetWithAlternateURLBlock)(NSURL*, NSDictionary *userInfo) = ^(NSURL *alternateURL, NSDictionary *userInfo) {
         NSURL *targetURL = _positionInformation->url;
+        NSURL *imageURL = _positionInformation->imageURL;
         if (!targetURL)
             targetURL = alternateURL;
         auto elementBounds = _positionInformation->bounds;
-        auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:_positionInformation->request.point title:_positionInformation->title ID:_positionInformation->idAttribute rect:elementBounds image:_positionInformation->image.get() userInfo:userInfo]);
+        auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL imageURL:imageURL location:_positionInformation->request.point title:_positionInformation->title ID:_positionInformation->idAttribute rect:elementBounds image:_positionInformation->image.get() userInfo:userInfo]);
         if ([delegate respondsToSelector:@selector(actionSheetAssistant:showCustomSheetForElement:)] && [delegate actionSheetAssistant:self showCustomSheetForElement:elementInfo.get()])
             return;
         auto defaultActions = [self defaultActionsForImageSheet:elementInfo.get()];
@@ -471,40 +477,56 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     return WKActionSheetPresentAtElementRect;
 }
 
+#if HAVE(APP_LINKS)
+- (BOOL)_appendAppLinkOpenActionsForURL:(NSURL *)url actions:(NSMutableArray *)defaultActions elementInfo:(_WKActivatedElementInfo *)elementInfo
+{
+    ASSERT(_delegate);
+
+    if (!applicationHasAppLinkEntitlements() || ![_delegate.get() actionSheetAssistant:self shouldIncludeAppLinkActionsForElement:elementInfo])
+        return NO;
+
+    LSAppLink *appLink = appLinkForURL(url);
+    if (!appLink)
+        return NO;
+
+    NSString *openInDefaultBrowserTitle = WEB_UI_STRING("Open in Safari", "Title for Open in Safari Link action button");
+    _WKElementAction *openInDefaultBrowserAction = [_WKElementAction _elementActionWithType:_WKElementActionTypeOpenInDefaultBrowser title:openInDefaultBrowserTitle actionHandler:^(_WKActivatedElementInfo *) {
+#if HAVE(APP_LINKS_WITH_ISENABLED)
+        appLink.enabled = NO;
+        [appLink openWithCompletionHandler:nil];
+#else
+        [appLink openInWebBrowser:YES setAppropriateOpenStrategyAndWebBrowserState:nil completionHandler:^(BOOL success, NSError *error) { }];
+#endif
+    }];
+    [defaultActions addObject:openInDefaultBrowserAction];
+
+    NSString *externalApplicationName = [appLink.targetApplicationProxy localizedNameForContext:nil];
+    if (!externalApplicationName)
+        return YES;
+
+    NSString *openInExternalApplicationTitle = [NSString stringWithFormat:WEB_UI_STRING("Open in “%@”", "Title for Open in External Application Link action button"), externalApplicationName];
+    _WKElementAction *openInExternalApplicationAction = [_WKElementAction _elementActionWithType:_WKElementActionTypeOpenInExternalApplication title:openInExternalApplicationTitle actionHandler:^(_WKActivatedElementInfo *) {
+#if HAVE(APP_LINKS_WITH_ISENABLED)
+        appLink.enabled = YES;
+        [appLink openWithCompletionHandler:nil];
+#else
+        [appLink openInWebBrowser:NO setAppropriateOpenStrategyAndWebBrowserState:nil completionHandler:^(BOOL success, NSError *error) { }];
+#endif
+    }];
+    [defaultActions addObject:openInExternalApplicationAction];
+
+    return YES;
+}
+#endif
+
 - (void)_appendOpenActionsForURL:(NSURL *)url actions:(NSMutableArray *)defaultActions elementInfo:(_WKActivatedElementInfo *)elementInfo
 {
 #if HAVE(APP_LINKS)
-    ASSERT(_delegate);
-    if (applicationHasAppLinkEntitlements() && [_delegate.get() actionSheetAssistant:self shouldIncludeAppLinkActionsForElement:elementInfo]) {
-        LSAppLink *appLink = appLinkForURL(url);
-        if (appLink) {
-            NSString *title = WEB_UI_STRING("Open in Safari", "Title for Open in Safari Link action button");
-            _WKElementAction *openInDefaultBrowserAction = [_WKElementAction _elementActionWithType:_WKElementActionTypeOpenInDefaultBrowser title:title actionHandler:^(_WKActivatedElementInfo *) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-                [appLink openInWebBrowser:YES setAppropriateOpenStrategyAndWebBrowserState:nil completionHandler:^(BOOL success, NSError *error) { }];
-#pragma clang diagnostic pop
-            }];
-            [defaultActions addObject:openInDefaultBrowserAction];
-
-            NSString *externalApplicationName = [appLink.targetApplicationProxy localizedNameForContext:nil];
-            if (externalApplicationName) {
-                NSString *title = [NSString stringWithFormat:WEB_UI_STRING("Open in “%@”", "Title for Open in External Application Link action button"), externalApplicationName];
-                _WKElementAction *openInExternalApplicationAction = [_WKElementAction _elementActionWithType:_WKElementActionTypeOpenInExternalApplication title:title actionHandler:^(_WKActivatedElementInfo *) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-                    [appLink openInWebBrowser:NO setAppropriateOpenStrategyAndWebBrowserState:nil completionHandler:^(BOOL success, NSError *error) { }];
-#pragma clang diagnostic pop
-                }];
-                [defaultActions addObject:openInExternalApplicationAction];
-            }
-        } else
-            [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeOpen assistant:self]];
-    } else
-        [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeOpen assistant:self]];
-#else
-    [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeOpen assistant:self]];
+    if ([self _appendAppLinkOpenActionsForURL:url actions:defaultActions elementInfo:elementInfo])
+        return;
 #endif
+
+    [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeOpen assistant:self]];
 }
 
 - (RetainPtr<NSArray>)defaultActionsForLinkSheet:(_WKActivatedElementInfo *)elementInfo
@@ -536,7 +558,8 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     if (targetURL) {
         [self _appendOpenActionsForURL:targetURL actions:defaultActions.get() elementInfo:elementInfo];
         [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeShare assistant:self]];
-    }
+    } else if ([elementInfo imageURL])
+        [defaultActions addObject:[_WKElementAction _elementActionWithType:_WKElementActionTypeShare assistant:self]];
 
 #if HAVE(SAFARI_SERVICES_FRAMEWORK)
     if ([getSSReadingListClass() supportsURL:targetURL])
@@ -571,7 +594,7 @@ ALLOW_DEPRECATED_DECLARATIONS_END
         return;
     }
 
-    auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:_positionInformation->request.point title:_positionInformation->title ID:_positionInformation->idAttribute rect:_positionInformation->bounds image:_positionInformation->image.get()]);
+    auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL imageURL:(NSURL*)_positionInformation->imageURL location:_positionInformation->request.point title:_positionInformation->title ID:_positionInformation->idAttribute rect:_positionInformation->bounds image:_positionInformation->image.get()]);
     if ([_delegate respondsToSelector:@selector(actionSheetAssistant:showCustomSheetForElement:)] && [_delegate actionSheetAssistant:self showCustomSheetForElement:elementInfo.get()]) {
         _needsLinkIndicator = NO;
         return;

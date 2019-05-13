@@ -36,6 +36,7 @@
 #include "WKRetainPtr.h"
 #include "WKSecurityOriginRef.h"
 #include "WKString.h"
+#include "WebDeviceOrientationAndMotionAccessController.h"
 #include "WebResourceLoadStatisticsStore.h"
 #include "WebsiteData.h"
 #include "WebsiteDataFetchOption.h"
@@ -411,7 +412,7 @@ void WKWebsiteDataStoreSetStatisticsPruneEntriesDownTo(WKWebsiteDataStoreRef dat
 void WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStore(WKWebsiteDataStoreRef dataStoreRef, void* context, WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStoreFunction callback)
 {
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    WebKit::toImpl(dataStoreRef)->websiteDataStore().scheduleClearInMemoryAndPersistent(ShouldGrandfatherStatistics::Yes, [context, callback]() {
+    WebKit::toImpl(dataStoreRef)->websiteDataStore().scheduleClearInMemoryAndPersistent(WebKit::ShouldGrandfatherStatistics::Yes, [context, callback]() {
         callback(context);
     });
 #else
@@ -422,7 +423,7 @@ void WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStore(WKWebsiteDataSt
 void WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours(WKWebsiteDataStoreRef dataStoreRef, unsigned hours, void* context, WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStoreModifiedSinceHoursFunction callback)
 {
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    WebKit::toImpl(dataStoreRef)->websiteDataStore().scheduleClearInMemoryAndPersistent(WallTime::now() - Seconds::fromHours(hours), ShouldGrandfatherStatistics::Yes, [context, callback]() {
+    WebKit::toImpl(dataStoreRef)->websiteDataStore().scheduleClearInMemoryAndPersistent(WallTime::now() - Seconds::fromHours(hours), WebKit::ShouldGrandfatherStatistics::Yes, [context, callback]() {
         callback(context);
     });
 #else
@@ -483,7 +484,7 @@ void WKWebsiteDataStoreStatisticsResetToConsistentState(WKWebsiteDataStoreRef da
     store.resetCacheMaxAgeCapForPrevalentResources([callbackAggregator = callbackAggregator.copyRef()] { });
     store.resetCrossSiteLoadsWithLinkDecorationForTesting([callbackAggregator = callbackAggregator.copyRef()] { });
     store.resetParametersToDefaultValues([callbackAggregator = callbackAggregator.copyRef()] { });
-    store.scheduleClearInMemoryAndPersistent(ShouldGrandfatherStatistics::No, [callbackAggregator = callbackAggregator.copyRef()] { });
+    store.scheduleClearInMemoryAndPersistent(WebKit::ShouldGrandfatherStatistics::No, [callbackAggregator = callbackAggregator.copyRef()] { });
 #else
     UNUSED_PARAM(dataStoreRef);
     completionHandler(context);
@@ -578,6 +579,13 @@ void WKWebsiteDataStoreSetPerOriginStorageQuota(WKWebsiteDataStoreRef dataStoreR
     WebKit::toImpl(dataStoreRef)->websiteDataStore().setPerOriginStorageQuota(quota);
 }
 
+void WKWebsiteDataStoreClearAllDeviceOrientationPermissions(WKWebsiteDataStoreRef dataStoreRef)
+{
+#if ENABLE(DEVICE_ORIENTATION)
+    WebKit::toImpl(dataStoreRef)->websiteDataStore().deviceOrientationAndMotionAccessController().clearPermissions();
+#endif
+}
+
 void WKWebsiteDataStoreSetWebAuthenticationMockConfiguration(WKWebsiteDataStoreRef dataStoreRef, WKDictionaryRef configurationRef)
 {
 #if ENABLE(WEB_AUTHN)
@@ -650,3 +658,12 @@ void WKWebsiteDataStoreSetWebAuthenticationMockConfiguration(WKWebsiteDataStoreR
     WebKit::toImpl(dataStoreRef)->websiteDataStore().setMockWebAuthenticationConfiguration(WTFMove(configuration));
 #endif
 }
+
+void WKWebsiteDataStoreClearAdClickAttributionsThroughWebsiteDataRemoval(WKWebsiteDataStoreRef dataStoreRef, void* context, WKWebsiteDataStoreClearAdClickAttributionsThroughWebsiteDataRemovalFunction callback)
+{
+    OptionSet<WebKit::WebsiteDataType> dataTypes = WebKit::WebsiteDataType::AdClickAttributions;
+    WebKit::toImpl(dataStoreRef)->websiteDataStore().removeData(dataTypes, WallTime::fromRawSeconds(0), [context, callback] {
+        callback(context);
+    });
+}
+

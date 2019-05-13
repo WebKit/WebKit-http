@@ -42,6 +42,7 @@
 #import <WebCore/FloatRect.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/WebKit.h>
+#import <pal/spi/ios/GraphicsServicesSPI.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/Vector.h>
 
@@ -970,6 +971,11 @@ JSObjectRef UIScriptController::menuRect() const
     return m_context->objectFromRect(WebCore::FloatRect(rectInRootViewCoordinates.origin.x, rectInRootViewCoordinates.origin.y, rectInRootViewCoordinates.size.width, rectInRootViewCoordinates.size.height));
 }
 
+bool UIScriptController::isDismissingMenu() const
+{
+    return TestController::singleton().mainWebView()->platformView().dismissingMenu;
+}
+
 bool UIScriptController::isShowingMenu() const
 {
     return TestController::singleton().mainWebView()->platformView().showingMenu;
@@ -1138,6 +1144,11 @@ JSObjectRef UIScriptController::calendarType() const
     NSString *calendarTypeString = [contentView valueForKeyPath:@"formInputControl.dateTimePickerCalendarType"];
     auto jsContext = m_context->jsContext();
     return JSValueToObject(jsContext, [JSValue valueWithObject:calendarTypeString inContext:[JSContext contextWithJSGlobalContextRef:jsContext]].JSValueRef, nullptr);
+}
+
+void UIScriptController::setHardwareKeyboardAttached(bool attached)
+{
+    GSEventSetHardwareKeyboardAttached(attached, 0);
 }
 
 }

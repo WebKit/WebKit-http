@@ -57,6 +57,7 @@ editing/images [ Skip ]
 pointerevents/ios [ Skip ]
 editing/pasteboard/ios [ Skip ]
 editing/pasteboard/mac [ Skip ]
+fast/media/ios [ Skip ]
 
 # WebKit2 only.
 printing/printing-events.html [ Skip ]
@@ -613,8 +614,6 @@ webkit.org/b/136754 css3/flexbox/csswg/ttwf-reftest-flex-wrap-reverse.html [ Ima
 webkit.org/b/136754 css3/flexbox/csswg/ttwf-reftest-flex-wrap.html [ ImageOnlyFailure ]
 
 # grid layout tests
-webkit.org/b/165062 fast/css-grid-layout/grid-baseline.html [ ImageOnlyFailure ]
-webkit.org/b/165062 fast/css-grid-layout/grid-baseline-margins.html [ ImageOnlyFailure ]
 webkit.org/b/169271 imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-sizing-alignment-001.html [ ImageOnlyFailure ]
 webkit.org/b/191465 imported/w3c/web-platform-tests/css/css-grid/abspos/absolute-positioning-changing-containing-block-001.html [ ImageOnlyFailure ]
 webkit.org/b/191465 imported/w3c/web-platform-tests/css/css-grid/abspos/grid-item-absolute-positioning-dynamic-001.html [ ImageOnlyFailure ]
@@ -3027,6 +3026,8 @@ webkit.org/b/187773 http/tests/webAPIStatistics [ Skip ]
 
 # This is fallout from turning Web Animations on.
 webkit.org/b/190032 animations/animation-playstate-paused-style-resolution.html [ Failure ]
+webkit.org/b/190032 animations/missing-values-first-keyframe.html [ Failure ]
+webkit.org/b/190032 animations/missing-values-last-keyframe.html [ Failure ]
 webkit.org/b/190032 compositing/backing/backing-store-attachment-fill-forwards-animation.html [ Failure ]
 webkit.org/b/190032 compositing/backing/transform-transition-from-outside-view.html [ Failure ]
 webkit.org/b/190032 compositing/layer-creation/mismatched-rotated-transform-transition-overlap.html [ Failure ]

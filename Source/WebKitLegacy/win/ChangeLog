@@ -1,3 +1,104 @@
+2019-04-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Make it possible to control the renderTreeAsText output by setting options on testRunner
+        https://bugs.webkit.org/show_bug.cgi?id=197133
+
+        Reviewed by Sam Weinig.
+
+        Add testRunner.setRenderTreeDumpOptions() and expose the subset of RenderAsTextFlag flags
+        that make sense in testing (those that don't dump unstable data like addresses), and plumb
+        these flags through the various framework layers.
+
+        Convert RenderAsTextBehavior to an OptionSet<RenderAsTextFlag>.
+
+        Fix code generation in WebKitTestRunner to generate bindings for IDL const values,
+        and hand-code DumpRenderTree bindings.
+
+        Some cleanup of the TestRunners, using member initializers.
+
+        * Interfaces/IWebFramePrivate.idl:
+        * WebFrame.cpp:
+        (toRenderAsTextFlags):
+        (WebFrame::renderTreeAsExternalRepresentation):
+        (WebFrame::renderTreeAsExternalRepresentationForPrinting):
+        * WebFrame.h:
+
+2019-04-23  Chris Dumez  <cdumez@apple.com>
+
+        [Process-Swap-On-Navigation] WebKit hangs when going back to a form submission's page due to Process-Swap-On-Navigation on iOS 12.2 and higher
+        https://bugs.webkit.org/show_bug.cgi?id=197097
+        <rdar://problem/50048318>
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidFailProvisionalLoad):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2019-04-20  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][Win] Use target oriented design for WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=197112
+
+        Reviewed by Konstantin Tokarev.
+
+        Fix an include directory.
+
+        * WebKitQuartzCoreAdditions/CMakeLists.txt:
+
+2019-04-18  Jer Noble  <jer.noble@apple.com>
+
+        Refactoring: Pull all fullscreen code out of Document and into its own helper class
+        https://bugs.webkit.org/show_bug.cgi?id=197017
+
+        Reviewed by Eric Carlson.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::createWindow):
+        * WebView.cpp:
+        (WebView::fullScreenClientWillEnterFullScreen):
+        (WebView::fullScreenClientDidEnterFullScreen):
+        (WebView::fullScreenClientWillExitFullScreen):
+        (WebView::fullScreenClientDidExitFullScreen):
+
+2019-04-10  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        requestAnimationFrame should execute before the next frame
+        https://bugs.webkit.org/show_bug.cgi?id=177484
+
+        Reviewed by Simon Fraser.
+
+        * WebView.cpp:
+        (WebView::updateBackingStore):
+        (WebView::flushPendingGraphicsLayerChangesSoon):
+        (WebView::flushPendingGraphicsLayerChanges):
+        Call Page::updateRendering() which implements "Update the rendering"
+        step of the HTML Event Loop specification.
+
+2019-04-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: save sheet should be anchored underneath the tab bar when detached
+        https://bugs.webkit.org/show_bug.cgi?id=196722
+        <rdar://problem/49613280>
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::setSheetRect): Added.
+
+2019-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI WKNavigationResponse._downloadAttribute
+        https://bugs.webkit.org/show_bug.cgi?id=196755
+        <rdar://49587365>
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
 2019-04-05  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r243833.

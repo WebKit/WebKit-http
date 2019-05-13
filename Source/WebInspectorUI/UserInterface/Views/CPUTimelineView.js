@@ -225,7 +225,7 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         let energyChartElement = energyContainerElement.parentElement;
         let energySubtitleElement = energyChartElement.firstChild;
         let energyInfoElement = energySubtitleElement.appendChild(document.createElement("span"));
-        energyInfoElement.className = "info";
+        energyInfoElement.classList.add("info", WI.Popover.IgnoreAutoDismissClassName);
         energyInfoElement.textContent = "?";
 
         this._energyInfoPopover = null;
@@ -351,6 +351,11 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
         this._statisticsTable = statisticsContainerElement.appendChild(document.createElement("table"));
         this._statisticsRows = [];
 
+        {
+            let {headerCell, numberCell} = this._createTableRow(this._statisticsTable);
+            headerCell.textContent = WI.UIString("Network Requests:");
+            this._networkRequestsNumberElement = numberCell;
+        }
         {
             let {headerCell, numberCell} = this._createTableRow(this._statisticsTable);
             headerCell.textContent = WI.UIString("Script Entries:");
@@ -786,6 +791,7 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
 
         this._clearStatistics();
 
+        this._networkRequestsNumberElement.textContent = statistics.networkRequests;
         this._scriptEntriesNumberElement.textContent = statistics.scriptEntries;
 
         let createFilterElement = (type, name) => {
@@ -1265,6 +1271,10 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
             }
         });
 
+        let networkTimeline = this._recording.timelineForRecordType(WI.TimelineRecord.Type.Network);
+        let networkRecords = networkTimeline ? networkTimeline.recordsInTimeRange(startTime, endTime) : [];
+        let networkRequests = networkRecords.length;
+
         let millisecondStartTime = Math.round(startTime * 1000);
         let millisecondEndTime = Math.round(endTime * 1000);
         let millisecondDuration = millisecondEndTime - millisecondStartTime;
@@ -1340,6 +1350,7 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
             samplesPaint,
             samplesStyle,
             scriptEntries,
+            networkRequests,
             timerTypes,
             eventTypes,
             observerTypes,
@@ -1464,6 +1475,7 @@ WI.CPUTimelineView = class CPUTimelineView extends WI.TimelineView
 
     _clearStatistics()
     {
+        this._networkRequestsNumberElement.textContent = emDash;
         this._scriptEntriesNumberElement.textContent = emDash;
 
         for (let row of this._statisticsRows)

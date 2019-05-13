@@ -445,7 +445,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad(Optional<HasInsecureContent>)
         frameLoadDelegate->didCommitLoadForFrame(webView, m_webFrame);
 }
 
-void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error)
+void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error, WillContinueLoading)
 {
     WebView* webView = m_webFrame->webView();
     COMPtr<IWebFrameLoadDelegate> frameLoadDelegate;
@@ -529,7 +529,7 @@ void WebFrameLoaderClient::dispatchShow()
         ui->webViewShow(webView);
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, WebCore::PolicyCheckIdentifier identifier, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, WebCore::PolicyCheckIdentifier identifier, const String&, FramePolicyFunction&& function)
 {
     WebView* webView = m_webFrame->webView();
     Frame* coreFrame = core(m_webFrame);

@@ -30,7 +30,7 @@
 #include "JSHistory.h"
 
 #include "SerializedScriptValue.h"
-#include "JSCInlines.h"
+#include <JavaScriptCore/JSCInlines.h>
 
 namespace WebCore {
 

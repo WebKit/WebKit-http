@@ -56,6 +56,7 @@
 #include "DOMStringList.h"
 #include "DOMWindow.h"
 #include "DeprecatedGlobalSettings.h"
+#include "DiagnosticLoggingClient.h"
 #include "DisabledAdaptations.h"
 #include "DisplayList.h"
 #include "Document.h"
@@ -74,6 +75,7 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
+#include "FullscreenManager.h"
 #include "GCObservation.h"
 #include "GridPosition.h"
 #include "HEVCUtilities.h"
@@ -321,6 +323,7 @@ private:
     void showCertificate(const CertificateInfo&) final { }
     void setAttachedWindowHeight(unsigned) final { }
     void setAttachedWindowWidth(unsigned) final { }
+    void setSheetRect(const FloatRect&) final { }
 
     void sendMessageToFrontend(const String& message) final;
     ConnectionType connectionType() const final { return ConnectionType::Local; }
@@ -458,6 +461,7 @@ void Internals::resetToConsistentState(Page& page)
         page.setTopContentInset(0);
         mainFrameView->setUseFixedLayout(false);
         mainFrameView->setFixedLayoutSize(IntSize());
+        mainFrameView->enableAutoSizeMode(false, { });
 #if USE(COORDINATED_GRAPHICS)
         mainFrameView->setFixedVisibleContentRect(IntRect());
 #endif
@@ -1924,6 +1928,11 @@ String Internals::rangeAsText(const Range& range)
     return range.text();
 }
 
+String Internals::rangeAsTextUsingBackwardsTextIterator(const Range& range)
+{
+    return plainTextUsingBackwardsTextIteratorForTesting(range);
+}
+
 Ref<Range> Internals::subrange(Range& range, int rangeLocation, int rangeLength)
 {
     return TextIterator::subrange(range, rangeLocation, rangeLength);
@@ -2995,7 +3004,7 @@ void Internals::webkitWillEnterFullScreenForElement(Element& element)
     Document* document = contextDocument();
     if (!document)
         return;
-    document->webkitWillEnterFullScreen(element);
+    document->fullscreenManager().willEnterFullscreen(element);
 }
 
 void Internals::webkitDidEnterFullScreenForElement(Element&)
@@ -3003,7 +3012,7 @@ void Internals::webkitDidEnterFullScreenForElement(Element&)
     Document* document = contextDocument();
     if (!document)
         return;
-    document->webkitDidEnterFullScreen();
+    document->fullscreenManager().didEnterFullscreen();
 }
 
 void Internals::webkitWillExitFullScreenForElement(Element&)
@@ -3011,7 +3020,7 @@ void Internals::webkitWillExitFullScreenForElement(Element&)
     Document* document = contextDocument();
     if (!document)
         return;
-    document->webkitWillExitFullScreen();
+    document->fullscreenManager().willExitFullscreen();
 }
 
 void Internals::webkitDidExitFullScreenForElement(Element&)
@@ -3019,7 +3028,7 @@ void Internals::webkitDidExitFullScreenForElement(Element&)
     Document* document = contextDocument();
     if (!document)
         return;
-    document->webkitDidExitFullScreen();
+    document->fullscreenManager().didExitFullscreen();
 }
 
 bool Internals::isAnimatingFullScreen() const
@@ -3027,7 +3036,7 @@ bool Internals::isAnimatingFullScreen() const
     Document* document = contextDocument();
     if (!document)
         return false;
-    return document->isAnimatingFullScreen();
+    return document->fullscreenManager().isAnimatingFullscreen();
 }
 
 #endif
@@ -3576,20 +3585,15 @@ ExceptionOr<void> Internals::setCaptionDisplayMode(const String& mode)
     return { };
 }
 
+#if ENABLE(VIDEO_TRACK)
 RefPtr<TextTrackCueGeneric> Internals::createGenericCue(double startTime, double endTime, String text)
 {
     Document* document = contextDocument();
     if (!document || !document->page())
         return nullptr;
-#if ENABLE(VIDEO_TRACK)
     return TextTrackCueGeneric::create(*document, MediaTime::createWithDouble(startTime), MediaTime::createWithDouble(endTime), text);
-#else
-    UNUSED_PARAM(startTime);
-    UNUSED_PARAM(endTime);
-    UNUSED_PARAM(text);
-    return nullptr;
-#endif
 }
+#endif
 
 #if ENABLE(VIDEO)
 
@@ -4995,6 +4999,26 @@ void Internals::processWillSuspend()
 void Internals::processDidResume()
 {
     PlatformMediaSessionManager::sharedManager().processDidResume();
+}
+
+void Internals::testDictionaryLogging()
+{
+    auto* document = contextDocument();
+    if (!document)
+        return;
+
+    auto* page = document->page();
+    if (!page)
+        return;
+
+    DiagnosticLoggingClient::ValueDictionary dictionary;
+    dictionary.set("stringKey"_s, String("stringValue"));
+    dictionary.set("uint64Key"_s, std::numeric_limits<uint64_t>::max());
+    dictionary.set("int64Key"_s, std::numeric_limits<int64_t>::min());
+    dictionary.set("boolKey"_s, true);
+    dictionary.set("doubleKey"_s, 2.7182818284590452353602874);
+
+    page->diagnosticLoggingClient().logDiagnosticMessageWithValueDictionary("testMessage"_s, "testDescription"_s, dictionary, ShouldSample::No);
 }
 
 } // namespace WebCore

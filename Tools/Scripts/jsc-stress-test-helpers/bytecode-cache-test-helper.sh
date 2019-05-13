@@ -29,7 +29,7 @@ mysys() {
     exitCode=$?
     if [ $exitCode != 0 ]; then
         echo "Command '$*' failed"
-        return $exitCode
+        exit $exitCode
     fi
 }
 
@@ -45,6 +45,8 @@ trap _trap_exit EXIT
 
 export JSC_diskCachePath=$diskCachePath
 mysys "$pathToVM" "$inputFile" "${extraOptions[@]}"
-export JSC_forceDiskCache=true
-mysys "$pathToVM" "$inputFile" "${extraOptions[@]}"
 
+if [ -z "$JSC_forceDiskCache" ]; then
+    export JSC_forceDiskCache=true
+fi
+mysys "$pathToVM" "$inputFile" "${extraOptions[@]}"

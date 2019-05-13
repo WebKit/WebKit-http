@@ -63,7 +63,7 @@ WI.DOMTreeContentView = class DOMTreeContentView extends WI.ContentView
         this.element.classList.add("dom-tree");
         this.element.addEventListener("click", this._mouseWasClicked.bind(this), false);
 
-        this._domTreeOutline = new WI.DOMTreeOutline(true, true, true);
+        this._domTreeOutline = new WI.DOMTreeOutline({omitRootDOMNode: true, excludeRevealElementContextMenu: true, showLastSelected: true});
         this._domTreeOutline.allowsEmptySelection = false;
         this._domTreeOutline.allowsMultipleSelection = true;
         this._domTreeOutline.addEventListener(WI.TreeOutline.Event.ElementAdded, this._domTreeElementAdded, this);
@@ -364,12 +364,18 @@ WI.DOMTreeContentView = class DOMTreeContentView extends WI.ContentView
 
     // Protected
 
+    sizeDidChange()
+    {
+        super.sizeDidChange();
+
+        this._domTreeOutline.selectDOMNode(this._domTreeOutline.selectedDOMNode());
+    }
+
     layout()
     {
-        this._domTreeOutline.updateSelectionArea();
+        super.layout();
 
-        if (this.layoutReason === WI.View.LayoutReason.Resize)
-            this._domTreeOutline.selectDOMNode(this._domTreeOutline.selectedDOMNode());
+        this._domTreeOutline.updateSelectionArea();
     }
 
     // Private

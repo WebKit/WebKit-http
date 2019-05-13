@@ -724,7 +724,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad(Optional<HasInsecureContent>)
         CallFrameLoadDelegate(implementations->didCommitLoadForFrameFunc, webView, @selector(webView:didCommitLoadForFrame:), m_webFrame.get());
 }
 
-void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error)
+void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error, WillContinueLoading)
 {
     m_webFrame->_private->provisionalURL = nullptr;
 
@@ -866,7 +866,7 @@ void WebFrameLoaderClient::dispatchShow()
     [[webView _UIDelegateForwarder] webViewShow:webView];
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, WebCore::PolicyCheckIdentifier identifier, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, WebCore::PolicyCheckIdentifier identifier, const String&, FramePolicyFunction&& function)
 {
     WebView *webView = getWebView(m_webFrame.get());
 

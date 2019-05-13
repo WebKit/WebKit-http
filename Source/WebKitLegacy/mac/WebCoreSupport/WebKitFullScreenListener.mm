@@ -29,6 +29,8 @@
 
 #if ENABLE(FULLSCREEN_API)
 
+#import <WebCore/FullscreenManager.h>
+
 using namespace WebCore;
 
 @implementation WebKitFullScreenListener
@@ -45,25 +47,25 @@ using namespace WebCore;
 - (void)webkitWillEnterFullScreen
 {
     if (_element)
-        _element->document().webkitWillEnterFullScreen(*_element);
+        _element->document().fullscreenManager().willEnterFullscreen(*_element);
 }
 
 - (void)webkitDidEnterFullScreen
 {
     if (_element)
-        _element->document().webkitDidEnterFullScreen();
+        _element->document().fullscreenManager().didEnterFullscreen();
 }
 
 - (void)webkitWillExitFullScreen
 {
     if (_element)
-        _element->document().webkitWillExitFullScreen();
+        _element->document().fullscreenManager().willExitFullscreen();
 }
 
 - (void)webkitDidExitFullScreen
 {
     if (_element)
-        _element->document().webkitDidExitFullScreen();
+        _element->document().fullscreenManager().didExitFullscreen();
 }
 
 @end

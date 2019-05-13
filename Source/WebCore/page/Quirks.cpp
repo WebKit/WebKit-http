@@ -195,8 +195,73 @@ bool Quirks::isNeverRichlyEditableForTouchBar() const
     return false;
 }
 
-bool Quirks::shouldDispatchSimulateMouseEvents() const
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/QuirksAdditions.cpp>
+#else
+
+static bool shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreasForHost(const StringView&)
 {
+    return false;
+}
+
+#endif
+
+bool Quirks::shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() const
+{
+    if (!needsQuirks())
+        return false;
+
+    return shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreasForHost(m_document->topDocument().url().host());
+}
+
+bool Quirks::shouldDispatchSimulatedMouseEvents() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return false;
+
+    auto* loader = m_document->loader();
+    if (!loader || loader->simulatedMouseEventsDispatchPolicy() != SimulatedMouseEventsDispatchPolicy::Allow)
+        return false;
+
+    auto& url = m_document->topDocument().url();
+    auto host = url.host();
+
+    if (equalLettersIgnoringASCIICase(host, "amazon.com") || host.endsWithIgnoringASCIICase(".amazon.com"))
+        return true;
+    if (equalLettersIgnoringASCIICase(host, "wix.com") || host.endsWithIgnoringASCIICase(".wix.com"))
+        return true;
+    if (equalLettersIgnoringASCIICase(host, "desmos.com") || host.endsWithIgnoringASCIICase(".desmos.com"))
+        return true;
+    if (equalLettersIgnoringASCIICase(host, "figma.com") || host.endsWithIgnoringASCIICase(".figma.com"))
+        return true;
+    if (equalLettersIgnoringASCIICase(host, "trello.com") || host.endsWithIgnoringASCIICase(".trello.com"))
+        return true;
+    if (equalLettersIgnoringASCIICase(host, "airtable.com") || host.endsWithIgnoringASCIICase(".airtable.com"))
+        return true;
+    if (equalLettersIgnoringASCIICase(host, "msn.com") || host.endsWithIgnoringASCIICase(".msn.com"))
+        return true;
+    if (equalLettersIgnoringASCIICase(host, "flipkart.com") || host.endsWithIgnoringASCIICase(".flipkart.com"))
+        return true;
+    if (equalLettersIgnoringASCIICase(host, "www.google.com") && url.path().startsWithIgnoringASCIICase("/maps/"))
+        return true;
+    if (equalLettersIgnoringASCIICase(host, "trailers.apple.com"))
+        return true;
+#endif
+    return false;
+}
+
+bool Quirks::shouldDisablePointerEventsQuirk() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return false;
+
+    auto& url = m_document->topDocument().url();
+    auto host = url.host();
+    if (equalLettersIgnoringASCIICase(host, "mailchimp.com") || host.endsWithIgnoringASCIICase(".mailchimp.com"))
+        return true;
+#endif
     return false;
 }
 

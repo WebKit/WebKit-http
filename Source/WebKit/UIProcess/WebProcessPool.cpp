@@ -1212,7 +1212,7 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
     RefPtr<WebProcessProxy> process;
     if (pageConfiguration->relatedPage()) {
         // Sharing processes, e.g. when creating the page via window.open().
-        process = &pageConfiguration->relatedPage()->process();
+        process = &pageConfiguration->relatedPage()->ensureRunningProcess();
         // We do not support several WebsiteDataStores sharing a single process.
         ASSERT(process.get() == m_dummyProcessProxy || &pageConfiguration->websiteDataStore()->websiteDataStore() == &process->websiteDataStore());
         ASSERT(&pageConfiguration->relatedPage()->websiteDataStore() == &pageConfiguration->websiteDataStore()->websiteDataStore());
@@ -1719,6 +1719,11 @@ void WebProcessPool::useTestingNetworkSession()
         return;
 
     m_shouldUseTestingNetworkSession = true;
+}
+
+void WebProcessPool::removeCredential(WebCore::Credential&& credential, WebCore::ProtectionSpace&& protectionSpace, CompletionHandler<void()>&& completionHandler)
+{
+    m_networkProcess->sendWithAsyncReply(Messages::NetworkProcess::RemoveCredential(credential, protectionSpace), WTFMove(completionHandler));
 }
 
 template<typename T, typename U>
@@ -2402,14 +2407,6 @@ void WebProcessPool::removeAllSuspendedPagesForPage(WebPageProxy& page, WebProce
     });
 }
 
-void WebProcessPool::closeFailedSuspendedPagesForPage(WebPageProxy& page)
-{
-    for (auto& suspendedPage : m_suspendedPages) {
-        if (&suspendedPage->page() == &page && suspendedPage->failedToSuspend())
-            suspendedPage->close();
-    }
-}
-
 std::unique_ptr<SuspendedPageProxy> WebProcessPool::takeSuspendedPage(SuspendedPageProxy& suspendedPage)
 {
     return m_suspendedPages.takeFirst([&suspendedPage](auto& item) {
@@ -2515,26 +2512,6 @@ void WebProcessPool::clearCurrentModifierStateForTesting()
     sendToAllProcesses(Messages::WebProcess::ClearCurrentModifierStateForTesting());
 }
 
-void WebProcessPool::dumpAdClickAttribution(PAL::SessionID sessionID, CompletionHandler<void(const String&)>&& completionHandler)
-{
-    if (!m_networkProcess) {
-        completionHandler(emptyString());
-        return;
-    }
-
-    m_networkProcess->dumpAdClickAttribution(sessionID, WTFMove(completionHandler));
-}
-
-void WebProcessPool::clearAdClickAttribution(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
-{
-    if (!m_networkProcess) {
-        completionHandler();
-        return;
-    }
-    
-    m_networkProcess->clearAdClickAttribution(sessionID, WTFMove(completionHandler));
-}
-    
 void WebProcessPool::committedCrossSiteLoadWithLinkDecoration(PAL::SessionID sessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, uint64_t pageID)
 {
 #if ENABLE(RESOURCE_LOAD_STATISTICS)

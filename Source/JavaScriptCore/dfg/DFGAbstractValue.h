@@ -48,6 +48,7 @@ namespace DFG {
 
 class Graph;
 struct Node;
+class VariableAccessData;
 
 struct AbstractValue {
     AbstractValue()
@@ -303,7 +304,7 @@ struct AbstractValue {
         return result;
     }
     
-    bool mergeOSREntryValue(Graph&, JSValue);
+    bool mergeOSREntryValue(Graph&, JSValue, VariableAccessData*, Node*);
     
     void merge(SpeculatedType type)
     {
@@ -388,13 +389,23 @@ struct AbstractValue {
         if (isBytecodeTop())
             return true;
         
-        if (!!m_value && m_value != value)
-            return false;
-        
         if (format == FlushedInt52) {
+            if (!isInt52Any())
+                return false;
+
             if (!validateTypeAcceptingBoxedInt52(value))
                 return false;
+
+            if (!!m_value) {
+                ASSERT(m_value.isAnyInt());
+                ASSERT(value.isAnyInt());
+                if (jsDoubleNumber(m_value.asAnyInt()) != jsDoubleNumber(value.asAnyInt()))
+                    return false;
+            }
         } else {
+            if (!!m_value && m_value != value)
+                return false;
+        
             if (mergeSpeculations(m_type, speculationFromValue(value)) != m_type)
                 return false;
             
@@ -515,11 +526,8 @@ private:
             return true;
         
         if (m_type & SpecInt52Any) {
-            ASSERT(!(m_type & ~SpecInt52Any));
-
-            if (mergeSpeculations(m_type, int52AwareSpeculationFromValue(value)) != m_type)
-                return false;
-            return true;
+            if (mergeSpeculations(m_type, int52AwareSpeculationFromValue(value)) == m_type)
+                return true;
         }
 
         if (mergeSpeculations(m_type, speculationFromValue(value)) != m_type)

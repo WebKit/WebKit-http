@@ -1267,11 +1267,6 @@ void FrameView::willDoLayout(WeakPtr<RenderElement> layoutRoot)
 
 void FrameView::didLayout(WeakPtr<RenderElement> layoutRoot)
 {
-#if ENABLE(RESIZE_OBSERVER)
-    auto page = frame().page();
-    if (page && page->hasResizeObservers())
-        page->setNeedsCheckResizeObservations(true);
-#endif
     renderView()->releaseProtectedRenderWidgets();
     auto* layoutRootEnclosingLayer = layoutRoot->enclosingLayer();
     layoutRootEnclosingLayer->updateLayerPositionsAfterLayout(renderView()->layer(), updateLayerPositionFlags(layoutRootEnclosingLayer, !is<RenderView>(*layoutRoot), layoutContext().needsFullRepaint()));
@@ -1976,26 +1971,11 @@ void FrameView::viewportContentsChanged()
         if (auto* renderView = frameView.frame().contentRenderer())
             renderView->updateVisibleViewportRect(visibleRect);
     });
-
-#if ENABLE(INTERSECTION_OBSERVER)
-    if (auto* document = frame().document()) {
-        if (auto* page = frame().page()) {
-            if (document->numberOfIntersectionObservers())
-                page->addDocumentNeedingIntersectionObservationUpdate(*document);
-            if (!frame().isMainFrame()) {
-                if (auto* mainDocument = frame().mainFrame().document()) {
-                    if (mainDocument->numberOfIntersectionObservers())
-                        page->addDocumentNeedingIntersectionObservationUpdate(*mainDocument);
-                }
-            }
-        }
-    }
-#endif
 }
 
-IntRect FrameView::unobscuredContentRectExpandedByContentInsets() const
+IntRect FrameView::visualViewportRectExpandedByContentInsets() const
 {
-    FloatRect unobscuredContentRect = this->unobscuredContentRect();
+    FloatRect unobscuredContentRect = this->visualViewportRect();
     if (auto* page = frame().page())
         unobscuredContentRect.expand(page->contentInsets());
     return IntRect(unobscuredContentRect);
@@ -2023,12 +2003,12 @@ bool FrameView::shouldSetCursor() const
 }
 
 #if ENABLE(DARK_MODE_CSS)
-RenderObject* FrameView::rendererForSupportedColorSchemes() const
+RenderObject* FrameView::rendererForColorScheme() const
 {
     auto* document = frame().document();
     auto* documentElement = document ? document->documentElement() : nullptr;
     auto* documentElementRenderer = documentElement ? documentElement->renderer() : nullptr;
-    if (documentElementRenderer && documentElementRenderer->style().hasExplicitlySetSupportedColorSchemes())
+    if (documentElementRenderer && documentElementRenderer->style().hasExplicitlySetColorScheme())
         return documentElementRenderer;
     auto* bodyElement = document ? document->bodyOrFrameset() : nullptr;
     return bodyElement ? bodyElement->renderer() : nullptr;
@@ -2038,7 +2018,7 @@ RenderObject* FrameView::rendererForSupportedColorSchemes() const
 bool FrameView::useDarkAppearance() const
 {
 #if ENABLE(DARK_MODE_CSS)
-    if (auto* renderer = rendererForSupportedColorSchemes())
+    if (auto* renderer = rendererForColorScheme())
         return renderer->useDarkAppearance();
 #endif
     if (auto* document = frame().document())
@@ -2049,7 +2029,7 @@ bool FrameView::useDarkAppearance() const
 OptionSet<StyleColor::Options> FrameView::styleColorOptions() const
 {
 #if ENABLE(DARK_MODE_CSS)
-    if (auto* renderer = rendererForSupportedColorSchemes())
+    if (auto* renderer = rendererForColorScheme())
         return renderer->styleColorOptions();
 #endif
     if (auto* document = frame().document())
@@ -3004,7 +2984,11 @@ Color FrameView::baseBackgroundColor() const
 
 void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
 {
-    m_baseBackgroundColor = backgroundColor.isValid() ? backgroundColor : Color::white;
+    Color newBaseBackgroundColor = backgroundColor.isValid() ? backgroundColor : Color::white;
+    if (m_baseBackgroundColor == newBaseBackgroundColor)
+        return;
+
+    m_baseBackgroundColor = newBaseBackgroundColor;
 
     if (!isViewForDocumentInFrame())
         return;

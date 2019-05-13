@@ -1,3 +1,160 @@
+2019-04-23  Saam Barati  <sbarati@apple.com>
+
+        LICM incorrectly assumes it'll never insert a node which provably OSR exits
+        https://bugs.webkit.org/show_bug.cgi?id=196721
+        <rdar://problem/49556479> 
+
+        Reviewed by Filip Pizlo.
+
+        * stress/licm-should-handle-if-a-hoist-causes-a-provable-osr-exit.js: Added.
+        (foo):
+
+2019-04-19  Saam Barati  <sbarati@apple.com>
+
+        AbstractValue can represent more than int52
+        https://bugs.webkit.org/show_bug.cgi?id=197118
+        <rdar://problem/49969960>
+
+        Reviewed by Michael Saboff.
+
+        * stress/abstract-value-can-include-int52.js: Added.
+        (foo):
+        (index.index.8.index.60.index.65.index.1234.index.1234.parseInt.string_appeared_here.String.fromCharCode):
+
+2019-04-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] StringBuilder should set correct m_is8Bit flag when merging
+        https://bugs.webkit.org/show_bug.cgi?id=197053
+
+        Reviewed by Saam Barati.
+
+        * stress/merge-string-builder-in-dfg.js: Added.
+        (foo):
+
+2019-04-16  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Filter DontEnum properties in ProxyObject::getOwnPropertyNames()
+        https://bugs.webkit.org/show_bug.cgi?id=176810
+
+        Reviewed by Saam Barati.
+
+        Add tests for the DontEnum filtering, and variations of other tests
+        take the DontEnum-filtering path.
+
+        * stress/proxy-own-keys.js:
+        (i.catch):
+        (set assert):
+        (set add):
+        (let.set new):
+        (get let):
+
+2019-04-15  Saam barati  <sbarati@apple.com>
+
+        Modify how we do SetArgument when we inline varargs calls
+        https://bugs.webkit.org/show_bug.cgi?id=196712
+        <rdar://problem/49605012>
+
+        Reviewed by Michael Saboff.
+
+        * stress/get-stack-wrong-type-when-inline-varargs.js: Added.
+        (foo):
+
+2019-04-15  Saam barati  <sbarati@apple.com>
+
+        SafeToExecute for GetByOffset/GetGetterByOffset/PutByOffset is using the wrong child for the base
+        https://bugs.webkit.org/show_bug.cgi?id=196945
+        <rdar://problem/49802750>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/get-by-offset-should-use-correct-child.js: Added.
+        (foo.bar):
+        (foo):
+
+2019-04-15  Robin Morisset  <rmorisset@apple.com>
+
+        DFG should be able to constant fold Object.create() with a constant prototype operand
+        https://bugs.webkit.org/show_bug.cgi?id=196886
+
+        Reviewed by Yusuke Suzuki.
+
+        Note that this new benchmark does not currently see a speedup with inlining removed.
+        The reason is that we do not yet have inline caching for Object.create(), we only optimize it when the DFG can see statically the prototype being passed.
+
+        * microbenchmarks/object-create-constant-prototype.js: Added.
+        (test):
+
+2019-04-15  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Incremental bytecode cache should not append function updates when loaded from memory
+        https://bugs.webkit.org/show_bug.cgi?id=196865
+
+        Reviewed by Filip Pizlo.
+
+        * stress/bytecode-cache-shared-code-block.js: Added.
+        (b):
+        (program):
+
+2019-04-13  Tadeu Zagallo  <tzagallo@apple.com>
+
+        CodeCache should check that the UnlinkedCodeBlock was successfully created before caching it
+        https://bugs.webkit.org/show_bug.cgi?id=196880
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/bytecode-cache-syntax-error.js: Added.
+        (catch):
+
+2019-04-12  Saam barati  <sbarati@apple.com>
+
+        r244079 logically broke shouldSpeculateInt52
+        https://bugs.webkit.org/show_bug.cgi?id=196884
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/int52-rand-function.js: Added.
+        (Math.random):
+
+2019-04-11  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] op_has_indexed_property should not assume subscript part is Uint32
+        https://bugs.webkit.org/show_bug.cgi?id=196850
+
+        Reviewed by Saam Barati.
+
+        * stress/has-indexed-property-should-accept-non-int32.js: Added.
+        (foo):
+
+2019-04-11  Saam barati  <sbarati@apple.com>
+
+        Remove invalid assertion in operationInstanceOfCustom
+        https://bugs.webkit.org/show_bug.cgi?id=196842
+        <rdar://problem/49725493>
+
+        Reviewed by Michael Saboff.
+
+        * stress/operationInstanceOfCustom-bad-assertion.js: Added.
+
+2019-04-10  Saam Barati  <sbarati@apple.com>
+
+        AbstractValue::validateOSREntryValue is wrong for Int52 constants
+        https://bugs.webkit.org/show_bug.cgi?id=196801
+        <rdar://problem/49771122>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/abstract-value-int52-constant-validation-should-not-care-about-representation.js: Added.
+
+2019-04-10  Robin Morisset  <rmorisset@apple.com>
+
+        We should clear m_needsOverflowCheck when hitting an exception in defineProperties in ObjectConstructor.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=196746
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/cyclic-define-properties.js: Added.
+        (foo):
+
 2019-04-09  Saam barati  <sbarati@apple.com>
 
         Clean up Int52 code and some bugs in it

@@ -26,8 +26,7 @@
 #include "config.h"
 #include "PrintInfo.h"
 
-#include "Decoder.h"
-#include "Encoder.h"
+#include "WebCoreArgumentCoders.h"
 
 #if PLATFORM(GTK)
 #include "ArgumentCodersGtk.h"
@@ -40,6 +39,7 @@ void PrintInfo::encode(IPC::Encoder& encoder) const
     encoder << pageSetupScaleFactor;
     encoder << availablePaperWidth;
     encoder << availablePaperHeight;
+    encoder << margin;
 
 #if PLATFORM(GTK)
     IPC::encode(encoder, printSettings.get());
@@ -59,6 +59,8 @@ bool PrintInfo::decode(IPC::Decoder& decoder, PrintInfo& info)
     if (!decoder.decode(info.availablePaperWidth))
         return false;
     if (!decoder.decode(info.availablePaperHeight))
+        return false;
+    if (!decoder.decode(info.margin))
         return false;
 
 #if PLATFORM(GTK)

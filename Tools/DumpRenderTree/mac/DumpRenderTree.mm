@@ -1526,7 +1526,7 @@ static NSString *dumpFramesAsText(WebFrame *frame)
     // conversion methods cannot. After the conversion to a buffer, we turn that buffer into
     // a CFString via fromUTF8WithLatin1Fallback().createCFString() which can be appended to
     // the result without any conversion.
-    WKRetainPtr<WKStringRef> stringRef(AdoptWK, WKStringCreateWithCFString((__bridge CFStringRef)innerText));
+    WKRetainPtr<WKStringRef> stringRef = adoptWK(WKStringCreateWithCFString((__bridge CFStringRef)innerText));
     size_t bufferSize = WKStringGetMaximumUTF8CStringSize(stringRef.get());
     auto buffer = std::make_unique<char[]>(bufferSize);
     size_t stringLength = WKStringGetUTF8CStringNonStrict(stringRef.get(), buffer.get(), bufferSize);
@@ -1747,8 +1747,10 @@ void dump()
             WebArchive *webArchive = [[mainFrame dataSource] webArchive];
             resultString = CFBridgingRelease(WebCoreTestSupport::createXMLStringFromWebArchiveData((__bridge CFDataRef)[webArchive data]));
             resultMimeType = @"application/x-webarchive";
-        } else
-            resultString = [mainFrame renderTreeAsExternalRepresentationForPrinting:gTestRunner->isPrinting()];
+        } else if (gTestRunner->isPrinting())
+            resultString = [mainFrame renderTreeAsExternalRepresentationForPrinting];
+        else
+            resultString = [mainFrame renderTreeAsExternalRepresentationWithOptions:gTestRunner->renderTreeDumpOptions()];
 
         if (resultString && !resultData)
             resultData = [resultString dataUsingEncoding:NSUTF8StringEncoding];

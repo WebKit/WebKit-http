@@ -50,7 +50,7 @@ using PlatformSwapLayerSmartPtr = RetainPtr<WebGPULayer>;
 
 class GPUSwapChain : public RefCounted<GPUSwapChain> {
 public:
-    static RefPtr<GPUSwapChain> tryCreate(const GPUDevice&, const GPUSwapChainDescriptor&, int width, int height);
+    static RefPtr<GPUSwapChain> tryCreate(const GPUSwapChainDescriptor&, int width, int height);
 
     RefPtr<GPUTexture> tryGetCurrentTexture();
 

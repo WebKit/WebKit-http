@@ -26,6 +26,7 @@
 #pragma once
 
 #include "APIObject.h"
+#include "NetworkCacheData.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebKit {
@@ -37,22 +38,21 @@ namespace API {
 class ContentRuleList final : public ObjectImpl<Object::Type::ContentRuleList> {
 public:
 #if ENABLE(CONTENT_EXTENSIONS)
-    static Ref<ContentRuleList> create(const WTF::String& name, Ref<WebKit::WebCompiledContentRuleList>&& contentRuleList)
+    static Ref<ContentRuleList> create(const WTF::String& name, Ref<WebKit::WebCompiledContentRuleList>&& contentRuleList, WebKit::NetworkCache::Data&& mappedFile)
     {
-        return adoptRef(*new ContentRuleList(name, WTFMove(contentRuleList)));
+        return adoptRef(*new ContentRuleList(name, WTFMove(contentRuleList), WTFMove(mappedFile)));
     }
 
-    ContentRuleList(const WTF::String& name, Ref<WebKit::WebCompiledContentRuleList>&&);
+    ContentRuleList(const WTF::String& name, Ref<WebKit::WebCompiledContentRuleList>&&, WebKit::NetworkCache::Data&&);
     virtual ~ContentRuleList();
 
     const WTF::String& name() const { return m_name; }
     const WebKit::WebCompiledContentRuleList& compiledRuleList() const { return m_compiledRuleList.get(); }
 
-    bool usesCopiedMemory() const;
-
 private:
     WTF::String m_name;
     Ref<WebKit::WebCompiledContentRuleList> m_compiledRuleList;
+    WebKit::NetworkCache::Data m_mappedFile;
 #endif // ENABLE(CONTENT_EXTENSIONS)
 };
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Apple Inc. All rights reserved.
+# Copyright (C) 2018-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -34,7 +34,14 @@ from twisted.internet import error, reactor
 from twisted.python import failure, log
 from twisted.trial import unittest
 
-from steps import *
+from steps import (AnalyzeAPITestsResults, ApplyPatch, ArchiveBuiltProduct, ArchiveTestResults,
+                   CheckOutSource, CheckPatchRelevance, CheckStyle, CleanBuild, CleanWorkingDirectory,
+                   CompileJSCOnly, CompileJSCOnlyToT, CompileWebKit, CompileWebKitToT, ConfigureBuild,
+                   DownloadBuiltProduct, ExtractBuiltProduct, ExtractTestResults, KillOldProcesses,
+                   PrintConfiguration, ReRunAPITests, ReRunJavaScriptCoreTests, RunAPITests, RunAPITestsWithoutPatch,
+                   RunBindingsTests, RunJavaScriptCoreTests, RunJavaScriptCoreTestsToT, RunWebKit1Tests, RunWebKitPerlTests,
+                   RunWebKitPyTests, RunWebKitTests, TestWithFailureCount, Trigger, UnApplyPatchIfRequired, UploadBuiltProduct,
+                   UploadTestResults, ValidatePatch)
 
 # Workaround for https://github.com/buildbot/buildbot/issues/4669
 from buildbot.test.fake.fakebuild import FakeBuild
@@ -827,6 +834,80 @@ class TestRunWebKit1Tests(BuildStepMixinAdditions, unittest.TestCase):
         return self.runStep()
 
 
+class TestCleanWorkingDirectory(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(CleanWorkingDirectory())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['Tools/Scripts/clean-webkit'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Cleaned working directory')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(CleanWorkingDirectory())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['Tools/Scripts/clean-webkit'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected failure.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Cleaned working directory (failure)')
+        return self.runStep()
+
+
+class TestUnApplyPatchIfRequired(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(UnApplyPatchIfRequired())
+        self.setProperty('patchFailedToBuild', True)
+        self.expectHidden(False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['Tools/Scripts/clean-webkit'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Unapplied patch')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(UnApplyPatchIfRequired())
+        self.setProperty('patchFailedToBuild', True)
+        self.expectHidden(False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['Tools/Scripts/clean-webkit'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected failure.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Unapplied patch (failure)')
+        return self.runStep()
+
+    def test_skip(self):
+        self.setupStep(UnApplyPatchIfRequired())
+        self.expectHidden(True)
+        self.expectOutcome(result=SKIPPED, state_string='Unapplied patch (skipped)')
+        return self.runStep()
+
+
 class TestArchiveBuiltProduct(BuildStepMixinAdditions, unittest.TestCase):
     def setUp(self):
         self.longMessage = True
@@ -889,7 +970,70 @@ class TestUploadBuiltProduct(BuildStepMixinAdditions, unittest.TestCase):
         )
         self.expectUploadedFile('public_html/archives/mac-sierra-x86_64-release/1234.zip')
 
-        self.expectOutcome(result=SUCCESS, state_string='uploading release.zip')
+        self.expectOutcome(result=SUCCESS, state_string='Uploaded built product')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(UploadBuiltProduct())
+        self.setProperty('fullPlatform', 'mac-sierra')
+        self.setProperty('configuration', 'release')
+        self.setProperty('architecture', 'x86_64')
+        self.setProperty('patch_id', '1234')
+        self.expectHidden(False)
+        self.expectRemoteCommands(
+            Expect('uploadFile', dict(
+                                        workersrc='WebKitBuild/release.zip', workdir='wkdir',
+                                        blocksize=1024 * 256, maxsize=None, keepstamp=False,
+                                        writer=ExpectRemoteRef(remotetransfer.FileWriter),
+                                     ))
+            + Expect.behavior(uploadFileWithContentsOfString('Dummy zip file content.'))
+            + 1,
+        )
+        self.expectUploadedFile('public_html/archives/mac-sierra-x86_64-release/1234.zip')
+
+        self.expectOutcome(result=FAILURE, state_string='Failed to upload built product')
+        return self.runStep()
+
+
+class TestDownloadBuiltProduct(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(DownloadBuiltProduct())
+        self.setProperty('platform', 'ios')
+        self.setProperty('fullPlatform', 'ios-simulator-12')
+        self.setProperty('configuration', 'release')
+        self.setProperty('architecture', 'x86_64')
+        self.setProperty('patch_id', '1234')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['python', 'Tools/BuildSlaveSupport/download-built-product', '--platform=ios',  '--release', 'https://ews-build.webkit.org/archives/ios-simulator-12-x86_64-release/1234.zip'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Downloaded built product')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(DownloadBuiltProduct())
+        self.setProperty('platform', 'mac')
+        self.setProperty('fullPlatform', 'mac-sierra')
+        self.setProperty('configuration', 'debug')
+        self.setProperty('architecture', 'x86_64')
+        self.setProperty('patch_id', '123456')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        command=['python', 'Tools/BuildSlaveSupport/download-built-product', '--platform=mac',  '--debug', 'https://ews-build.webkit.org/archives/mac-sierra-x86_64-debug/123456.zip'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected failure.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Downloaded built product (failure)')
         return self.runStep()
 
 
@@ -1291,7 +1435,7 @@ Xcode 9.4.1
 Build version 9F2000''')
             + 0,
         )
-        self.expectOutcome(result=SUCCESS, state_string='OS: High Sierra (10.13.4), Xcode: 10.13')
+        self.expectOutcome(result=SUCCESS, state_string='OS: High Sierra (10.13.4), Xcode: 9.4.1')
         return self.runStep()
 
     def test_failure(self):

@@ -2324,7 +2324,8 @@ private:
 
 #if !ASSERT_DISABLED
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
-        case SetArgument:
+        case SetArgumentDefinitely:
+        case SetArgumentMaybe:
         case JSConstant:
         case LazyJSConstant:
         case DoubleConstant:
@@ -3224,7 +3225,7 @@ private:
                 m_profitabilityChanged |= variable->mergeIsProfitableToUnbox(true);
             break;
         case Int52RepUse:
-            if (isAnyInt52Speculation(variable->prediction()))
+            if (!isInt32Speculation(variable->prediction()) && isInt32OrInt52Speculation(variable->prediction()))
                 m_profitabilityChanged |= variable->mergeIsProfitableToUnbox(true);
             break;
         case CellUse:

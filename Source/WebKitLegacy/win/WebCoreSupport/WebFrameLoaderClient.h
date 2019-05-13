@@ -94,13 +94,13 @@ public:
     void dispatchDidStartProvisionalLoad() override;
     void dispatchDidReceiveTitle(const WebCore::StringWithDirection&) override;
     void dispatchDidCommitLoad(Optional<WebCore::HasInsecureContent>) override;
-    void dispatchDidFailProvisionalLoad(const WebCore::ResourceError&) override;
+    void dispatchDidFailProvisionalLoad(const WebCore::ResourceError&, WebCore::WillContinueLoading) override;
     void dispatchDidFailLoad(const WebCore::ResourceError&) override;
     void dispatchDidFinishDocumentLoad() override;
     void dispatchDidFinishLoad() override;
     void dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone>) override;
 
-    void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, WebCore::PolicyCheckIdentifier, WebCore::FramePolicyFunction&&) override;
+    void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, WebCore::PolicyCheckIdentifier, const String&, WebCore::FramePolicyFunction&&) override;
     void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, WebCore::FormState*, const WTF::String& frameName, WebCore::PolicyCheckIdentifier, WebCore::FramePolicyFunction&&) override;
     void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse, WebCore::FormState*, WebCore::PolicyDecisionMode, WebCore::PolicyCheckIdentifier, WebCore::FramePolicyFunction&&) override;
     void cancelPolicyCheck() override;

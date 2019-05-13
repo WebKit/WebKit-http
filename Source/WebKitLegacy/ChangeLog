@@ -1,3 +1,132 @@
+2019-04-23  Keith Rollin  <krollin@apple.com>
+
+        Add Xcode version check for Header post-processing scripts
+        https://bugs.webkit.org/show_bug.cgi?id=197116
+        <rdar://problem/50058968>
+
+        Reviewed by Brent Fulgham.
+
+        There are several places in our Xcode projects that post-process
+        header files after they've been exported. Because of XCBuild, we're
+        moving to a model where the post-processing is performed at the same
+        time the header files are exported, rather than as a distinct
+        post-processing step. This patch disables the distinct step when the
+        inline processing is available.
+
+        In practice, this means prefixing appropriate post-processing Custom
+        Build phases with:
+
+        if [ "${XCODE_VERSION_MAJOR}" -ge "1100" -a "${USE_NEW_BUILD_SYSTEM}" = "YES" ]; then
+            # In this configuration, post-processing is performed at the same time as copying in the postprocess-header-rule script, so there's no need for this separate step.
+            exit 0
+        fi
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-04-20  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][Win] Use target oriented design for WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=197112
+
+        Reviewed by Konstantin Tokarev.
+
+        Enumerate the public framework headers for WebKitLegacy and copy them. Include
+        directories should be PRIVATE. Migrate to using WebKitLegacy_DERIVED_SOURCES_DIR.
+
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+
+2019-04-19  Keith Rollin  <krollin@apple.com>
+
+        Add postprocess-header-rule scripts
+        https://bugs.webkit.org/show_bug.cgi?id=197072
+        <rdar://problem/50027299>
+
+        Reviewed by Brent Fulgham.
+
+        Several projects have post-processing build phases where exported
+        headers are tweaked after they've been copied. This post-processing is
+        performed via scripts called postprocess-headers.sh. For reasons
+        related to XCBuild, we are now transitioning to a build process where
+        the post-processing is performed at the same time as the
+        exporting/copying. To support this process, add similar scripts named
+        postprocess-header-rule, which are geared towards processing a single
+        file at a time rather than all exported files at once. Also add a
+        build rule that makes use of these scripts. These scripts and build
+        rules are not used at the moment; they will come into use in an
+        imminent patch.
+
+        Note that I've named these postprocess-header-rule rather than
+        postprocess-header-rule.sh. Scripts in Tools/Scripts do not have
+        suffixes indicating how the tool is implemented. Scripts in
+        per-project Scripts folders appear to be mixed regarding the use of
+        suffixes. I'm opting here to follow the Tools/Scripts convention, with
+        the expectation that over time we completely standardize on that.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+        * scripts/postprocess-header-rule: Added.
+
+2019-04-18  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Make WebCore headers copies
+        https://bugs.webkit.org/show_bug.cgi?id=182512
+        <rdar://problem/37510435>
+
+        Reviewed by Alex Christensen.
+
+        Added WebCorePrivateFrameworkHeaders as a dependency of WebKitLegacy for all
+        ports.
+
+        WebCore now uses WebCore_PRIVATE_INCLUDE_DIRECTORIES for all ports. This revealed
+        problems with WebKit's usage of WebCore headers. All include directories directly
+        referencing the WebCore source tree we're removed from the CMake files.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+
+2019-04-18  Keith Rollin  <krollin@apple.com>
+
+        Move MiG .def files into their own "Copy files" build step
+        https://bugs.webkit.org/show_bug.cgi?id=196982
+
+        Reviewed by Alex Christensen.
+
+        WebKitLegacy's MiG files need to be processed differently from the
+        other files in the "Copy Headers" build phase, so move them into their
+        own "Copy Files" build phase. This arrangement removes them from any
+        post-processing performed on the main group of headers.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-04-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244386.
+        https://bugs.webkit.org/show_bug.cgi?id=197031
+
+        Causing build failures on several internal builders (Requested
+        by ShawnRoberts on #webkit).
+
+        Reverted changeset:
+
+        "Move MiG .def files into their own "Copy files" build step"
+        https://bugs.webkit.org/show_bug.cgi?id=196982
+        https://trac.webkit.org/changeset/244386
+
+2019-04-17  Keith Rollin  <krollin@apple.com>
+
+        Move MiG .def files into their own "Copy files" build step
+        https://bugs.webkit.org/show_bug.cgi?id=196982
+
+        Reviewed by Alex Christensen.
+
+        WebKitLegacy's MiG files need to be processed differently from the
+        other files in the "Copy Headers" build phase, so move them into their
+        own "Copy Files" build phase. This arrangement removes them from any
+        post-processing performed on the main group of headers.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
 2019-04-08  Don Olmstead  <don.olmstead@sony.com>
 
         [CMake][WinCairo] Separate copied headers into different directories

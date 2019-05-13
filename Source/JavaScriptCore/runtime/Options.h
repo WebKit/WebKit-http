@@ -219,7 +219,6 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(bool, testTheFTL, false, Normal, nullptr) \
     v(bool, verboseSanitizeStack, false, Normal, nullptr) \
     v(bool, useGenerationalGC, true, Normal, nullptr) \
-    v(bool, useConcurrentBarriers, true, Normal, nullptr) \
     v(bool, useConcurrentGC, true, Normal, nullptr) \
     v(bool, collectContinuously, false, Normal, nullptr) \
     v(double, collectContinuouslyPeriodMS, 1, Normal, nullptr) \
@@ -518,6 +517,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(bool, forceDiskCache, false, Restricted, nullptr) \
     v(bool, validateAbstractInterpreterState, false, Restricted, nullptr) \
     v(double, validateAbstractInterpreterStateProbability, 0.5, Normal, nullptr) \
+    v(optionString, dumpJITMemoryPath, nullptr, Restricted, nullptr) \
 
 
 enum OptionEquivalence {

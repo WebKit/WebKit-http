@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,6 +43,7 @@
 #include "Operations.h"
 #include "PutByIdStatus.h"
 #include "StringObject.h"
+#include "StructureCache.h"
 #include "StructureRareDataInlines.h"
 #include <wtf/BooleanLattice.h>
 #include <wtf/CheckedArithmetic.h>
@@ -321,9 +322,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
-    case SetArgument:
-        // Assert that the state of arguments has been set. SetArgument means that someone set
-        // the argument values out-of-band, and currently this always means setting to a
+    case SetArgumentDefinitely:
+    case SetArgumentMaybe:
+        // Assert that the state of arguments has been set. SetArgumentDefinitely/SetArgumentMaybe means
+        // that someone set the argument values out-of-band, and currently this always means setting to a
         // non-clear value.
         ASSERT(!m_state.operand(node->local()).isClear());
         break;
@@ -763,7 +765,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         case Int52RepUse:
             if (left && right && left.isAnyInt() && right.isAnyInt()) {
                 JSValue result = jsNumber(left.asAnyInt() - right.asAnyInt());
-                if (result.isAnyInt() || !shouldCheckOverflow(node->arithMode())) {
+                if (result.isAnyInt()) {
                     setConstant(node, result);
                     break;
                 }
@@ -2586,17 +2588,20 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
     case ObjectCreate: {
         if (JSValue base = forNode(node->child1()).m_value) {
-            if (base.isNull()) {
-                JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
+            JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
+            Structure* structure = nullptr;
+            if (base.isNull())
+                structure = globalObject->nullPrototypeObjectStructure();
+            else if (base.isObject())
+                structure = globalObject->vm().structureCache.emptyObjectStructureConcurrently(globalObject, base.getObject(), JSFinalObject::defaultInlineCapacity());
+            
+            if (structure) {
                 m_state.setFoundConstants(true);
                 if (node->child1().useKind() == UntypedUse)
                     didFoldClobberWorld();
-                setForNode(node, globalObject->nullPrototypeObjectStructure());
+                setForNode(node, structure);
                 break;
             }
-            // FIXME: We should get a structure for a constant prototype. We need to allow concurrent
-            // access to StructureCache from compiler threads.
-            // https://bugs.webkit.org/show_bug.cgi?id=186199
         }
         if (node->child1().useKind() == UntypedUse)
             clobberWorld();

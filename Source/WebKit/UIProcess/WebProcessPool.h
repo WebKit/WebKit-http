@@ -471,7 +471,6 @@ public:
     // SuspendedPageProxy management.
     void addSuspendedPage(std::unique_ptr<SuspendedPageProxy>&&);
     void removeAllSuspendedPagesForPage(WebPageProxy&, WebProcessProxy* = nullptr);
-    void closeFailedSuspendedPagesForPage(WebPageProxy&);
     std::unique_ptr<SuspendedPageProxy> takeSuspendedPage(SuspendedPageProxy&);
     void removeSuspendedPage(SuspendedPageProxy&);
     bool hasSuspendedPageFor(WebProcessProxy&, WebPageProxy&) const;
@@ -494,8 +493,6 @@ public:
     void sendDisplayConfigurationChangedMessageForTesting();
     void clearCurrentModifierStateForTesting();
 
-    void dumpAdClickAttribution(PAL::SessionID, CompletionHandler<void(const String&)>&&);
-    void clearAdClickAttribution(PAL::SessionID, CompletionHandler<void()>&&);
     void committedCrossSiteLoadWithLinkDecoration(PAL::SessionID, const WebCore::RegistrableDomain& fromDomain, const WebCore::RegistrableDomain& toDomain, uint64_t pageID);
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
@@ -510,6 +507,8 @@ public:
 
     void disableDelayedWebProcessLaunch() { m_isDelayedWebProcessLaunchDisabled = true; }
 
+    void removeCredential(WebCore::Credential&&, WebCore::ProtectionSpace&&, CompletionHandler<void()>&&);
+    
 private:
     void platformInitialize();
 

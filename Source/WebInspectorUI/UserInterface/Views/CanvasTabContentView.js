@@ -44,9 +44,9 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         this._overviewTreeElement = new WI.GeneralTreeElement("canvas-overview", WI.UIString("Overview"), null, this._canvasCollection);
         this._canvasTreeOutline.appendChild(this._overviewTreeElement);
 
-        this._importedRecordingsTreeElement = new WI.FolderTreeElement(WI.UIString("Imported Recordings"), WI.RecordingCollection);
-        this._importedRecordingsTreeElement.hidden = true;
-        this._canvasTreeOutline.appendChild(this._importedRecordingsTreeElement);
+        this._savedRecordingsTreeElement = new WI.FolderTreeElement(WI.UIString("Saved Recordings"), WI.RecordingCollection);
+        this._savedRecordingsTreeElement.hidden = true;
+        this._overviewTreeElement.appendChild(this._savedRecordingsTreeElement);
 
         this._recordShortcut = new WI.KeyboardShortcut(null, WI.KeyboardShortcut.Key.Space, this._handleSpace.bind(this));
         this._recordShortcut.implicitlyPreventsDefault = false;
@@ -55,9 +55,6 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         this._recordSingleFrameShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.Shift, WI.KeyboardShortcut.Key.Space, this._handleSpace.bind(this));
         this._recordSingleFrameShortcut.implicitlyPreventsDefault = false;
         this._recordSingleFrameShortcut.disabled = true;
-
-        this.element.addEventListener("dragover", this._handleDragOver.bind(this));
-        this.element.addEventListener("drop", this._handleDrop.bind(this));
 
         WI.canvasManager.enable();
     }
@@ -141,19 +138,12 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         // FIXME: implement once <https://webkit.org/b/177606> is complete.
     }
 
-    // Protected
-
-    initialLayout()
+    async handleFileDrop(files)
     {
-        super.initialLayout();
-
-        const options = {
-            suppressShowRecording: true,
-        };
-
-        for (let recording of WI.canvasManager.importedRecordings)
-            this._addRecording(recording, options);
+        await WI.FileUtilities.readJSON(files, (result) => WI.canvasManager.processJSON(result));
     }
+
+    // Protected
 
     attached()
     {
@@ -161,8 +151,8 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
 
         WI.canvasManager.addEventListener(WI.CanvasManager.Event.CanvasAdded, this._handleCanvasAdded, this);
         WI.canvasManager.addEventListener(WI.CanvasManager.Event.CanvasRemoved, this._handleCanvasRemoved, this);
-        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingImported, this._recordingImportedOrStopped, this);
-        WI.Canvas.addEventListener(WI.Canvas.Event.RecordingStopped, this._recordingImportedOrStopped, this);
+        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingSaved, this._handleRecordingSavedOrStopped, this);
+        WI.Canvas.addEventListener(WI.Canvas.Event.RecordingStopped, this._handleRecordingSavedOrStopped, this);
 
         let canvases = WI.canvasManager.canvases;
 
@@ -175,6 +165,10 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
             if (!this._canvasCollection.has(canvas))
                 this._addCanvas(canvas);
         }
+
+        this._savedRecordingsTreeElement.removeChildren();
+        for (let recording of WI.canvasManager.savedRecordings)
+            this._addRecording(recording, {suppressShowRecording: true});
     }
 
     detached()
@@ -211,13 +205,6 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
 
         this._canvasCollection.remove(canvas);
 
-        const options = {
-            suppressShowRecording: true,
-        };
-
-        for (let recording of canvas.recordingCollection)
-            this._addRecording(recording, options);
-
         let currentContentView = this.contentBrowser.currentContentView;
         if (currentContentView instanceof WI.CanvasContentView)
             WI.showRepresentedObject(this._canvasCollection);
@@ -227,6 +214,8 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         let navigationSidebarPanel = this.navigationSidebarPanel;
         if (navigationSidebarPanel instanceof WI.CanvasSidebarPanel && navigationSidebarPanel.visible)
             navigationSidebarPanel.updateRepresentedObjects();
+
+        this.showDetailsSidebarPanels();
     }
 
     _addRecording(recording, options = {})
@@ -234,8 +223,8 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         if (!recording.source) {
             const subtitle = null;
             let recordingTreeElement = new WI.GeneralTreeElement(["recording"], recording.displayName, subtitle, recording);
-            this._importedRecordingsTreeElement.hidden = false;
-            this._importedRecordingsTreeElement.appendChild(recordingTreeElement);
+            this._savedRecordingsTreeElement.hidden = false;
+            this._savedRecordingsTreeElement.appendChild(recordingTreeElement);
         }
 
         if (!options.suppressShowRecording)
@@ -267,16 +256,16 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         this.showRepresentedObject(representedObject);
     }
 
-    _recordingImportedOrStopped(event)
+    _handleRecordingSavedOrStopped(event)
     {
-        let {recording, initiatedByUser} = event.data;
+        let {recording, initiatedByUser, imported} = event.data;
         if (!recording)
             return;
 
         let options = {};
 
         // Always show imported recordings.
-        if (recording.source)
+        if (recording.source || !imported)
             options.suppressShowRecording = !initiatedByUser || this.contentBrowser.currentRepresentedObjects.some((representedObject) => representedObject instanceof WI.Recording);
 
         this._addRecording(recording, options);
@@ -302,25 +291,6 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         }
 
         event.preventDefault();
-    }
-
-    _handleDragOver(event)
-    {
-        if (event.dataTransfer.types.includes("Files"))
-            event.preventDefault();
-    }
-
-    _handleDrop(event)
-    {
-        if (!event.dataTransfer.files || !event.dataTransfer.files.length)
-            return;
-
-        event.preventDefault();
-
-        WI.FileUtilities.readJSON(event.dataTransfer.files, (result) => WI.canvasManager.processJSON(result))
-        .then(() => {
-            event.dataTransfer.clearData();
-        });
     }
 };
 

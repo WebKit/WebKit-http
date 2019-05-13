@@ -1,3 +1,252 @@
+2019-04-24  Tim Horton  <timothy_horton@apple.com>
+
+        Clean up WKActionSheetAssistant's use of LaunchServices
+        https://bugs.webkit.org/show_bug.cgi?id=194645
+        <rdar://problem/47707952>
+
+        Reviewed by Andy Estes.
+
+        * wtf/Platform.h:
+
+2019-04-24  chris fleizach  <cfleizach@apple.com>
+
+        AX: Remove deprecated Accessibility Object Model events
+        https://bugs.webkit.org/show_bug.cgi?id=197073
+        <rdar://problem/50027819>
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/Platform.h:
+
+2019-04-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244558.
+        https://bugs.webkit.org/show_bug.cgi?id=197219
+
+        Causing crashes on iOS Sim Release and Debug (Requested by
+        ShawnRoberts on #webkit).
+
+        Reverted changeset:
+
+        "Remove DeprecatedOptional"
+        https://bugs.webkit.org/show_bug.cgi?id=197161
+        https://trac.webkit.org/changeset/244558
+
+2019-04-23  Alex Christensen  <achristensen@webkit.org>
+
+        Remove DeprecatedOptional
+        https://bugs.webkit.org/show_bug.cgi?id=197161
+
+        Reviewed by Darin Adler.
+
+        This was added in r209326 to be compatible with a shipping version of Safari.
+        We have released several versions of Safari since then, so do what the comments say and remove it.
+        The existence of this std::optional makes migrating to C++17 harder, and there's no reason to keep it.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/DeprecatedOptional.h: Removed.
+
+2019-04-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WTF] Generic memoryFootprint() implementation should use bmalloc on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=196963
+
+        Reviewed by Don Olmstead.
+
+        Have the generic memoryFootprint() implementation use bmalloc's
+        memoryFootprint() API on Linux, whenever the system malloc option is
+        not enabled. Limitation to Linux platforms is due to the bmalloc
+        implementation being limited to those configurations (excluding iOS
+        which doesn't use MemoryFootprintGeneric.cpp).
+
+        * wtf/PlatformWPE.cmake: Switch to building MemoryFootprintGeneric.cpp.
+        * wtf/generic/MemoryFootprintGeneric.cpp:
+        (WTF::memoryFootprint):
+
+2019-04-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        HashTable::removeIf always shrinks the hash table by half even if there is nothing left
+        https://bugs.webkit.org/show_bug.cgi?id=196681
+        <rdar://problem/49917764>
+
+        Reviewed by Darin Adler.
+
+        Address Darin's comments by removing the explicit type from std::max.
+
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::computeBestTableSize):
+        (WTF::KeyTraits>::shrinkToBestSize):
+
+2019-04-18  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Improve detection of when web views go to background / foreground
+        https://bugs.webkit.org/show_bug.cgi?id=197035
+        <rdar://problem/45281182>
+
+        Reviewed by Tim Horton.
+
+        Add build time flag.
+
+        * wtf/FeatureDefines.h:
+
+2019-04-18  Jer Noble  <jer.noble@apple.com>
+
+        Add support for parsing FairPlayStreaming PSSH boxes.
+        https://bugs.webkit.org/show_bug.cgi?id=197064
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Platform.h:
+
+2019-04-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] StringBuilder should set correct m_is8Bit flag when merging
+        https://bugs.webkit.org/show_bug.cgi?id=197053
+
+        Reviewed by Saam Barati.
+
+        When appending StringBuilder to the other StringBuilder, we have a path that does not set m_is8Bit flag correctly.
+        This patch correctly sets this flag. And we also change 0 to nullptr when we are using 0 as a pointer.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::reserveCapacity):
+        (WTF::StringBuilder::appendUninitializedSlow):
+        (WTF::StringBuilder::append):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::append):
+        (WTF::StringBuilder::characters8 const):
+        (WTF::StringBuilder::characters16 const):
+        (WTF::StringBuilder::clear):
+
+2019-04-17  Tim Horton  <timothy_horton@apple.com>
+
+        Adopt different scroll view flashing SPI
+        https://bugs.webkit.org/show_bug.cgi?id=197043
+        <rdar://problem/49996476>
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/Platform.h:
+
+2019-04-17  Jer Noble  <jer.noble@apple.com>
+
+        Enable HAVE_AVFOUNDATION_VIDEO_OUTPUT on PLATFORM(IOSMAC)
+        https://bugs.webkit.org/show_bug.cgi?id=196994
+        <rdar://problem/44158331>
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+
+2019-04-16  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [PlayStation] Update port for system library changes
+        https://bugs.webkit.org/show_bug.cgi?id=196978
+
+        Reviewed by Ross Kirsling.
+
+        * wtf/PlatformPlayStation.cmake:
+        Remove reference to deleted system library
+
+2019-04-16  Jer Noble  <jer.noble@apple.com>
+
+        Enable HAVE_AVKIT on PLATFORM(IOSMAC)
+        https://bugs.webkit.org/show_bug.cgi?id=196987
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+
+2019-04-16  Robin Morisset  <rmorisset@apple.com>
+
+        [WTF] holdLock should be marked WARN_UNUSED_RETURN
+        https://bugs.webkit.org/show_bug.cgi?id=196922
+
+        Reviewed by Keith Miller.
+
+        * wtf/Locker.h:
+
+2019-04-16  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Set WTF_SCRIPTS_DIR
+        https://bugs.webkit.org/show_bug.cgi?id=196917
+
+        Reviewed by Konstantin Tokarev.
+
+        Use WTF_SCRIPTS_DIR for copying the unified sources script.
+
+        * wtf/CMakeLists.txt:
+
+2019-04-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] FontPlatformData objects aren't cached at all when using font-family:system-ui
+        https://bugs.webkit.org/show_bug.cgi?id=196846
+        <rdar://problem/49499971>
+
+        Reviewed by Simon Fraser and Darin Adler.
+
+        * wtf/RetainPtr.h:
+        (WTF::safeCFEqual):
+        (WTF::safeCFHash):
+
+2019-04-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        HashTable::removeIf always shrinks the hash table by half even if there is nothing left
+        https://bugs.webkit.org/show_bug.cgi?id=196681
+
+        Reviewed by Darin Adler.
+
+        Made HashTable::removeIf shrink to the "best size", which is the least power of two bigger
+        than twice the key count as already used in the copy constructor.
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::computeBestTableSize): Extracted from the copy constructor.
+        (WTF::HashTable::shrinkToBestSize): Added.
+        (WTF::HashTable::removeIf): Use shrinkToBestSize instead of shrink.
+        (WTF::HashTable::HashTable):
+
+2019-04-12  Eric Carlson  <eric.carlson@apple.com>
+
+        Update AudioSession route sharing policy
+        https://bugs.webkit.org/show_bug.cgi?id=196776
+        <rdar://problem/46501611>
+
+        Reviewed by Jer Noble.
+
+        * wtf/Platform.h: Define HAVE_ROUTE_SHARING_POLICY_LONG_FORM_VIDEO.
+
+2019-04-10  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        requestAnimationFrame should execute before the next frame
+        https://bugs.webkit.org/show_bug.cgi?id=177484
+
+        Reviewed by Simon Fraser.
+
+        Add trace points for the page RenderingUpdate.
+
+        * wtf/SystemTracing.h:
+
+2019-04-10  Claudio Saavedra  <csaavedra@igalia.com>
+
+        Do not generate empty unified sources when unified builds are disabled
+        https://bugs.webkit.org/show_bug.cgi?id=196767
+
+        Reviewed by Konstantin Tokarev.
+
+        If unified builds are disabled, the ruby script to generate them
+        is still used to list the sources that need to be
+        compiled. Currently, the script always generates bundled unified
+        sources, even if it's being used just to list all the sources. So
+        when the unified builds are disabled and no files are going to be
+        bundled, the script generates one empty file per bundle manager
+        (that is, one C++ and one ObjectiveC), that gets added to the
+        sources to be compiled.
+
+        * Scripts/generate-unified-source-bundles.rb: Only go through the
+        bundle managers file generation when not running in
+        PrintAllSources mode, to avoid generating empty bundle files.
+
 2019-04-10  Enrique Ocaña González  <eocanha@igalia.com>
 
         [WPE] Avoid async IO starving timers

@@ -78,7 +78,8 @@ bool doesGC(Graph& graph, Node* node)
     case Phi:
     case Flush:
     case PhantomLocal:
-    case SetArgument:
+    case SetArgumentDefinitely:
+    case SetArgumentMaybe:
     case ArithBitNot:
     case ArithBitAnd:
     case ArithBitOr:

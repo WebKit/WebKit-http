@@ -446,7 +446,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webvr/VRPose.idl \
     $(WebCore)/Modules/webvr/VRStageParameters.idl \
     $(WebCore)/accessibility/AccessibilityRole.idl \
-    $(WebCore)/accessibility/AccessibleSetValueEvent.idl \
     $(WebCore)/accessibility/AriaAttributes.idl \
     $(WebCore)/animation/Animatable.idl \
     $(WebCore)/animation/AnimationEffect.idl \
@@ -581,6 +580,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/DeviceOrientationOrMotionPermissionState.idl \
     $(WebCore)/dom/Document.idl \
     $(WebCore)/dom/DocumentAndElementEventHandlers.idl \
+    $(WebCore)/dom/DocumentFullscreen.idl \
     $(WebCore)/dom/DocumentFragment.idl \
     $(WebCore)/dom/DocumentOrShadowRoot.idl \
     $(WebCore)/dom/DocumentType.idl \

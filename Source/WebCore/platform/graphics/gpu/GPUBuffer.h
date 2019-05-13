@@ -71,9 +71,10 @@ public:
     static RefPtr<GPUBuffer> tryCreate(Ref<GPUDevice>&&, const GPUBufferDescriptor&);
 
     PlatformBuffer *platformBuffer() const { return m_platformBuffer.get(); }
-    uint64_t byteLength() const { return m_byteLength; }
+    size_t byteLength() const { return m_byteLength; }
     bool isTransferSource() const { return m_usage.contains(GPUBufferUsage::Flags::TransferSource); }
     bool isTransferDestination() const { return m_usage.contains(GPUBufferUsage::Flags::TransferDestination); }
+    bool isIndex() const { return m_usage.contains(GPUBufferUsage::Flags::Index); }
     bool isVertex() const { return m_usage.contains(GPUBufferUsage::Flags::Vertex); }
     bool isUniform() const { return m_usage.contains(GPUBufferUsage::Flags::Uniform); }
     bool isStorage() const { return m_usage.contains(GPUBufferUsage::Flags::Storage); }
@@ -109,7 +110,7 @@ private:
 
     static bool validateBufferUsage(const GPUDevice&, OptionSet<GPUBufferUsage::Flags>);
 
-    GPUBuffer(PlatformBufferSmartPtr&&, uint64_t, OptionSet<GPUBufferUsage::Flags>, Ref<GPUDevice>&&);
+    GPUBuffer(PlatformBufferSmartPtr&&, size_t, OptionSet<GPUBufferUsage::Flags>, Ref<GPUDevice>&&);
 
     JSC::ArrayBuffer* stagingBufferForRead();
     JSC::ArrayBuffer* stagingBufferForWrite();
@@ -131,7 +132,7 @@ private:
     RefPtr<PendingMappingCallback> m_mappingCallback;
     DeferrableTask<Timer> m_mappingCallbackTask;
 
-    uint64_t m_byteLength;
+    size_t m_byteLength;
     OptionSet<GPUBufferUsage::Flags> m_usage;
     unsigned m_numScheduledCommandBuffers { 0 };
 };

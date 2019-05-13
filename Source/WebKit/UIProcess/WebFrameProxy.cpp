@@ -88,6 +88,7 @@ void WebFrameProxy::loadURL(const URL& url)
 
 void WebFrameProxy::loadData(const IPC::DataReference& data, const String& MIMEType, const String& encodingName, const URL& baseURL)
 {
+    ASSERT(!isMainFrame());
     if (!m_page)
         return;
 
@@ -143,6 +144,11 @@ bool WebFrameProxy::isDisplayingPDFDocument() const
 void WebFrameProxy::didStartProvisionalLoad(const URL& url)
 {
     m_frameLoadState.didStartProvisionalLoad(url);
+}
+
+void WebFrameProxy::didExplicitOpen(const URL& url)
+{
+    m_frameLoadState.didExplicitOpen(url);
 }
 
 void WebFrameProxy::didReceiveServerRedirectForProvisionalLoad(const URL& url)

@@ -88,12 +88,6 @@ WI.SelectionController = class SelectionController extends WI.Object
         if (!this._allowsMultipleSelection)
             extendSelection = false;
 
-        if (this.hasSelectedItem(item)) {
-            if (!extendSelection)
-                this._deselectAllAndSelect(item);
-            return;
-        }
-
         this._lastSelectedItem = item;
         this._shiftAnchorItem = null;
 
@@ -101,6 +95,21 @@ WI.SelectionController = class SelectionController extends WI.Object
         newItems.add(item);
 
         this._updateSelectedItems(newItems);
+    }
+
+    selectItems(items)
+    {
+        console.assert(this._allowsMultipleSelection, "Cannot select multiple items with multiple selection disabled.");
+        if (!this._allowsMultipleSelection)
+            return;
+
+        if (!this._lastSelectedItem || !items.has(this._lastSelectedItem))
+            this._lastSelectedItem = items.lastValue;
+
+        if (!this._shiftAnchorItem || !items.has(this._shiftAnchorItem))
+            this._shiftAnchorItem = this._lastSelectedItem;
+
+        this._updateSelectedItems(items);
     }
 
     deselectItem(item)
@@ -150,15 +159,11 @@ WI.SelectionController = class SelectionController extends WI.Object
         if (!this._allowsMultipleSelection)
             return;
 
-        this._lastSelectedItem = this._lastSelectableItem();
+        this.reset();
 
         let newItems = new Set;
-        this._addRange(newItems, this._firstSelectableItem(), this._lastSelectedItem);
-
-        if (!this._shiftAnchorItem)
-            this._shiftAnchorItem = this._lastSelectedItem;
-
-        this._updateSelectedItems(newItems);
+        this._addRange(newItems, this._firstSelectableItem(), this._lastSelectableItem());
+        this.selectItems(newItems);
     }
 
     deselectAll()
@@ -173,20 +178,20 @@ WI.SelectionController = class SelectionController extends WI.Object
 
         let orderedSelection = Array.from(this._selectedItems).sort(this._comparator);
 
-        // Try selecting the item following the selection.
-        let lastSelectedItem = orderedSelection.lastValue;
-        let itemToSelect = this._nextSelectableItem(lastSelectedItem);
+        // Try selecting the item preceding the selection.
+        let firstSelectedItem = orderedSelection[0];
+        let itemToSelect = this._previousSelectableItem(firstSelectedItem);
         if (!itemToSelect) {
-            // If no item exists after the last item in the selection, try selecting
+            // If no item exists before the first item in the selection, try selecting
             // a deselected item (hole) within the selection.
-            itemToSelect = orderedSelection[0];
+            itemToSelect = firstSelectedItem;
             while (itemToSelect && this.hasSelectedItem(itemToSelect))
                 itemToSelect = this._nextSelectableItem(itemToSelect);
 
             if (!itemToSelect || this.hasSelectedItem(itemToSelect)) {
                 // If the selection contains no holes, try selecting the item
-                // preceding the selection.
-                itemToSelect = this._previousSelectableItem(orderedSelection[0]);
+                // following the selection.
+                itemToSelect = this._nextSelectableItem(orderedSelection.lastValue);
             }
         }
 
@@ -297,7 +302,7 @@ WI.SelectionController = class SelectionController extends WI.Object
 
     _deselectAllAndSelect(item)
     {
-        if (!this._selectedItems.size)
+        if (!this._selectedItems.size && !item)
             return;
 
         if (this._selectedItems.size === 1 && this.hasSelectedItem(item))

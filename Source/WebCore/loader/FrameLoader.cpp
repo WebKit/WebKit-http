@@ -372,7 +372,7 @@ void FrameLoader::checkContentPolicy(const ResourceResponse& response, PolicyChe
     }
 
     // FIXME: Validate the policy check identifier.
-    client().dispatchDecidePolicyForResponse(response, activeDocumentLoader()->request(), identifier, WTFMove(function));
+    client().dispatchDecidePolicyForResponse(response, activeDocumentLoader()->request(), identifier, activeDocumentLoader()->downloadAttribute(), WTFMove(function));
 }
 
 void FrameLoader::changeLocation(FrameLoadRequest&& request)
@@ -592,6 +592,8 @@ void FrameLoader::didExplicitOpen()
     // Calling document.open counts as committing the first real document load.
     if (!m_stateMachine.committedFirstRealDocumentLoad())
         m_stateMachine.advanceTo(FrameLoaderStateMachine::DisplayingInitialEmptyDocumentPostCommit);
+
+    m_client.dispatchDidExplicitOpen(m_frame.document() ? m_frame.document()->url() : URL());
     
     // Prevent window.open(url) -- eg window.open("about:blank") -- from blowing away results
     // from a subsequent window.document.open / window.document.write call. 
@@ -1416,7 +1418,7 @@ void FrameLoader::loadURL(FrameLoadRequest&& frameLoadRequest, const String& ref
     if (isSystemPreview)
         request.setSystemPreviewRect(frameLoadRequest.systemPreviewRect());
 #endif
-    loadWithNavigationAction(request, WTFMove(action), lockHistory, newLoadType, WTFMove(formState), allowNavigationToInvalidURL, [this, isRedirect, sameURL, newLoadType, protectedFrame = makeRef(m_frame), completionHandler = completionHandlerCaller.release()] () mutable {
+    loadWithNavigationAction(request, WTFMove(action), lockHistory, newLoadType, WTFMove(formState), allowNavigationToInvalidURL, frameLoadRequest.downloadAttribute(), [this, isRedirect, sameURL, newLoadType, protectedFrame = makeRef(m_frame), completionHandler = completionHandlerCaller.release()] () mutable {
         if (isRedirect) {
             m_quickRedirectComing = false;
             if (m_provisionalDocumentLoader)
@@ -1492,11 +1494,12 @@ void FrameLoader::load(FrameLoadRequest&& request)
     load(loader.get());
 }
 
-void FrameLoader::loadWithNavigationAction(const ResourceRequest& request, NavigationAction&& action, LockHistory lockHistory, FrameLoadType type, RefPtr<FormState>&& formState, AllowNavigationToInvalidURL allowNavigationToInvalidURL, CompletionHandler<void()>&& completionHandler)
+void FrameLoader::loadWithNavigationAction(const ResourceRequest& request, NavigationAction&& action, LockHistory lockHistory, FrameLoadType type, RefPtr<FormState>&& formState, AllowNavigationToInvalidURL allowNavigationToInvalidURL, const String& downloadAttribute, CompletionHandler<void()>&& completionHandler)
 {
     RELEASE_LOG_IF_ALLOWED("loadWithNavigationAction: frame load started (frame = %p, main = %d)", &m_frame, m_frame.isMainFrame());
 
     Ref<DocumentLoader> loader = m_client.createDocumentLoader(request, defaultSubstituteDataForURL(request.url()));
+    loader->setDownloadAttribute(downloadAttribute);
     applyShouldOpenExternalURLsPolicyToNewDocumentLoader(m_frame, loader, action.initiatedByMainFrame(), action.shouldOpenExternalURLsPolicy());
 
     if (lockHistory == LockHistory::Yes && m_documentLoader)
@@ -2462,7 +2465,8 @@ void FrameLoader::checkLoadCompleteForThisFrame()
             if (!pdl->isLoadingInAPISense() || pdl->isStopping()) {
                 RELEASE_LOG_IF_ALLOWED("checkLoadCompleteForThisFrame: Failed provisional load (frame = %p, main = %d, isTimeout = %d, isCancellation = %d, errorCode = %d)", &m_frame, m_frame.isMainFrame(), error.isTimeout(), error.isCancellation(), error.errorCode());
                 m_provisionalLoadErrorBeingHandledURL = m_provisionalDocumentLoader->url();
-                m_client.dispatchDidFailProvisionalLoad(error);
+
+                m_client.dispatchDidFailProvisionalLoad(error, history().provisionalItem() ? WillContinueLoading::Yes : WillContinueLoading::No);
 #if ENABLE(CONTENT_FILTERING)
                 if (auto contentFilter = pdl->contentFilter())
                     contentFilter->handleProvisionalLoadFailure(error);
@@ -3016,7 +3020,7 @@ void FrameLoader::loadPostRequest(FrameLoadRequest&& request, const String& refe
     if (!frameName.isEmpty()) {
         // The search for a target frame is done earlier in the case of form submission.
         if (auto* targetFrame = formState ? nullptr : findFrameForNavigation(frameName)) {
-            targetFrame->loader().loadWithNavigationAction(workingResourceRequest, WTFMove(action), lockHistory, loadType, WTFMove(formState), allowNavigationToInvalidURL, WTFMove(completionHandler));
+            targetFrame->loader().loadWithNavigationAction(workingResourceRequest, WTFMove(action), lockHistory, loadType, WTFMove(formState), allowNavigationToInvalidURL, { }, WTFMove(completionHandler));
             return;
         }
 
@@ -3029,7 +3033,7 @@ void FrameLoader::loadPostRequest(FrameLoadRequest&& request, const String& refe
 
     // must grab this now, since this load may stop the previous load and clear this flag
     bool isRedirect = m_quickRedirectComing;
-    loadWithNavigationAction(workingResourceRequest, WTFMove(action), lockHistory, loadType, WTFMove(formState), allowNavigationToInvalidURL, [this, isRedirect, protectedFrame = makeRef(m_frame), completionHandler = WTFMove(completionHandler)] () mutable {
+    loadWithNavigationAction(workingResourceRequest, WTFMove(action), lockHistory, loadType, WTFMove(formState), allowNavigationToInvalidURL, { }, [this, isRedirect, protectedFrame = makeRef(m_frame), completionHandler = WTFMove(completionHandler)] () mutable {
         if (isRedirect) {
             m_quickRedirectComing = false;
             if (m_provisionalDocumentLoader)

@@ -372,6 +372,7 @@ Modules/webgpu/WebGPURenderPipelineDescriptor.cpp
 Modules/webgpu/WebGPUSampler.cpp
 Modules/webgpu/WebGPUShaderModule.cpp
 Modules/webgpu/WebGPUSwapChain.cpp
+Modules/webgpu/WebGPUSwapChainDescriptor.cpp
 Modules/webgpu/WebGPUTexture.cpp
 Modules/webgpu/WebGPUTextureView.cpp
 
@@ -416,7 +417,6 @@ accessibility/AccessibilityTableHeaderContainer.cpp
 accessibility/AccessibilityTableRow.cpp
 accessibility/AccessibilityTree.cpp
 accessibility/AccessibilityTreeItem.cpp
-accessibility/AccessibleSetValueEvent.cpp
 accessibility/isolatedtree/AXIsolatedTree.cpp
 accessibility/isolatedtree/AXIsolatedTreeNode.cpp
 
@@ -426,7 +426,6 @@ animation/AnimationTimeline.cpp
 animation/CSSAnimation.cpp
 animation/CSSTransition.cpp
 animation/DeclarativeAnimation.cpp
-animation/DocumentAnimationScheduler.cpp
 animation/DocumentTimeline.cpp
 animation/KeyframeEffect.cpp
 animation/WebAnimation.cpp
@@ -859,6 +858,7 @@ dom/EventTarget.cpp
 dom/ExceptionData.cpp
 dom/ExtensionStyleSheets.cpp
 dom/FocusEvent.cpp
+dom/FullscreenManager.cpp
 dom/GenericEventQueue.cpp
 dom/IdTargetObserver.cpp
 dom/IdTargetObserverRegistry.cpp
@@ -1532,6 +1532,7 @@ page/ProcessWarming.cpp
 page/Quirks.cpp
 page/RemoteDOMWindow.cpp
 page/RemoteFrame.cpp
+page/RenderingUpdateScheduler.cpp
 page/ResizeObservation.cpp
 page/ResizeObserver.cpp
 page/ResourceUsageOverlay.cpp
@@ -2487,7 +2488,6 @@ JSHTMLElementWrapperFactory.cpp
 JSAbortController.cpp
 JSAbortSignal.cpp
 JSAbstractWorker.cpp
-JSAccessibleSetValueEvent.cpp
 JSAddressErrors.cpp
 JSAesCbcCfbParams.cpp
 JSAesCtrParams.cpp

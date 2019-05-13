@@ -49,6 +49,7 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
 
         this._highlightedAttributes = new Set;
         this._recentlyModifiedAttributes = new Map;
+        this._closeTagTreeElement = null;
 
         node.addEventListener(WI.DOMNode.Event.EnabledPseudoClassesChanged, this._nodePseudoClassesDidChange, this);
 
@@ -105,6 +106,8 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
             parentElement = parentElement.parent;
         }
     }
+
+    get closeTagTreeElement() { return this._closeTagTreeElement; }
 
     revealAndHighlight()
     {
@@ -459,6 +462,7 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
         if (this._updateChildrenInProgress || !this.treeOutline._visible)
             return;
 
+        this._closeTagTreeElement = null;
         this._updateChildrenInProgress = true;
 
         var node = this.representedObject;
@@ -534,7 +538,7 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
         // Insert closing tag tree element.
         var lastChild = this.children.lastValue;
         if (node.nodeType() === Node.ELEMENT_NODE && (!lastChild || !lastChild._elementCloseTag))
-            this.insertChildElement(this.representedObject, this.children.length, true);
+            this._closeTagTreeElement = this.insertChildElement(this.representedObject, this.children.length, true);
 
         // We want to restore the original selection and tree scroll position after a full refresh, if possible.
         if (fullRefresh && elementToSelect) {
@@ -602,6 +606,9 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
             return;
 
         this.updateTitle();
+
+        for (let treeElement of this.children)
+            treeElement.updateSelectionArea();
     }
 
     oncollapse()
@@ -729,11 +736,8 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
         let isNonShadowEditable = !node.isInUserAgentShadowTree() && this.editable;
         let attached = node.attached;
 
-        if (event.target && event.target.tagName === "A") {
-            let url = event.target.href;
-            let frame = WI.networkManager.frameForIdentifier(node.frameIdentifier);
-            WI.appendContextMenuItemsForURL(contextMenu, url, {frame});
-        }
+        if (event.target && event.target.tagName === "A")
+            WI.appendContextMenuItemsForURL(contextMenu, event.target.href, {frame: node.frame});
 
         contextMenu.appendSeparator();
 
@@ -1269,7 +1273,7 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
             attrSpanElement.append("=\u200B\"");
 
         if (name === "src" || /\bhref\b/.test(name)) {
-            let baseURL = node.ownerDocument ? node.ownerDocument.documentURL : null;
+            let baseURL = node.frame ? node.frame.url : null;
             let rewrittenURL = absoluteURL(value, baseURL);
             value = value.insertWordBreakCharacters();
             if (!rewrittenURL) {
@@ -1285,7 +1289,7 @@ WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
                 attrSpanElement.appendChild(attrValueElement);
             }
         } else if (name === "srcset") {
-            let baseURL = node.ownerDocument ? node.ownerDocument.documentURL : null;
+            let baseURL = node.frame ? node.frame.url : null;
             attrValueElement = attrSpanElement.createChild("span", "html-attribute-value");
 
             // Leading whitespace.

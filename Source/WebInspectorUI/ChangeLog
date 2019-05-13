@@ -1,3 +1,1070 @@
+2019-04-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r238168): Network: preserve log doesn't show main frame main resource changes
+        https://bugs.webkit.org/show_bug.cgi?id=197220
+        <rdar://problem/49960464>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype._addCollection):
+        (WI.NetworkTableContentView.prototype._resetCollection): Added.
+        (WI.NetworkTableContentView.prototype._changeCollection):
+        (WI.NetworkTableContentView.prototype._mainResourceDidChange):
+        We want to add the frame's main resource in the case that it's the main frame, but we also
+        want to clear the main collection of data (e.g. if viewing an imported HAR).
+        Drive-by: `_groupByDOMNodeNavigationItem` was renamed in a previous patch.
+
+2019-04-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: support drag/drop for importing
+        https://bugs.webkit.org/show_bug.cgi?id=197221
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NetworkTabContentView.js:
+        (WI.NetworkTabContentView.prototype.async.handleFileDrop): Added.
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.processHAR): Added.
+        (WI.NetworkTableContentView.prototype._importHAR):
+
+        * UserInterface/Base/FileUtilities.js:
+        (WI.FileUtilities.async readText):
+        Only `await` if the result is a `Promise`.
+
+2019-04-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: null is not an object (evaluating 'this.ownerDocument.frameIdentifier')
+        https://bugs.webkit.org/show_bug.cgi?id=196420
+        <rdar://problem/49444205>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode):
+        (WI.DOMNode.prototype.get frame): Added.
+        (WI.DOMNode.prototype.get frameIdentifier): Deleted.
+        Modify the existing `frameId` to represent the owner frame of the node, rather than the
+        frame it holds (in the case of an `<iframe>`).
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager.prototype.domBreakpointsForNode):
+        (WI.DOMDebuggerManager.prototype._detachDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype._resolveDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype._nodeInserted):
+        (WI.DOMDebuggerManager.prototype._nodeRemoved):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype._populateTagContextMenu):
+        (WI.DOMTreeElement.prototype._buildAttributeDOM):
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole.prototype._selectExecutionContext):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._highlightNodesWithSelector):
+
+2019-04-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: no obvious way of switching to the overview when viewing an imported recording
+        https://bugs.webkit.org/show_bug.cgi?id=197178
+        <rdar://problem/50106641>
+
+        Reviewed by Timothy Hatcher.
+
+        Expand the idea of "imported" recordings to include "saved" recordings, ones whose
+        underlying <canvas> was destroyed.
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView):
+        (WI.CanvasTabContentView.prototype.attached):
+        (WI.CanvasTabContentView.prototype._removeCanvas):
+        (WI.CanvasTabContentView.prototype._addRecording):
+        (WI.CanvasTabContentView.prototype._handleRecordingSavedOrStopped): Added.
+        (WI.CanvasTabContentView.prototype.initialLayout): Deleted.
+        (WI.CanvasTabContentView.prototype._recordingImportedOrStopped): Deleted.
+        Make the "Saved Recordings" folder a child of the "Overview" so that the "Overview" path
+        component is always visible/clickable.
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView):
+        (WI.CanvasOverviewContentView.prototype.contentViewAdded):
+        (WI.CanvasOverviewContentView.prototype.attached):
+        (WI.CanvasOverviewContentView.prototype.detached):
+        (WI.CanvasOverviewContentView.prototype._addSavedRecording): Added.
+        (WI.CanvasOverviewContentView.prototype._handleRecordingSaved): Added.
+        (WI.CanvasOverviewContentView.prototype._handleSavedRecordingClicked): Added.
+        * UserInterface/Views/CanvasOverviewContentView.css:
+        (.content-view.canvas-overview .content-view.canvas.saved-recordings): Added.
+        (.content-view.canvas-overview .content-view.canvas.saved-recordings .tree-outline): Added.
+        (.content-view.canvas-overview .content-view.canvas.saved-recordings .tree-outline > .item.recording > .icon): Added.
+        Add a card for "Saved Recordings" that mimics the style of regular canvas cards.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.get savedRecordings): Added.
+        (WI.CanvasManager.prototype.async processJSON):
+        (WI.CanvasManager.prototype.disable):
+        (WI.CanvasManager.prototype._removeCanvas):
+        (WI.CanvasManager.prototype.get importedRecordings): Deleted.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-04-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Sources: auto-continue breakpoint triangle is incorrectly positioned
+        https://bugs.webkit.org/show_bug.cgi?id=197179
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/BreakpointTreeElement.css:
+        (.item.breakpoint .status): Added.
+        (.item.breakpoint .status > .status-image.auto-continue::after):
+
+2019-04-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: CPU: remove extra border under last section
+        https://bugs.webkit.org/show_bug.cgi?id=197120
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CPUTimelineView.css:
+        (.timeline-view.cpu > .content > .overview):
+        (.timeline-view.cpu > .content > .overview:not(:last-child)): Added.
+
+2019-04-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: adjust default Media timeline column widths
+        https://bugs.webkit.org/show_bug.cgi?id=197114
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/MediaTimelineView.js:
+        (WI.MediaTimelineView):
+
+2019-04-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION (r244155): pressing down expands folders in trees
+        https://bugs.webkit.org/show_bug.cgi?id=197051
+        <rdar://problem/50006414>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.selectionControllerPreviousSelectableItem):
+        (WI.TreeOutline.prototype.selectionControllerNextSelectableItem):
+        Skip hidden items when traversing the tree.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype.ondelete):
+        Reveal all items about to be deleted so that the above change won't skip any siblings.
+
+2019-04-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: enable WebGL2 for inspector page
+        https://bugs.webkit.org/show_bug.cgi?id=196932
+        <rdar://problem/49916213>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction._prototypeForType):
+        (WI.RecordingAction.prototype.process.getContent):
+        Add additional checks for `ImageBitmapRenderingContext` and `WebGLRenderingContext`.
+
+2019-04-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Navigating to resource sometimes shows different resource
+        https://bugs.webkit.org/show_bug.cgi?id=195978
+        <rdar://problem/49043191>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel.prototype.cancelRestoringState):
+        Reset _pendingViewStateCookie so _checkElementsForPendingViewStateCookie could exit early.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype.initialLayout):
+        (WI.ResourceSidebarPanel.prototype._mainFrameMainResourceDidChange):
+        (WI.ResourceSidebarPanel.prototype._createMainFrameTreeElement):
+        Don't try to change content view on initialLayout.
+
+2019-04-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Include # of Network Requests in the Statistics section
+        https://bugs.webkit.org/show_bug.cgi?id=197039
+        <rdar://problem/49996299>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype.initialLayout):
+        (WI.CPUTimelineView.prototype._computeStatisticsData):
+        (WI.CPUTimelineView.prototype._clearStatistics):
+        Add the number of network requests started in the selected range.
+
+2019-04-17  Timothy Hatcher  <timothy@apple.com>
+
+        Rename `supported-color-schemes` to `color-scheme`.
+        https://bugs.webkit.org/show_bug.cgi?id=197016
+        rdar://problem/49980259
+
+        Reviewed by Simon Fraser.
+
+        * UserInterface/Views/Main.css:
+        (:root):
+
+2019-04-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: imported recordings aren't processed when the navigation sidebar is collapsed
+        https://bugs.webkit.org/show_bug.cgi?id=196921
+        <rdar://problem/49910815>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype.initialLayout):
+
+2019-04-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Extension scripts with parse errors do not show up in Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=196996
+        <rdar://problem/47054804>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype.scriptDidFail):
+        Create a LocalScript that can be linked to but ignore it
+        if we already have a Resource for the URL.
+
+        * UserInterface/Protocol/DebuggerObserver.js:
+        (WI.DebuggerObserver.prototype.scriptFailedToParse):
+        Let DebuggerManager potentially create a script for this.
+
+        * UserInterface/Models/Script.js:
+        (WI.Script):
+        Local scripts provide a null id and id is not required below.
+
+2019-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Worker imported scripts not showing up in Open Quickly dialog if inspector open after workers exist
+        https://bugs.webkit.org/show_bug.cgi?id=196986
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog.prototype._addScriptsForTarget):
+        We were unnecessary skipping Scripts that do not have a sourceURL but do
+        have a URL, which ends up being Worker populated scripts.
+
+2019-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r238168) Web Inspector: <iframe src=...> request does not show up in Network Tab
+        https://bugs.webkit.org/show_bug.cgi?id=193505
+        <rdar://problem/47325957>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype._handleFrameWasAdded):
+        Handle new frames by adding the frame's main resource.
+
+2019-04-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: TypeError: null is not an object (evaluating 'this._contentViewContainer.currentContentView.selectionPathComponents')
+        https://bugs.webkit.org/show_bug.cgi?id=196936
+        <rdar://problem/49917789>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WI.HeapAllocationsTimelineView.prototype.showHeapSnapshotTimelineRecord):
+        (WI.HeapAllocationsTimelineView.prototype.get navigationItems):
+        (WI.HeapAllocationsTimelineView.prototype.get selectionPathComponents):
+        Drive-by: when selecting a record, force it to be visible before selecting it, as otherwise
+        the selection events won't be fired.
+
+        * UserInterface/Views/HeapAllocationsTimelineOverviewGraph.js:
+        (WI.HeapAllocationsTimelineOverviewGraph.prototype.layout):
+        Drive-by: ensure that clicking on a [S] heap snapshot record icon actually selects the record.
+
+2019-04-16  Devin Rousso  <drousso@apple.com>
+
+        Unprefix -webkit-sticky
+        https://bugs.webkit.org/show_bug.cgi?id=196962
+        <rdar://problem/40903458>
+
+        Reviewed by Simon Fraser.
+
+        Replace all `-webkit-sticky` with `sticky`.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        * UserInterface/Views/AuditTestCaseContentView.css:
+        (.content-view-container > .content-view.audit-test-case > header):
+        * UserInterface/Views/AuditTestGroupContentView.css:
+        (.content-view.audit-test-group.contains-test-case > header):
+        * UserInterface/Views/ChangesDetailsSidebarPanel.css:
+        (.changes-panel .resource-section > .header):
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .header):
+        * UserInterface/Views/NetworkDetailView.css:
+        (.network-detail .navigation-bar):
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings .navigation-bar):
+        * UserInterface/Views/Table.css:
+        (.table > .header):
+
+2019-04-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: remove unused WI.DOMTreeDataGrid
+        https://bugs.webkit.org/show_bug.cgi?id=196958
+        <rdar://problem/49931383>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DOMTreeDataGrid.css: Removed.
+        * UserInterface/Views/DOMTreeDataGrid.js: Removed.
+        * UserInterface/Views/DOMTreeDataGridNode.js: Removed.
+        * UserInterface/Main.html:
+
+2019-04-16  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Storage: values truncated in Local/Session table
+        https://bugs.webkit.org/show_bug.cgi?id=178318
+        <rdar://problem/34998581>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid):
+        (WI.DataGrid.prototype._copyTextForDataGridNode):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WI.TimelineDataGrid):
+        Refactor `WI.DataGrid` constructor to allow for more optional arguments.
+        Introduce a new optional argument `copyCallback` that can be used to override the text that
+        would be copied for any `WI.DataGridNode` in any column.
+
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WI.DOMStorageContentView):
+        (WI.DOMStorageContentView.prototype.itemAdded):
+        (WI.DOMStorageContentView.prototype.itemUpdated):
+        (WI.DOMStorageContentView.prototype._populate):
+        (WI.DOMStorageContentView.prototype._dataGridCopy): Added.
+        Save the full non-truncated value as part of the `WI.DataGridNode`'s `data`. When copying,
+        use the full non-truncated value instead of what was shown in the DOM.
+
+2019-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DOM Nodes should not show $0 when selected in Console area
+        https://bugs.webkit.org/show_bug.cgi?id=196953
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        Enable showing the last selected element.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        Make parameters explicit. Drop "selectable" which was always true.
+        And add a new option for adding a class name.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom.show-last-selected li.last-selected > span::after):
+        (.tree-outline.dom.show-last-selected:focus li.last-selected > span::after):
+        Only show the "= $0" for a DOM tree that has enabled showing the last selected element.
+
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-node > .tree-outline.dom li.selected .selection-area):
+        Don't show the selection-area for a console formatted node.
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: update sheet rect whenever inspector window size changes
+        https://bugs.webkit.org/show_bug.cgi?id=196942
+        <rdar://problem/49920241>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        (WI._windowResized):
+        (WI._updateSheetRect): Added.
+
+2019-04-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Unreviewed, fix typo in a comment.
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WI.SearchSidebarPanel.prototype.performSearch):
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Heap: don't use recursion when calculating root paths
+        https://bugs.webkit.org/show_bug.cgi?id=196890
+        <rdar://problem/49870751>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshot.js:
+        (HeapSnapshot.prototype.shortestGCRootPath):
+        (HeapSnapshot.prototype._determineGCRootPaths):
+        (HeapSnapshot.prototype._gcRootPathes.visitNode): Deleted.
+        (HeapSnapshot.prototype._gcRootPathes): Deleted.
+
+2019-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: SameSite parsing should be stricter
+        https://bugs.webkit.org/show_bug.cgi?id=196927
+        <rdar://problem/42291601>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/Cookie.js:
+        (WI.Cookie.parseSameSiteAttributeValue):
+
+2019-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: CPU Usage Timeline - Energy impact popover flickers
+        https://bugs.webkit.org/show_bug.cgi?id=196931
+        <rdar://problem/49569122>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype.initialLayout):
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r244268): Canvas: navigation sidebar no longer appears
+        https://bugs.webkit.org/show_bug.cgi?id=196920
+        <rdar://problem/49910618>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WI.ContentBrowserTabContentView.prototype.showNavigationSidebarPanel):
+        Now that we no longer call `addSubview` when adding a sidebar panel, we can't check to see
+        if `parentSidebar` has been set, as that is just an alias for `parentView`.
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOMDebugger: move breakpoint storage to use `WI.ObjectStore`
+        https://bugs.webkit.org/show_bug.cgi?id=196231
+        <rdar://problem/49236864>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager):
+        (WI.DOMDebuggerManager.prototype.addDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeDOMBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeDOMBreakpointsForNode):
+        (WI.DOMDebuggerManager.prototype.addEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype.addURLBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeURLBreakpoint):
+        (WI.DOMDebuggerManager.prototype._handleDOMBreakpointDisabledStateChanged):
+        (WI.DOMDebuggerManager.prototype._handleEventBreakpointDisabledStateChanged):
+        (WI.DOMDebuggerManager.prototype._handleURLBreakpointDisabledStateChanged):
+        (WI.DOMDebuggerManager.prototype._saveDOMBreakpoints): Deleted.
+        (WI.DOMDebuggerManager.prototype._saveEventBreakpoints): Deleted.
+        (WI.DOMDebuggerManager.prototype._saveURLBreakpoints): Deleted.
+
+        * UserInterface/Models/DOMBreakpoint.js:
+        (WI.DOMBreakpoint.prototype.saveIdentityToCookie):
+        (WI.DOMBreakpoint.prototype.toJSON): Added.
+        (WI.DOMBreakpoint.prototype.get serializableInfo): Deleted.
+        * UserInterface/Models/EventBreakpoint.js:
+        (WI.EventBreakpoint.prototype.saveIdentityToCookie):
+        (WI.EventBreakpoint.prototype.toJSON): Added.
+        (WI.EventBreakpoint.prototype.get serializableInfo): Deleted.
+        * UserInterface/Models/URLBreakpoint.js:
+        (WI.URLBreakpoint.prototype.saveIdentityToCookie):
+        (WI.URLBreakpoint.prototype.toJSON): Added.
+        (WI.URLBreakpoint.prototype.get serializableInfo): Deleted.
+        Replace `get serializableInfo` with `toJSON` as required by `WI.ObjectStore`.
+
+        * UserInterface/Base/ObjectStore.js:
+        (WI.ObjectStore._open):
+        Increment version.
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: drag/drop over the sidebar should load an imported file in Canvas/Audit tab
+        https://bugs.webkit.org/show_bug.cgi?id=196873
+        <rdar://problem/49858190>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        (WI._handleDragOver): Added.
+        (WI._handleDrop): Added.
+        (WI._dragOver): Deleted.
+        * UserInterface/Views/AuditTabContentView.js:
+        (WI.AuditTabContentView):
+        (WI.AuditTabContentView.prototype.async handleFileDrop): Added.
+        (WI.AuditTabContentView.prototype._handleDragOver): Deleted.
+        (WI.AuditTabContentView.prototype._handleDrop): Deleted.
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView):
+        (WI.CanvasTabContentView.prototype.async handleFileDrop): Added.
+        (WI.CanvasTabContentView.prototype._handleDragOver): Deleted.
+        (WI.CanvasTabContentView.prototype._handleDrop): Deleted.
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView.prototype.async handleFileDrop): Added.
+        Check whether the current tab is able to handle a file drop, and if so, don't prevent the
+        drag from occuring. This now allows the user to drop anywhere on the Web Inspector area to
+        import files, so long as the relevant tab is currently selected.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.async processJSON): Added.
+        (WI.CanvasManager.prototype.processJSON): Deleted.
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype.async processJSON): Added.
+        (WI.TimelineManager.prototype.processJSON): Deleted.
+        Make `async` to match other `processJSON` functions.
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Heap: logging an object from a snapshot shouldn't use the "special" style if the object is reachable
+        https://bugs.webkit.org/show_bug.cgi?id=196889
+        <rdar://problem/49870693>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WI.HeapSnapshotInstanceDataGridNode.logHeapSnapshotNode):
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: deleting a special breakpoint should disable it
+        https://bugs.webkit.org/show_bug.cgi?id=196737
+        <rdar://problem/49740680>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WI.BreakpointTreeElement.prototype.ondelete):
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: null is not an object (evaluating 'this.selectedTreeElement.reveal')
+        https://bugs.webkit.org/show_bug.cgi?id=196804
+        <rdar://problem/49800708>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype.update):
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: Can't find variable: WebGL2RenderingContext
+        https://bugs.webkit.org/show_bug.cgi?id=196874
+        <rdar://problem/49858912>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording.prototype.createContext):
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.prototype.process.getContent):
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: sidebar panels shouldn't be added as subviews unless visible
+        https://bugs.webkit.org/show_bug.cgi?id=196888
+        <rdar://problem/49870659>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/Sidebar.js:
+        (WI.Sidebar.prototype.insertSidebarPanel):
+        (WI.Sidebar.prototype.removeSidebarPanel):
+        (WI.Sidebar.prototype.set selectedSidebarPanel):
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: event listener change events should only be fired for the selected node and it's ancestors
+        https://bugs.webkit.org/show_bug.cgi?id=196887
+        <rdar://problem/49870627>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode.prototype.getEventListeners):
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: replace all uses of `this` with `WI` in Main.js/Test.js
+        https://bugs.webkit.org/show_bug.cgi?id=196795
+        <rdar://problem/49796618>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Test/Test.js:
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Heap: snapshots taken manually don't appear in the list
+        https://bugs.webkit.org/show_bug.cgi?id=196900
+        <rdar://problem/49880278>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WI.HeapAllocationsTimelineView):
+        (WI.HeapAllocationsTimelineView.prototype.layout):
+        (WI.HeapAllocationsTimelineView.prototype._importButtonNavigationItemClicked):
+        (WI.HeapAllocationsTimelineView.prototype._takeHeapSnapshotClicked):
+        Drive-by: only show heap snapshots for the selected range.
+
+        * UserInterface/Views/TimelineView.js:
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        (WI.TimelineRecordingContentView.prototype._handleTimelineViewNeedsEntireSelectedRange): Added.
+        Drive-by: taking (or importing) a heap snapshot should select the entire range so that the
+        new record will appear in the list of heap snapshots.
+
+2019-04-15  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION (r244157): Timelines: ruler size appears wrong on first layout
+        https://bugs.webkit.org/show_bug.cgi?id=196901
+        <rdar://problem/49880539>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/View.js:
+        (WI.View.prototype._layoutSubtree):
+        Ensure that the forced override of the layout reason during the initial layout doesn't
+        affect subviews.
+
+        * UserInterface/Views/ConsoleDrawer.js:
+        (WI.ConsoleDrawer.prototype.sizeDidChange): Added.
+        (WI.ConsoleDrawer.prototype.layout): Deleted.
+        * UserInterface/Views/ConsolePrompt.js:
+        (WI.ConsolePrompt.prototype.sizeDidChange): Added.
+        (WI.ConsolePrompt.prototype.layout): Deleted.
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView.prototype.sizeDidChange): Added.
+        (WI.DOMTreeContentView.prototype.layout):
+        * UserInterface/Views/NavigationBar.js:
+        (WI.NavigationBar.prototype.sizeDidChange): Added.
+        (WI.NavigationBar.prototype.layout):
+        (WI.NavigationBar.prototype._updateContent): Added.
+        (WI.NavigationBar.prototype._updateContent.forceItemHidden): Added.
+        (WI.NavigationBar.prototype._updateContent.isDivider): Added.
+        (WI.NavigationBar.prototype._updateContent.calculateVisibleItemWidth): Added.
+        (WI.NavigationBar.prototype.layout.forceItemHidden): Deleted.
+        (WI.NavigationBar.prototype.layout.isDivider): Deleted.
+        (WI.NavigationBar.prototype.layout.calculateVisibleItemWidth): Deleted.
+        * UserInterface/Views/TabBrowser.js:
+        (WI.TabBrowser.prototype.sizeDidChange): Added.
+        (WI.TabBrowser.prototype.layout): Deleted.
+        Move logic in `layout` to `sizeDidChange` where applicable.
+
+2019-04-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r244195): Timelines: unable to take heap snapshot
+        https://bugs.webkit.org/show_bug.cgi?id=196832
+        <rdar://problem/49828862>
+
+        Reviewed by Simon Fraser.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype.heapSnapshotAdded):
+        (WI.TimelineManager.prototype._addRecord):
+        Heap snapshots can be taken outside of a timeline recording, so remove the early return (and
+        assertion) that checks for an active recording before adding the heap snapshot record.
+
+2019-04-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: can't reliably stop/start a recording
+        https://bugs.webkit.org/show_bug.cgi?id=196778
+        <rdar://problem/47606798>
+
+        Reviewed by Timothy Hatcher.
+
+        Rather than have a binary state of capturing/not-capturing, we should use a four state:
+         1. inactive (when the backend has stopped capturing)
+         2. starting (when the frontend requests capturing to start)
+         3. active (when the backend has started capturing)
+         4. stopping (when the frontend requests capturing to stop)
+
+        Capturing is considered "on" when not in an "inactive" state. Prevent the frontend from
+        starting/stopping capturing unless we're in a "stable" ("inactive" or "active") state, not a
+        "transition" ("starting" or "stopping") state.
+
+        One "side effect" of this change is that since the capturing is considered active until the
+        backend has stopped capturing, we will continue to process records in the frontend even if
+        the frontend has requested to stop capturing. <https://webkit.org/b/152904>
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager):
+        (WI.TimelineManager.prototype.get capturingState): Added.
+        (WI.TimelineManager.prototype.reset):
+        (WI.TimelineManager.prototype.get activeRecording):
+        (WI.TimelineManager.prototype.set autoCaptureOnPageLoad):
+        (WI.TimelineManager.prototype.isCapturing):
+        (WI.TimelineManager.prototype.startCapturing):
+        (WI.TimelineManager.prototype.stopCapturing):
+        (WI.TimelineManager.prototype.processJSON):
+        (WI.TimelineManager.prototype.capturingStarted):
+        (WI.TimelineManager.prototype.capturingStopped):
+        (WI.TimelineManager.prototype.autoCaptureStarted):
+        (WI.TimelineManager.prototype.eventRecorded):
+        (WI.TimelineManager.prototype.pageDOMContentLoadedEventFired):
+        (WI.TimelineManager.prototype.pageLoadEventFired):
+        (WI.TimelineManager.prototype.cpuProfilerTrackingUpdated):
+        (WI.TimelineManager.prototype.cpuProfilerTrackingCompleted):
+        (WI.TimelineManager.prototype.memoryTrackingUpdated):
+        (WI.TimelineManager.prototype.memoryTrackingCompleted):
+        (WI.TimelineManager.prototype.heapTrackingStarted):
+        (WI.TimelineManager.prototype.heapTrackingCompleted):
+        (WI.TimelineManager.prototype.heapSnapshotAdded):
+        (WI.TimelineManager.prototype._updateCapturingState): Added.
+        (WI.TimelineManager.prototype._processRecord):
+        (WI.TimelineManager.prototype._processEvent):
+        (WI.TimelineManager.prototype._loadNewRecording):
+        (WI.TimelineManager.prototype._addRecord):
+        (WI.TimelineManager.prototype._attemptAutoCapturingForFrame):
+        (WI.TimelineManager.prototype._legacyAttemptStartAutoCapturingForFrame):
+        (WI.TimelineManager.prototype._stopAutoRecordingSoon):
+        (WI.TimelineManager.prototype._resetAutoRecordingDeadTimeTimeout):
+        (WI.TimelineManager.prototype._resourceWasAdded):
+        (WI.TimelineManager.prototype._garbageCollected):
+        (WI.TimelineManager.prototype._memoryPressure):
+        (WI.TimelineManager.prototype._handleTimelinesAutoStopSettingChanged):
+        (WI.TimelineManager.prototype.scriptProfilerTrackingCompleted):
+        (WI.TimelineManager.prototype._handleDOMNodeDidFireEvent):
+        (WI.TimelineManager.prototype._handleDOMNodeLowPowerChanged):
+        (WI.TimelineManager.prototype.unloadRecording): Deleted.
+        (WI.TimelineManager.prototype.programmaticCaptureStarted): Deleted.
+        (WI.TimelineManager.prototype.programmaticCaptureStopped): Deleted.
+        (WI.TimelineManager.prototype.scriptProfilerProgrammaticCaptureStarted): Deleted.
+        (WI.TimelineManager.prototype.scriptProfilerProgrammaticCaptureStopped): Deleted.
+
+        * UserInterface/Protocol/ScriptProfilerObserver.js:
+        (WI.ScriptProfilerObserver.prototype.trackingComplete):
+        (WI.ScriptProfilerObserver.prototype.programmaticCaptureStarted):
+        (WI.ScriptProfilerObserver.prototype.programmaticCaptureStopped):
+        * UserInterface/Protocol/TimelineObserver.js:
+        (WI.TimelineObserver.prototype.programmaticCaptureStarted):
+        (WI.TimelineObserver.prototype.programmaticCaptureStopped):
+        It is possible to determine when programmatic capturing starts/stops in the frontend based
+        on the state when the backend causes the state to change, such as if the state is "inactive"
+        when the frontend is told that the backend has started capturing.
+
+        * UserInterface/Protocol/CPUProfilerObserver.js:
+        (WI.CPUProfilerObserver.prototype.trackingComplete):
+        * UserInterface/Protocol/MemoryObserver.js:
+        (WI.MemoryObserver.prototype.trackingComplete):
+        Send an end timestamp to match other instruments.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager):
+        (WI.DebuggerManager.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.DebuggerManager.prototype._timelineCapturingWillStart): Deleted.
+        (WI.DebuggerManager.prototype._timelineCapturingStopped): Deleted.
+        * UserInterface/Models/DefaultDashboard.js:
+        (WI.DefaultDashboard):
+        (WI.DefaultDashboard.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.DefaultDashboard.prototype._capturingStopped): Deleted.
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+        (WI.DebuggerSidebarPanel.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.DebuggerSidebarPanel.prototype._timelineCapturingWillStart): Deleted.
+        (WI.DebuggerSidebarPanel.prototype._timelineCapturingStopped): Deleted.
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTimelineCapturingWillStart): Deleted.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTimelineCapturingStopped): Deleted.
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview):
+        (WI.TimelineOverview.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.TimelineOverview.prototype._capturingStarted): Deleted.
+        (WI.TimelineOverview.prototype._capturingStopped): Deleted.
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        (WI.TimelineRecordingContentView.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.TimelineRecordingContentView.prototype._recordingUnloaded):
+        (WI.TimelineRecordingContentView.prototype._capturingStarted): Deleted.
+        (WI.TimelineRecordingContentView.prototype._capturingStopped): Deleted.
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView):
+        (WI.TimelineTabContentView.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.TimelineTabContentView.prototype._capturingStartedOrStopped): Deleted.
+        Use the new single event for all Timelines capture state changes.
+        Prevent the record button from being clicked when capturing is in a transition state.
+
+2019-04-11  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r244158.
+
+        Casued 8 inspector/timeline/ test failures.
+
+        Reverted changeset:
+
+        "Web Inspector: Timelines: can't reliably stop/start a
+        recording"
+        https://bugs.webkit.org/show_bug.cgi?id=196778
+        https://trac.webkit.org/changeset/244158
+
+2019-04-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: save sheet should be anchored underneath the tab bar when detached
+        https://bugs.webkit.org/show_bug.cgi?id=196722
+        <rdar://problem/49613280>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+
+2019-04-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: can't reliably stop/start a recording
+        https://bugs.webkit.org/show_bug.cgi?id=196778
+        <rdar://problem/47606798>
+
+        Reviewed by Timothy Hatcher.
+
+        Rather than have a binary state of capturing/not-capturing, we should use a four state:
+         1. inactive (when the backend has stopped capturing)
+         2. starting (when the frontend requests capturing to start)
+         3. active (when the backend has started capturing)
+         4. stopping (when the frontend requests capturing to stop)
+
+        Capturing is considered "on" when not in an "inactive" state. Prevent the frontend from
+        starting/stopping capturing unless we're in a "stable" ("inactive" or "active") state, not a
+        "transition" ("starting" or "stopping") state.
+
+        One "side effect" of this change is that since the capturing is considered active until the
+        backend has stopped capturing, we will continue to process records in the frontend even if
+        the frontend has requested to stop capturing. <https://webkit.org/b/152904>
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager):
+        (WI.TimelineManager.prototype.get capturingState): Added.
+        (WI.TimelineManager.prototype.reset):
+        (WI.TimelineManager.prototype.get activeRecording):
+        (WI.TimelineManager.prototype.set autoCaptureOnPageLoad):
+        (WI.TimelineManager.prototype.isCapturing):
+        (WI.TimelineManager.prototype.startCapturing):
+        (WI.TimelineManager.prototype.stopCapturing):
+        (WI.TimelineManager.prototype.processJSON):
+        (WI.TimelineManager.prototype.capturingStarted):
+        (WI.TimelineManager.prototype.capturingStopped):
+        (WI.TimelineManager.prototype.autoCaptureStarted):
+        (WI.TimelineManager.prototype.eventRecorded):
+        (WI.TimelineManager.prototype.pageDOMContentLoadedEventFired):
+        (WI.TimelineManager.prototype.pageLoadEventFired):
+        (WI.TimelineManager.prototype.cpuProfilerTrackingUpdated):
+        (WI.TimelineManager.prototype.cpuProfilerTrackingCompleted):
+        (WI.TimelineManager.prototype.memoryTrackingUpdated):
+        (WI.TimelineManager.prototype.memoryTrackingCompleted):
+        (WI.TimelineManager.prototype.heapTrackingStarted):
+        (WI.TimelineManager.prototype.heapTrackingCompleted):
+        (WI.TimelineManager.prototype.heapSnapshotAdded):
+        (WI.TimelineManager.prototype._updateCapturingState): Added.
+        (WI.TimelineManager.prototype._processRecord):
+        (WI.TimelineManager.prototype._processEvent):
+        (WI.TimelineManager.prototype._loadNewRecording):
+        (WI.TimelineManager.prototype._addRecord):
+        (WI.TimelineManager.prototype._attemptAutoCapturingForFrame):
+        (WI.TimelineManager.prototype._legacyAttemptStartAutoCapturingForFrame):
+        (WI.TimelineManager.prototype._stopAutoRecordingSoon):
+        (WI.TimelineManager.prototype._resetAutoRecordingDeadTimeTimeout):
+        (WI.TimelineManager.prototype._mainResourceDidChange):
+        (WI.TimelineManager.prototype._resourceWasAdded):
+        (WI.TimelineManager.prototype._garbageCollected):
+        (WI.TimelineManager.prototype._memoryPressure):
+        (WI.TimelineManager.prototype._handleTimelinesAutoStopSettingChanged):
+        (WI.TimelineManager.prototype.scriptProfilerTrackingCompleted):
+        (WI.TimelineManager.prototype._handleDOMNodeDidFireEvent):
+        (WI.TimelineManager.prototype._handleDOMNodeLowPowerChanged):
+        (WI.TimelineManager.prototype.unloadRecording): Deleted.
+        (WI.TimelineManager.prototype.programmaticCaptureStarted): Deleted.
+        (WI.TimelineManager.prototype.programmaticCaptureStopped): Deleted.
+        (WI.TimelineManager.prototype.scriptProfilerProgrammaticCaptureStarted): Deleted.
+        (WI.TimelineManager.prototype.scriptProfilerProgrammaticCaptureStopped): Deleted.
+
+        * UserInterface/Protocol/ScriptProfilerObserver.js:
+        (WI.ScriptProfilerObserver.prototype.trackingComplete):
+        (WI.ScriptProfilerObserver.prototype.programmaticCaptureStarted):
+        (WI.ScriptProfilerObserver.prototype.programmaticCaptureStopped):
+        * UserInterface/Protocol/TimelineObserver.js:
+        (WI.TimelineObserver.prototype.programmaticCaptureStarted):
+        (WI.TimelineObserver.prototype.programmaticCaptureStopped):
+        It is possible to determine when programmatic capturing starts/stops in the frontend based
+        on the state when the backend causes the state to change, such as if the state is "inactive"
+        when the frontend is told that the backend has started capturing.
+
+        * UserInterface/Protocol/CPUProfilerObserver.js:
+        (WI.CPUProfilerObserver.prototype.trackingComplete):
+        * UserInterface/Protocol/MemoryObserver.js:
+        (WI.MemoryObserver.prototype.trackingComplete):
+        Send an end timestamp to match other instruments.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager):
+        (WI.DebuggerManager.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.DebuggerManager.prototype._timelineCapturingWillStart): Deleted.
+        (WI.DebuggerManager.prototype._timelineCapturingStopped): Deleted.
+        * UserInterface/Models/DefaultDashboard.js:
+        (WI.DefaultDashboard):
+        (WI.DefaultDashboard.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.DefaultDashboard.prototype._capturingStopped): Deleted.
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+        (WI.DebuggerSidebarPanel.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.DebuggerSidebarPanel.prototype._timelineCapturingWillStart): Deleted.
+        (WI.DebuggerSidebarPanel.prototype._timelineCapturingStopped): Deleted.
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTimelineCapturingWillStart): Deleted.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleTimelineCapturingStopped): Deleted.
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview):
+        (WI.TimelineOverview.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.TimelineOverview.prototype._capturingStarted): Deleted.
+        (WI.TimelineOverview.prototype._capturingStopped): Deleted.
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        (WI.TimelineRecordingContentView.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.TimelineRecordingContentView.prototype._recordingUnloaded):
+        (WI.TimelineRecordingContentView.prototype._capturingStarted): Deleted.
+        (WI.TimelineRecordingContentView.prototype._capturingStopped): Deleted.
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView):
+        (WI.TimelineTabContentView.prototype._handleTimelineCapturingStateChanged): Added.
+        (WI.TimelineTabContentView.prototype._capturingStartedOrStopped): Deleted.
+        Use the new single event for all Timelines capture state changes.
+        Prevent the record button from being clicked when capturing is in a transition state.
+
+2019-04-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Audit: result UI shown on first open if an audit was previously selected
+        https://bugs.webkit.org/show_bug.cgi?id=196723
+        <rdar://problem/49722252>
+
+        Reviewed by Timothy Hatcher.
+
+        When opening Web Inspector for the first time, we will trigger resize `layout`s on the main
+        content area as Web Inspector is resized to it's old window size.
+
+        Rather than treating this layout as a `View.LayoutReason.Resize`, we should treat the
+        first `layout` (e.g. `initialLayout`) as a `View.LayoutReason.Dirty` instead, as there was
+        previously no content.
+
+        * UserInterface/Views/View.js:
+        (WI.View.prototype._layoutSubtree):
+        (WI.View.prototype._setLayoutReason):
+
+        * UserInterface/Views/AuditTestContentView.js:
+        (WI.AuditTestContentView):
+        Drive-by: ensure that this class is not instantiated directly.
+
+2019-04-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: current call frame indicator is indented when there is more than one thread
+        https://bugs.webkit.org/show_bug.cgi?id=196580
+        <rdar://problem/49582138>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CallFrameTreeElement.css:
+        (.tree-outline .item.call-frame .status):
+        (.tree-outline.single-thread .item.call-frame .status): Added.
+
+2019-04-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION (r238602): Elements: deleting the last child of a collapsed parent selects the parent's next sibling
+        https://bugs.webkit.org/show_bug.cgi?id=192711
+        <rdar://problem/46738990>
+
+        Reviewed by Timothy Hatcher.
+
+        Original patch by Matt Baker <mattbaker@apple.com>.
+
+        * UserInterface/Controllers/SelectionController.js:
+        (WI.SelectionController.prototype.removeSelectedItems):
+        When looking for a new item to select, start with the item preceding the
+        selection, instead of the item following the selection. This matches
+        pre-multiple selection behavior, as well as Mail and Xcode.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.onexpand):
+        Drive-by fix: when a hidden node is selected, its selection area is drawn
+        with a height of 0px. Update the selection area once the hidden node's
+        parent is expanded. AFAIK, this has always been broken.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype.ondelete):
+        After a delete the `SelectionController` may have chosen a child of a
+        collapsed parent as the new selected item. If the item isn't the closing tag (e.g. after
+        deleting the last child), reveal it.
+
+        (WI.DOMTreeOutline.prototype.selectionControllerPreviousSelectableItem):
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype.get previousSelectableSibling): Added.
+        (WI.TreeElement.prototype.get nextSelectableSibling): Added.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.selectionControllerPreviousSelectableItem):
+        (WI.TreeOutline.prototype.selectionControllerNextSelectableItem):
+        Set `skipUnrevealed` to false, so that children of collapsed parent nodes
+        are considered when looking for an item to selected after a delete. Hidden `TreeElement`s
+        are still ignored as they aren't `selectable`.
+
+2019-04-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements tab: multiple selection lost after navigating to another tab
+        https://bugs.webkit.org/show_bug.cgi?id=192681
+        <rdar://problem/46709392>
+
+        Reviewed by Timothy Hatcher.
+
+        Orginal patch by Matt Baker <mattbaker@apple.com>.
+
+        * UserInterface/Controllers/SelectionController.js:
+        (WI.SelectionController.prototype.selectItem):
+        Simplify internal logic by removing an early return.
+
+        (WI.SelectionController.prototype.selectItems): Added.
+        (WI.SelectionController.prototype.selectAll):
+        Provide a means to select multiple items in a single operation.
+        If `_lastSelectedItem` is not in the items to select, the last
+        item being selected will become the last selected item.
+
+        (WI.SelectionController.prototype._deselectAllAndSelect):
+        Drive-by fix: correct a logic error. If no items are selected, the item
+        passed as an argument should still become selected.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.selectTreeElements): Added.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement):
+        (WI.DOMTreeElement.prototype.get closeTagTreeElement): Added.
+        (WI.DOMTreeElement.prototype._updateChildren):
+        Make the close tag `TreeElement` available from the open tag `TreeElement`.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype.update):
+        Restore selected `TreeElement`s after updating.
+
+        * UserInterface/Base/Utilities.js:
+        * UserInterface/Test.html:
+
 2019-04-08  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Elements tab: Classes toggle should use accent color on hover

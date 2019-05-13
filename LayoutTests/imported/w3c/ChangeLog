@@ -1,3 +1,344 @@
+2019-04-22  Youenn Fablet  <youenn@apple.com>
+
+        Cache API should return Abort error in case of putting an aborted fetch
+        https://bugs.webkit.org/show_bug.cgi?id=196757
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-abort.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-abort.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/worker/cache-abort.https-expected.txt:
+
+2019-04-19  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events WPT] Provide iOS testdriver
+        https://bugs.webkit.org/show_bug.cgi?id=197101
+        <rdar://problem/50044834>
+
+        Reviewed by Dean Jackson.
+
+        Add support for the "none" action source and for the "touch" pointer type. This allows us to run the touch-specific
+        WPT tests for Pointer Events and add some baseline expectations for those tests.
+
+        * web-platform-tests/pointerevents/pointerevent_change-touch-action-onpointerdown_touch-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointercancel_touch-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_after_pointercancel_touch-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerout_after_pointercancel_touch-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_releasepointercapture_onpointercancel_touch-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-auto-css_touch-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_highest-parent-none_touch-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-pan-y_touch-expected.txt: Added.
+        * web-platform-tests/resources/testdriver-vendor.js:
+        (logDebug): Take a callback so that we don't run code for the purpose of logging unless we're in debug mode.
+        (dispatchMouseActions):
+        (dispatchTouchActions): Use testRunner.runUIScript() to compile an event stream based on the input from the WPT tests.
+        (window.test_driver_internal.action_sequence): Handle the "none" source to insert "pause" commands in the pointer source.
+
+2019-04-18  Sihui Liu  <sihui_liu@apple.com>
+
+        Blob type cannot be stored correctly in IDB when IDBObjectStore has autoIncrement and keyPath options
+        https://bugs.webkit.org/show_bug.cgi?id=196128
+        <rdar://problem/49562115>
+
+        Reviewed by Geoffrey Garen.
+
+        Updated test expectations to PASS.
+
+        * web-platform-tests/IndexedDB/nested-cloning-large-expected.txt:
+        * web-platform-tests/IndexedDB/nested-cloning-large-multiple-expected.txt:
+        * web-platform-tests/IndexedDB/nested-cloning-small-expected.txt:
+
+2019-04-18  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events WPT] Unskip imported/w3c/web-platform-tests/pointerevents/pointerevent_lostpointercapture_for_disconnected_node.html
+        https://bugs.webkit.org/show_bug.cgi?id=197004
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/pointerevents/pointerevent_lostpointercapture_for_disconnected_node-expected.txt: Added.
+
+2019-04-17  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events WPT] Unskip imported/w3c/web-platform-tests/pointerevents/pointerevent_on_event_handlers.html
+        https://bugs.webkit.org/show_bug.cgi?id=197006
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/pointerevents/pointerevent_on_event_handlers-expected.txt: Added.
+
+2019-04-17  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events WPT] Update WPT tests and provide macOS testdriver
+        https://bugs.webkit.org/show_bug.cgi?id=197011
+        <rdar://problem/49976553>
+
+        Reviewed by Dean Jackson.
+
+        We update the WPT tests from the latest state of the WPT GitHub repository and provide a testdriver to dispatch mouse events on macOS.
+
+        * web-platform-tests/payment-request/payment-request-canmakepayment-method.https-expected.txt: Update expectations now that an (incomplete)
+        test driver is available.
+        * web-platform-tests/pointerevents/META.yml:
+        * web-platform-tests/pointerevents/compat/pointerevent_touch-action_two-finger_interaction-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/idlharness.window-expected.txt: Removed.
+        * web-platform-tests/pointerevents/extension/idlharness.window.html: Removed.
+        * web-platform-tests/pointerevents/extension/pointerevent_coalesced_events_attributes-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_constructor.html:
+        * web-platform-tests/pointerevents/extension/pointerevent_getCoalescedEvents_when_pointerlocked-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_getPredictedEvents_when_pointerlocked-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_pointerrawmove-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_pointerrawmove_in_pointerlock-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_predicted_events_attributes-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-pan-down-css_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-pan-left-css_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-pan-right-css_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/pointerevent_touch-action-pan-up-css_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/extension/w3c-import.log: Removed.
+        * web-platform-tests/pointerevents/html/pointerevent_drag_interaction-manual.html: Added.
+        * web-platform-tests/pointerevents/idlharness.window-expected.txt: Removed.
+        * web-platform-tests/pointerevents/idlharness.window.html: Removed.
+        * web-platform-tests/pointerevents/pointerevent_attributes_hoverable_pointers-manual-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_attributes_hoverable_pointers-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_attributes_nohover_pointers-manual-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_attributes_nohover_pointers-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_boundary_events_at_implicit_release_hoverable_pointers-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_boundary_events_at_implicit_release_hoverable_pointers.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_boundary_events_in_capturing-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_capture_mouse-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_capture_mouse.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_capture_suppressing_mouse-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_change-touch-action-onpointerdown_touch.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_click_during_capture-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_click_during_capture.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_disabled_form_control-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_element_haspointercapture-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_element_haspointercapture_release_pending_capture-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_fractional_coordinates-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_lostpointercapture_for_disconnected_node.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_lostpointercapture_is_first.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_mouse_capture_change_hover-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_mouse_capture_change_hover.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_mouse_pointercapture_in_frame-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_mouse_pointercapture_in_frame.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_mouse_pointercapture_inactivate_pointer-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_mouse_pointercapture_inactivate_pointer.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_multiple_primary_pointers_boundary_events-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_on_event_handlers-expected.txt: Removed.
+        * web-platform-tests/pointerevents/pointerevent_pointerId_scope-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointercancel_touch.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerenter_does_not_bubble-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerenter_does_not_bubble.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_after_pointercancel_touch.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_descendant_over-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_descendant_over.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_descendants-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_descendants.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_does_not_bubble-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_does_not_bubble.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_pen-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointermove-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointermove.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointermove_isprimary_same_as_pointerdown-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointermove_isprimary_same_as_pointerdown.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointermove_on_chorded_mouse_button-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointermove_on_chorded_mouse_button.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerout_after_pointercancel_touch.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerout_pen.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerout_received_once-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_pointerout_received_once.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_releasepointercapture_events_to_original_target-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_releasepointercapture_invalid_pointerid-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_releasepointercapture_invalid_pointerid.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_releasepointercapture_onpointercancel_touch.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_releasepointercapture_onpointerup_mouse-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_releasepointercapture_onpointerup_mouse.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_releasepointercapture_release_right_after_capture-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_root_computed_style-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_root_computed_style.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_root_hit_test-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_root_hit_test.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_sequence_at_implicit_release_on_click-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_sequence_at_implicit_release_on_drag-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_disconnected-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_disconnected.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_inactive_button_mouse-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_inactive_button_mouse.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_invalid_pointerid-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_invalid_pointerid.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_override_pending_capture_element-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_relatedtarget-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_relatedtarget.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_to_same_element_twice-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_support.js:
+        * web-platform-tests/pointerevents/pointerevent_suppress_compat_events_on_click-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_suppress_compat_events_on_click.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_suppress_compat_events_on_drag_mouse-expected.txt: Added.
+        * web-platform-tests/pointerevents/pointerevent_suppress_compat_events_on_drag_mouse.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-auto-css_touch.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-button-test_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-auto-child-none_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-none_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-pan-x-child-pan-x_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_child-pan-x-child-pan-y_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_highest-parent-none_touch.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-inherit_parent-none_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-keyboard-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-mouse-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-none-css_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-css_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-pan-y-pan-y_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-pan-x-pan-y_touch.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-pan-y-css_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-rotated-divs_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-span-test_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-svg-test_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerevent_touch-action-table-test_touch-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_coordinates_when_locked.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_movementxy-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_movementxy_when_locked-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_pointerlock_after_pointercapture-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_pointerlock_supercedes_capture-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_pointermove_in_pointerlock-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/pointerevent_pointermove_on_chorded_mouse_button_when_locked-manual.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/resources/pointerevent_pointermove_in_pointerlock-iframe.html: Added.
+        * web-platform-tests/pointerevents/pointerlock/resources/w3c-import.log: Removed.
+        * web-platform-tests/pointerevents/resources/pointerevent_mouse_pointercapture-iframe.html: Added.
+        * web-platform-tests/pointerevents/resources/pointerevent_mouse_pointercapture_inactivate_pointer-iframe.html: Added.
+        * web-platform-tests/pointerevents/resources/pointerevent_pointerrawmove_in_pointerlock-iframe.html: Added.
+        * web-platform-tests/pointerevents/resources/w3c-import.log: Removed.
+        * web-platform-tests/pointerevents/w3c-import.log: Removed.
+        * web-platform-tests/resources/testdriver-actions.js: Added.
+        * web-platform-tests/resources/testdriver-vendor.js: Added.
+        (logDebug):
+        (dispatchMouseActions):
+        (window.test_driver_internal.action_sequence):
+        * web-platform-tests/resources/testdriver.js: Added.
+
+2019-04-17  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest has the wrong fallback encoding
+        https://bugs.webkit.org/show_bug.cgi?id=191741
+
+        Reviewed by Alex Christensen.
+
+        Update improved test expectations and sync unsupported-encodings.any.js and
+        replacement-encodings.any.js tests.
+
+        * web-platform-tests/encoding/replacement-encodings.any-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/encoding/replacement-encodings-expected.txt.
+        * web-platform-tests/encoding/replacement-encodings.any.html: Added.
+        * web-platform-tests/encoding/replacement-encodings.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/replacement-encodings.html.
+        * web-platform-tests/encoding/replacement-encodings.any.worker-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/encoding/replacement-encodings-expected.txt.
+        * web-platform-tests/encoding/replacement-encodings.any.worker.html: Added.
+        * web-platform-tests/encoding/unsupported-encodings-expected.txt: Removed.
+        * web-platform-tests/encoding/unsupported-encodings.any-expected.txt: Added.
+        * web-platform-tests/encoding/unsupported-encodings.any.html: Added.
+        * web-platform-tests/encoding/unsupported-encodings.any.js: Added.
+        * web-platform-tests/encoding/unsupported-encodings.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/unsupported-encodings.any.worker.html: Added.
+        * web-platform-tests/encoding/unsupported-encodings.html: Removed.
+        * web-platform-tests/xhr/overridemimetype-edge-cases.window-expected.txt:
+        * web-platform-tests/xhr/responsetext-decoding-expected.txt:
+
+2019-04-17  Cathie Chen  <cathiechen@igalia.com>
+
+        Update the test result of resize-observer/eventloop.html.
+        https://bugs.webkit.org/show_bug.cgi?id=197001
+
+        Reviewed by Frédéric Wang.
+
+        * web-platform-tests/resize-observer/eventloop-expected.txt:
+
+2019-04-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Throw TypeError when custom element constructor returns a wrong element or tries to create itself
+        https://bugs.webkit.org/show_bug.cgi?id=196892
+
+        Reviewed by Dean Jackson.
+
+        Update the tests according to https://github.com/web-platform-tests/wpt/pull/16328.
+
+        * web-platform-tests/custom-elements/upgrading/Node-cloneNode-expected.txt:
+        * web-platform-tests/custom-elements/upgrading/Node-cloneNode.html:
+        * web-platform-tests/custom-elements/upgrading/upgrading-parser-created-element-expected.txt:
+        * web-platform-tests/custom-elements/upgrading/upgrading-parser-created-element.html:
+
+2019-04-12  Rob Buis  <rbuis@igalia.com>
+
+        Import WPT preload tests
+        https://bugs.webkit.org/show_bug.cgi?id=196439
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/preload/avoid-delaying-onload-link-preload-expected.txt: Added.
+        * web-platform-tests/preload/avoid-delaying-onload-link-preload.html: Added.
+        * web-platform-tests/preload/delaying-onload-link-preload-after-discovery-expected.txt: Added.
+        * web-platform-tests/preload/delaying-onload-link-preload-after-discovery.html: Added.
+        * web-platform-tests/preload/dynamic-adding-preload-expected.txt: Added.
+        * web-platform-tests/preload/dynamic-adding-preload.html: Added.
+        * web-platform-tests/preload/preload-csp.sub-expected.txt: Added.
+        * web-platform-tests/preload/preload-csp.sub.html: Added.
+        * web-platform-tests/preload/preload-default-csp.sub-expected.txt: Added.
+        * web-platform-tests/preload/preload-default-csp.sub.html: Added.
+        * web-platform-tests/preload/resources/dummy.css: Added.
+        * web-platform-tests/preload/resources/dummy.css.sub.headers: Added.
+        * web-platform-tests/preload/resources/dummy.js: Added.
+        * web-platform-tests/preload/resources/dummy.js.sub.headers: Added.
+        * web-platform-tests/preload/resources/dummy.xml: Added.
+        * web-platform-tests/preload/resources/dummy.xml.sub.headers: Added.
+        * web-platform-tests/preload/resources/foo.vtt: Added.
+        * web-platform-tests/preload/resources/preload_helper.js: Added.
+        (verifyPreloadAndRTSupport):
+        (getAbsoluteURL):
+        (verifyNumberOfResourceTimingEntries):
+        (verifyLoadedAndNoDoubleDownload):
+        * web-platform-tests/preload/resources/sound_5.oga: Added.
+        * web-platform-tests/preload/resources/square.png: Added.
+        * web-platform-tests/preload/resources/white.mp4: Added.
+        * web-platform-tests/preload/single-download-late-used-preload-expected.txt: Added.
+        * web-platform-tests/preload/single-download-late-used-preload.html: Added.
+        * web-platform-tests/preload/single-download-preload-expected.txt: Added.
+        * web-platform-tests/preload/single-download-preload.html: Added.
+
+2019-04-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-flex][css-grid] Fix synthesized baseline
+        https://bugs.webkit.org/show_bug.cgi?id=196312
+
+        Reviewed by Javier Fernandez.
+
+        Imported some tests from WPT css-align test suite that are fixed with this patch.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-align/baseline-rules/synthesized-baseline-flexbox-001-expected.txt: Added.
+        * web-platform-tests/css/css-align/baseline-rules/synthesized-baseline-flexbox-001.html: Added.
+        * web-platform-tests/css/css-align/baseline-rules/synthesized-baseline-grid-001-expected.txt: Added.
+        * web-platform-tests/css/css-align/baseline-rules/synthesized-baseline-grid-001.html: Added.
+        * web-platform-tests/css/css-align/baseline-rules/synthesized-baseline-inline-block-001-expected.txt: Added.
+        * web-platform-tests/css/css-align/baseline-rules/synthesized-baseline-inline-block-001.html: Added.
+        * web-platform-tests/css/css-align/baseline-rules/w3c-import.log: Added.
+
+2019-04-11  Youenn Fablet  <youenn@apple.com>
+
+        Support RTCDataChannel blob binaryType
+        https://bugs.webkit.org/show_bug.cgi?id=196821
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCDataChannel-send-expected.txt:
+
+2019-04-10  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        requestAnimationFrame should execute before the next frame
+        https://bugs.webkit.org/show_bug.cgi?id=177484
+
+        Reviewed by Simon Fraser.
+
+        Add trace points for the page RenderingUpdate.
+
+        * web-platform-tests/resize-observer/resources/resizeTestHelper.js:
+        Change ResizeTestHelper.TIMEOUT to be 1 second instead of 100 ms which
+        is too short for layout tests.
+
 2019-04-09  Youenn Fablet  <youenn@apple.com>
 
         Refresh WPT service worker expectations

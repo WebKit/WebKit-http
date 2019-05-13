@@ -61,6 +61,7 @@
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKSecurityOriginRef.h>
 #include <WebKit/WKTextChecker.h>
+#include <WebKit/WKURL.h>
 #include <WebKit/WKUserContentControllerRef.h>
 #include <WebKit/WKUserContentExtensionStoreRef.h>
 #include <WebKit/WKUserMediaPermissionCheck.h>
@@ -199,13 +200,29 @@ static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParameters
         WKOpenPanelResultListenerCancel(resultListenerRef);
         return;
     }
+    
+    WKTypeRef firstItem = WKArrayGetItemAtIndex(fileURLs, 0);
+    
+#if PLATFORM(IOS_FAMILY)
+    WKStringRef displayString = WKURLCopyLastPathComponent(static_cast<WKURLRef>(firstItem));
+    WKDataRef mediaIcon = TestController::singleton().openPanelFileURLsMediaIcon();
+    
+    if (mediaIcon) {
+        if (WKOpenPanelParametersGetAllowsMultipleFiles(parameters)) {
+            WKOpenPanelResultListenerChooseMediaFiles(resultListenerRef, fileURLs, displayString, mediaIcon);
+            return;
+        }
+        
+        WKOpenPanelResultListenerChooseMediaFiles(resultListenerRef, adoptWK(WKArrayCreate(&firstItem, 1)).get(), displayString, mediaIcon);
+        return;
+    }
+#endif
 
     if (WKOpenPanelParametersGetAllowsMultipleFiles(parameters)) {
         WKOpenPanelResultListenerChooseFiles(resultListenerRef, fileURLs);
         return;
     }
 
-    WKTypeRef firstItem = WKArrayGetItemAtIndex(fileURLs, 0);
     WKOpenPanelResultListenerChooseFiles(resultListenerRef, adoptWK(WKArrayCreate(&firstItem, 1)).get());
 }
 
@@ -462,7 +479,7 @@ void TestController::initialize(int argc, const char* argv[])
     WebCoreTestSupport::installMockGamepadProvider();
 #endif
 
-    WKRetainPtr<WKStringRef> pageGroupIdentifier(AdoptWK, WKStringCreateWithUTF8CString("WebKitTestRunnerPageGroup"));
+    WKRetainPtr<WKStringRef> pageGroupIdentifier = adoptWK(WKStringCreateWithUTF8CString("WebKitTestRunnerPageGroup"));
     m_pageGroup.adopt(WKPageGroupCreateWithIdentifier(pageGroupIdentifier.get()));
 
     m_eventSenderProxy = std::make_unique<EventSenderProxy>(this);
@@ -914,6 +931,9 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
 
     WKContextClearCachedCredentials(TestController::singleton().context());
 
+    auto websiteDataStore = WKContextGetWebsiteDataStore(TestController::singleton().context());
+    WKWebsiteDataStoreClearAllDeviceOrientationPermissions(websiteDataStore);
+
     ClearIndexedDatabases();
     setIDBPerOriginQuota(50 * MB);
 
@@ -1002,6 +1022,9 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
     setIgnoresViewportScaleLimits(options.ignoresViewportScaleLimits);
 
     m_openPanelFileURLs = nullptr;
+#if PLATFORM(IOS_FAMILY)
+    m_openPanelFileURLsMediaIcon = nullptr;
+#endif
     
     statisticsResetToConsistentState();
     
@@ -1236,8 +1259,8 @@ static bool parseBooleanTestHeaderValue(const std::string& value)
 
 static std::string parseStringTestHeaderValueAsRelativePath(const std::string& value, const std::string& pathOrURL)
 {
-    WKRetainPtr<WKURLRef> baseURL(AdoptWK, createTestURL(pathOrURL.c_str()));
-    WKRetainPtr<WKURLRef> relativeURL(AdoptWK, WKURLCreateWithBaseURL(baseURL.get(), value.c_str()));
+    WKRetainPtr<WKURLRef> baseURL = adoptWK(createTestURL(pathOrURL.c_str()));
+    WKRetainPtr<WKURLRef> relativeURL = adoptWK(WKURLCreateWithBaseURL(baseURL.get(), value.c_str()));
     return toSTD(adoptWK(WKURLCopyPath(relativeURL.get())));
 }
 
@@ -1246,7 +1269,7 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
     std::string filename = absolutePath;
     if (filename.empty()) {
         // Gross. Need to reduce conversions between all the string types and URLs.
-        WKRetainPtr<WKURLRef> wkURL(AdoptWK, createTestURL(pathOrURL.c_str()));
+        WKRetainPtr<WKURLRef> wkURL = adoptWK(createTestURL(pathOrURL.c_str()));
         filename = testPath(wkURL.get());
     }
 
@@ -1366,6 +1389,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.contentInsetTop = std::stod(value);
         else if (key == "ignoreSynchronousMessagingTimeouts")
             testOptions.contextOptions.ignoreSynchronousMessagingTimeouts = parseBooleanTestHeaderValue(value);
+        else if (key == "shouldUseModernCompatibilityMode")
+            testOptions.shouldUseModernCompatibilityMode = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -1610,7 +1635,7 @@ bool TestController::runTest(const char* inputLine)
     
     TestOptions options = testOptionsForTest(command);
 
-    WKRetainPtr<WKURLRef> wkURL(AdoptWK, createTestURL(command.pathOrURL.c_str()));
+    WKRetainPtr<WKURLRef> wkURL = adoptWK(createTestURL(command.pathOrURL.c_str()));
     m_currentInvocation = std::make_unique<TestInvocation>(wkURL.get(), options);
 
     if (command.shouldDumpPixels || m_shouldDumpPixelsForAllTests)
@@ -1754,10 +1779,10 @@ void TestController::didReceiveLiveDocumentsList(WKArrayRef liveDocumentList)
         if (item && WKGetTypeID(item) == WKDictionaryGetTypeID()) {
             WKDictionaryRef liveDocumentItem = static_cast<WKDictionaryRef>(item);
 
-            WKRetainPtr<WKStringRef> idKey(AdoptWK, WKStringCreateWithUTF8CString("id"));
+            WKRetainPtr<WKStringRef> idKey = adoptWK(WKStringCreateWithUTF8CString("id"));
             WKUInt64Ref documentID = static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(liveDocumentItem, idKey.get()));
 
-            WKRetainPtr<WKStringRef> urlKey(AdoptWK, WKStringCreateWithUTF8CString("url"));
+            WKRetainPtr<WKStringRef> urlKey = adoptWK(WKStringCreateWithUTF8CString("url"));
             WKStringRef documentURL = static_cast<WKStringRef>(WKDictionaryGetItemForKey(liveDocumentItem, urlKey.get()));
 
             documentInfo.add(WKUInt64GetValue(documentID), toWTFString(documentURL));
@@ -1796,7 +1821,7 @@ void TestController::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
 
-        WKRetainPtr<WKStringRef> subMessageKey(AdoptWK, WKStringCreateWithUTF8CString("SubMessage"));
+        WKRetainPtr<WKStringRef> subMessageKey = adoptWK(WKStringCreateWithUTF8CString("SubMessage"));
         WKStringRef subMessageName = static_cast<WKStringRef>(WKDictionaryGetItemForKey(messageBodyDictionary, subMessageKey.get()));
 
         if (WKStringIsEqualToUTF8CString(subMessageName, "MouseDown") || WKStringIsEqualToUTF8CString(subMessageName, "MouseUp")) {
@@ -1868,7 +1893,7 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
         ASSERT(WKGetTypeID(messageBody) == WKDictionaryGetTypeID());
         WKDictionaryRef messageBodyDictionary = static_cast<WKDictionaryRef>(messageBody);
 
-        WKRetainPtr<WKStringRef> subMessageKey(AdoptWK, WKStringCreateWithUTF8CString("SubMessage"));
+        WKRetainPtr<WKStringRef> subMessageKey = adoptWK(WKStringCreateWithUTF8CString("SubMessage"));
         WKStringRef subMessageName = static_cast<WKStringRef>(WKDictionaryGetItemForKey(messageBodyDictionary, subMessageKey.get()));
 
         if (WKStringIsEqualToUTF8CString(subMessageName, "KeyDown")) {
@@ -2251,7 +2276,7 @@ void TestController::didFinishNavigation(WKPageRef page, WKNavigationRef navigat
     if (m_state != Resetting)
         return;
 
-    WKRetainPtr<WKURLRef> wkURL(AdoptWK, WKFrameCopyURL(WKPageGetMainFrame(page)));
+    WKRetainPtr<WKURLRef> wkURL = adoptWK(WKFrameCopyURL(WKPageGetMainFrame(page)));
     if (!WKURLIsEqual(wkURL.get(), blankURL()))
         return;
 
@@ -2295,9 +2320,9 @@ void TestController::didReceiveAuthenticationChallenge(WKPageRef page, WKAuthent
         WKAuthenticationDecisionListenerUseCredential(decisionListener, 0);
         return;
     }
-    WKRetainPtr<WKStringRef> username(AdoptWK, WKStringCreateWithUTF8CString(m_authenticationUsername.utf8().data()));
-    WKRetainPtr<WKStringRef> password(AdoptWK, WKStringCreateWithUTF8CString(m_authenticationPassword.utf8().data()));
-    WKRetainPtr<WKCredentialRef> credential(AdoptWK, WKCredentialCreate(username.get(), password.get(), kWKCredentialPersistenceForSession));
+    WKRetainPtr<WKStringRef> username = adoptWK(WKStringCreateWithUTF8CString(m_authenticationUsername.utf8().data()));
+    WKRetainPtr<WKStringRef> password = adoptWK(WKStringCreateWithUTF8CString(m_authenticationPassword.utf8().data()));
+    WKRetainPtr<WKCredentialRef> credential = adoptWK(WKCredentialCreate(username.get(), password.get(), kWKCredentialPersistenceForSession));
     WKAuthenticationDecisionListenerUseCredential(decisionListener, credential.get());
 }
 
@@ -3509,6 +3534,14 @@ bool TestController::canDoServerTrustEvaluationInNetworkProcess() const
     return false;
 }
 
+void TestController::installCustomMenuAction(const String&, bool)
+{
+}
+
+void TestController::setAllowedMenuActions(const Vector<String>&)
+{
+}
+
 #endif
 
 void TestController::sendDisplayConfigurationChangedMessageForTesting()
@@ -3569,6 +3602,28 @@ void TestController::clearAdClickAttribution()
 {
     AdClickAttributionVoidCallbackContext callbackContext(*this);
     WKPageClearAdClickAttribution(m_mainWebView->page(), adClickAttributionVoidCallback, &callbackContext);
+    runUntil(callbackContext.done, noTimeout);
+}
+
+void TestController::clearAdClickAttributionsThroughWebsiteDataRemoval()
+{
+    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
+    AdClickAttributionVoidCallbackContext callbackContext(*this);
+    WKWebsiteDataStoreClearAdClickAttributionsThroughWebsiteDataRemoval(dataStore, &callbackContext, adClickAttributionVoidCallback);
+    runUntil(callbackContext.done, noTimeout);
+}
+
+void TestController::setAdClickAttributionOverrideTimerForTesting(bool value)
+{
+    AdClickAttributionVoidCallbackContext callbackContext(*this);
+    WKPageSetAdClickAttributionOverrideTimerForTesting(m_mainWebView->page(), value, adClickAttributionVoidCallback, &callbackContext);
+    runUntil(callbackContext.done, noTimeout);
+}
+
+void TestController::setAdClickAttributionConversionURLForTesting(WKURLRef url)
+{
+    AdClickAttributionVoidCallbackContext callbackContext(*this);
+    WKPageSetAdClickAttributionConversionURLForTesting(m_mainWebView->page(), url, adClickAttributionVoidCallback, &callbackContext);
     runUntil(callbackContext.done, noTimeout);
 }
 

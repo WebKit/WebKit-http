@@ -48,6 +48,7 @@
 #import <UIKit/UIKeyboardIntl.h>
 #import <UIKit/UIKeyboard_Private.h>
 #import <UIKit/UILongPressGestureRecognizer_Private.h>
+#import <UIKit/UIMenuController_Private.h>
 #import <UIKit/UIPeripheralHost.h>
 #import <UIKit/UIPeripheralHost_Private.h>
 #import <UIKit/UIPickerContentView_Private.h>
@@ -343,6 +344,7 @@ typedef NS_ENUM(NSInteger, UIScrollViewIndicatorInsetAdjustmentBehavior) {
 - (void)_zoomToCenter:(CGPoint)center scale:(CGFloat)scale duration:(CFTimeInterval)duration;
 - (double)_horizontalVelocity;
 - (double)_verticalVelocity;
+- (void)_flashScrollIndicatorsPersistingPreviousFlashes;
 @property (nonatomic, getter=isZoomEnabled) BOOL zoomEnabled;
 @property (nonatomic, readonly, getter=_isAnimatingZoom) BOOL isAnimatingZoom;
 @property (nonatomic, readonly, getter=_isAnimatingScroll) BOOL isAnimatingScroll;
@@ -986,6 +988,10 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 @end
 
 #endif
+
+@interface UIMenuItem (UIMenuController_SPI)
+@property (nonatomic) BOOL dontDismiss;
+@end
 
 @interface UICalloutBar : UIView
 + (UICalloutBar *)activeCalloutBar;

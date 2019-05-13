@@ -82,7 +82,7 @@ messages -> NetworkProcess LegacyReceiver {
     CancelPrepareToSuspend()
     ProcessDidResume()
 
-    PreconnectTo(URL url, enum:bool WebCore::StoredCredentialsPolicy storedCredentialsPolicy);
+    PreconnectTo(URL url, enum:uint8_t WebCore::StoredCredentialsPolicy storedCredentialsPolicy);
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     ClearPrevalentResource(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async
@@ -169,4 +169,7 @@ messages -> NetworkProcess LegacyReceiver {
     StoreAdClickAttribution(PAL::SessionID sessionID, WebCore::AdClickAttribution adClickAttribution)
     DumpAdClickAttribution(PAL::SessionID sessionID) -> (String adClickAttributionState) Async
     ClearAdClickAttribution(PAL::SessionID sessionID) -> () Async
+    SetAdClickAttributionOverrideTimerForTesting(PAL::SessionID sessionID, bool value) -> () Async
+    SetAdClickAttributionConversionURLForTesting(PAL::SessionID sessionID, URL url) -> () Async
+    RemoveCredential(WebCore::Credential credential, WebCore::ProtectionSpace protectionSpace) -> () Async
 }

@@ -30,7 +30,10 @@
 #include "DownloadProxy.h"
 #include "DownloadProxyMessages.h"
 #include "MessageReceiverMap.h"
+#include "NetworkProcessMessages.h"
+#include "NetworkProcessProxy.h"
 #include "ProcessAssertion.h"
+#include "WebProcessPool.h"
 #include <wtf/StdLibExtras.h>
 
 #if PLATFORM(COCOA)
@@ -110,7 +113,7 @@ void DownloadProxyMap::downloadFinished(DownloadProxy& downloadProxy)
     }
 }
 
-void DownloadProxyMap::processDidClose()
+void DownloadProxyMap::invalidate()
 {
     // Invalidate all outstanding downloads.
     for (const auto& download : m_downloads.values()) {

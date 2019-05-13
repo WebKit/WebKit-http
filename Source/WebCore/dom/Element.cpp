@@ -55,6 +55,7 @@
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
+#include "FullscreenManager.h"
 #include "HTMLBodyElement.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLCollection.h"
@@ -302,7 +303,7 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
 
     bool didNotSwallowEvent = true;
 
-#if ENABLE(POINTER_EVENTS)
+#if ENABLE(POINTER_EVENTS) && !ENABLE(TOUCH_EVENTS)
     if (RuntimeEnabledFeatures::sharedFeatures().pointerEventsEnabled()) {
         if (auto pointerEvent = PointerEvent::create(mouseEvent)) {
             if (auto* page = document().page())
@@ -1990,6 +1991,10 @@ void Element::removedFromAncestor(RemovalType removalType, ContainerNode& oldPar
     if (document().page())
         document().page()->pointerLockController().elementRemoved(*this);
 #endif
+#if ENABLE(POINTER_EVENTS)
+    if (document().page() && RuntimeEnabledFeatures::sharedFeatures().pointerEventsEnabled())
+        document().page()->pointerCaptureController().elementWasRemoved(*this);
+#endif
 
     setSavedLayerScrollPosition(ScrollPosition());
 
@@ -2780,6 +2785,7 @@ void Element::updateFocusAppearance(SelectionRestorationMode, SelectionRevealMod
         if (frame->selection().shouldChangeSelection(newSelection)) {
             frame->selection().setSelection(newSelection, FrameSelection::defaultSetSelectionOptions(), Element::defaultFocusTextStateChangeIntent());
             frame->selection().revealSelection(revealMode);
+            return;
         }
     }
 
@@ -3445,7 +3451,7 @@ static Element* parentCrossingFrameBoundaries(const Element* element)
 
 void Element::webkitRequestFullscreen()
 {
-    document().requestFullScreenForElement(this, Document::EnforceIFrameAllowFullScreenRequirement);
+    document().fullscreenManager().requestFullscreenForElement(this, FullscreenManager::EnforceIFrameAllowFullscreenRequirement);
 }
 
 bool Element::containsFullScreenElement() const

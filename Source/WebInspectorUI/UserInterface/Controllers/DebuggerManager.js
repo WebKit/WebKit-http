@@ -38,8 +38,7 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
         WI.Breakpoint.addEventListener(WI.Breakpoint.Event.AutoContinueDidChange, this._breakpointEditablePropertyDidChange, this);
         WI.Breakpoint.addEventListener(WI.Breakpoint.Event.ActionsDidChange, this._handleBreakpointActionsDidChange, this);
 
-        WI.timelineManager.addEventListener(WI.TimelineManager.Event.CapturingWillStart, this._timelineCapturingWillStart, this);
-        WI.timelineManager.addEventListener(WI.TimelineManager.Event.CapturingStopped, this._timelineCapturingStopped, this);
+        WI.timelineManager.addEventListener(WI.TimelineManager.Event.CapturingStateChanged, this._handleTimelineCapturingStateChanged, this);
 
         WI.auditManager.addEventListener(WI.AuditManager.Event.TestScheduled, this._handleAuditManagerTestScheduled, this);
         WI.auditManager.addEventListener(WI.AuditManager.Event.TestCompleted, this._handleAuditManagerTestCompleted, this);
@@ -760,6 +759,23 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
             target.addScript(script);
     }
 
+    scriptDidFail(target, url, scriptSource)
+    {
+        const sourceType = WI.Script.SourceType.Program;
+        let script = new WI.LocalScript(target, url, sourceType, scriptSource);
+
+        // If there is already a resource we don't need to have the script anymore,
+        // we only need a script to use for parser error location links.
+        if (script.resource)
+            return;
+
+        let targetData = this.dataForTarget(target);
+        targetData.addScript(script);
+        target.addScript(script);
+
+        this.dispatchEventToListeners(WI.DebuggerManager.Event.ScriptAdded, {script});
+    }
+
     didSampleProbe(target, sample)
     {
         console.assert(this._probesByIdentifier.has(sample.probeId), "Unknown probe identifier specified for sample: ", sample);
@@ -1137,17 +1153,19 @@ WI.DebuggerManager = class DebuggerManager extends WI.Object
         this.breakpointsEnabled = restoreState;
     }
 
-    _timelineCapturingWillStart(event)
+    _handleTimelineCapturingStateChanged(event)
     {
-        this._startDisablingBreakpointsTemporarily();
+        switch (WI.timelineManager.capturingState) {
+        case WI.TimelineManager.CapturingState.Starting:
+            this._startDisablingBreakpointsTemporarily();
+            if (this.paused)
+                this.resume();
+            break;
 
-        if (this.paused)
-            this.resume();
-    }
-
-    _timelineCapturingStopped(event)
-    {
-        this._stopDisablingBreakpointsTemporarily();
+        case WI.TimelineManager.CapturingState.Inactive:
+            this._stopDisablingBreakpointsTemporarily();
+            break;
+        }
     }
 
     _handleAuditManagerTestScheduled(event)

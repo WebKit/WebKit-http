@@ -97,6 +97,9 @@ NetworkProcessProxy::~NetworkProcessProxy()
         proxy->removeNetworkProcess(*this);
 #endif
 
+    if (m_downloadProxyMap)
+        m_downloadProxyMap->invalidate();
+
     for (auto& reply : m_pendingConnectionReplies)
         reply.second({ });
 }
@@ -273,7 +276,7 @@ void NetworkProcessProxy::didClose(IPC::Connection&)
     auto protectedProcessPool = makeRef(m_processPool);
 
     if (m_downloadProxyMap)
-        m_downloadProxyMap->processDidClose();
+        m_downloadProxyMap->invalidate();
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     m_customProtocolManagerProxy.invalidate();
 #endif
@@ -1158,26 +1161,6 @@ void NetworkProcessProxy::didDestroyWebUserContentControllerProxy(WebUserContent
     m_webUserContentControllerProxies.remove(&proxy);
 }
 #endif
-
-void NetworkProcessProxy::dumpAdClickAttribution(PAL::SessionID sessionID, CompletionHandler<void(const String&)>&& completionHandler)
-{
-    if (!canSendMessage()) {
-        completionHandler(emptyString());
-        return;
-    }
-
-    sendWithAsyncReply(Messages::NetworkProcess::DumpAdClickAttribution(sessionID), WTFMove(completionHandler));
-}
-
-void NetworkProcessProxy::clearAdClickAttribution(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
-{
-    if (!canSendMessage()) {
-        completionHandler();
-        return;
-    }
-    
-    sendWithAsyncReply(Messages::NetworkProcess::ClearAdClickAttribution(sessionID), WTFMove(completionHandler));
-}
 
 void NetworkProcessProxy::sendProcessDidTransitionToForeground()
 {

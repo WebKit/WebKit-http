@@ -129,6 +129,11 @@ WK_EXPORT void WKWebsiteDataStoreSetPerOriginStorageQuota(WKWebsiteDataStoreRef 
 
 WK_EXPORT void WKWebsiteDataStoreSetWebAuthenticationMockConfiguration(WKWebsiteDataStoreRef dataStoreRef, WKDictionaryRef configuration);
 
+WK_EXPORT void WKWebsiteDataStoreClearAllDeviceOrientationPermissions(WKWebsiteDataStoreRef dataStoreRef);
+
+typedef void (*WKWebsiteDataStoreClearAdClickAttributionsThroughWebsiteDataRemovalFunction)(void* functionContext);
+WK_EXPORT void WKWebsiteDataStoreClearAdClickAttributionsThroughWebsiteDataRemoval(WKWebsiteDataStoreRef dataStoreRef, void* context, WKWebsiteDataStoreClearAdClickAttributionsThroughWebsiteDataRemovalFunction callback);
+
 #ifdef __cplusplus
 }
 #endif

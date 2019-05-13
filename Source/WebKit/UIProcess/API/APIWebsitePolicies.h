@@ -29,8 +29,11 @@
 #include "WebCompatibilityMode.h"
 #include "WebsiteAutoplayPolicy.h"
 #include "WebsiteAutoplayQuirk.h"
+#include "WebsiteMediaSourcePolicy.h"
 #include "WebsiteMetaViewportPolicy.h"
 #include "WebsitePopUpPolicy.h"
+#include "WebsiteSimulatedMouseEventsDispatchPolicy.h"
+#include <WebCore/DeviceOrientationOrMotionPermissionState.h>
 #include <WebCore/HTTPHeaderField.h>
 #include <wtf/OptionSet.h>
 #include <wtf/Vector.h>
@@ -60,9 +63,11 @@ public:
     WebKit::WebsiteAutoplayPolicy autoplayPolicy() const { return m_autoplayPolicy; }
     void setAutoplayPolicy(WebKit::WebsiteAutoplayPolicy policy) { m_autoplayPolicy = policy; }
 
-    const Optional<bool>& deviceOrientationAndMotionAccessState() const { return m_deviceOrientationAndMotionAccessState; }
-    void setDeviceOrientationAndMotionAccessState(Optional<bool> state) { m_deviceOrientationAndMotionAccessState = state; }
-    
+#if ENABLE(DEVICE_ORIENTATION)
+    WebCore::DeviceOrientationOrMotionPermissionState deviceOrientationAndMotionAccessState() const { return m_deviceOrientationAndMotionAccessState; }
+    void setDeviceOrientationAndMotionAccessState(WebCore::DeviceOrientationOrMotionPermissionState state) { m_deviceOrientationAndMotionAccessState = state; }
+#endif
+
     const Vector<WebCore::HTTPHeaderField>& customHeaderFields() const { return m_customHeaderFields; }
     Vector<WebCore::HTTPHeaderField>&& takeCustomHeaderFields() { return WTFMove(m_customHeaderFields); }
     void setCustomHeaderFields(Vector<WebCore::HTTPHeaderField>&& fields) { m_customHeaderFields = WTFMove(fields); }
@@ -90,21 +95,31 @@ public:
     WebKit::WebsiteMetaViewportPolicy metaViewportPolicy() const { return m_metaViewportPolicy; }
     void setMetaViewportPolicy(WebKit::WebsiteMetaViewportPolicy policy) { m_metaViewportPolicy = policy; }
 
+    WebKit::WebsiteMediaSourcePolicy mediaSourcePolicy() const { return m_mediaSourcePolicy; }
+    void setMediaSourcePolicy(WebKit::WebsiteMediaSourcePolicy policy) { m_mediaSourcePolicy = policy; }
+
+    WebKit::WebsiteSimulatedMouseEventsDispatchPolicy simulatedMouseEventsDispatchPolicy() const { return m_simulatedMouseEventsDispatchPolicy; }
+    void setSimulatedMouseEventsDispatchPolicy(WebKit::WebsiteSimulatedMouseEventsDispatchPolicy policy) { m_simulatedMouseEventsDispatchPolicy = policy; }
+
 private:
     WebsitePolicies(bool contentBlockersEnabled, OptionSet<WebKit::WebsiteAutoplayQuirk>, WebKit::WebsiteAutoplayPolicy, Vector<WebCore::HTTPHeaderField>&&, WebKit::WebsitePopUpPolicy, RefPtr<WebsiteDataStore>&&);
 
     bool m_contentBlockersEnabled { true };
     OptionSet<WebKit::WebsiteAutoplayQuirk> m_allowedAutoplayQuirks;
     WebKit::WebsiteAutoplayPolicy m_autoplayPolicy { WebKit::WebsiteAutoplayPolicy::Default };
-    Optional<bool> m_deviceOrientationAndMotionAccessState;
+#if ENABLE(DEVICE_ORIENTATION)
+    WebCore::DeviceOrientationOrMotionPermissionState m_deviceOrientationAndMotionAccessState { WebCore::DeviceOrientationOrMotionPermissionState::Prompt };
+#endif
     Vector<WebCore::HTTPHeaderField> m_customHeaderFields;
     WebKit::WebsitePopUpPolicy m_popUpPolicy { WebKit::WebsitePopUpPolicy::Default };
     RefPtr<WebsiteDataStore> m_websiteDataStore;
     WTF::String m_customUserAgent;
     WTF::String m_customJavaScriptUserAgentAsSiteSpecificQuirks;
     WTF::String m_customNavigatorPlatform;
-    WebKit::WebCompatibilityMode m_preferredCompatibilityMode { WebKit::WebCompatibilityMode::Default };
+    WebKit::WebCompatibilityMode m_preferredCompatibilityMode { WebKit::WebCompatibilityMode::Recommended };
     WebKit::WebsiteMetaViewportPolicy m_metaViewportPolicy { WebKit::WebsiteMetaViewportPolicy::Default };
+    WebKit::WebsiteMediaSourcePolicy m_mediaSourcePolicy { WebKit::WebsiteMediaSourcePolicy::Default };
+    WebKit::WebsiteSimulatedMouseEventsDispatchPolicy m_simulatedMouseEventsDispatchPolicy { WebKit::WebsiteSimulatedMouseEventsDispatchPolicy::Default };
 };
 
 } // namespace API

@@ -32,6 +32,7 @@
 #include "CachedRawResourceClient.h"
 #include "CachedResourceHandle.h"
 #include "ContentSecurityPolicyClient.h"
+#include "DeviceOrientationOrMotionPermissionState.h"
 #include "DocumentIdentifier.h"
 #include "DocumentWriter.h"
 #include "FrameDestructionObserver.h"
@@ -92,30 +93,42 @@ enum class ShouldContinue;
 
 using ResourceLoaderMap = HashMap<unsigned long, RefPtr<ResourceLoader>>;
 
-enum class AutoplayPolicy {
+enum class AutoplayPolicy : uint8_t {
     Default, // Uses policies specified in document settings.
     Allow,
     AllowWithoutSound,
     Deny,
 };
 
-enum class AutoplayQuirk {
+enum class AutoplayQuirk : uint8_t {
     SynthesizedPauseEvents = 1 << 0,
     InheritedUserGestures = 1 << 1,
     ArbitraryUserGestures = 1 << 2,
     PerDocumentAutoplayBehavior = 1 << 3,
 };
 
-enum class PopUpPolicy {
+enum class PopUpPolicy : uint8_t {
     Default, // Uses policies specified in frame settings.
     Allow,
     Block,
 };
 
-enum class MetaViewportPolicy {
+enum class MetaViewportPolicy : uint8_t {
     Default,
     Respect,
     Ignore,
+};
+
+enum class MediaSourcePolicy : uint8_t {
+    Default,
+    Disable,
+    Enable
+};
+
+enum class SimulatedMouseEventsDispatchPolicy : uint8_t {
+    Default,
+    Allow,
+    Deny,
 };
 
 class DocumentLoader
@@ -268,8 +281,10 @@ public:
     bool userContentExtensionsEnabled() const { return m_userContentExtensionsEnabled; }
     void setUserContentExtensionsEnabled(bool enabled) { m_userContentExtensionsEnabled = enabled; }
 
-    const Optional<bool>& deviceOrientationAndMotionAccessState() const { return m_deviceOrientationAndMotionAccessState; }
-    void setDeviceOrientationAndMotionAccessState(const Optional<bool>& state) { m_deviceOrientationAndMotionAccessState = state; }
+#if ENABLE(DEVICE_ORIENTATION)
+    DeviceOrientationOrMotionPermissionState deviceOrientationAndMotionAccessState() const { return m_deviceOrientationAndMotionAccessState; }
+    void setDeviceOrientationAndMotionAccessState(DeviceOrientationOrMotionPermissionState state) { m_deviceOrientationAndMotionAccessState = state; }
+#endif
 
     AutoplayPolicy autoplayPolicy() const { return m_autoplayPolicy; }
     void setAutoplayPolicy(AutoplayPolicy policy) { m_autoplayPolicy = policy; }
@@ -291,6 +306,12 @@ public:
 
     MetaViewportPolicy metaViewportPolicy() const { return m_metaViewportPolicy; }
     void setMetaViewportPolicy(MetaViewportPolicy policy) { m_metaViewportPolicy = policy; }
+
+    MediaSourcePolicy mediaSourcePolicy() const { return m_mediaSourcePolicy; }
+    void setMediaSourcePolicy(MediaSourcePolicy policy) { m_mediaSourcePolicy = policy; }
+
+    SimulatedMouseEventsDispatchPolicy simulatedMouseEventsDispatchPolicy() const { return m_simulatedMouseEventsDispatchPolicy; }
+    void setSimulatedMouseEventsDispatchPolicy(SimulatedMouseEventsDispatchPolicy policy) { m_simulatedMouseEventsDispatchPolicy = policy; }
 
     void addSubresourceLoader(ResourceLoader*);
     void removeSubresourceLoader(LoadCompletionType, ResourceLoader*);
@@ -355,6 +376,11 @@ public:
 
     void setAllowsWebArchiveForMainFrame(bool allowsWebArchiveForMainFrame) { m_allowsWebArchiveForMainFrame = allowsWebArchiveForMainFrame; }
     bool allowsWebArchiveForMainFrame() const { return m_allowsWebArchiveForMainFrame; }
+
+    void setDownloadAttribute(const String& attribute) { m_downloadAttribute = attribute; }
+    const String& downloadAttribute() const { return m_downloadAttribute; }
+
+    WEBCORE_EXPORT void applyPoliciesToSettings();
 
 protected:
     WEBCORE_EXPORT DocumentLoader(const ResourceRequest&, const SubstituteData&);
@@ -561,11 +587,15 @@ private:
     String m_customJavaScriptUserAgentAsSiteSpecificQuirks;
     String m_customNavigatorPlatform;
     bool m_userContentExtensionsEnabled { true };
-    Optional<bool> m_deviceOrientationAndMotionAccessState;
+#if ENABLE(DEVICE_ORIENTATION)
+    DeviceOrientationOrMotionPermissionState m_deviceOrientationAndMotionAccessState { DeviceOrientationOrMotionPermissionState::Prompt };
+#endif
     AutoplayPolicy m_autoplayPolicy { AutoplayPolicy::Default };
     OptionSet<AutoplayQuirk> m_allowedAutoplayQuirks;
     PopUpPolicy m_popUpPolicy { PopUpPolicy::Default };
     MetaViewportPolicy m_metaViewportPolicy { MetaViewportPolicy::Default };
+    MediaSourcePolicy m_mediaSourcePolicy { MediaSourcePolicy::Default };
+    SimulatedMouseEventsDispatchPolicy m_simulatedMouseEventsDispatchPolicy { SimulatedMouseEventsDispatchPolicy::Default };
 
 #if ENABLE(SERVICE_WORKER)
     Optional<ServiceWorkerRegistrationData> m_serviceWorkerRegistrationData;
@@ -581,6 +611,7 @@ private:
 #endif
 
     bool m_allowsWebArchiveForMainFrame { false };
+    String m_downloadAttribute;
 };
 
 inline void DocumentLoader::recordMemoryCacheLoadForFutureClientNotification(const ResourceRequest& request)

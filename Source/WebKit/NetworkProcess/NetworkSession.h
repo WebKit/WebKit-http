@@ -45,7 +45,7 @@ enum class ShouldSample : bool;
 
 namespace WebKit {
 
-class NetworkAdClickAttribution;
+class AdClickAttributionManager;
 class NetworkDataTask;
 class NetworkProcess;
 class WebResourceLoadStatisticsStore;
@@ -82,7 +82,10 @@ public:
     void storeAdClickAttribution(WebCore::AdClickAttribution&&);
     void convertAdClickAttribution(const WebCore::AdClickAttribution::Source&, const WebCore::AdClickAttribution::Destination&, WebCore::AdClickAttribution::Conversion&&);
     void dumpAdClickAttribution(CompletionHandler<void(String)>&&);
-    void clearAdClickAttribution(CompletionHandler<void()>&&);
+    void clearAdClickAttribution();
+    void clearAdClickAttributionForRegistrableDomain(WebCore::RegistrableDomain&&);
+    void setAdClickAttributionOverrideTimerForTesting(bool value);
+    void setAdClickAttributionConversionURLForTesting(URL&&);
 
 protected:
     NetworkSession(NetworkProcess&, PAL::SessionID);
@@ -97,7 +100,7 @@ protected:
     EnableResourceLoadStatisticsDebugMode m_enableResourceLoadStatisticsDebugMode { EnableResourceLoadStatisticsDebugMode::No };
     WebCore::RegistrableDomain m_resourceLoadStatisticsManualPrevalentResource;
 #endif
-    UniqueRef<NetworkAdClickAttribution> m_adClickAttribution;
+    UniqueRef<AdClickAttributionManager> m_adClickAttribution;
 };
 
 } // namespace WebKit

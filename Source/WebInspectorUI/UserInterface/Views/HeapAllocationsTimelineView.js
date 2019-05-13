@@ -93,7 +93,7 @@ WI.HeapAllocationsTimelineView = class HeapAllocationsTimelineView extends WI.Ti
         this._dataGrid.sortOrder = WI.DataGrid.SortOrder.Ascending;
         this._dataGrid.createSettings("heap-allocations-timeline-view");
         this._dataGrid.addEventListener(WI.DataGrid.Event.SelectedNodeChanged, this._dataGridNodeSelected, this);
-
+        this.setupDataGrid(this._dataGrid);
         this.addSubview(this._dataGrid);
 
         this._contentViewContainer = new WI.ContentViewContainer;
@@ -153,6 +153,7 @@ WI.HeapAllocationsTimelineView = class HeapAllocationsTimelineView extends WI.Ti
 
         for (let dataGridNode of this._dataGrid.children) {
             if (dataGridNode.record === heapSnapshotTimelineRecord) {
+                dataGridNode.hidden = false;
                 dataGridNode.select();
                 break;
             }
@@ -194,7 +195,10 @@ WI.HeapAllocationsTimelineView = class HeapAllocationsTimelineView extends WI.Ti
             return items;
         }
 
-        return this._contentViewContainer.currentContentView.navigationItems;
+        if (this._contentViewContainer.currentContentView)
+            return this._contentViewContainer.currentContentView.navigationItems;
+
+        return [];
     }
 
     get selectionPathComponents()
@@ -215,7 +219,10 @@ WI.HeapAllocationsTimelineView = class HeapAllocationsTimelineView extends WI.Ti
             components.push(heapSnapshotPathComponent);
         }
 
-        return components.concat(this._contentViewContainer.currentContentView.selectionPathComponents);
+        if (this._contentViewContainer.currentContentView)
+            components = components.concat(this._contentViewContainer.currentContentView.selectionPathComponents);
+
+        return components;
     }
 
     selectRecord(record)
@@ -262,17 +269,20 @@ WI.HeapAllocationsTimelineView = class HeapAllocationsTimelineView extends WI.Ti
 
     layout()
     {
-        if (this._pendingRecords.length && this.zeroTime) {
-            for (let heapAllocationsTimelineRecord of this._pendingRecords) {
-                this._dataGrid.addRowInSortOrder(new WI.HeapAllocationsTimelineDataGridNode(heapAllocationsTimelineRecord, {
-                    graphDataSource: this,
-                    heapAllocationsView: this,
-                }));
-            }
+        super.layout();
 
-            this._pendingRecords = [];
-            this._updateCompareHeapSnapshotButton();
+        if (!this._pendingRecords.length)
+            return;
+
+        for (let heapAllocationsTimelineRecord of this._pendingRecords) {
+            this._dataGrid.addRowInSortOrder(new WI.HeapAllocationsTimelineDataGridNode(heapAllocationsTimelineRecord, {
+                graphDataSource: this,
+                heapAllocationsView: this,
+            }));
         }
+
+        this._pendingRecords = [];
+        this._updateCompareHeapSnapshotButton();
     }
 
     reset()
@@ -380,7 +390,7 @@ WI.HeapAllocationsTimelineView = class HeapAllocationsTimelineView extends WI.Ti
 
     _importButtonNavigationItemClicked()
     {
-        WI.FileUtilities.importText(function(result) {
+        WI.FileUtilities.importText((result) => {
             let snapshotStringData = result.text;
             let workerProxy = WI.HeapSnapshotWorkerProxy.singleton();
             workerProxy.createImportedSnapshot(snapshotStringData, result.filename, ({objectId, snapshot: serializedSnapshot}) => {
@@ -388,18 +398,20 @@ WI.HeapAllocationsTimelineView = class HeapAllocationsTimelineView extends WI.Ti
                 snapshot.snapshotStringData = snapshotStringData;
                 const timestamp = NaN;
                 WI.timelineManager.heapSnapshotAdded(timestamp, snapshot);
+                this.dispatchEventToListeners(WI.TimelineView.Event.NeedsEntireSelectedRange);
             });
         });
     }
 
     _takeHeapSnapshotClicked()
     {
-        HeapAgent.snapshot(function(error, timestamp, snapshotStringData) {
+        HeapAgent.snapshot((error, timestamp, snapshotStringData) => {
             let workerProxy = WI.HeapSnapshotWorkerProxy.singleton();
             workerProxy.createSnapshot(snapshotStringData, ({objectId, snapshot: serializedSnapshot}) => {
                 let snapshot = WI.HeapSnapshotProxy.deserialize(objectId, serializedSnapshot);
                 snapshot.snapshotStringData = snapshotStringData;
                 WI.timelineManager.heapSnapshotAdded(timestamp, snapshot);
+                this.dispatchEventToListeners(WI.TimelineView.Event.NeedsEntireSelectedRange);
             });
         });
     }

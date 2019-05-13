@@ -1153,6 +1153,7 @@ edges
 alphabetic
 
 // position
+sticky
 -webkit-sticky
 
 // (pointer:) media feature
@@ -1407,7 +1408,7 @@ light
 dark
 // no-preference
 
-// supported-color-schemes
+// color-scheme
 only
 // light
 // dark

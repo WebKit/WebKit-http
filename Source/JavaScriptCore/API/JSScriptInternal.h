@@ -27,6 +27,7 @@
 
 #import "JSScript.h"
 #import "SourceCode.h"
+#import <wtf/RefPtr.h>
 
 #if JSC_OBJC_API_ENABLED
 
@@ -47,12 +48,10 @@ class String;
 - (instancetype)init;
 - (unsigned)hash;
 - (const WTF::String&)source;
-- (nullable const JSC::CachedBytecode*)cachedBytecode;
+- (RefPtr<JSC::CachedBytecode>)cachedBytecode;
 - (JSC::JSSourceCode*)jsSourceCode;
 - (JSC::SourceCode)sourceCode;
 - (BOOL)writeCache:(String&)error;
-// FIXME: Remove this once we require sourceURL upon creation: https://bugs.webkit.org/show_bug.cgi?id=194909
-- (void)setSourceURL:(NSURL *)url;
 
 @end
 

@@ -81,6 +81,7 @@ class RenderObject;
 class ScrollableArea;
 class ScrollView;
 class Widget;
+struct ScrollRectToVisibleOptions;
 
 enum class AccessibilityTextSource {
     Alternative,
@@ -94,17 +95,6 @@ enum class AccessibilityTextSource {
     Title,
     Subtitle,
     Action,
-};
-
-enum class AccessibilityEventType {
-    ContextMenu,
-    Click,
-    Decrement,
-    Dismiss,
-    Focus,
-    Increment,
-    ScrollIntoView,
-    Select,
 };
     
 struct AccessibilityText {
@@ -304,30 +294,45 @@ struct PlainTextRange {
     bool isNull() const { return !start && !length; }
 };
 
-enum class AccessibilitySelectTextActivity {
-    FindAndReplace,
-    FindAndSelect,
-    FindAndCapitalize,
-    FindAndLowercase,
-    FindAndUppercase
+enum class AccessibilitySearchTextStartFrom {
+    Begin, // Search from the beginning of the element.
+    Selection, // Search from the position of the current selection.
+    End // Search from the end of the element.
 };
 
-enum class AccessibilitySelectTextAmbiguityResolution {
-    ClosestAfter,
-    ClosestBefore,
-    ClosestTo
+enum class AccessibilitySearchTextDirection {
+    Forward, // Occurrence after the starting range.
+    Backward, // Occurrence before the starting range.
+    Closest, // Closest occurrence to the starting range, whether after or before.
+    All // All occurrences
 };
 
-struct AccessibilitySelectTextCriteria {
-    AccessibilitySelectTextActivity activity;
-    AccessibilitySelectTextAmbiguityResolution ambiguityResolution;
-    String replacementString;
-    Vector<String> searchStrings;
-    
-    AccessibilitySelectTextCriteria(AccessibilitySelectTextActivity activity, AccessibilitySelectTextAmbiguityResolution ambiguityResolution, const String& replacementString)
-        : activity(activity)
-        , ambiguityResolution(ambiguityResolution)
-        , replacementString(replacementString)
+struct AccessibilitySearchTextCriteria {
+    Vector<String> searchStrings; // Text strings to search for.
+    AccessibilitySearchTextStartFrom start;
+    AccessibilitySearchTextDirection direction;
+
+    AccessibilitySearchTextCriteria()
+        : start(AccessibilitySearchTextStartFrom::Selection)
+        , direction(AccessibilitySearchTextDirection::Forward)
+    { }
+};
+
+enum class AccessibilityTextOperationType {
+    Select,
+    Replace,
+    Capitalize,
+    Lowercase,
+    Uppercase
+};
+
+struct AccessibilityTextOperation {
+    Vector<RefPtr<Range>> textRanges; // text on which perform the operation.
+    AccessibilityTextOperationType type;
+    String replacementText; // For type = replace.
+
+    AccessibilityTextOperation()
+        : type(AccessibilityTextOperationType::Select)
     { }
 };
 
@@ -525,8 +530,8 @@ public:
     AccessibilityObject* selectedListItem();
     virtual int layoutCount() const { return 0; }
     virtual double estimatedLoadingProgress() const { return 0; }
-    static bool isARIAControl(AccessibilityRole);
-    static bool isARIAInput(AccessibilityRole);
+    WEBCORE_EXPORT static bool isARIAControl(AccessibilityRole);
+    WEBCORE_EXPORT static bool isARIAInput(AccessibilityRole);
 
     virtual bool supportsARIAOwns() const { return false; }
     bool isActiveDescendantOfFocusedContainer() const;
@@ -597,7 +602,7 @@ public:
     virtual AccessibilityObject* nextSibling() const { return nullptr; }
     virtual AccessibilityObject* nextSiblingUnignored(int limit) const;
     virtual AccessibilityObject* previousSiblingUnignored(int limit) const;
-    virtual AccessibilityObject* parentObject() const = 0;
+    virtual AccessibilityObject* parentObject() const { return nullptr; }
     virtual AccessibilityObject* parentObjectUnignored() const;
     AccessibilityObjectInterface* parentObjectInterfaceUnignored() const override { return parentObjectUnignored(); }
     virtual AccessibilityObject* parentObjectIfExists() const { return nullptr; }
@@ -606,12 +611,16 @@ public:
     virtual bool isDescendantOfBarrenParent() const { return false; }
 
     bool isDescendantOfRole(AccessibilityRole) const;
-    
+
     // Text selection
-    RefPtr<Range> rangeOfStringClosestToRangeInDirection(Range*, AccessibilitySearchDirection, Vector<String>&) const;
+private:
+    RefPtr<Range> rangeOfStringClosestToRangeInDirection(Range*, AccessibilitySearchDirection, Vector<String> const&) const;
     RefPtr<Range> selectionRange() const;
-    String selectText(AccessibilitySelectTextCriteria*);
-    
+    RefPtr<Range> findTextRange(Vector<String> const& searchStrings, RefPtr<Range> const& start, AccessibilitySearchTextDirection) const;
+public:
+    Vector<RefPtr<Range>> findTextRanges(AccessibilitySearchTextCriteria const&) const;
+    Vector<String> performTextOperation(AccessibilityTextOperation const&);
+
     virtual AccessibilityObject* observableObject() const { return nullptr; }
     virtual void linkedUIElements(AccessibilityChildrenVector&) const { }
     virtual AccessibilityObject* titleUIElement() const { return nullptr; }
@@ -755,16 +764,11 @@ public:
     bool isAncestorOfObject(const AccessibilityObject*) const;
     AccessibilityObject* firstAnonymousBlockChild() const;
 
-    static AccessibilityRole ariaRoleToWebCoreRole(const String&);
+    WEBCORE_EXPORT static AccessibilityRole ariaRoleToWebCoreRole(const String&);
     bool hasAttribute(const QualifiedName&) const;
     const AtomicString& getAttribute(const QualifiedName&) const;
     bool hasTagName(const QualifiedName&) const;
     
-    bool shouldDispatchAccessibilityEvent() const;
-    bool dispatchAccessibilityEvent(Event&) const;
-    bool dispatchAccessibilityEventWithType(AccessibilityEventType) const;
-    bool dispatchAccessibleSetValueEvent(const String&) const;
-
     virtual VisiblePositionRange visiblePositionRange() const { return VisiblePositionRange(); }
     virtual VisiblePositionRange visiblePositionRangeForLine(unsigned) const { return VisiblePositionRange(); }
     
@@ -882,6 +886,7 @@ public:
     IntPoint scrollPosition() const;
     IntSize scrollContentsSize() const;    
     IntRect scrollVisibleContentRect() const;
+    void scrollToMakeVisible(const ScrollRectToVisibleOptions&) const;
     
     bool lastKnownIsIgnoredValue();
     void setLastKnownIsIgnoredValue(bool);
@@ -970,7 +975,6 @@ public:
     int accessibilityPasswordFieldLength();
     bool hasTouchEventListener() const;
     bool isInputTypePopupButton() const;
-    bool hasAccessibleDismissEventListener() const;
 #endif
     
     // allows for an AccessibilityObject to update its render tree or perform

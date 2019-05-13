@@ -227,6 +227,7 @@ interface UIScriptController {
 
     attribute object didShowMenuCallback;
     attribute object didHideMenuCallback;
+    readonly attribute boolean isDismissingMenu;
     readonly attribute boolean isShowingMenu;
     readonly attribute object menuRect;
     object rectForMenuAction(DOMString action);
@@ -310,6 +311,8 @@ interface UIScriptController {
     void firstResponderSuppressionForWebView(boolean shouldSuppress);
     void makeWindowContentViewFirstResponder();
     readonly attribute boolean isWindowContentViewFirstResponder;
+
+    void setHardwareKeyboardAttached(boolean attached);
 
     object attachmentInfo(DOMString attachmentIdentifier);
 

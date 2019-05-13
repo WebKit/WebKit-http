@@ -107,6 +107,7 @@
 #include <WebCore/FrameView.h>
 #include <WebCore/FrameWin.h>
 #include <WebCore/FullScreenController.h>
+#include <WebCore/FullscreenManager.h>
 #include <WebCore/GDIObjectCounter.h>
 #include <WebCore/GDIUtilities.h>
 #include <WebCore/GeolocationController.h>
@@ -1172,9 +1173,7 @@ void WebView::updateBackingStore(FrameView* frameView, HDC dc, bool backingStore
 
     if (m_backingStoreBitmap && (m_backingStoreDirtyRegion || backingStoreCompletelyDirty)) {
         // Do a layout first so that everything we render to the backing store is always current.
-        if (Frame* coreFrame = core(m_mainFrame))
-            if (FrameView* view = coreFrame->view())
-                view->updateLayoutAndStyleIfNeededRecursive();
+        m_page->updateRendering();
 
         Vector<IntRect> paintRects;
         if (!backingStoreCompletelyDirty && m_backingStoreDirtyRegion) {
@@ -7161,8 +7160,10 @@ void WebView::setRootChildLayer(GraphicsLayer* layer)
 void WebView::flushPendingGraphicsLayerChangesSoon()
 {
 #if USE(CA)
-    if (!m_layerTreeHost)
+    if (!m_layerTreeHost) {
+        m_page->updateRendering();
         return;
+    }
     m_layerTreeHost->flushPendingGraphicsLayerChangesSoon();
 #elif USE(TEXTURE_MAPPER_GL)
     if (!m_acceleratedCompositingContext)
@@ -7390,7 +7391,7 @@ void WebView::flushPendingGraphicsLayerChanges()
     if (!isAcceleratedCompositing())
         return;
 
-    view->updateLayoutAndStyleIfNeededRecursive();
+    m_page->updateRendering();
 
     // Updating layout might have taken us out of compositing mode.
     if (m_backingLayer)
@@ -7568,25 +7569,25 @@ void WebView::fullScreenClientSetParentWindow(HWND hostWindow)
 void WebView::fullScreenClientWillEnterFullScreen()
 {
     ASSERT(m_fullScreenElement);
-    m_fullScreenElement->document().webkitWillEnterFullScreen(*m_fullScreenElement);
+    m_fullScreenElement->document().fullscreenManager().willEnterFullscreen(*m_fullScreenElement);
 }
 
 void WebView::fullScreenClientDidEnterFullScreen()
 {
     ASSERT(m_fullScreenElement);
-    m_fullScreenElement->document().webkitDidEnterFullScreen();
+    m_fullScreenElement->document().fullscreenManager().didEnterFullscreen();
 }
 
 void WebView::fullScreenClientWillExitFullScreen()
 {
     ASSERT(m_fullScreenElement);
-    m_fullScreenElement->document().webkitCancelFullScreen();
+    m_fullScreenElement->document().fullscreenManager().cancelFullscreen();
 }
 
 void WebView::fullScreenClientDidExitFullScreen()
 {
     ASSERT(m_fullScreenElement);
-    m_fullScreenElement->document().webkitDidExitFullScreen();
+    m_fullScreenElement->document().fullscreenManager().didExitFullscreen();
     m_fullScreenElement = nullptr;
 }
 

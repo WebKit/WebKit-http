@@ -71,11 +71,9 @@ WI.TimelineTabContentView = class TimelineTabContentView extends WI.ContentBrows
             this.contentBrowser.navigationBar.addEventListener(WI.NavigationBar.Event.NavigationItemSelected, this._viewModeSelected, this);
         }
 
+        WI.timelineManager.addEventListener(WI.TimelineManager.Event.CapturingStateChanged, this._handleTimelineCapturingStateChanged, this);
         WI.timelineManager.addEventListener(WI.TimelineManager.Event.RecordingCreated, this._recordingCreated, this);
         WI.timelineManager.addEventListener(WI.TimelineManager.Event.RecordingLoaded, this._recordingLoaded, this);
-
-        WI.timelineManager.addEventListener(WI.TimelineManager.Event.CapturingStarted, this._capturingStartedOrStopped, this);
-        WI.timelineManager.addEventListener(WI.TimelineManager.Event.CapturingStopped, this._capturingStartedOrStopped, this);
 
         WI.notifications.addEventListener(WI.Notification.VisibilityStateDidChange, this._inspectorVisibilityChanged, this);
         WI.notifications.addEventListener(WI.Notification.GlobalModifierKeysDidChange, this._globalModifierKeysDidChange, this);
@@ -345,6 +343,11 @@ WI.TimelineTabContentView = class TimelineTabContentView extends WI.ContentBrows
         return representedObject instanceof WI.TimelineRecording;
     }
 
+    async handleFileDrop(files)
+    {
+        await WI.FileUtilities.readJSON(files, (result) => WI.timelineManager.processJSON(result));
+    }
+
     // Protected
 
     restoreFromCookie(cookie)
@@ -425,10 +428,15 @@ WI.TimelineTabContentView = class TimelineTabContentView extends WI.ContentBrows
             this._showContinueButton();
     }
 
-    _capturingStartedOrStopped(event)
+    _handleTimelineCapturingStateChanged(event)
     {
-        let isCapturing = WI.timelineManager.isCapturing();
-        this._recordButton.toggled = isCapturing;
+        let enabled = WI.timelineManager.capturingState === WI.TimelineManager.CapturingState.Active || WI.timelineManager.capturingState === WI.TimelineManager.CapturingState.Inactive;
+
+        this._toggleRecordingShortcut.disabled = !enabled;
+        this._toggleNewRecordingShortcut.disabled = !enabled;
+
+        this._recordButton.toggled = WI.timelineManager.isCapturing();
+        this._recordButton.enabled = enabled;
 
         this._updateNavigationBarButtons();
     }

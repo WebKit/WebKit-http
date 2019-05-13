@@ -116,7 +116,8 @@ private:
                 break;
 
             case GetLocal:
-            case SetArgument:
+            case SetArgumentDefinitely:
+            case SetArgumentMaybe:
                 m_values.operand(node->local()) = nullptr;
                 break;
                 

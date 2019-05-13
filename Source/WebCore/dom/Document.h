@@ -108,7 +108,6 @@ class DOMWrapperWorld;
 class Database;
 class DatabaseThread;
 class DeferredPromise;
-class DocumentAnimationScheduler;
 class DocumentFragment;
 class DocumentLoader;
 class DocumentMarkerController;
@@ -124,6 +123,7 @@ class FontFaceSet;
 class FormController;
 class Frame;
 class FrameView;
+class FullscreenManager;
 class HTMLAllCollection;
 class HTMLBodyElement;
 class HTMLCanvasElement;
@@ -163,7 +163,6 @@ class ProcessingInstruction;
 class QualifiedName;
 class Quirks;
 class Range;
-class RenderFullScreen;
 class RenderTreeBuilder;
 class RenderView;
 class RequestAnimationFrameCallback;
@@ -411,7 +410,7 @@ public:
     void clearSelectorQueryCache();
 
     void setViewportArguments(const ViewportArguments& viewportArguments) { m_viewportArguments = viewportArguments; }
-    ViewportArguments viewportArguments() const { return m_viewportArguments; }
+    ViewportArguments viewportArguments() const { return m_overrideViewportArguments.valueOr(m_viewportArguments); }
 
     WEBCORE_EXPORT void setOverrideViewportArguments(const Optional<ViewportArguments>&);
 
@@ -893,7 +892,7 @@ public:
     void processReferrerPolicy(const String& policy, ReferrerPolicySource);
 
 #if ENABLE(DARK_MODE_CSS)
-    void processSupportedColorSchemes(const String& colorSchemes);
+    void processColorScheme(const String& colorScheme);
 #endif
 
     // Returns the owning element in the parent document.
@@ -1056,7 +1055,10 @@ public:
     ScriptedAnimationController* scriptedAnimationController() { return m_scriptedAnimationController.get(); }
     void suspendScriptedAnimationControllerCallbacks();
     void resumeScriptedAnimationControllerCallbacks();
-    
+
+    void updateAnimationsAndSendEvents(DOMHighResTimeStamp timestamp);
+    void serviceRequestAnimationFrameCallbacks(DOMHighResTimeStamp timestamp);
+
     void windowScreenDidChange(PlatformDisplayID);
 
     void finishedParsing();
@@ -1173,42 +1175,8 @@ public:
     MediaCanStartListener* takeAnyMediaCanStartListener();
 
 #if ENABLE(FULLSCREEN_API)
-    bool webkitIsFullScreen() const { return m_fullScreenElement.get(); }
-    bool webkitFullScreenKeyboardInputAllowed() const { return m_fullScreenElement.get() && m_areKeysEnabledInFullScreen; }
-    Element* webkitCurrentFullScreenElement() const { return m_fullScreenElement.get(); }
-    Element* webkitCurrentFullScreenElementForBindings() const { return ancestorElementInThisScope(webkitCurrentFullScreenElement()); }
-
-    enum FullScreenCheckType {
-        EnforceIFrameAllowFullScreenRequirement,
-        ExemptIFrameAllowFullScreenRequirement,
-    };
-
-    void requestFullScreenForElement(Element*, FullScreenCheckType);
-    WEBCORE_EXPORT void webkitCancelFullScreen();
-    
-    WEBCORE_EXPORT void webkitWillEnterFullScreen(Element&);
-    WEBCORE_EXPORT void webkitDidEnterFullScreen();
-    WEBCORE_EXPORT void webkitWillExitFullScreen();
-    WEBCORE_EXPORT void webkitDidExitFullScreen();
-    
-    void setFullScreenRenderer(RenderTreeBuilder&, RenderFullScreen&);
-    RenderFullScreen* fullScreenRenderer() const { return m_fullScreenRenderer.get(); }
-
-    void dispatchFullScreenChangeEvents();
-    bool fullScreenIsAllowedForElement(Element&) const;
-    void fullScreenElementRemoved();
-    void adjustFullScreenElementOnNodeRemoval(Node&, NodeRemoval = NodeRemoval::Node);
-
-    WEBCORE_EXPORT bool isAnimatingFullScreen() const;
-    WEBCORE_EXPORT void setAnimatingFullScreen(bool);
-
-    WEBCORE_EXPORT bool areFullscreenControlsHidden() const;
-    WEBCORE_EXPORT void setFullscreenControlsHidden(bool);
-
-    WEBCORE_EXPORT bool webkitFullscreenEnabled() const;
-    Element* webkitFullscreenElement() const { return !m_fullScreenElementStack.isEmpty() ? m_fullScreenElementStack.last().get() : nullptr; }
-    Element* webkitFullscreenElementForBindings() const { return ancestorElementInThisScope(webkitFullscreenElement()); }
-    WEBCORE_EXPORT void webkitExitFullscreen();
+    FullscreenManager& fullscreenManager() { return m_fullscreenManager; }
+    const FullscreenManager& fullscreenManager() const { return m_fullscreenManager; }
 #endif
 
 #if ENABLE(POINTER_LOCK)
@@ -1411,11 +1379,12 @@ public:
     void addAppearanceDependentPicture(HTMLPictureElement&);
     void removeAppearanceDependentPicture(HTMLPictureElement&);
 
+    void scheduleRenderingUpdate();
+
 #if ENABLE(INTERSECTION_OBSERVER)
     void addIntersectionObserver(IntersectionObserver&);
     void removeIntersectionObserver(IntersectionObserver&);
     unsigned numberOfIntersectionObservers() const { return m_intersectionObservers.size(); }
-    void scheduleForcedIntersectionObservationUpdate();
     void updateIntersectionObservations();
 #endif
 
@@ -1428,7 +1397,7 @@ public:
     void deliverResizeObservations();
     bool hasSkippedResizeObservations() const;
     void setHasSkippedResizeObservations(bool);
-    void scheduleResizeObservations();
+    void updateResizeObservations(Page&);
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -1499,10 +1468,6 @@ public:
     void setUserGrantsStorageAccessOverride(bool value) { m_grantStorageAccessOverride = value; }
 
     WEBCORE_EXPORT void setConsoleMessageListener(RefPtr<StringCallback>&&); // For testing.
-
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    DocumentAnimationScheduler& animationScheduler();
-#endif
 
     WEBCORE_EXPORT DocumentTimeline& timeline();
     DocumentTimeline* existingTimeline() const { return m_timeline.get(); }
@@ -1628,14 +1593,6 @@ private:
     void detachFromFrame();
 
     template<CollectionType> Ref<HTMLCollection> ensureCachedCollection();
-
-#if ENABLE(FULLSCREEN_API)
-    void dispatchFullScreenChangeOrErrorEvent(Deque<RefPtr<Node>>&, const AtomicString& eventName, bool shouldNotifyMediaElement);
-    void clearFullscreenElementStack();
-    void popFullscreenElementStack();
-    void pushFullscreenElementStack(Element&);
-    void addDocumentToFullScreenChangeEventQueue(Document&);
-#endif
 
     void dispatchDisabledAdaptationsDidChangeForMainFrame();
 
@@ -1806,7 +1763,7 @@ private:
     HashSet<SVGUseElement*> m_svgUseElements;
 
 #if ENABLE(DARK_MODE_CSS)
-    OptionSet<ColorSchemes> m_supportedColorSchemes;
+    OptionSet<ColorScheme> m_colorScheme;
     bool m_allowsColorSchemeTransformations { true };
 #endif
 
@@ -1852,18 +1809,7 @@ private:
     HashSet<MediaCanStartListener*> m_mediaCanStartListeners;
 
 #if ENABLE(FULLSCREEN_API)
-    RefPtr<Element> m_fullScreenElement;
-    Vector<RefPtr<Element>> m_fullScreenElementStack;
-    WeakPtr<RenderFullScreen> m_fullScreenRenderer { nullptr };
-    GenericTaskQueue<Timer> m_fullScreenTaskQueue;
-    Deque<RefPtr<Node>> m_fullScreenChangeEventTargetQueue;
-    Deque<RefPtr<Node>> m_fullScreenErrorEventTargetQueue;
-    LayoutRect m_savedPlaceholderFrameRect;
-    std::unique_ptr<RenderStyle> m_savedPlaceholderRenderStyle;
-
-    bool m_areKeysEnabledInFullScreen { false };
-    bool m_isAnimatingFullScreen { false };
-    bool m_areFullscreenControlsHidden { false };
+    UniqueRef<FullscreenManager> m_fullscreenManager;
 #endif
 
     HashSet<HTMLPictureElement*> m_viewportDependentPictures;
@@ -2071,10 +2017,6 @@ private:
     bool m_isTelephoneNumberParsingAllowed { true };
 #endif
 
-#if ENABLE(INTERSECTION_OBSERVER)
-    bool m_needsForcedIntersectionObservationUpdate { false };
-#endif
-
 #if ENABLE(MEDIA_STREAM)
     HashSet<HTMLMediaElement*> m_mediaStreamStateChangeElements;
     String m_idHashSalt;
@@ -2094,9 +2036,6 @@ private:
 
     bool m_grantStorageAccessOverride { false };
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    RefPtr<DocumentAnimationScheduler> m_animationScheduler;
-#endif
     RefPtr<DocumentTimeline> m_timeline;
     DocumentIdentifier m_identifier;
 

@@ -94,6 +94,9 @@
 /* WKErrorJavaScriptExceptionOccurred description */
 "A JavaScript exception occurred" = "A JavaScript exception occurred";
 
+/* Title for Add to Photos action button */
+"Add to Photos" = "Add to Photos";
+
 /* Title for Add to Reading List action button */
 "Add to Reading List" = "Add to Reading List";
 
@@ -105,6 +108,9 @@
 
 /* Button title in Storage Access API prompt */
 "Allow (cross-site cookie and website data access)" = "Allow";
+
+/* Button title in Device Orientation Permission API prompt */
+"Allow (device motion and orientation access)" = "Allow";
 
 /* Message for requesting cross-site cookie and website data access. */
 "Allow \"%@\" to use cookies and website data while browsing \"%@\"?" = "Allow \"%@\" to use cookies and website data while browsing \"%@\"?";
@@ -150,6 +156,9 @@
 
 /* Cancel */
 "Cancel" = "Cancel";
+
+/* Button title in Device Orientation Permission API prompt */
+"Cancel (device motion and orientation access)" = "Cancel";
 
 /* Title for Cancel button label in button bar */
 "Cancel button label in button bar" = "Cancel";
@@ -625,9 +634,6 @@
 /* Right to Left context menu item */
 "Right to Left" = "Right to Left";
 
-/* Title for Save Image action button */
-"Save Image" = "Save Image";
-
 /* Title of the Search button for zoomed form controls. */
 "Search" = "Search";
 
@@ -966,6 +972,9 @@
 
 /* message in authentication panel */
 "Your password will be sent unencrypted." = "Your password will be sent unencrypted.";
+
+/* Message for requesting access to the device motion and orientation */
+"\"%@\" Would Like to Access Motion and Orientation" = "\"%@\" Would Like to Access Motion and Orientation";
 
 /* HTTP result code string */
 "accepted" = "accepted";

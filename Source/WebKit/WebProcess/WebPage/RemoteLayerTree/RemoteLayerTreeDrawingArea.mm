@@ -50,6 +50,7 @@
 #import <WebCore/Settings.h>
 #import <WebCore/TiledBacking.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
+#import <wtf/SetForScope.h>
 #import <wtf/SystemTracing.h>
 
 namespace WebKit {
@@ -344,13 +345,12 @@ void RemoteLayerTreeDrawingArea::flushLayers()
             scheduleCompositingLayerFlush();
     }
 
-    RELEASE_ASSERT(!m_pendingBackingStoreFlusher || m_pendingBackingStoreFlusher->hasFlushed());
+    // This function is not reentrant, e.g. a rAF callback may force repaint.
+    if (m_inFlushLayers)
+        return;
 
-    RemoteLayerBackingStoreCollection& backingStoreCollection = m_remoteLayerTreeContext->backingStoreCollection();
-    backingStoreCollection.willFlushLayers();
-
-    m_webPage.layoutIfNeeded();
-    m_webPage.willDisplayPage();
+    SetForScope<bool> change(m_inFlushLayers, true);
+    m_webPage.updateRendering();
 
     FloatRect visibleRect(FloatPoint(), m_viewSize);
     if (m_scrolledViewExposedRect)
@@ -373,6 +373,11 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     if (m_viewOverlayRootLayer)
         m_viewOverlayRootLayer->flushCompositingState(visibleRect);
 
+    RELEASE_ASSERT(!m_pendingBackingStoreFlusher || m_pendingBackingStoreFlusher->hasFlushed());
+
+    RemoteLayerBackingStoreCollection& backingStoreCollection = m_remoteLayerTreeContext->backingStoreCollection();
+    backingStoreCollection.willFlushLayers();
+
     m_rootLayer->flushCompositingStateForThisLayerOnly();
 
     // FIXME: Minimize these transactions if nothing changed.
@@ -385,8 +390,8 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     backingStoreCollection.willCommitLayerTree(layerTransaction);
     m_webPage.willCommitLayerTree(layerTransaction);
 
-    layerTransaction.setNewlyReachedLayoutMilestones(m_pendingNewlyReachedLayoutMilestones);
-    m_pendingNewlyReachedLayoutMilestones = { };
+    layerTransaction.setNewlyReachedPaintingMilestones(m_pendingNewlyReachedPaintingMilestones);
+    m_pendingNewlyReachedPaintingMilestones = { };
 
     layerTransaction.setActivityStateChangeID(m_activityStateChangeID);
     m_activityStateChangeID = ActivityStateChangeAsynchronous;
@@ -525,12 +530,6 @@ void RemoteLayerTreeDrawingArea::addTransactionCallbackID(CallbackID callbackID)
 
     m_pendingCallbackIDs.append(static_cast<RemoteLayerTreeTransaction::TransactionCallbackID>(callbackID));
     scheduleCompositingLayerFlush();
-}
-
-bool RemoteLayerTreeDrawingArea::dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone> layoutMilestones)
-{
-    m_pendingNewlyReachedLayoutMilestones.add(layoutMilestones);
-    return true;
 }
 
 void RemoteLayerTreeDrawingArea::adoptLayersFromDrawingArea(DrawingArea& oldDrawingArea)

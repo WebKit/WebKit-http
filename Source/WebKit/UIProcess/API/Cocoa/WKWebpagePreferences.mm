@@ -32,6 +32,10 @@
 #import "_WKWebsitePoliciesInternal.h"
 #import <wtf/RetainPtr.h>
 
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WKWebpagePreferencesAdditionsBefore.mm>
+#endif
+
 @implementation WKWebpagePreferences
 
 + (instancetype)defaultPreferences
@@ -137,26 +141,50 @@
     }
 }
 
-- (void)_setDeviceOrientationAndMotionAccessPolicy:(_WKWebsiteDeviceOrientationAndMotionAccessPolicy)policy
+#if ENABLE(DEVICE_ORIENTATION)
+static WebCore::DeviceOrientationOrMotionPermissionState toDeviceOrientationOrMotionPermissionState(_WKWebsiteDeviceOrientationAndMotionAccessPolicy policy)
 {
     switch (policy) {
     case _WKWebsiteDeviceOrientationAndMotionAccessPolicyAsk:
-        _websitePolicies->setDeviceOrientationAndMotionAccessState(WTF::nullopt);
-        break;
+        return WebCore::DeviceOrientationOrMotionPermissionState::Prompt;
     case _WKWebsiteDeviceOrientationAndMotionAccessPolicyGrant:
-        _websitePolicies->setDeviceOrientationAndMotionAccessState(true);
-        break;
+        return WebCore::DeviceOrientationOrMotionPermissionState::Granted;
     case _WKWebsiteDeviceOrientationAndMotionAccessPolicyDeny:
-        _websitePolicies->setDeviceOrientationAndMotionAccessState(false);
         break;
     }
+    return WebCore::DeviceOrientationOrMotionPermissionState::Denied;
 }
+#endif
+
+- (void)_setDeviceOrientationAndMotionAccessPolicy:(_WKWebsiteDeviceOrientationAndMotionAccessPolicy)policy
+{
+#if ENABLE(DEVICE_ORIENTATION)
+    _websitePolicies->setDeviceOrientationAndMotionAccessState(toDeviceOrientationOrMotionPermissionState(policy));
+#endif
+}
+
+#if ENABLE(DEVICE_ORIENTATION)
+static _WKWebsiteDeviceOrientationAndMotionAccessPolicy toWKWebsiteDeviceOrientationAndMotionAccessPolicy(WebCore::DeviceOrientationOrMotionPermissionState state)
+{
+    switch (state) {
+    case WebCore::DeviceOrientationOrMotionPermissionState::Prompt:
+        return _WKWebsiteDeviceOrientationAndMotionAccessPolicyAsk;
+    case WebCore::DeviceOrientationOrMotionPermissionState::Granted:
+        return _WKWebsiteDeviceOrientationAndMotionAccessPolicyGrant;
+    case WebCore::DeviceOrientationOrMotionPermissionState::Denied:
+        break;
+    }
+    return _WKWebsiteDeviceOrientationAndMotionAccessPolicyDeny;
+}
+#endif
 
 - (_WKWebsiteDeviceOrientationAndMotionAccessPolicy)_deviceOrientationAndMotionAccessPolicy
 {
-    if (!_websitePolicies->deviceOrientationAndMotionAccessState())
-        return _WKWebsiteDeviceOrientationAndMotionAccessPolicyAsk;
-    return *_websitePolicies->deviceOrientationAndMotionAccessState() ? _WKWebsiteDeviceOrientationAndMotionAccessPolicyGrant : _WKWebsiteDeviceOrientationAndMotionAccessPolicyDeny;
+#if ENABLE(DEVICE_ORIENTATION)
+    return toWKWebsiteDeviceOrientationAndMotionAccessPolicy(_websitePolicies->deviceOrientationAndMotionAccessState());
+#else
+    return _WKWebsiteDeviceOrientationAndMotionAccessPolicyDeny;
+#endif
 }
 
 - (void)_setPopUpPolicy:(_WKWebsitePopUpPolicy)policy
@@ -254,7 +282,7 @@
 }
 
 #if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebpagePreferencesAdditions.mm>
+#import <WebKitAdditions/WKWebpagePreferencesAdditionsAfter.mm>
 #endif
 
 @end

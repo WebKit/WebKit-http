@@ -21,18 +21,21 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from buildbot.process import factory, properties
+from buildbot.process import factory
 from buildbot.steps import trigger
 
-from steps import *
-
-Property = properties.Property
+from steps import (ApplyPatch, CheckOutSource, CheckPatchRelevance, CheckStyle,
+                   CompileJSCOnly, CompileJSCOnlyToT, CompileWebKit, ConfigureBuild,
+                   DownloadBuiltProduct, ExtractBuiltProduct, KillOldProcesses,
+                   PrintConfiguration, ReRunJavaScriptCoreTests, RunAPITests, RunBindingsTests,
+                   RunJavaScriptCoreTests, RunJavaScriptCoreTestsToT, RunWebKit1Tests, RunWebKitPerlTests,
+                   RunWebKitPyTests, RunWebKitTests, UnApplyPatchIfRequired, ValidatePatch)
 
 
 class Factory(factory.BuildFactory):
-    def __init__(self, platform, configuration=None, architectures=None, buildOnly=True, additionalArguments=None, checkRelevance=False, **kwargs):
+    def __init__(self, platform, configuration=None, architectures=None, buildOnly=True, triggers=None, additionalArguments=None, checkRelevance=False, **kwargs):
         factory.BuildFactory.__init__(self)
-        self.addStep(ConfigureBuild(platform, configuration, architectures, buildOnly, additionalArguments))
+        self.addStep(ConfigureBuild(platform, configuration, architectures, buildOnly, triggers, additionalArguments))
         if checkRelevance:
             self.addStep(CheckPatchRelevance())
         self.addStep(ValidatePatch())
@@ -66,23 +69,10 @@ class WebKitPyFactory(Factory):
 
 
 class BuildFactory(Factory):
-    def __init__(self, platform, configuration=None, architectures=None, additionalArguments=None, triggers=None, **kwargs):
-        Factory.__init__(self, platform, configuration, architectures, False, additionalArguments)
+    def __init__(self, platform, configuration=None, architectures=None, triggers=None, additionalArguments=None, **kwargs):
+        Factory.__init__(self, platform, configuration, architectures, False, triggers, additionalArguments)
         self.addStep(KillOldProcesses())
         self.addStep(CompileWebKit())
-        if triggers:
-            self.addStep(trigger.Trigger(schedulerNames=triggers, set_properties=self.propertiesToPassToTriggers() or {}))
-
-    def propertiesToPassToTriggers(self):
-        return {
-            "patch_id": Property("patch_id"),
-            "bug_id": Property("bug_id"),
-            "configuration": Property("configuration"),
-            "platform": Property("platform"),
-            "fullPlatform": Property("fullPlatform"),
-            "architecture": Property("architecture"),
-            "owner": Property("owner"),
-        }
 
 
 class TestFactory(Factory):

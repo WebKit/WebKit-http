@@ -188,12 +188,16 @@ void InspectorInstrumentation::didRemoveDOMAttrImpl(InstrumentingAgents& instrum
         domAgent->didRemoveDOMAttr(element, name);
 }
 
-void InspectorInstrumentation::didInvalidateStyleAttrImpl(InstrumentingAgents& instrumentingAgents, Node& node)
+void InspectorInstrumentation::willInvalidateStyleAttrImpl(InstrumentingAgents& instrumentingAgents, Element& element)
 {
-    if (InspectorDOMAgent* domAgent = instrumentingAgents.inspectorDOMAgent())
-        domAgent->didInvalidateStyleAttr(node);
-    if (InspectorDOMDebuggerAgent* domDebuggerAgent = instrumentingAgents.inspectorDOMDebuggerAgent())
-        domDebuggerAgent->didInvalidateStyleAttr(node);
+    if (auto* domDebuggerAgent = instrumentingAgents.inspectorDOMDebuggerAgent())
+        domDebuggerAgent->willInvalidateStyleAttr(element);
+}
+
+void InspectorInstrumentation::didInvalidateStyleAttrImpl(InstrumentingAgents& instrumentingAgents, Element& element)
+{
+    if (auto* domAgent = instrumentingAgents.inspectorDOMAgent())
+        domAgent->didInvalidateStyleAttr(element);
 }
 
 void InspectorInstrumentation::documentDetachedImpl(InstrumentingAgents& instrumentingAgents, Document& document)
@@ -1087,15 +1091,20 @@ void InspectorInstrumentation::updateApplicationCacheStatusImpl(InstrumentingAge
 
 bool InspectorInstrumentation::consoleAgentEnabled(ScriptExecutionContext* scriptExecutionContext)
 {
-    InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(scriptExecutionContext);
-    InspectorConsoleAgent* consoleAgent = instrumentingAgents ? instrumentingAgents->webConsoleAgent() : nullptr;
-    return consoleAgent && consoleAgent->enabled();
+    FAST_RETURN_IF_NO_FRONTENDS(false);
+    if (auto* instrumentingAgents = instrumentingAgentsForContext(scriptExecutionContext)) {
+        if (auto* webConsoleAgent = instrumentingAgents->webConsoleAgent())
+            return webConsoleAgent->enabled();
+    }
+    return false;
 }
 
 bool InspectorInstrumentation::timelineAgentEnabled(ScriptExecutionContext* scriptExecutionContext)
 {
-    InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(scriptExecutionContext);
-    return instrumentingAgents && instrumentingAgents->inspectorTimelineAgent();
+    FAST_RETURN_IF_NO_FRONTENDS(false);
+    if (auto* instrumentingAgents = instrumentingAgentsForContext(scriptExecutionContext))
+        return instrumentingAgents->inspectorTimelineAgent();
+    return false;
 }
 
 void InspectorInstrumentation::didRequestAnimationFrameImpl(InstrumentingAgents& instrumentingAgents, int callbackId, Document& document)

@@ -36,6 +36,7 @@
 #import "WHLSLVertexBufferIndexCalculator.h"
 #import <Metal/Metal.h>
 #import <wtf/BlockObjCExceptions.h>
+#import <wtf/CheckedArithmetic.h>
 #import <wtf/OptionSet.h>
 #import <wtf/Optional.h>
 
@@ -198,7 +199,8 @@ static Optional<WHLSL::RenderPipelineDescriptor> convertRenderPipelineDescriptor
             return WTF::nullopt;
     }
     whlslDescriptor.vertexEntryPointName = descriptor.vertexStage.entryPoint;
-    whlslDescriptor.fragmentEntryPointName = descriptor.fragmentStage.entryPoint;
+    if (descriptor.fragmentStage)
+        whlslDescriptor.fragmentEntryPointName = descriptor.fragmentStage->entryPoint;
     return whlslDescriptor;
 }
 
@@ -274,19 +276,23 @@ static bool trySetFunctionsForPipelineDescriptor(const char* const functionName,
     const auto& vertexStage = descriptor.vertexStage;
     const auto& fragmentStage = descriptor.fragmentStage;
 
-    if (vertexStage.module.ptr() == fragmentStage.module.ptr()) {
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=195446 Allow WHLSL shaders to come from different programs.
-        const auto& whlslSource = vertexStage.module->whlslSource();
-        if (!whlslSource.isNull())
+    const auto& whlslSource = vertexStage.module->whlslSource();
+    if (!whlslSource.isNull()) {
+        if (!fragmentStage || vertexStage.module.ptr() == fragmentStage->module.ptr()) {
+            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=195446 Allow WHLSL shaders to come from different programs.
             return trySetWHLSLFunctionsForPipelineDescriptor(functionName, mtlDescriptor, descriptor, whlslSource, device);
+        }
     }
 
     auto vertexLibrary = vertexStage.module->platformShaderModule();
     MTLLibrary *fragmentLibrary = nil;
-    if (!fragmentStage.entryPoint.isNull())
-        fragmentLibrary = fragmentStage.module->platformShaderModule();
+    String fragmentEntryPoint;
+    if (fragmentStage) {
+        fragmentLibrary = fragmentStage->module->platformShaderModule();
+        fragmentEntryPoint = fragmentStage->entryPoint;
+    }
 
-    return trySetMetalFunctionsForPipelineDescriptor(functionName, vertexLibrary, fragmentLibrary, mtlDescriptor, vertexStage.entryPoint, fragmentStage.entryPoint);
+    return trySetMetalFunctionsForPipelineDescriptor(functionName, vertexLibrary, fragmentLibrary, mtlDescriptor, vertexStage.entryPoint, fragmentEntryPoint);
 }
 
 static MTLVertexFormat mtlVertexFormatForGPUVertexFormat(GPUVertexFormat format)
@@ -339,10 +345,17 @@ static bool trySetInputStateForPipelineDescriptor(const char* const functionName
             LOG(WebGPU, "%s: Invalid inputSlot %u for vertex attribute %u!", functionName, attributes[i].inputSlot, location);
             return false;
         }
+        // MTLBuffer size (NSUInteger) is 32 bits on some platforms.
+        // FIXME: Ensure offset < buffer's stride + format's data size.
+        NSUInteger attributeOffset = 0;
+        if (!WTF::convertSafely(attributes[i].offset, attributeOffset)) {
+            LOG(WebGPU, "%s: Buffer offset for vertex attribute %u is too large!", functionName, location);
+            return false;
+        }
 
         auto mtlAttributeDesc = retainPtr([attributeArray objectAtIndexedSubscript:location]);
         [mtlAttributeDesc setFormat:mtlVertexFormatForGPUVertexFormat(attributes[i].format)];
-        [mtlAttributeDesc setOffset:attributes[i].offset]; // FIXME: After adding more vertex formats, ensure offset < buffer's stride + format's data size.
+        [mtlAttributeDesc setOffset:attributeOffset];
         [mtlAttributeDesc setBufferIndex:WHLSL::Metal::calculateVertexBufferIndex(attributes[i].inputSlot)];
     }
 
@@ -356,11 +369,16 @@ static bool trySetInputStateForPipelineDescriptor(const char* const functionName
             LOG(WebGPU, "%s: Invalid inputSlot %d for vertex buffer!", functionName, slot);
             return false;
         }
+        NSUInteger inputStride = 0;
+        if (!WTF::convertSafely(inputs[j].stride, inputStride)) {
+            LOG(WebGPU, "%s: Stride for vertex buffer slot %d is too large!", functionName, slot);
+            return false;
+        }
 
         auto convertedSlot = WHLSL::Metal::calculateVertexBufferIndex(slot);
         auto mtlLayoutDesc = retainPtr([layoutArray objectAtIndexedSubscript:convertedSlot]);
         [mtlLayoutDesc setStepFunction:mtlStepFunctionForGPUInputStepMode(inputs[j].stepMode)];
-        [mtlLayoutDesc setStride:inputs[j].stride];
+        [mtlLayoutDesc setStride:inputStride];
     }
 
     [mtlDescriptor setVertexDescriptor:mtlVertexDescriptor.get()];
@@ -517,13 +535,14 @@ RefPtr<GPURenderPipeline> GPURenderPipeline::tryCreate(const GPUDevice& device, 
     if (!pipeline)
         return nullptr;
 
-    return adoptRef(new GPURenderPipeline(WTFMove(depthStencil), WTFMove(pipeline), descriptor.primitiveTopology));
+    return adoptRef(new GPURenderPipeline(WTFMove(depthStencil), WTFMove(pipeline), descriptor.primitiveTopology, descriptor.inputState.indexFormat));
 }
 
-GPURenderPipeline::GPURenderPipeline(RetainPtr<MTLDepthStencilState>&& depthStencil, RetainPtr<MTLRenderPipelineState>&& pipeline, GPUPrimitiveTopology topology)
+GPURenderPipeline::GPURenderPipeline(RetainPtr<MTLDepthStencilState>&& depthStencil, RetainPtr<MTLRenderPipelineState>&& pipeline, GPUPrimitiveTopology topology, Optional<GPUIndexFormat> format)
     : m_depthStencilState(WTFMove(depthStencil))
     , m_platformRenderPipeline(WTFMove(pipeline))
     , m_primitiveTopology(topology)
+    , m_indexFormat(format)
 {
 }
 

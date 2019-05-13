@@ -787,13 +787,15 @@ void DocumentLoader::responseReceived(const ResourceResponse& response, Completi
             return;
         }
 
-        String frameOptions = response.httpHeaderFields().get(HTTPHeaderName::XFrameOptions);
-        if (!frameOptions.isNull()) {
-            if (frameLoader()->shouldInterruptLoadForXFrameOptions(frameOptions, url, identifier)) {
-                String message = "Refused to display '" + url.stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + frameOptions + "'.";
-                m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
-                stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(identifier, response);
-                return;
+        if (!contentSecurityPolicy.overridesXFrameOptions()) {
+            String frameOptions = response.httpHeaderFields().get(HTTPHeaderName::XFrameOptions);
+            if (!frameOptions.isNull()) {
+                if (frameLoader()->shouldInterruptLoadForXFrameOptions(frameOptions, url, identifier)) {
+                    String message = "Refused to display '" + url.stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + frameOptions + "'.";
+                    m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
+                    stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(identifier, response);
+                    return;
+                }
             }
         }
     }
@@ -1175,6 +1177,21 @@ void DocumentLoader::checkLoadComplete()
     m_frame->document()->domWindow()->finishedLoading();
 }
 
+void DocumentLoader::applyPoliciesToSettings()
+{
+    if (!m_frame) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    if (!m_frame->isMainFrame())
+        return;
+
+#if ENABLE(MEDIA_SOURCE)
+    m_frame->settings().setMediaSourceEnabled(m_mediaSourcePolicy == MediaSourcePolicy::Default ? Settings::platformDefaultMediaSourceEnabled() : m_mediaSourcePolicy == MediaSourcePolicy::Enable);
+#endif
+}
+
 void DocumentLoader::attachToFrame(Frame& frame)
 {
     if (m_frame == &frame)
@@ -1188,6 +1205,8 @@ void DocumentLoader::attachToFrame(Frame& frame)
 #ifndef NDEBUG
     m_hasEverBeenAttached = true;
 #endif
+
+    applyPoliciesToSettings();
 }
 
 void DocumentLoader::attachToFrame()

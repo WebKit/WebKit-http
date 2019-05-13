@@ -166,7 +166,6 @@ my $msBuildInstallDir;
 my $vsVersion;
 my $windowsSourceDir;
 my $winVersion;
-my $vsWhereFoundInstallation;
 
 # Defined in VCSUtils.
 sub exitStatus($);
@@ -473,7 +472,11 @@ sub jscPath($)
     my ($productDir) = @_;
     my $jscName = "jsc";
     $jscName .= "_debug"  if configuration() eq "Debug_All";
-    $jscName .= ".exe" if (isAnyWindows());
+    if (isPlayStation()) {
+        $jscName .= ".elf";
+    } elsif (isAnyWindows()) {
+        $jscName .= ".exe";
+    }
     return "$productDir/$jscName" if -e "$productDir/$jscName";
     return "$productDir/JavaScriptCore.framework/Resources/$jscName";
 }
@@ -651,47 +654,14 @@ sub programFilesPathX86
     return $programFilesPathX86;
 }
 
-sub requireModulesForVSWhere
+sub visualStudioInstallDirVSWhere
 {
-    require Encode;
-    require Encode::Locale;
-    require JSON::PP;
-}
-
-sub pickCurrentVisualStudioInstallation
-{
-    return $vsWhereFoundInstallation if defined $vsWhereFoundInstallation;
-
-    requireModulesForVSWhere();
-    determineSourceDir();
-
-    # Prefer Enterprise, then Professional, then Community, then
-    # anything else that provides MSBuild.
-    foreach my $productType ((
-        'Microsoft.VisualStudio.Product.Enterprise',
-        'Microsoft.VisualStudio.Product.Professional',
-        'Microsoft.VisualStudio.Product.Community',
-        undef
-    )) {
-        my $command = "$sourceDir/WebKitLibraries/win/tools/vswhere -nologo -latest -format json -requires Microsoft.Component.MSBuild";
-        if (defined $productType) {
-            $command .= " -products $productType";
-        }
-        my $vsWhereOut = `$command`;
-        my $installations = [];
-        eval {
-            $installations = JSON::PP::decode_json(Encode::encode('UTF-8' => Encode::decode(console_in => $vsWhereOut)));
-        };
-        print "Error getting Visual Studio Location: $@\n" if $@;
-        undef $@;
-
-        if (scalar @$installations) {
-            my $installation = $installations->[0];
-            $vsWhereFoundInstallation = $installation;
-            return $installation;
-        }
-    }
-    return undef;
+    my $vswhere = File::Spec->catdir(programFilesPathX86(), "Microsoft Visual Studio", "Installer", "vswhere.exe");
+    return unless -e $vswhere;
+    open(my $handle, "-|", $vswhere, qw(-nologo -latest -requires Microsoft.Component.MSBuild -property installationPath)) || return;
+    my $vsWhereOut = <$handle>;
+    $vsWhereOut =~ s/\r?\n//;
+    return $vsWhereOut;
 }
 
 sub visualStudioInstallDir
@@ -703,41 +673,12 @@ sub visualStudioInstallDir
         $vsInstallDir =~ s|[\\/]$||;
     } else {
         $vsInstallDir = visualStudioInstallDirVSWhere();
-        if (not -e $vsInstallDir) {
-            $vsInstallDir = visualStudioInstallDirFallback();
-        }
+        return unless defined $vsInstallDir;
     }
     chomp($vsInstallDir = `cygpath "$vsInstallDir"`) if isCygwin();
 
     print "Using Visual Studio: $vsInstallDir\n";
     return $vsInstallDir;
-}
-
-sub visualStudioInstallDirVSWhere
-{
-    pickCurrentVisualStudioInstallation();
-    if (defined($vsWhereFoundInstallation)) {
-        return $vsWhereFoundInstallation->{installationPath};
-    }
-    return undef;
-}
-
-sub visualStudioInstallDirFallback
-{
-    foreach my $productType ((
-        'Enterprise',
-        'Professional',
-        'Community',
-    )) {
-        my $installdir = File::Spec->catdir(programFilesPathX86(),
-            "Microsoft Visual Studio", "2017", $productType);
-        my $msbuilddir = File::Spec->catdir($installdir,
-            "MSBuild", "15.0", "bin");
-        if (-e $installdir && -e $msbuilddir) {
-            return $installdir;
-        }
-    }
-    return undef;
 }
 
 sub msBuildInstallDir
@@ -833,9 +774,9 @@ sub executableProductDir
     my $productDirectory = productDir();
 
     my $binaryDirectory;
-    if (isAnyWindows()) {
+    if (isAnyWindows() && !isPlayStation()) {
         $binaryDirectory = isWin64() ? "bin64" : "bin32";
-    } elsif (isGtk() || isJSCOnly() || isWPE() || isHaiku()) {
+    } elsif (isGtk() || isJSCOnly() || isWPE() || isHaiku() || isPlayStation()) {
         $binaryDirectory = "bin";
     } else {
         return $productDirectory;
@@ -1914,7 +1855,6 @@ sub setupCygwinEnv()
     return if $vcBuildPath;
 
     my $programFilesPath = programFilesPath();
-    my $visualStudioPath = File::Spec->catfile(visualStudioInstallDir(), qw(Common7 IDE devenv.com));
 
     print "Building results into: ", baseProductDir(), "\n";
     print "WEBKIT_OUTPUTDIR is set to: ", $ENV{"WEBKIT_OUTPUTDIR"}, "\n";

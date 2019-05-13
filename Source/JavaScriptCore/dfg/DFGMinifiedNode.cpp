@@ -28,6 +28,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGMinifiedIDInlines.h"
 #include "DFGNode.h"
 #include "JSCInlines.h"
 

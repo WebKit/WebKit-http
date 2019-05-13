@@ -223,6 +223,11 @@ void InspectorFrontendClientLocal::changeAttachedWindowWidth(unsigned width)
     setAttachedWindowWidth(attachedWidth);
 }
 
+void InspectorFrontendClientLocal::changeSheetRect(const FloatRect& rect)
+{
+    setSheetRect(rect);
+}
+
 void InspectorFrontendClientLocal::openInNewTab(const String& url)
 {
     UserGestureIndicator indicator { ProcessingUserGesture };
@@ -338,7 +343,7 @@ void InspectorFrontendClientLocal::showResources()
 
 void InspectorFrontendClientLocal::showMainResourceForFrame(Frame* frame)
 {
-    String frameId = m_inspectedPageController->pageAgent()->frameId(frame);
+    String frameId = m_inspectedPageController->ensurePageAgent().frameId(frame);
     evaluateOnLoad(makeString("[\"showMainResourceForFrame\", \"", frameId, "\"]"));
 }
 

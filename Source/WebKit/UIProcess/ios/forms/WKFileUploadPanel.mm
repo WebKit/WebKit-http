@@ -404,10 +404,16 @@ static NSSet<NSString *> *UTIsForMIMETypes(NSArray *mimeTypes)
     BOOL containsImageMediaType = !mediaTypes.count || arrayContainsUTIThatConformsTo(mediaTypes, kUTTypeImage);
     BOOL containsVideoMediaType = !mediaTypes.count || arrayContainsUTIThatConformsTo(mediaTypes, kUTTypeMovie);
 
+#if PLATFORM(IOSMAC)
+    // FIXME 49961589: Support picking media with UIImagePickerController
+    BOOL shouldPresentDocumentMenuViewController = NO;
+#else
+    BOOL shouldPresentDocumentMenuViewController = containsImageMediaType || containsVideoMediaType;
+#endif
+
     NSArray *documentTypes = mediaTypes.count ? mediaTypes : @[(__bridge NSString *)kUTTypeItem];
-    if (containsImageMediaType || containsVideoMediaType) {
-        // FIXME: UIDocumentMenuViewController is deprecated, we should use UIDocumentPickerViewController instead.
-        // FIXME: Support multiple file selection when implemented. <rdar://17177981>
+    if (shouldPresentDocumentMenuViewController) {
+        // FIXME 49979442: UIDocumentMenuViewController is deprecated. Use UIDocumentPickerViewController instead to support multiple file selection.
         _documentMenuController = adoptNS([[UIDocumentMenuViewController alloc] _initIgnoringApplicationEntitlementForImportOfTypes:documentTypes]);
         [_documentMenuController setDelegate:self];
 
@@ -426,8 +432,8 @@ static NSSet<NSString *> *UTIsForMIMETypes(NSArray *mimeTypes)
         [self _presentMenuOptionForCurrentInterfaceIdiom:_documentMenuController.get()];
     } else {
         // Image and Video types are not accepted so bypass the menu and open the file picker directly.
-        // FIXME: Support multiple file selection when implemented. <rdar://17177981>
         _documentPickerController = adoptNS([[UIDocumentPickerViewController alloc] initWithDocumentTypes:documentTypes inMode:UIDocumentPickerModeImport]);
+        [_documentPickerController setAllowsMultipleSelection:_allowMultipleFiles];
         [_documentPickerController setDelegate:self];
         [self _presentFullscreenViewController:_documentPickerController.get() animated:YES];
     }
@@ -544,12 +550,21 @@ IGNORE_WARNINGS_END
 
 #pragma mark - UIDocumentPickerControllerDelegate implementation
 
-IGNORE_WARNINGS_BEGIN("deprecated-implementations")
-- (void)documentPicker:(UIDocumentPickerViewController *)documentPicker didPickDocumentAtURL:(NSURL *)url
-IGNORE_WARNINGS_END
+static NSString *displayStringForDocumentsAtURLs(NSArray<NSURL *> *urls)
 {
+    auto urlsCount = urls.count;
+    ASSERT(urlsCount);
+    if (urlsCount == 1)
+        return urls[0].lastPathComponent;
+
+    return WebCore::multipleFileUploadText(urlsCount);
+}
+
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
+{
+    ASSERT(urls.count);
     [self _dismissDisplayAnimated:YES];
-    [self _chooseFiles:@[url] displayString:url.lastPathComponent iconImage:iconForFile(url)];
+    [self _chooseFiles:urls displayString:displayStringForDocumentsAtURLs(urls) iconImage:iconForFile(urls[0])];
 }
 
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)documentPicker

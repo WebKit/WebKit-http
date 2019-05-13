@@ -32,6 +32,7 @@
 #include "AuthenticationManager.h"
 #include "AuxiliaryProcessMessages.h"
 #include "DataReference.h"
+#include "Download.h"
 #include "DownloadProxyMessages.h"
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
 #include "LegacyCustomProtocolManager.h"
@@ -39,9 +40,11 @@
 #include "Logging.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkContentRuleListManagerMessages.h"
+#include "NetworkLoad.h"
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessPlatformStrategies.h"
 #include "NetworkProcessProxyMessages.h"
+#include "NetworkResourceLoadMap.h"
 #include "NetworkResourceLoader.h"
 #include "NetworkSession.h"
 #include "NetworkSessionCreationParameters.h"
@@ -1422,6 +1425,11 @@ void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
 
     if (websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases) || websiteDataTypes.contains(WebsiteDataType::DOMCache))
         clearStorageQuota(sessionID);
+
+    if (websiteDataTypes.contains(WebsiteDataType::AdClickAttributions)) {
+        if (auto* networkSession = this->networkSession(sessionID))
+            networkSession->clearAdClickAttribution();
+    }
 }
 
 static void clearDiskCacheEntries(NetworkCache::Cache* cache, const Vector<SecurityOriginData>& origins, CompletionHandler<void()>&& completionHandler)
@@ -1462,6 +1470,13 @@ void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
     }
 #endif
 
+    if (websiteDataTypes.contains(WebsiteDataType::AdClickAttributions)) {
+        if (auto* networkSession = this->networkSession(sessionID)) {
+            for (auto& originData : originDatas)
+                networkSession->clearAdClickAttributionForRegistrableDomain(RegistrableDomain::uncheckedCreateFromHost(originData.host));
+        }
+    }
+    
     auto clearTasksHandler = WTF::CallbackAggregator::create([this, callbackID] {
         parentProcessConnection()->send(Messages::NetworkProcessProxy::DidDeleteWebsiteDataForOrigins(callbackID), 0);
     });
@@ -2467,6 +2482,11 @@ StorageQuotaManager& NetworkProcess::storageQuotaManager(PAL::SessionID sessionI
 }
 
 #if !PLATFORM(COCOA)
+void NetworkProcess::removeCredential(WebCore::Credential&&, WebCore::ProtectionSpace&&, CompletionHandler<void()>&& completionHandler)
+{
+    completionHandler();
+}
+
 void NetworkProcess::initializeProcess(const AuxiliaryProcessInitializationParameters&)
 {
 }
@@ -2492,13 +2512,13 @@ void NetworkProcess::platformSyncAllCookies(CompletionHandler<void()>&& completi
 
 void NetworkProcess::storeAdClickAttribution(PAL::SessionID sessionID, WebCore::AdClickAttribution&& adClickAttribution)
 {
-    if (auto session = networkSession(sessionID))
+    if (auto* session = networkSession(sessionID))
         session->storeAdClickAttribution(WTFMove(adClickAttribution));
 }
 
 void NetworkProcess::dumpAdClickAttribution(PAL::SessionID sessionID, CompletionHandler<void(String)>&& completionHandler)
 {
-    if (auto session = networkSession(sessionID))
+    if (auto* session = networkSession(sessionID))
         return session->dumpAdClickAttribution(WTFMove(completionHandler));
 
     completionHandler({ });
@@ -2506,8 +2526,24 @@ void NetworkProcess::dumpAdClickAttribution(PAL::SessionID sessionID, Completion
 
 void NetworkProcess::clearAdClickAttribution(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
 {
-    if (auto session = networkSession(sessionID))
-        return session->clearAdClickAttribution(WTFMove(completionHandler));
+    if (auto* session = networkSession(sessionID))
+        session->clearAdClickAttribution();
+    
+    completionHandler();
+}
+
+void NetworkProcess::setAdClickAttributionOverrideTimerForTesting(PAL::SessionID sessionID, bool value, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* session = networkSession(sessionID))
+        session->setAdClickAttributionOverrideTimerForTesting(value);
+    
+    completionHandler();
+}
+
+void NetworkProcess::setAdClickAttributionConversionURLForTesting(PAL::SessionID sessionID, URL&& url, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* session = networkSession(sessionID))
+        session->setAdClickAttributionConversionURLForTesting(WTFMove(url));
     
     completionHandler();
 }

@@ -102,7 +102,7 @@ messages -> WebPageProxy {
 #endif
 
     # Policy messages
-    DecidePolicyForResponse(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, WebCore::PolicyCheckIdentifier policyCheckIdentifier, uint64_t navigationID, WebCore::ResourceResponse response, WebCore::ResourceRequest request, bool canShowMIMEType, uint64_t listenerID, WebKit::UserData userData)
+    DecidePolicyForResponse(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, WebCore::PolicyCheckIdentifier policyCheckIdentifier, uint64_t navigationID, WebCore::ResourceResponse response, WebCore::ResourceRequest request, bool canShowMIMEType, String downloadAttribute, uint64_t listenerID, WebKit::UserData userData)
     DecidePolicyForNavigationActionAsync(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, WebCore::PolicyCheckIdentifier policyCheckIdentifier, uint64_t navigationID, struct WebKit::NavigationActionData navigationActionData, struct WebKit::FrameInfoData originatingFrameInfoData, uint64_t originatingPageID, WebCore::ResourceRequest originalRequest, WebCore::ResourceRequest request, IPC::FormDataReference requestBody, WebCore::ResourceResponse redirectResponse, WebKit::UserData userData, uint64_t listenerID)
     DecidePolicyForNavigationActionSync(uint64_t frameID, bool isMainFrame, struct WebCore::SecurityOriginData frameSecurityOrigin, WebCore::PolicyCheckIdentifier policyCheckIdentifier, uint64_t navigationID, struct WebKit::NavigationActionData navigationActionData, struct WebKit::FrameInfoData originatingFrameInfoData, uint64_t originatingPageID, WebCore::ResourceRequest originalRequest, WebCore::ResourceRequest request, IPC::FormDataReference requestBody, WebCore::ResourceResponse redirectResponse, WebKit::UserData userData) -> (WebCore::PolicyCheckIdentifier policyCheckIdentifier, enum:uint8_t WebCore::PolicyAction policyAction, uint64_t newNavigationID, WebKit::DownloadID downloadID, Optional<WebKit::WebsitePoliciesData> websitePolicies) Synchronous
     DecidePolicyForNewWindowAction(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, WebCore::PolicyCheckIdentifier policyCheckIdentifier, struct WebKit::NavigationActionData navigationActionData, WebCore::ResourceRequest request, String frameName, uint64_t listenerID, WebKit::UserData userData)
@@ -127,7 +127,7 @@ messages -> WebPageProxy {
     WillPerformClientRedirectForFrame(uint64_t frameID, String url, double delay, enum:bool WebCore::LockBackForwardList lockBackForwardList)
     DidCancelClientRedirectForFrame(uint64_t frameID)
     DidChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, URL url)
-    DidFailProvisionalLoadForFrame(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, String provisionalURL, WebCore::ResourceError error, WebKit::UserData userData)
+    DidFailProvisionalLoadForFrame(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, String provisionalURL, WebCore::ResourceError error, enum:bool WebCore::WillContinueLoading willContinueLoading, WebKit::UserData userData)
     DidCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, bool containsPluginDocument, Optional<WebCore::HasInsecureContent> forcedHasInsecureContent, WebKit::UserData userData)
     DidFailLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::ResourceError error, WebKit::UserData userData)
     DidFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, WebKit::UserData userData)
@@ -140,7 +140,8 @@ messages -> WebPageProxy {
     DidRunInsecureContentForFrame(uint64_t frameID, WebKit::UserData userData)
     DidDetectXSSForFrame(uint64_t frameID, WebKit::UserData userData)
     DidSameDocumentNavigationForFrame(uint64_t frameID, uint64_t navigationID, uint32_t type, URL url, WebKit::UserData userData)
-    DidChangeMainDocument(uint64_t frameID);
+    DidChangeMainDocument(uint64_t frameID)
+    DidExplicitOpenForFrame(uint64_t frameID, URL url)
     DidDestroyNavigation(uint64_t navigationID)
 
     HasInsecureContent() -> (enum:bool WebCore::HasInsecureContent hasInsecureContent) Synchronous
@@ -168,7 +169,7 @@ messages -> WebPageProxy {
     StringCallback(String resultString, WebKit::CallbackID callbackID)
     InvalidateStringCallback(WebKit::CallbackID callbackID)
     ScriptValueCallback(IPC::DataReference resultData, bool hadException, struct WebCore::ExceptionDetails details, WebKit::CallbackID callbackID)
-    ComputedPagesCallback(Vector<WebCore::IntRect> pageRects, double totalScaleFactorForPrinting, WebKit::CallbackID callbackID)
+    ComputedPagesCallback(Vector<WebCore::IntRect> pageRects, double totalScaleFactorForPrinting, WebCore::RectEdges<float> computedPageMargin, WebKit::CallbackID callbackID)
     ValidateCommandCallback(String command, bool isEnabled, int32_t state, WebKit::CallbackID callbackID)
     EditingRangeCallback(struct WebKit::EditingRange range, WebKit::CallbackID callbackID)
     UnsignedCallback(uint64_t result, WebKit::CallbackID callbackID)
@@ -242,6 +243,7 @@ messages -> WebPageProxy {
     LogDiagnosticMessageWithResult(String message, String description, uint32_t result, enum:bool WebCore::ShouldSample shouldSample)
     LogDiagnosticMessageWithValue(String message, String description, double value, unsigned significantFigures, enum:bool WebCore::ShouldSample shouldSample)
     LogDiagnosticMessageWithEnhancedPrivacy(String message, String description, enum:bool WebCore::ShouldSample shouldSample)
+    LogDiagnosticMessageWithValueDictionary(String message, String description, WebCore::DiagnosticLoggingClient::ValueDictionary value, enum:bool WebCore::ShouldSample shouldSample)
 
     # Performance logging
     LogScrollingEvent(uint32_t eventType, MonotonicTime timestamp, uint64_t data)
@@ -402,7 +404,7 @@ messages -> WebPageProxy {
     RestorePageCenterAndScale(Optional<WebCore::FloatPoint> unobscuredCenter, double scale)
     DidGetTapHighlightGeometries(uint64_t requestID, WebCore::Color color, Vector<WebCore::FloatQuad> geometries, WebCore::IntSize topLeftRadius, WebCore::IntSize topRightRadius, WebCore::IntSize bottomLeftRadius, WebCore::IntSize bottomRightRadius, bool nodeHasBuiltInClickHandling)
 
-    ElementDidFocus(struct WebKit::FocusedElementInformation information, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, WebKit::UserData userData)
+    ElementDidFocus(struct WebKit::FocusedElementInformation information, bool userIsInteracting, bool blurPreviousNode, OptionSet<WebCore::ActivityState::Flag> activityStateChanges, WebKit::UserData userData)
     ElementDidBlur()
     FocusedElementDidChangeInputMode(enum:uint8_t WebCore::InputMode mode)
     ScrollingNodeScrollWillStartScroll()
@@ -535,7 +537,7 @@ messages -> WebPageProxy {
     LoadSynchronousURLSchemeTask(struct WebKit::URLSchemeTaskParameters parameters) -> (WebCore::ResourceResponse response, WebCore::ResourceError error, IPC::DataReference data) Synchronous
 
 #if ENABLE(DEVICE_ORIENTATION)
-    RequestDeviceOrientationAndMotionAccess(uint64_t frameID, struct WebCore::SecurityOriginData origin) -> (bool granted) Async
+    ShouldAllowDeviceOrientationAndMotionAccess(uint64_t frameID, struct WebCore::SecurityOriginData origin, bool mayPrompt) -> (enum:uint8_t WebCore::DeviceOrientationOrMotionPermissionState permissionState) Async
 #endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)

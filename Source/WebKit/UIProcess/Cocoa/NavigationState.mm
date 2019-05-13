@@ -149,7 +149,7 @@ void NavigationState::setNavigationDelegate(id <WKNavigationDelegate> delegate)
     m_navigationDelegate = delegate;
 
     m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandler = [delegate respondsToSelector:@selector(webView:decidePolicyForNavigationAction:decisionHandler:)];
-    m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler = [delegate respondsToSelector:@selector(webView:decidePolicyForNavigationAction:withPreferences:decisionHandler:)];
+    m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler = [delegate respondsToSelector:@selector(webView:decidePolicyForNavigationAction:preferences:decisionHandler:)];
     m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandlerWebsitePolicies = [delegate respondsToSelector:@selector(_webView:decidePolicyForNavigationAction:decisionHandler:)];
     m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies = [delegate respondsToSelector:@selector(_webView:decidePolicyForNavigationAction:userInfo:decisionHandler:)];
     m_navigationDelegateMethods.webViewDecidePolicyForNavigationResponseDecisionHandler = [delegate respondsToSelector:@selector(webView:decidePolicyForNavigationResponse:decisionHandler:)];
@@ -525,9 +525,6 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
                 return;
             }
 
-            if (defaultWebsitePolicies)
-                webPage->adjustPoliciesForCompatibilityMode(navigationAction, *defaultWebsitePolicies);
-
             if (!navigationAction->targetFrame()) {
                 listener->use(defaultWebsitePolicies.get());
                 return;
@@ -563,7 +560,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
 
     auto selectorForCompletionHandlerChecker = ([&] () -> SEL {
         if (delegateHasWebpagePreferences)
-            return @selector(webView:decidePolicyForNavigationAction:withPreferences:decisionHandler:);
+            return @selector(webView:decidePolicyForNavigationAction:preferences:decisionHandler:);
         if (delegateHasWebsitePolicies)
             return @selector(_webView:decidePolicyForNavigationAction:decisionHandler:);
         return @selector(webView:decidePolicyForNavigationAction:decisionHandler:);
@@ -597,8 +594,6 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
                 [NSException raise:NSInvalidArgumentException format:@"WKWebpagePreferences._customUserAgent must be nil for subframe navigations."];
             if (!apiWebsitePolicies->customNavigatorPlatform().isNull() && subframeNavigation)
                 [NSException raise:NSInvalidArgumentException format:@"WKWebpagePreferences._customNavigatorPlatform must be nil for subframe navigations."];
-
-            webPageProxy->adjustPoliciesForCompatibilityMode(navigationAction, *apiWebsitePolicies);
         }
 
         switch (actionPolicy) {
@@ -636,7 +631,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
     };
 
     if (delegateHasWebpagePreferences)
-        [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) withPreferences:wrapper(defaultWebsitePolicies) decisionHandler:makeBlockPtr(WTFMove(decisionHandlerWithPreferencesOrPolicies)).get()];
+        [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) preferences:wrapper(defaultWebsitePolicies) decisionHandler:makeBlockPtr(WTFMove(decisionHandlerWithPreferencesOrPolicies)).get()];
     else if (delegateHasWebsitePolicies) {
         auto decisionHandler = makeBlockPtr(WTFMove(decisionHandlerWithPreferencesOrPolicies));
         if (m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies)
@@ -942,6 +937,11 @@ void NavigationState::NavigationClient::renderingProgressDidChange(WebPageProxy&
         return;
 
     [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) _webView:m_navigationState.m_webView renderingProgressDidChange:renderingProgressEvents(layoutMilestones)];
+}
+
+bool NavigationState::NavigationClient::shouldBypassCompatibilityModeSafeguards() const
+{
+    return m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler;
 }
 
 static AuthenticationChallengeDisposition toAuthenticationChallengeDisposition(NSURLSessionAuthChallengeDisposition disposition)

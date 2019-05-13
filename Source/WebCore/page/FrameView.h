@@ -329,7 +329,7 @@ public:
     WEBCORE_EXPORT static LayoutRect rectForViewportConstrainedObjects(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements);
 #endif
 
-    IntRect unobscuredContentRectExpandedByContentInsets() const;
+    IntRect visualViewportRectExpandedByContentInsets() const;
     
     bool fixedElementsLayoutRelativeToFrame() const;
 
@@ -738,7 +738,7 @@ private:
 #endif
 
 #if ENABLE(DARK_MODE_CSS)
-    RenderObject* rendererForSupportedColorSchemes() const;
+    RenderObject* rendererForColorScheme() const;
 #endif
 
     bool usesCompositedScrolling() const final;

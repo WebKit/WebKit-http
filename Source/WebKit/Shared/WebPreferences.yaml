@@ -14,12 +14,9 @@ DeviceOrientationEventEnabled:
 
 DeviceOrientationPermissionAPIEnabled:
   type: bool
-  defaultValue: defaultDeviceOrientationPermissionAPIEnabled()
+  defaultValue: false
   condition: ENABLE(DEVICE_ORIENTATION)
   webcoreName: deviceOrientationPermissionAPIEnabled
-  humanReadableName: "Permission API for device orientation / motion access."
-  humanReadableDescription: "DeviceOrientationEvent.requestPermission() / DeviceMotionEvent.requestPermission()"
-  category: experimental
 
 JavaScriptEnabled:
   type: bool
@@ -527,6 +524,12 @@ MediaStreamEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(MEDIA_STREAM)
 
+MediaEnabled:
+  type: bool
+  defaultValue: true
+  webcoreName: mediaEnabled
+  condition: ENABLE(VIDEO)
+
 ScreenCaptureEnabled:
   type: bool
   defaultValue: true
@@ -590,6 +593,7 @@ MediaSourceEnabled:
   type: bool
   defaultValue: WebCore::Settings::platformDefaultMediaSourceEnabled()
   condition: ENABLE(MEDIA_SOURCE)
+  webcoreBinding: none
 
 ViewGestureDebuggingEnabled:
   type: bool
@@ -1400,6 +1404,14 @@ ResizeObserverEnabled:
   category: experimental
   condition: ENABLE(RESIZE_OBSERVER)
 
+AdClickAttributionEnabled:
+    type: bool
+    defaultValue: false
+    humanReadableName: "Ad Click Attribution"
+    humanReadableDescription: "Enable Ad Click Attribution for Cross-Site Link Navigations"
+    webcoreBinding: RuntimeEnabledFeatures
+    category: experimental
+
 # For internal features:
 # The type should be boolean.
 # You must provide a humanReadableName and humanReadableDescription for all debug features. They
@@ -1455,7 +1467,7 @@ AsyncOverflowScrollingEnabled:
 
 LegacyOverflowScrollingTouchEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: false
   humanReadableName: "Legacy -webkit-overflow-scrolling property"
   humanReadableDescription: "Support the legacy -webkit-overflow-scrolling CSS property"
   condition: ENABLE(OVERFLOW_SCROLLING_TOUCH)
@@ -1598,14 +1610,6 @@ CSSLogicalEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   category: internal
 
-AdClickAttributionEnabled:
-  type: bool
-  defaultValue: false
-  humanReadableName: "Ad Click Attribution"
-  humanReadableDescription: "Enable Ad Click Attribution for Cross-Site Link Navigations"
-  webcoreBinding: RuntimeEnabledFeatures
-  category: internal
-
 DOMPasteAccessRequestsEnabled:
   type: bool
   defaultValue: DEFAULT_DOM_PASTE_ACCESS_REQUESTS_ENABLED
@@ -1627,6 +1631,14 @@ ReferrerPolicyAttributeEnabled:
   defaultValue: false
   humanReadableName: "Referrer Policy attribute"
   humanReadableDescription: "Enable Referrer Policy attribute"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
+
+PageAtRuleSupportEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "@page CSS at-rule support"
+  humanReadableDescription: "Enable @page support"
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
 

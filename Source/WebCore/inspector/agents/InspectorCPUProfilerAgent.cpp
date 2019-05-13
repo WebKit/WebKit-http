@@ -51,6 +51,9 @@ void InspectorCPUProfilerAgent::didCreateFrontendAndBackend(FrontendRouter*, Bac
 
 void InspectorCPUProfilerAgent::willDestroyFrontendAndBackend(DisconnectReason)
 {
+    ErrorString ignored;
+    stopTracking(ignored);
+
     m_instrumentingAgents.setInspectorCPUProfilerAgent(nullptr);
 }
 
@@ -77,7 +80,7 @@ void InspectorCPUProfilerAgent::stopTracking(ErrorString&)
 
     m_tracking = false;
 
-    m_frontendDispatcher->trackingComplete();
+    m_frontendDispatcher->trackingComplete(m_environment.executionStopwatch()->elapsedTime().seconds());
 }
 
 static Ref<Protocol::CPUProfiler::ThreadInfo> buildThreadInfo(const ThreadCPUInfo& thread)

@@ -48,7 +48,9 @@ Ref<WebsitePolicies> WebsitePolicies::copy() const
     policies->setContentBlockersEnabled(m_contentBlockersEnabled);
     policies->setAllowedAutoplayQuirks(m_allowedAutoplayQuirks);
     policies->setAutoplayPolicy(m_autoplayPolicy);
+#if ENABLE(DEVICE_ORIENTATION)
     policies->setDeviceOrientationAndMotionAccessState(m_deviceOrientationAndMotionAccessState);
+#endif
     policies->setPopUpPolicy(m_popUpPolicy);
     policies->setWebsiteDataStore(m_websiteDataStore.get());
     policies->setCustomUserAgent(m_customUserAgent);
@@ -56,6 +58,8 @@ Ref<WebsitePolicies> WebsitePolicies::copy() const
     policies->setCustomNavigatorPlatform(m_customNavigatorPlatform);
     policies->setPreferredCompatibilityMode(m_preferredCompatibilityMode);
     policies->setMetaViewportPolicy(m_metaViewportPolicy);
+    policies->setMediaSourcePolicy(m_mediaSourcePolicy);
+    policies->setSimulatedMouseEventsDispatchPolicy(m_simulatedMouseEventsDispatchPolicy);
     Vector<WebCore::HTTPHeaderField> customHeaderFields;
     customHeaderFields.reserveInitialCapacity(m_customHeaderFields.size());
     for (auto& field : m_customHeaderFields)
@@ -79,7 +83,9 @@ WebKit::WebsitePoliciesData WebsitePolicies::data()
         contentBlockersEnabled(),
         allowedAutoplayQuirks(),
         autoplayPolicy(),
+#if ENABLE(DEVICE_ORIENTATION)
         deviceOrientationAndMotionAccessState(),
+#endif
         customHeaderFields(),
         popUpPolicy(),
         m_websiteDataStore ? Optional<WebKit::WebsiteDataStoreParameters> { m_websiteDataStore->websiteDataStore().parameters() } : WTF::nullopt,
@@ -87,6 +93,8 @@ WebKit::WebsitePoliciesData WebsitePolicies::data()
         m_customJavaScriptUserAgentAsSiteSpecificQuirks,
         m_customNavigatorPlatform,
         m_metaViewportPolicy,
+        m_mediaSourcePolicy,
+        m_simulatedMouseEventsDispatchPolicy,
     };
 }
 

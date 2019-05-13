@@ -450,7 +450,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case Upsilon:
     case Phi:
     case PhantomLocal:
-    case SetArgument:
+    case SetArgumentDefinitely:
+    case SetArgumentMaybe:
     case Jump:
     case Branch:
     case Switch:

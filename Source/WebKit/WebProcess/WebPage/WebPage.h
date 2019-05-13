@@ -207,6 +207,7 @@ class NotificationPermissionRequestManager;
 class PDFPlugin;
 class PageBanner;
 class PluginView;
+class RemoteObjectRegistry;
 class RemoteWebInspectorUI;
 class TextCheckingControllerProxy;
 class UserMediaPermissionRequestManager;
@@ -305,7 +306,8 @@ public:
     void didFlushLayerTreeAtTime(MonotonicTime);
 #endif
 
-    void willDisplayPage();
+    void layoutIfNeeded();
+    void updateRendering();
 
     enum class LazyCreationPolicy { UseExistingOnly, CreateIfNeeded };
 
@@ -338,7 +340,6 @@ public:
     // -- Called by the DrawingArea.
     // FIXME: We could genericize these into a DrawingArea client interface. Would that be beneficial?
     void drawRect(WebCore::GraphicsContext&, const WebCore::IntRect&);
-    void layoutIfNeeded();
 
     // -- Called from WebCore clients.
     bool handleEditingKeyboardEvent(WebCore::KeyboardEvent*);
@@ -444,7 +445,8 @@ public:
     EditorState editorState(IncludePostLayoutDataHint = IncludePostLayoutDataHint::Yes) const;
     void updateEditorStateAfterLayoutIfEditabilityChanged();
 
-    String renderTreeExternalRepresentation() const;
+    // options are RenderTreeExternalRepresentationBehavior values.
+    String renderTreeExternalRepresentation(unsigned options = 0) const;
     String renderTreeExternalRepresentationForPrinting() const;
     uint64_t renderTreeSize() const;
 
@@ -472,9 +474,6 @@ public:
     void clearHistory();
 
     void accessibilitySettingsDidChange();
-#if ENABLE(ACCESSIBILITY_EVENTS)
-    void updateAccessibilityEventsEnabled(bool);
-#endif
 
     void scalePage(double scale, const WebCore::IntPoint& origin);
     void scalePageInViewCoordinates(double scale, WebCore::IntPoint centerInViewCoordinates);
@@ -763,6 +762,7 @@ public:
 
     void didApplyStyle();
     void didChangeSelection();
+    void didChangeOverflowScrollPosition();
     void didChangeContents();
     void discardedComposition();
     void canceledComposition();
@@ -802,10 +802,6 @@ public:
 
 #if PLATFORM(COCOA) && ENABLE(SERVICE_CONTROLS)
     void replaceSelectionWithPasteboardData(const Vector<String>& types, const IPC::DataReference&);
-#endif
-
-#if HAVE(ACCESSIBILITY) && PLATFORM(GTK)
-    void updateAccessibilityTree();
 #endif
 
     void setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length, bool suppressUnderline);
@@ -853,7 +849,7 @@ public:
     void beginPrinting(uint64_t frameID, const PrintInfo&);
     void endPrinting();
     void computePagesForPrinting(uint64_t frameID, const PrintInfo&, CallbackID);
-    void computePagesForPrintingImpl(uint64_t frameID, const PrintInfo&, Vector<WebCore::IntRect>& pageRects, double& totalScaleFactor);
+    void computePagesForPrintingImpl(uint64_t frameID, const PrintInfo&, Vector<WebCore::IntRect>& pageRects, double& totalScaleFactor, WebCore::FloatBoxExtent& computedMargin);
 
 #if PLATFORM(COCOA)
     void drawRectToImage(uint64_t frameID, const PrintInfo&, const WebCore::IntRect&, const WebCore::IntSize&, CallbackID);
@@ -1115,7 +1111,6 @@ public:
 
     static PluginView* pluginViewForFrame(WebCore::Frame*);
 
-    void sendPartialEditorStateAndSchedulePostLayoutUpdate();
     void flushPendingEditorStateUpdate();
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -1124,7 +1119,7 @@ public:
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION)
-    void shouldAllowDeviceOrientationAndMotionAccess(uint64_t frameID, WebCore::SecurityOriginData&&, CompletionHandler<void(bool)>&&);
+    void shouldAllowDeviceOrientationAndMotionAccess(uint64_t frameID, WebCore::SecurityOriginData&&, bool mayPrompt, CompletionHandler<void(WebCore::DeviceOrientationOrMotionPermissionState)>&&);
 #endif
 
     void showShareSheet(WebCore::ShareDataWithParsedURL&, CompletionHandler<void(bool)>&& callback);
@@ -1180,6 +1175,8 @@ public:
 #if ENABLE(PLATFORM_DRIVEN_TEXT_CHECKING)
     TextCheckingControllerProxy& textCheckingController() { return m_textCheckingControllerProxy.get(); }
 #endif
+
+    void setRemoteObjectRegistry(RemoteObjectRegistry&);
 
 private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);
@@ -1272,6 +1269,8 @@ private:
     void executeEditCommand(const String&, const String&);
     void setEditable(bool);
 
+    void didChangeSelectionOrOverflowScrollPosition();
+
     void increaseListLevel();
     void decreaseListLevel();
     void changeListType();
@@ -1342,9 +1341,9 @@ private:
     void getSelectionAsWebArchiveData(CallbackID);
     void getSourceForFrame(uint64_t frameID, CallbackID);
     void getWebArchiveOfFrame(uint64_t frameID, CallbackID);
-    void runJavaScript(const String&, bool forceUserGesture, Optional<String> worldName, CallbackID);
-    void runJavaScriptInMainFrame(const String&, bool forceUserGesture, CallbackID);
-    void runJavaScriptInMainFrameScriptWorld(const String&, bool forceUserGesture, const String& worldName, CallbackID);
+    void runJavaScript(WebFrame*, const String&, bool forceUserGesture, const Optional<String>& worldName, CallbackID);
+    void runJavaScriptInMainFrameScriptWorld(const String&, bool forceUserGesture, const Optional<String>& worldName, CallbackID);
+    void runJavaScriptInFrame(uint64_t frameID, const String&, bool forceUserGesture, CallbackID);
     void forceRepaint(CallbackID);
     void takeSnapshot(WebCore::IntRect snapshotRect, WebCore::IntSize bitmapSize, uint32_t options, CallbackID);
 
@@ -1756,7 +1755,7 @@ private:
     bool m_hasEverFocusedElementDueToUserInteractionSincePageTransition { false };
     bool m_isTouchBarUpdateSupressedForHiddenContentEditable { false };
     bool m_isNeverRichlyEditableForTouchBar { false };
-    bool m_changingActivityState { false };
+    OptionSet<WebCore::ActivityState::Flag> m_lastActivityStateChanges;
 
 #if ENABLE(CONTEXT_MENUS)
     bool m_isShowingContextMenu { false };
@@ -1888,6 +1887,9 @@ private:
     OptionSet<LayerTreeFreezeReason> m_LayerTreeFreezeReasons;
     bool m_isSuspended { false };
     bool m_needsFontAttributes { false };
+#if PLATFORM(COCOA)
+    WeakPtr<RemoteObjectRegistry> m_remoteObjectRegistry;
+#endif
 };
 
 } // namespace WebKit

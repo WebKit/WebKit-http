@@ -598,6 +598,11 @@ JSObjectRef UIScriptController::rectForMenuAction(JSStringRef) const
     return nullptr;
 }
 
+bool UIScriptController::isDismissingMenu() const
+{
+    return false;
+}
+
 bool UIScriptController::isShowingMenu() const
 {
     return false;
@@ -635,6 +640,10 @@ JSObjectRef UIScriptController::attachmentInfo(JSStringRef)
 }
 
 void UIScriptController::setKeyboardInputModeIdentifier(JSStringRef)
+{
+}
+
+void UIScriptController::setHardwareKeyboardAttached(bool)
 {
 }
 

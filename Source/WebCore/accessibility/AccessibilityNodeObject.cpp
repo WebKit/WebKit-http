@@ -1077,16 +1077,12 @@ void AccessibilityNodeObject::alterSliderValue(bool increase)
     
 void AccessibilityNodeObject::increment()
 {
-    if (dispatchAccessibilityEventWithType(AccessibilityEventType::Increment))
-        return;
     UserGestureIndicator gestureIndicator(ProcessingUserGesture, document());
     alterSliderValue(true);
 }
 
 void AccessibilityNodeObject::decrement()
 {
-    if (dispatchAccessibilityEventWithType(AccessibilityEventType::Decrement))
-        return;
     UserGestureIndicator gestureIndicator(ProcessingUserGesture, document());
     alterSliderValue(false);
 }
@@ -1746,10 +1742,14 @@ String AccessibilityNodeObject::textUnderElement(AccessibilityTextUnderElementMo
     if (is<Text>(node))
         return downcast<Text>(*node).wholeText();
 
+    bool isAriaVisible = AccessibilityObject::matchedParent(*this, true, [] (const AccessibilityObject& object) {
+        return equalLettersIgnoringASCIICase(object.getAttribute(aria_hiddenAttr), "false");
+    }) != nullptr;
+
     // The Accname specification states that if the current node is hidden, and not directly
     // referenced by aria-labelledby or aria-describedby, and is not a host language text
     // alternative, the empty string should be returned.
-    if (isHidden() && !is<HTMLLabelElement>(node) && (node && !ancestorsOfType<HTMLCanvasElement>(*node).first())) {
+    if (isDOMHidden() && !isAriaVisible && !is<HTMLLabelElement>(node) && (node && !ancestorsOfType<HTMLCanvasElement>(*node).first())) {
         AccessibilityObject::AccessibilityChildrenVector labelFor;
         AccessibilityObject::AccessibilityChildrenVector descriptionFor;
         ariaLabelledByReferencingElements(labelFor);

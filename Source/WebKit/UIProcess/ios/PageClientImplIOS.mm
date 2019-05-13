@@ -535,7 +535,7 @@ void PageClientImpl::restorePageCenterAndScale(Optional<WebCore::FloatPoint> cen
     [m_webView _restorePageStateToUnobscuredCenter:center scale:scale];
 }
 
-void PageClientImpl::elementDidFocus(const FocusedElementInformation& nodeInformation, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, API::Object* userData)
+void PageClientImpl::elementDidFocus(const FocusedElementInformation& nodeInformation, bool userIsInteracting, bool blurPreviousNode, OptionSet<WebCore::ActivityState::Flag> activityStateChanges, API::Object* userData)
 {
     MESSAGE_CHECK(!userData || userData->type() == API::Object::Type::Data);
 
@@ -550,7 +550,7 @@ void PageClientImpl::elementDidFocus(const FocusedElementInformation& nodeInform
         }
     }
 
-    [m_contentView _elementDidFocus:nodeInformation userIsInteracting:userIsInteracting blurPreviousNode:blurPreviousNode changingActivityState:changingActivityState userObject:userObject];
+    [m_contentView _elementDidFocus:nodeInformation userIsInteracting:userIsInteracting blurPreviousNode:blurPreviousNode activityStateChanges:activityStateChanges userObject:userObject];
 }
 
 bool PageClientImpl::isFocusingElement()
@@ -586,7 +586,7 @@ bool PageClientImpl::handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, API::Open
 
 bool PageClientImpl::showShareSheet(const ShareDataWithParsedURL& shareData, WTF::CompletionHandler<void(bool)>&& completionHandler)
 {
-    [m_contentView _showShareSheet:shareData completionHandler:WTFMove(completionHandler)];
+    [m_contentView _showShareSheet:shareData inRect:WTF::nullopt completionHandler:WTFMove(completionHandler)];
     return true;
 }
 

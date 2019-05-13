@@ -68,6 +68,7 @@
 #include <WebCore/FrameLoadRequest.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
+#include <WebCore/FullscreenManager.h>
 #include <WebCore/HTMLInputElement.h>
 #include <WebCore/HTMLNames.h>
 #include <WebCore/HTMLParserIdioms.h>
@@ -266,8 +267,8 @@ void WebChromeClient::focusedFrameChanged(Frame* frame)
 Page* WebChromeClient::createWindow(Frame& frame, const FrameLoadRequest& request, const WindowFeatures& windowFeatures, const NavigationAction& navigationAction)
 {
 #if ENABLE(FULLSCREEN_API)
-    if (frame.document() && frame.document()->webkitCurrentFullScreenElement())
-        frame.document()->webkitCancelFullScreen();
+    if (frame.document() && frame.document()->fullscreenManager().currentFullscreenElement())
+        frame.document()->fullscreenManager().cancelFullscreen();
 #endif
 
     auto& webProcess = WebProcess::singleton();
@@ -1317,11 +1318,11 @@ void WebChromeClient::requestStorageAccess(String&& subFrameHost, String&& topFr
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION)
-void WebChromeClient::shouldAllowDeviceOrientationAndMotionAccess(Frame& frame, CompletionHandler<void(bool)>&& callback)
+void WebChromeClient::shouldAllowDeviceOrientationAndMotionAccess(Frame& frame, bool mayPrompt, CompletionHandler<void(DeviceOrientationOrMotionPermissionState)>&& callback)
 {
     auto* webFrame = WebFrame::fromCoreFrame(frame);
     ASSERT(webFrame);
-    m_page.shouldAllowDeviceOrientationAndMotionAccess(webFrame->frameID(), SecurityOriginData::fromFrame(&frame), WTFMove(callback));
+    m_page.shouldAllowDeviceOrientationAndMotionAccess(webFrame->frameID(), SecurityOriginData::fromFrame(&frame), mayPrompt, WTFMove(callback));
 }
 #endif
 

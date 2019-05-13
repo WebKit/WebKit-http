@@ -6,7 +6,7 @@ async function getBasicDevice() {
 
 function createBasicSwapChain(canvas, device) {
     const context = canvas.getContext("gpu");
-    return device.createSwapChain({ context: context, format: "bgra8unorm" });
+    return context.configureSwapChain({ device: device, format: "bgra8unorm" });
 }
 
 function createBasicDepthStateDescriptor() {
@@ -25,10 +25,6 @@ function createBasicDepthTexture(canvas, device) {
 
     return device.createTexture({
         size: depthSize,
-        arrayLayerCount: 1,
-        mipLevelCount: 1,
-        sampleCount: 1,
-        dimension: "2d",
         format: "depth32float-stencil8",
         usage: GPUTextureUsage.OUTPUT_ATTACHMENT
     });
@@ -48,32 +44,24 @@ function createBasicPipeline(shaderModule, device, colorStates, pipelineLayout, 
     if (!colorStates) {
         colorStates = [{ 
             format: "bgra8unorm",
-            alphaBlend: {
-                srcFactor: "one",
-                dstFactor: "zero",
-                operation: "add"
-            },
-            colorBlend: {
-                srcFactor: "one",
-                dstFactor: "zero",
-                operation: "add"
-            },
-            writeMask: GPUColorWriteBits.ALL
+            alphaBlend: {},
+            colorBlend: {}
         }];
     }
+
+    if (!inputStateDescriptor)
+        inputStateDescriptor = { attributes: [], inputs: [] };
 
     const pipelineDescriptor = {
         vertexStage: vertexStageDescriptor,
         fragmentStage: fragmentStageDescriptor,
         primitiveTopology: primitiveTopology,
-        colorStates: colorStates
+        colorStates: colorStates,
+        inputState: inputStateDescriptor
     };
 
     if (pipelineLayout)
         pipelineDescriptor.layout = pipelineLayout;
-
-    if (inputStateDescriptor)
-        pipelineDescriptor.inputState = inputStateDescriptor;
 
     if (depthStateDescriptor)
         pipelineDescriptor.depthStencilState = depthStateDescriptor;

@@ -51,6 +51,7 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
+#include "FullscreenManager.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLSourceElement.h"
 #include "HTMLVideoElement.h"
@@ -2098,9 +2099,10 @@ bool HTMLMediaElement::isSafeToLoadURL(const URL& url, InvalidURLAction actionIf
 
     RefPtr<Frame> frame = document().frame();
     if (!frame || !document().securityOrigin().canDisplay(url)) {
-        if (actionIfInvalid == Complain)
+        if (actionIfInvalid == Complain) {
             FrameLoader::reportLocalLoadFailed(frame.get(), url.stringCenterEllipsizedToLength());
             ERROR_LOG(LOGIDENTIFIER, url , " was rejected by SecurityOrigin");
+        }
         return false;
     }
 
@@ -6020,7 +6022,7 @@ bool HTMLMediaElement::isFullscreen() const
         return true;
 
 #if ENABLE(FULLSCREEN_API)
-    if (document().webkitIsFullScreen() && document().webkitCurrentFullScreenElement() == this)
+    if (document().fullscreenManager().isFullscreen() && document().fullscreenManager().currentFullscreenElement() == this)
         return true;
 #endif
 
@@ -6030,7 +6032,7 @@ bool HTMLMediaElement::isFullscreen() const
 bool HTMLMediaElement::isStandardFullscreen() const
 {
 #if ENABLE(FULLSCREEN_API)
-    if (document().webkitIsFullScreen() && document().webkitCurrentFullScreenElement() == this)
+    if (document().fullscreenManager().isFullscreen() && document().fullscreenManager().currentFullscreenElement() == this)
         return true;
 #endif
 
@@ -6058,7 +6060,7 @@ void HTMLMediaElement::enterFullscreen(VideoFullscreenMode mode)
 
 #if ENABLE(FULLSCREEN_API) && ENABLE(VIDEO_USES_ELEMENT_FULLSCREEN)
     if (document().settings().fullScreenEnabled() && mode == VideoFullscreenModeStandard) {
-        document().requestFullScreenForElement(this, Document::ExemptIFrameAllowFullScreenRequirement);
+        document().fullscreenManager().requestFullscreenForElement(this, FullscreenManager::ExemptIFrameAllowFullscreenRequirement);
         return;
     }
 #endif
@@ -6095,9 +6097,9 @@ void HTMLMediaElement::exitFullscreen()
     m_waitingToEnterFullscreen = false;
 
 #if ENABLE(FULLSCREEN_API)
-    if (document().settings().fullScreenEnabled() && document().webkitCurrentFullScreenElement() == this) {
-        if (document().webkitIsFullScreen())
-            document().webkitCancelFullScreen();
+    if (document().settings().fullScreenEnabled() && document().fullscreenManager().currentFullscreenElement() == this) {
+        if (document().fullscreenManager().isFullscreen())
+            document().fullscreenManager().cancelFullscreen();
 
         if (m_videoFullscreenMode == VideoFullscreenModeStandard)
             return;

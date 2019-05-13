@@ -106,11 +106,6 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
 
     auto pageContext = pageAgentContext();
 
-    auto inspectorAgentPtr = std::make_unique<InspectorAgent>(pageContext);
-    m_inspectorAgent = inspectorAgentPtr.get();
-    m_instrumentingAgents->setInspectorAgent(m_inspectorAgent);
-    m_agents.append(WTFMove(inspectorAgentPtr));
-
     auto consoleAgent = std::make_unique<PageConsoleAgent>(pageContext);
     m_instrumentingAgents->setWebConsoleAgent(consoleAgent.get());
     m_agents.append(WTFMove(consoleAgent));
@@ -157,9 +152,8 @@ void InspectorController::createLazyAgents()
 
     auto pageContext = pageAgentContext();
 
-    auto pageAgentPtr = std::make_unique<InspectorPageAgent>(pageContext, m_inspectorClient, m_overlay.get());
-    m_pageAgent = pageAgentPtr.get();
-    m_agents.append(WTFMove(pageAgentPtr));
+    ensureInspectorAgent();
+    ensurePageAgent();
 
     m_agents.append(std::make_unique<PageRuntimeAgent>(pageContext));
 
@@ -169,7 +163,7 @@ void InspectorController::createLazyAgents()
 
     m_agents.append(std::make_unique<PageNetworkAgent>(pageContext));
     m_agents.append(std::make_unique<InspectorCSSAgent>(pageContext));
-    m_agents.append(std::make_unique<InspectorDOMAgent>(pageContext, m_overlay.get()));
+    ensureDOMAgent();
     m_agents.append(std::make_unique<InspectorDOMDebuggerAgent>(pageContext, debuggerAgentPtr));
     m_agents.append(std::make_unique<InspectorApplicationCacheAgent>(pageContext));
     m_agents.append(std::make_unique<InspectorLayerTreeAgent>(pageContext));
@@ -361,7 +355,7 @@ void InspectorController::setIsUnderTest(bool value)
 
 void InspectorController::evaluateForTestInFrontend(const String& script)
 {
-    m_inspectorAgent->evaluateForTestInFrontend(script);
+    ensureInspectorAgent().evaluateForTestInFrontend(script);
 }
 
 void InspectorController::drawHighlight(GraphicsContext& context) const
@@ -382,8 +376,7 @@ void InspectorController::inspect(Node* node)
     if (!hasRemoteFrontend())
         show();
 
-    if (auto* domAgent = m_instrumentingAgents->inspectorDOMAgent())
-        domAgent->inspect(node);
+    ensureDOMAgent().inspect(node);
 }
 
 bool InspectorController::enabled() const
@@ -403,10 +396,7 @@ void InspectorController::dispatchMessageFromFrontend(const String& message)
 
 void InspectorController::hideHighlight()
 {
-    if (auto* domAgent = m_instrumentingAgents->inspectorDOMAgent()) {
-        ErrorString unused;
-        domAgent->hideHighlight(unused);
-    }
+    m_overlay->hideHighlight();
 }
 
 Node* InspectorController::highlightedNode() const
@@ -424,6 +414,40 @@ void InspectorController::setIndicating(bool indicating)
     else
         m_inspectorClient->hideInspectorIndication();
 #endif
+}
+
+InspectorAgent& InspectorController::ensureInspectorAgent()
+{
+    if (!m_inspectorAgent) {
+        auto pageContext = pageAgentContext();
+        auto inspectorAgent = std::make_unique<InspectorAgent>(pageContext);
+        m_inspectorAgent = inspectorAgent.get();
+        m_instrumentingAgents->setInspectorAgent(m_inspectorAgent);
+        m_agents.append(WTFMove(inspectorAgent));
+    }
+    return *m_inspectorAgent;
+}
+
+InspectorDOMAgent& InspectorController::ensureDOMAgent()
+{
+    if (!m_inspectorDOMAgent) {
+        auto pageContext = pageAgentContext();
+        auto domAgent = std::make_unique<InspectorDOMAgent>(pageContext, m_overlay.get());
+        m_inspectorDOMAgent = domAgent.get();
+        m_agents.append(WTFMove(domAgent));
+    }
+    return *m_inspectorDOMAgent;
+}
+
+InspectorPageAgent& InspectorController::ensurePageAgent()
+{
+    if (!m_inspectorPageAgent) {
+        auto pageContext = pageAgentContext();
+        auto pageAgent = std::make_unique<InspectorPageAgent>(pageContext, m_inspectorClient, m_overlay.get());
+        m_inspectorPageAgent = pageAgent.get();
+        m_agents.append(WTFMove(pageAgent));
+    }
+    return *m_inspectorPageAgent;
 }
 
 bool InspectorController::developerExtrasEnabled() const

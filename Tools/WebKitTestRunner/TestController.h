@@ -251,6 +251,11 @@ public:
     WKArrayRef openPanelFileURLs() const { return m_openPanelFileURLs.get(); }
     void setOpenPanelFileURLs(WKArrayRef fileURLs) { m_openPanelFileURLs = fileURLs; }
 
+#if PLATFORM(IOS_FAMILY)
+    WKDataRef openPanelFileURLsMediaIcon() const { return m_openPanelFileURLsMediaIcon.get(); }
+    void setOpenPanelFileURLsMediaIcon(WKDataRef mediaIcon) { m_openPanelFileURLsMediaIcon = mediaIcon; }
+#endif
+
     void terminateNetworkProcess();
     void terminateServiceWorkerProcess();
 
@@ -296,6 +301,9 @@ public:
     UIKeyboardInputMode *overriddenKeyboardInputMode() const { return m_overriddenKeyboardInputMode.get(); }
 #endif
 
+    void setAllowedMenuActions(const Vector<String>&);
+    void installCustomMenuAction(const String& name, bool dismissesAutomatically);
+
     bool canDoServerTrustEvaluationInNetworkProcess() const;
     uint64_t serverTrustEvaluationCallbackCallsCount() const { return m_serverTrustEvaluationCallbackCallsCount; }
 
@@ -306,6 +314,9 @@ public:
 
     String dumpAdClickAttribution();
     void clearAdClickAttribution();
+    void clearAdClickAttributionsThroughWebsiteDataRemoval();
+    void setAdClickAttributionOverrideTimerForTesting(bool value);
+    void setAdClickAttributionConversionURLForTesting(WKURLRef);
 
 private:
     WKRetainPtr<WKPageConfigurationRef> generatePageConfiguration(const TestOptions&);
@@ -458,6 +469,7 @@ private:
 
 #if PLATFORM(COCOA)
     static void finishCreatingPlatformWebView(PlatformWebView*, const TestOptions&);
+    void enableModernCompatibilityMode(WKWebViewConfiguration *);
 #endif
 
     static const char* libraryPathForTesting();
@@ -554,6 +566,9 @@ private:
     bool m_didReceiveServerRedirectForProvisionalNavigation { false };
 
     WKRetainPtr<WKArrayRef> m_openPanelFileURLs;
+#if PLATFORM(IOS_FAMILY)
+    WKRetainPtr<WKDataRef> m_openPanelFileURLsMediaIcon;
+#endif
 
     std::unique_ptr<EventSenderProxy> m_eventSenderProxy;
 

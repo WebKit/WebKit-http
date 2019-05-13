@@ -89,6 +89,11 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
 }
 #endif
 
++ (instancetype)elementActionWithType:(_WKElementActionType)type title:(NSString *)title actionHandler:(WKElementActionHandler)actionHandler
+{
+    return [_WKElementAction _elementActionWithType:type title:title actionHandler:actionHandler];
+}
+
 + (instancetype)_elementActionWithType:(_WKElementActionType)type title:(NSString *)title actionHandler:(WKElementActionHandler)actionHandler
 {
     WKElementActionHandlerInternal handler = ^(WKActionSheetAssistant *, _WKActivatedElementInfo *actionInfo) { actionHandler(actionInfo); };
@@ -113,7 +118,7 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
         };
         break;
     case _WKElementActionTypeSaveImage:
-        title = WEB_UI_STRING("Save Image", "Title for Save Image action button");
+        title = WEB_UI_STRING("Add to Photos", "Title for Add to Photos action button");
         handler = ^(WKActionSheetAssistant *assistant, _WKActivatedElementInfo *actionInfo) {
             [assistant.delegate actionSheetAssistant:assistant performAction:WebKit::SheetAction::SaveImage];
         };
@@ -129,7 +134,7 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
     case _WKElementActionTypeShare:
         title = WEB_UI_STRING("Share…", "Title for Share action button");
         handler = ^(WKActionSheetAssistant *assistant, _WKActivatedElementInfo *actionInfo) {
-            [assistant.delegate actionSheetAssistant:assistant shareElementWithURL:actionInfo.URL rect:actionInfo.boundingRect];
+            [assistant.delegate actionSheetAssistant:assistant shareElementWithURL:actionInfo.URL ?: actionInfo.imageURL rect:actionInfo.boundingRect];
         };
         break;
     default:

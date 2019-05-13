@@ -2417,7 +2417,7 @@ static PrintInfo printInfoFromWKPrintInfo(const WKPrintInfo& printInfo)
 
 void WKPageComputePagesForPrinting(WKPageRef page, WKFrameRef frame, WKPrintInfo printInfo, WKPageComputePagesForPrintingFunction callback, void* context)
 {
-    toImpl(page)->computePagesForPrinting(toImpl(frame), printInfoFromWKPrintInfo(printInfo), ComputedPagesCallback::create([context, callback](const Vector<WebCore::IntRect>& rects, double scaleFactor, WebKit::CallbackBase::Error error) {
+    toImpl(page)->computePagesForPrinting(toImpl(frame), printInfoFromWKPrintInfo(printInfo), ComputedPagesCallback::create([context, callback](const Vector<WebCore::IntRect>& rects, double scaleFactor, const WebCore::FloatBoxExtent& computedPageMargin, WebKit::CallbackBase::Error error) {
         Vector<WKRect> wkRects(rects.size());
         for (size_t i = 0; i < rects.size(); ++i)
             wkRects[i] = toAPI(rects[i]);
@@ -2735,6 +2735,20 @@ void WKPageDumpAdClickAttribution(WKPageRef page, WKPageDumpAdClickAttributionFu
 void WKPageClearAdClickAttribution(WKPageRef page, WKPageClearAdClickAttributionFunction callback, void* callbackContext)
 {
     toImpl(page)->clearAdClickAttribution([callbackContext, callback] () {
+        callback(callbackContext);
+    });
+}
+
+void WKPageSetAdClickAttributionOverrideTimerForTesting(WKPageRef page, bool value, WKPageSetAdClickAttributionOverrideTimerForTestingFunction callback, void* callbackContext)
+{
+    toImpl(page)->setAdClickAttributionOverrideTimerForTesting(value, [callbackContext, callback] () {
+        callback(callbackContext);
+    });
+}
+
+void WKPageSetAdClickAttributionConversionURLForTesting(WKPageRef page, WKURLRef URLRef, WKPageSetAdClickAttributionOverrideTimerForTestingFunction callback, void* callbackContext)
+{
+    toImpl(page)->setAdClickAttributionConversionURLForTesting(URL(URL(), toWTFString(URLRef)), [callbackContext, callback] () {
         callback(callbackContext);
     });
 }

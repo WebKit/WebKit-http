@@ -325,6 +325,11 @@ void WebInspectorProxy::setAttachedWindowWidth(unsigned width)
     platformSetAttachedWindowWidth(width);
 }
 
+void WebInspectorProxy::setSheetRect(const FloatRect& rect)
+{
+    platformSetSheetRect(rect);
+}
+
 void WebInspectorProxy::startWindowDrag()
 {
     platformStartWindowDrag();
@@ -384,7 +389,7 @@ void WebInspectorProxy::createFrontendPage()
     if (!m_inspectorPage)
         return;
 
-    trackInspectorPage(m_inspectorPage);
+    trackInspectorPage(m_inspectorPage, m_inspectedPage);
 
     m_inspectorPage->process().addMessageReceiver(Messages::WebInspectorProxy::messageReceiverName(), m_inspectedPage->pageID(), *this);
     m_inspectorPage->process().assumeReadAccessToBaseURL(*m_inspectorPage, WebInspectorProxy::inspectorBaseURL());
@@ -685,6 +690,11 @@ void WebInspectorProxy::platformDetach()
 }
 
 void WebInspectorProxy::platformSetAttachedWindowHeight(unsigned)
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformSetSheetRect(const FloatRect&)
 {
     notImplemented();
 }

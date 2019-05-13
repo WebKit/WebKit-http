@@ -50,76 +50,7 @@
     String m_source;
     RetainPtr<NSURL> m_sourceURL;
     RetainPtr<NSURL> m_cachePath;
-    JSC::CachedBytecode m_cachedBytecode;
-}
-
-+ (instancetype)scriptWithSource:(NSString *)source inVirtualMachine:(JSVirtualMachine *)vm
-{
-    JSScript *result = [[[JSScript alloc] init] autorelease];
-    result->m_source = source;
-    result->m_virtualMachine = vm;
-    result->m_type = kJSScriptTypeModule;
-    return result;
-}
-
-template<typename Vector>
-static bool fillBufferWithContentsOfFile(FILE* file, Vector& buffer)
-{
-    // We might have injected "use strict"; at the top.
-    size_t initialSize = buffer.size();
-    if (fseek(file, 0, SEEK_END) == -1)
-        return false;
-    long bufferCapacity = ftell(file);
-    if (bufferCapacity == -1)
-        return false;
-    if (fseek(file, 0, SEEK_SET) == -1)
-        return false;
-    buffer.resize(bufferCapacity + initialSize);
-    size_t readSize = fread(buffer.data() + initialSize, 1, buffer.size(), file);
-    return readSize == buffer.size() - initialSize;
-}
-
-static bool fillBufferWithContentsOfFile(const String& fileName, Vector<LChar>& buffer)
-{
-    FILE* f = fopen(fileName.utf8().data(), "rb");
-    if (!f) {
-        fprintf(stderr, "Could not open file: %s\n", fileName.utf8().data());
-        return false;
-    }
-
-    bool result = fillBufferWithContentsOfFile(f, buffer);
-    fclose(f);
-
-    return result;
-}
-
-
-+ (instancetype)scriptFromASCIIFile:(NSURL *)filePath inVirtualMachine:(JSVirtualMachine *)vm withCodeSigning:(NSURL *)codeSigningPath andBytecodeCache:(NSURL *)cachePath
-{
-    UNUSED_PARAM(codeSigningPath);
-    UNUSED_PARAM(cachePath);
-
-    URL filePathURL([filePath absoluteURL]);
-    if (!filePathURL.isLocalFile())
-        return nil;
-
-    Vector<LChar> buffer;
-    if (!fillBufferWithContentsOfFile(filePathURL.fileSystemPath(), buffer))
-        return nil;
-
-    if (!charactersAreAllASCII(buffer.data(), buffer.size()))
-        return nil;
-
-    JSScript *result = [[[JSScript alloc] init] autorelease];
-    result->m_virtualMachine = vm;
-    result->m_source = String::fromUTF8WithLatin1Fallback(buffer.data(), buffer.size());
-    result->m_type = kJSScriptTypeModule;
-    return result;
-}
-
-+ (instancetype)scriptFromUTF8File:(NSURL *)filePath inVirtualMachine:(JSVirtualMachine *)vm withCodeSigning:(NSURL *)codeSigningPath andBytecodeCache:(NSURL *)cachePath
-{
-    return [JSScript scriptFromASCIIFile:filePath inVirtualMachine:vm withCodeSigning:codeSigningPath andBytecodeCache:cachePath];
+    RefPtr<JSC::CachedBytecode> m_cachedBytecode;
 }
 
 static JSScript *createError(NSString *message, NSError** error)
@@ -169,14 +100,6 @@ static JSScript *createError(NSString *message, NSError** error)
     return result;
 }
 
-- (void)dealloc
-{
-    if (m_cachedBytecode.size() && !m_cachedBytecode.owned())
-        munmap(const_cast<void*>(m_cachedBytecode.data()), m_cachedBytecode.size());
-
-    [super dealloc];
-}
-
 - (void)readCache
 {
     if (!m_cachePath)
@@ -197,12 +120,12 @@ static JSScript *createError(NSString *message, NSError** error)
 
     void* buffer = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
-    JSC::CachedBytecode cachedBytecode { buffer, size };
+    Ref<JSC::CachedBytecode> cachedBytecode = JSC::CachedBytecode::create(buffer, size);
 
     JSC::VM& vm = m_virtualMachine.vm;
     JSC::SourceCode sourceCode = [self sourceCode];
     JSC::SourceCodeKey key = m_type == kJSScriptTypeProgram ? sourceCodeKeyForSerializedProgram(vm, sourceCode) : sourceCodeKeyForSerializedModule(vm, sourceCode);
-    if (isCachedBytecodeStillValid(vm, cachedBytecode, key, m_type == kJSScriptTypeProgram ? JSC::SourceCodeType::ProgramType : JSC::SourceCodeType::ModuleType))
+    if (isCachedBytecodeStillValid(vm, cachedBytecode.copyRef(), key, m_type == kJSScriptTypeProgram ? JSC::SourceCodeType::ProgramType : JSC::SourceCodeType::ModuleType))
         m_cachedBytecode = WTFMove(cachedBytecode);
     else
         ftruncate(fd, 0);
@@ -222,7 +145,7 @@ static JSScript *createError(NSString *message, NSError** error)
 
 - (BOOL)isUsingBytecodeCache
 {
-    return !!m_cachedBytecode.size();
+    return !!m_cachedBytecode->size();
 }
 
 - (NSURL *)sourceURL
@@ -245,6 +168,8 @@ static JSScript *createError(NSString *message, NSError** error)
     if (!self)
         return nil;
 
+    self->m_cachedBytecode = JSC::CachedBytecode::create();
+
     return self;
 }
 
@@ -258,9 +183,9 @@ static JSScript *createError(NSString *message, NSError** error)
     return m_source;
 }
 
-- (const JSC::CachedBytecode*)cachedBytecode
+- (RefPtr<JSC::CachedBytecode>)cachedBytecode
 {
-    return &m_cachedBytecode;
+    return m_cachedBytecode;
 }
 
 - (JSC::SourceCode)sourceCode
@@ -286,7 +211,7 @@ static JSScript *createError(NSString *message, NSError** error)
 
 - (BOOL)writeCache:(String&)error
 {
-    if (m_cachedBytecode.size()) {
+    if (self.isUsingBytecodeCache) {
         error = "Cache for JSScript is already non-empty. Can not override it."_s;
         return NO;
     }
@@ -317,29 +242,24 @@ static JSScript *createError(NSString *message, NSError** error)
     }
 
     if (parserError.isValid()) {
-        m_cachedBytecode = { };
+        m_cachedBytecode = JSC::CachedBytecode::create();
         error = makeString("Unable to generate bytecode for this JSScript because of a parser error: ", parserError.message());
         return NO;
     }
 
-    ssize_t bytesWritten = write(fd, m_cachedBytecode.data(), m_cachedBytecode.size());
+    ssize_t bytesWritten = write(fd, m_cachedBytecode->data(), m_cachedBytecode->size());
     if (bytesWritten == -1) {
         error = makeString("Could not write cache file to disk: ", strerror(errno));
         return NO;
     }
 
-    if (static_cast<size_t>(bytesWritten) != m_cachedBytecode.size()) {
+    if (static_cast<size_t>(bytesWritten) != m_cachedBytecode->size()) {
         ftruncate(fd, 0);
-        error = makeString("Could not write the full cache file to disk. Only wrote ", String::number(bytesWritten), " of the expected ", String::number(m_cachedBytecode.size()), " bytes.");
+        error = makeString("Could not write the full cache file to disk. Only wrote ", String::number(bytesWritten), " of the expected ", String::number(m_cachedBytecode->size()), " bytes.");
         return NO;
     }
 
     return YES;
-}
-
-- (void)setSourceURL:(NSURL *)url
-{
-    m_sourceURL = url;
 }
 
 @end

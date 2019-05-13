@@ -53,6 +53,7 @@ class DOMWrapperWorld;
 class Frame;
 class GraphicsContext;
 class InspectorClient;
+class InspectorDOMAgent;
 class InspectorFrontendClient;
 class InspectorInstrumentation;
 class InspectorPageAgent;
@@ -105,7 +106,10 @@ public:
 
     InspectorClient* inspectorClient() const { return m_inspectorClient; }
     InspectorFrontendClient* inspectorFrontendClient() const { return m_inspectorFrontendClient; }
-    InspectorPageAgent* pageAgent() const { return m_pageAgent; }
+
+    Inspector::InspectorAgent& ensureInspectorAgent();
+    InspectorDOMAgent& ensureDOMAgent();
+    WEBCORE_EXPORT InspectorPageAgent& ensurePageAgent();
 
     // InspectorEnvironment
     bool developerExtrasEnabled() const override;
@@ -136,8 +140,10 @@ private:
     InspectorClient* m_inspectorClient;
     InspectorFrontendClient* m_inspectorFrontendClient { nullptr };
 
+    // Lazy, but also on-demand agents.
     Inspector::InspectorAgent* m_inspectorAgent { nullptr };
-    InspectorPageAgent* m_pageAgent { nullptr };
+    InspectorDOMAgent* m_inspectorDOMAgent { nullptr };
+    InspectorPageAgent* m_inspectorPageAgent { nullptr };
 
     bool m_isUnderTest { false };
     bool m_isAutomaticInspection { false };

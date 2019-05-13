@@ -28,8 +28,11 @@
 #include "WebsiteAutoplayPolicy.h"
 #include "WebsiteAutoplayQuirk.h"
 #include "WebsiteDataStoreParameters.h"
+#include "WebsiteMediaSourcePolicy.h"
 #include "WebsiteMetaViewportPolicy.h"
 #include "WebsitePopUpPolicy.h"
+#include "WebsiteSimulatedMouseEventsDispatchPolicy.h"
+#include <WebCore/DeviceOrientationOrMotionPermissionState.h>
 #include <WebCore/HTTPHeaderField.h>
 #include <wtf/OptionSet.h>
 
@@ -50,7 +53,9 @@ struct WebsitePoliciesData {
     bool contentBlockersEnabled { true };
     OptionSet<WebsiteAutoplayQuirk> allowedAutoplayQuirks;
     WebsiteAutoplayPolicy autoplayPolicy { WebsiteAutoplayPolicy::Default };
-    Optional<bool> deviceOrientationAndMotionAccessState;
+#if ENABLE(DEVICE_ORIENTATION)
+    WebCore::DeviceOrientationOrMotionPermissionState deviceOrientationAndMotionAccessState;
+#endif
     Vector<WebCore::HTTPHeaderField> customHeaderFields;
     WebsitePopUpPolicy popUpPolicy { WebsitePopUpPolicy::Default };
     Optional<WebsiteDataStoreParameters> websiteDataStoreParameters;
@@ -58,6 +63,8 @@ struct WebsitePoliciesData {
     String customJavaScriptUserAgentAsSiteSpecificQuirks;
     String customNavigatorPlatform;
     WebsiteMetaViewportPolicy metaViewportPolicy { WebsiteMetaViewportPolicy::Default };
+    WebsiteMediaSourcePolicy mediaSourcePolicy { WebsiteMediaSourcePolicy::Default };
+    WebsiteSimulatedMouseEventsDispatchPolicy simulatedMouseEventsDispatchPolicy { WebsiteSimulatedMouseEventsDispatchPolicy::Default };
 
     void encode(IPC::Encoder&) const;
     static Optional<WebsitePoliciesData> decode(IPC::Decoder&);

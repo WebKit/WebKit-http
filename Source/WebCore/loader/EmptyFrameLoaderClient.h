@@ -85,7 +85,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     void dispatchDidStartProvisionalLoad() final { }
     void dispatchDidReceiveTitle(const StringWithDirection&) final { }
     void dispatchDidCommitLoad(Optional<HasInsecureContent>) final { }
-    void dispatchDidFailProvisionalLoad(const ResourceError&) final { }
+    void dispatchDidFailProvisionalLoad(const ResourceError&, WillContinueLoading) final { }
     void dispatchDidFailLoad(const ResourceError&) final { }
     void dispatchDidFinishDocumentLoad() final { }
     void dispatchDidFinishLoad() final { }
@@ -94,7 +94,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     Frame* dispatchCreatePage(const NavigationAction&) final { return nullptr; }
     void dispatchShow() final { }
 
-    void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, PolicyCheckIdentifier, FramePolicyFunction&&) final { }
+    void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, PolicyCheckIdentifier, const String&, FramePolicyFunction&&) final { }
     void dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String&, PolicyCheckIdentifier, FramePolicyFunction&&) final;
     void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, const ResourceResponse& redirectResponse, FormState*, PolicyDecisionMode, PolicyCheckIdentifier, FramePolicyFunction&&) final;
     void cancelPolicyCheck() final { }

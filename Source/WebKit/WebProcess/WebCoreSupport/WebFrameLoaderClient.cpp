@@ -467,6 +467,16 @@ void WebFrameLoaderClient::dispatchWillClose()
     notImplemented();
 }
 
+void WebFrameLoaderClient::dispatchDidExplicitOpen(const URL& url)
+{
+    auto* webPage = m_frame->page();
+    if (!webPage)
+        return;
+
+    // Notify the UIProcess.
+    webPage->send(Messages::WebPageProxy::DidExplicitOpenForFrame(m_frame->frameID(), url));
+}
+
 void WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
 {
     WebPage* webPage = m_frame->page();
@@ -534,7 +544,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad(Optional<HasInsecureContent> ha
     webPage->didCommitLoad(m_frame);
 }
 
-void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error)
+void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error, WillContinueLoading willContinueLoading)
 {
     WebPage* webPage = m_frame->page();
     if (!webPage)
@@ -563,7 +573,7 @@ void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& e
 
     // Notify the UIProcess.
     WebCore::Frame* coreFrame = m_frame ? m_frame->coreFrame() : nullptr;
-    webPage->send(Messages::WebPageProxy::DidFailProvisionalLoadForFrame(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), navigationID, m_frame->coreFrame()->loader().provisionalLoadErrorBeingHandledURL(), error, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+    webPage->send(Messages::WebPageProxy::DidFailProvisionalLoadForFrame(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), navigationID, m_frame->coreFrame()->loader().provisionalLoadErrorBeingHandledURL(), error, willContinueLoading, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 
     // If we have a load listener, notify it.
     if (WebFrame::LoadListener* loadListener = m_frame->loadListener())
@@ -608,11 +618,6 @@ void WebFrameLoaderClient::dispatchDidFinishDocumentLoad()
 
     // Notify the UIProcess.
     webPage->send(Messages::WebPageProxy::DidFinishDocumentLoadForFrame(m_frame->frameID(), navigationID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
-
-#if HAVE(ACCESSIBILITY) && PLATFORM(GTK)
-    // Ensure the accessibility hierarchy is updated.
-    webPage->updateAccessibilityTree();
-#endif
 }
 
 void WebFrameLoaderClient::dispatchDidFinishLoad()
@@ -772,7 +777,7 @@ void WebFrameLoaderClient::dispatchShow()
     webPage->show();
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, WebCore::PolicyCheckIdentifier identifier, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, WebCore::PolicyCheckIdentifier identifier, const String& downloadAttribute, FramePolicyFunction&& function)
 {
     WebPage* webPage = m_frame ? m_frame->page() : nullptr;
     if (!webPage) {
@@ -803,7 +808,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
     Ref<WebFrame> protector(*m_frame);
     uint64_t listenerID = m_frame->setUpPolicyListener(identifier, WTFMove(function), WebFrame::ForNavigationAction::No);
     if (!webPage->send(Messages::WebPageProxy::DecidePolicyForResponse(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), identifier, navigationID, response, request,
-        canShowResponse, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()))))
+        canShowResponse, downloadAttribute, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()))))
         m_frame->didReceivePolicyDecision(listenerID, identifier, PolicyAction::Ignore, 0, { }, { });
 }
 

@@ -47,6 +47,7 @@
 #import "WKSyntheticTapGestureRecognizer.h"
 #import "_WKFormInputSession.h"
 #import <UIKit/UIView.h>
+#import <WebCore/ActivityState.h>
 #import <WebCore/Color.h>
 #import <WebCore/FloatQuad.h>
 #import <wtf/BlockPtr.h>
@@ -56,6 +57,17 @@
 #import <wtf/Vector.h>
 #import <wtf/WeakObjCPtr.h>
 #import <wtf/text/WTFString.h>
+
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKInteractionPreviewAdditions.h>)
+#import <WebKitAdditions/WKInteractionPreviewAdditions.h>
+#else
+#ifndef ADDITIONAL_LINK_PREVIEW_MEMBERS
+#define ADDITIONAL_LINK_PREVIEW_MEMBERS
+#endif
+#ifndef ADDITIONAL_LINK_PREVIEW_PROTOCOLS
+#define ADDITIONAL_LINK_PREVIEW_PROTOCOLS
+#endif
+#endif
 
 namespace API {
 class OpenPanelParameters;
@@ -240,6 +252,7 @@ struct WKAutoCorrectionData {
     Vector<bool> _focusStateStack;
 #if HAVE(LINK_PREVIEW)
     RetainPtr<UIPreviewItemController> _previewItemController;
+    ADDITIONAL_LINK_PREVIEW_MEMBERS
 #endif
 
     std::unique_ptr<WebKit::SmartMagnificationController> _smartMagnificationController;
@@ -296,7 +309,7 @@ struct WKAutoCorrectionData {
     BOOL _isTapHighlightIDValid;
     BOOL _potentialTapInProgress;
     BOOL _isDoubleTapPending;
-    BOOL _highlightLongPressCanClick;
+    BOOL _longPressCanClick;
     BOOL _hasTapHighlightForPotentialTap;
     BOOL _selectionNeedsUpdate;
     BOOL _shouldRestoreSelection;
@@ -319,6 +332,7 @@ struct WKAutoCorrectionData {
     BOOL _focusRequiresStrongPasswordAssistance;
 
     BOOL _hasSetUpInteractions;
+    NSUInteger _ignoreSelectionCommandFadeCount;
     CompletionHandler<void(WebCore::DOMPasteAccessResponse)> _domPasteRequestHandler;
     BlockPtr<void(UIWKAutocorrectionContext *)> _pendingAutocorrectionContextHandler;
 
@@ -411,10 +425,11 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (BOOL)_mayDisableDoubleTapGesturesDuringSingleTap;
 - (void)_disableDoubleTapGesturesDuringTapIfNecessary:(uint64_t)requestID;
 - (void)_handleSmartMagnificationInformationForPotentialTap:(uint64_t)requestID renderRect:(const WebCore::FloatRect&)renderRect fitEntireRect:(BOOL)fitEntireRect viewportMinimumScale:(double)viewportMinimumScale viewportMaximumScale:(double)viewportMaximumScale;
-- (void)_elementDidFocus:(const WebKit::FocusedElementInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode changingActivityState:(BOOL)changingActivityState userObject:(NSObject <NSSecureCoding> *)userObject;
+- (void)_elementDidFocus:(const WebKit::FocusedElementInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode activityStateChanges:(OptionSet<WebCore::ActivityState::Flag>)activityStateChanges userObject:(NSObject <NSSecureCoding> *)userObject;
 - (void)_elementDidBlur;
 - (void)_didUpdateInputMode:(WebCore::InputMode)mode;
 - (void)_didReceiveEditorStateUpdateAfterFocus;
+- (void)_hardwareKeyboardAvailabilityChanged;
 - (void)_selectionChanged;
 - (void)_updateChangedSelection;
 - (BOOL)_interpretKeyEvent:(::WebEvent *)theEvent isCharEvent:(BOOL)isCharEvent;
@@ -427,7 +442,7 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_scrollingNodeScrollingDidEnd;
 - (void)_showPlaybackTargetPicker:(BOOL)hasVideo fromRect:(const WebCore::IntRect&)elementRect routeSharingPolicy:(WebCore::RouteSharingPolicy)policy routingContextUID:(NSString *)contextUID;
 - (void)_showRunOpenPanel:(API::OpenPanelParameters*)parameters resultListener:(WebKit::WebOpenPanelResultListenerProxy*)listener;
-- (void)_showShareSheet:(const WebCore::ShareDataWithParsedURL&)shareData completionHandler:(WTF::CompletionHandler<void(bool)>&&)completionHandler;
+- (void)_showShareSheet:(const WebCore::ShareDataWithParsedURL&)shareData inRect:(WTF::Optional<WebCore::FloatRect>)rect completionHandler:(WTF::CompletionHandler<void(bool)>&&)completionHandler;
 - (void)dismissFilePicker;
 - (void)_didHandleKeyEvent:(::WebEvent *)event eventWasHandled:(BOOL)eventWasHandled;
 - (Vector<WebKit::OptionItem>&) focusedSelectElementOptions;
@@ -447,6 +462,8 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_accessibilityClearSelection;
 - (WKFormInputSession *)_formInputSession;
 - (void)_didChangeWebViewEditability;
+
+- (void)willFinishIgnoringCalloutBarFadeAfterPerformingAction;
 
 // UIWebFormAccessoryDelegate protocol
 - (void)accessoryDone;
@@ -499,10 +516,13 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 @end
 
 #if HAVE(LINK_PREVIEW)
-@interface WKContentView (WKInteractionPreview) <UIPreviewItemDelegate>
+@interface WKContentView (WKInteractionPreview) <UIPreviewItemDelegate ADDITIONAL_LINK_PREVIEW_PROTOCOLS>
+
+@property (nonatomic, readonly) BOOL shouldUsePreviewForLongPress;
 
 - (void)_registerPreview;
 - (void)_unregisterPreview;
+
 @end
 #endif
 

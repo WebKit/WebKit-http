@@ -39,7 +39,7 @@ public:
 
     unsigned hash() const override;
     StringView source() const override;
-    const JSC::CachedBytecode* cachedBytecode() const override;
+    RefPtr<JSC::CachedBytecode> cachedBytecode() const override;
 
 private:
     template<typename... Args>

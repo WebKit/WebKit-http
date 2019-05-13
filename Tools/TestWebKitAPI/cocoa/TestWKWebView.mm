@@ -350,6 +350,15 @@ static UICalloutBar *suppressUICalloutBar()
 #endif
 }
 
+- (void)addToTestWindow
+{
+#if PLATFORM(MAC)
+    [[_hostWindow contentView] addSubview:self];
+#else
+    [_hostWindow addSubview:self];
+#endif
+}
+
 - (void)clearMessageHandlers:(NSArray *)messageNames
 {
     for (NSString *messageName in messageNames)
@@ -455,7 +464,7 @@ static UICalloutBar *suppressUICalloutBar()
         if (hasEmittedWarning || startTime + secondsToWaitUntilWarning >= [NSDate timeIntervalSinceReferenceDate])
             continue;
 
-        NSLog(@"Warning: expecting input session change count to differ from %tu", initialChangeCount);
+        NSLog(@"Warning: expecting input session change count to differ from %lu", static_cast<unsigned long>(initialChangeCount));
         hasEmittedWarning = YES;
     }
 }

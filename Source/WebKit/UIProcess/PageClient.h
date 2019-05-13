@@ -31,7 +31,9 @@
 #include "WebColorPicker.h"
 #include "WebDataListSuggestionsDropdown.h"
 #include "WebPopupMenuProxy.h"
+#include <WebCore/ActivityState.h>
 #include <WebCore/AlternativeTextClient.h>
+#include <WebCore/DragActions.h>
 #include <WebCore/EditorClient.h>
 #include <WebCore/FocusDirection.h>
 #include <WebCore/InputMode.h>
@@ -81,6 +83,10 @@ class FloatQuad;
 class Region;
 class TextIndicator;
 class WebMediaSessionManager;
+
+#if PLATFORM(GTK)
+class SelectionData;
+#endif
 
 enum class RouteSharingPolicy : uint8_t;
 enum class ScrollbarStyle : uint8_t;
@@ -377,7 +383,7 @@ public:
     virtual void restorePageState(Optional<WebCore::FloatPoint> scrollPosition, const WebCore::FloatPoint& scrollOrigin, const WebCore::FloatBoxExtent& obscuredInsetsOnSave, double scale) = 0;
     virtual void restorePageCenterAndScale(Optional<WebCore::FloatPoint> center, double scale) = 0;
 
-    virtual void elementDidFocus(const FocusedElementInformation&, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, API::Object* userData) = 0;
+    virtual void elementDidFocus(const FocusedElementInformation&, bool userIsInteracting, bool blurPreviousNode, OptionSet<WebCore::ActivityState::Flag> activityStateChanges, API::Object* userData) = 0;
     virtual void elementDidBlur() = 0;
     virtual void focusedElementDidChangeInputMode(WebCore::InputMode) = 0;
     virtual void didReceiveEditorStateUpdateAfterFocus() = 0;

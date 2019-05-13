@@ -642,8 +642,7 @@ private:
             SpeculatedType prediction = node->child1()->prediction();
             if (isDoubleSpeculation(prediction))
                 node->variableAccessData()->vote(VoteDouble, weight);
-            else if (!isFullNumberSpeculation(prediction)
-                || isInt32Speculation(prediction) || isAnyInt52Speculation(prediction))
+            else if (!isFullNumberSpeculation(prediction) || isInt32OrInt52Speculation(prediction))
                 node->variableAccessData()->vote(VoteValue, weight);
             break;
         }
@@ -734,7 +733,10 @@ private:
     {
         switch (m_currentNode->op()) {
         case JSConstant: {
-            setPrediction(speculationFromValue(m_currentNode->asJSValue()));
+            SpeculatedType type = speculationFromValue(m_currentNode->asJSValue());
+            if (type == SpecAnyIntAsDouble && enableInt52()) 
+                type = int52AwareSpeculationFromValue(m_currentNode->asJSValue());
+            setPrediction(type);
             break;
         }
         case DoubleConstant: {
@@ -1251,7 +1253,8 @@ private:
         case ProfileType:
         case ProfileControlFlow:
         case ForceOSRExit:
-        case SetArgument:
+        case SetArgumentDefinitely:
+        case SetArgumentMaybe:
         case SetFunctionName:
         case CheckStructure:
         case CheckCell:
