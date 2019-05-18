@@ -66,6 +66,8 @@
 
 namespace WebCore {
 
+static const Seconds maximumIntervalForUserGestureForwarding { 10_s };
+
 WTF_MAKE_ISO_ALLOCATED_IMPL(XMLHttpRequest);
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, xmlHttpRequestCounter, ("XMLHttpRequest"));
@@ -121,6 +123,7 @@ XMLHttpRequest::XMLHttpRequest(ScriptExecutionContext& context)
     , m_resumeTimer(*this, &XMLHttpRequest::resumeTimerFired)
     , m_networkErrorTimer(*this, &XMLHttpRequest::networkErrorTimerFired)
     , m_timeoutTimer(*this, &XMLHttpRequest::didReachTimeout)
+    , m_maximumIntervalForUserGestureForwarding(maximumIntervalForUserGestureForwarding)
 {
 #ifndef NDEBUG
     xmlHttpRequestCounter.increment();
@@ -436,6 +439,7 @@ Optional<ExceptionOr<void>> XMLHttpRequest::prepareToSend()
 ExceptionOr<void> XMLHttpRequest::send(Optional<SendTypes>&& sendType)
 {
     InspectorInstrumentation::willSendXMLHttpRequest(scriptExecutionContext(), url());
+    m_userGestureToken = UserGestureIndicator::currentUserGesture();
 
     ExceptionOr<void> result;
     if (!sendType)
@@ -459,7 +463,7 @@ ExceptionOr<void> XMLHttpRequest::send(Document& document)
     if (auto result = prepareToSend())
         return WTFMove(result.value());
 
-    if (m_method != "GET" && m_method != "HEAD" && m_url.protocolIsInHTTPFamily()) {
+    if (m_method != "GET" && m_method != "HEAD") {
         if (!m_requestHeaders.contains(HTTPHeaderName::ContentType)) {
 #if ENABLE(DASHBOARD_SUPPORT)
             if (usesDashboardBackwardCompatibilityMode())
@@ -489,7 +493,7 @@ ExceptionOr<void> XMLHttpRequest::send(const String& body)
     if (auto result = prepareToSend())
         return WTFMove(result.value());
 
-    if (!body.isNull() && m_method != "GET" && m_method != "HEAD" && m_url.protocolIsInHTTPFamily()) {
+    if (!body.isNull() && m_method != "GET" && m_method != "HEAD") {
         String contentType = m_requestHeaders.get(HTTPHeaderName::ContentType);
         if (contentType.isNull()) {
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -516,7 +520,17 @@ ExceptionOr<void> XMLHttpRequest::send(Blob& body)
     if (auto result = prepareToSend())
         return WTFMove(result.value());
 
-    if (m_method != "GET" && m_method != "HEAD" && m_url.protocolIsInHTTPFamily()) {
+    if (m_method != "GET" && m_method != "HEAD") {
+        if (!m_url.protocolIsInHTTPFamily()) {
+            // FIXME: We would like to support posting Blobs to non-http URLs (e.g. custom URL schemes)
+            // but because of the architecture of blob-handling that will require a fair amount of work.
+            
+            ASCIILiteral consoleMessage { "POST of a Blob to non-HTTP protocols in XMLHttpRequest.send() is currently unsupported."_s };
+            scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, consoleMessage);
+            
+            return createRequest();
+        }
+        
         if (!m_requestHeaders.contains(HTTPHeaderName::ContentType)) {
             const String& blobType = body.type();
             if (!blobType.isEmpty() && isValidContentType(blobType))
@@ -539,7 +553,7 @@ ExceptionOr<void> XMLHttpRequest::send(DOMFormData& body)
     if (auto result = prepareToSend())
         return WTFMove(result.value());
 
-    if (m_method != "GET" && m_method != "HEAD" && m_url.protocolIsInHTTPFamily()) {
+    if (m_method != "GET" && m_method != "HEAD") {
         m_requestEntityBody = FormData::createMultiPart(body, document());
         m_requestEntityBody->generateFiles(document());
         if (!m_requestHeaders.contains(HTTPHeaderName::ContentType))
@@ -566,7 +580,7 @@ ExceptionOr<void> XMLHttpRequest::sendBytesData(const void* data, size_t length)
     if (auto result = prepareToSend())
         return WTFMove(result.value());
 
-    if (m_method != "GET" && m_method != "HEAD" && m_url.protocolIsInHTTPFamily()) {
+    if (m_method != "GET" && m_method != "HEAD") {
         m_requestEntityBody = FormData::create(data, length);
         if (m_upload)
             m_requestEntityBody->setAlwaysStream(true);
@@ -1079,6 +1093,20 @@ void XMLHttpRequest::didReceiveData(const char* data, int len)
     }
 }
 
+void XMLHttpRequest::dispatchEvent(Event& event)
+{
+    if (m_userGestureToken && m_userGestureToken->hasExpired(m_maximumIntervalForUserGestureForwarding))
+        m_userGestureToken = nullptr;
+
+    if (readyState() != DONE || !m_userGestureToken || !m_userGestureToken->processingUserGesture()) {
+        EventTarget::dispatchEvent(event);
+        return;
+    }
+
+    UserGestureIndicator gestureIndicator(m_userGestureToken, UserGestureToken::GestureScope::MediaOnly);
+    EventTarget::dispatchEvent(event);
+}
+
 void XMLHttpRequest::dispatchErrorEvents(const AtomicString& type)
 {
     if (!m_uploadComplete) {
@@ -1176,6 +1204,11 @@ void XMLHttpRequest::contextDestroyed()
 {
     ASSERT(!m_loader);
     ActiveDOMObject::contextDestroyed();
+}
+
+void XMLHttpRequest::setMaximumIntervalForUserGestureForwarding(double interval)
+{
+    m_maximumIntervalForUserGestureForwarding = Seconds(interval);    
 }
 
 } // namespace WebCore

@@ -415,6 +415,12 @@ DOMWindow::DOMWindow(Document& document)
 void DOMWindow::didSecureTransitionTo(Document& document)
 {
     observeContext(&document);
+
+    // The Window is being transferred from one document to another so we need to reset data
+    // members that store the window's document (rather than the window itself).
+    m_crypto = nullptr;
+    m_navigator = nullptr;
+    m_performance = nullptr;
 }
 
 DOMWindow::~DOMWindow()
@@ -648,6 +654,7 @@ Crypto& DOMWindow::crypto() const
 {
     if (!m_crypto)
         m_crypto = Crypto::create(document());
+    ASSERT(m_crypto->scriptExecutionContext() == document());
     return *m_crypto;
 }
 
@@ -713,6 +720,7 @@ Navigator& DOMWindow::navigator()
 {
     if (!m_navigator)
         m_navigator = Navigator::create(scriptExecutionContext(), *this);
+    ASSERT(m_navigator->scriptExecutionContext() == document());
 
     return *m_navigator;
 }
@@ -723,6 +731,7 @@ Performance& DOMWindow::performance() const
         MonotonicTime timeOrigin = document() && document()->loader() ? document()->loader()->timing().referenceMonotonicTime() : MonotonicTime::now();
         m_performance = Performance::create(document(), timeOrigin);
     }
+    ASSERT(m_performance->scriptExecutionContext() == document());
     return *m_performance;
 }
 
@@ -2357,7 +2366,7 @@ ExceptionOr<RefPtr<WindowProxy>> DOMWindow::open(DOMWindow& activeWindow, DOMWin
         && firstFrame->page()
         && firstFrame->mainFrame().document()
         && firstFrame->mainFrame().document()->loader()) {
-        auto results = firstFrame->page()->userContentProvider().processContentRuleListsForLoad(firstFrame->document()->completeURL(urlString), ResourceType::Popup, *firstFrame->mainFrame().document()->loader());
+        auto results = firstFrame->page()->userContentProvider().processContentRuleListsForLoad(firstFrame->document()->completeURL(urlString), ContentExtensions::ResourceType::Popup, *firstFrame->mainFrame().document()->loader());
         if (results.summary.blockedLoad)
             return RefPtr<WindowProxy> { nullptr };
     }

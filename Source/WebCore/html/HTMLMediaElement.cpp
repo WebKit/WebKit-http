@@ -1521,7 +1521,7 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
 
 #if ENABLE(CONTENT_EXTENSIONS)
     if (auto documentLoader = makeRefPtr(frame->loader().documentLoader())) {
-        if (page->userContentProvider().processContentRuleListsForLoad(url, ResourceType::Media, *documentLoader).summary.blockedLoad) {
+        if (page->userContentProvider().processContentRuleListsForLoad(url, ContentExtensions::ResourceType::Media, *documentLoader).summary.blockedLoad) {
             mediaLoadingFailed(MediaPlayer::FormatError);
             return;
         }
@@ -1768,9 +1768,9 @@ void HTMLMediaElement::updateActiveTextTrackCues(const MediaTime& movieTime)
             if (!weakThis)
                 return;
 
-            auto currentMediaTime = weakThis->currentMediaTime();
+            auto currentMediaTime = this->currentMediaTime();
             INFO_LOG(LOGIDENTIFIER, " lambda, currentMediaTime: ", currentMediaTime);
-            weakThis->updateActiveTextTrackCues(currentMediaTime);
+            this->updateActiveTextTrackCues(currentMediaTime);
         }, nextInterestingTime);
     }
 

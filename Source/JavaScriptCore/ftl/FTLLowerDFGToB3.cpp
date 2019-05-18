@@ -9822,19 +9822,21 @@ private:
 
         m_out.appendTo(notInt32NumberCase, notNaNCase);
         LValue doubleValue = unboxDouble(key);
+        ValueFromBlock normalizedNaNResult = m_out.anchor(m_out.constInt64(JSValue::encode(jsNaN())));
         m_out.branch(m_out.doubleNotEqualOrUnordered(doubleValue, doubleValue), unsure(continuation), unsure(notNaNCase));
 
         m_out.appendTo(notNaNCase, convertibleCase);
         LValue integerValue = m_out.doubleToInt(doubleValue);
         LValue integerValueConvertedToDouble = m_out.intToDouble(integerValue);
+        ValueFromBlock doubleResult = m_out.anchor(key);
         m_out.branch(m_out.doubleNotEqualOrUnordered(doubleValue, integerValueConvertedToDouble), unsure(continuation), unsure(convertibleCase));
 
         m_out.appendTo(convertibleCase, continuation);
-        ValueFromBlock slowResult = m_out.anchor(boxInt32(integerValue));
+        ValueFromBlock boxedIntResult = m_out.anchor(boxInt32(integerValue));
         m_out.jump(continuation);
 
         m_out.appendTo(continuation, lastNext);
-        setJSValue(m_out.phi(Int64, fastResult, slowResult));
+        setJSValue(m_out.phi(Int64, fastResult, normalizedNaNResult, doubleResult, boxedIntResult));
     }
 
     void compileGetMapBucket()

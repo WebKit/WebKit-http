@@ -2474,16 +2474,16 @@ const WebEvent* WebPage::currentEvent()
 void WebPage::freezeLayerTree(LayerTreeFreezeReason reason)
 {
     RELEASE_LOG(ProcessSuspension, "%p - WebPage (PageID=%llu) - Adding a reason %d to freeze layer tree; current reasons are %d",
-        this, m_pageID, static_cast<unsigned>(reason), m_LayerTreeFreezeReasons.toRaw());
-    m_LayerTreeFreezeReasons.add(reason);
+        this, m_pageID, static_cast<unsigned>(reason), m_layerTreeFreezeReasons.toRaw());
+    m_layerTreeFreezeReasons.add(reason);
     updateDrawingAreaLayerTreeFreezeState();
 }
 
 void WebPage::unfreezeLayerTree(LayerTreeFreezeReason reason)
 {
     RELEASE_LOG(ProcessSuspension, "%p - WebPage (PageID=%llu) - Removing a reason %d to freeze layer tree; current reasons are %d",
-        this, m_pageID, static_cast<unsigned>(reason), m_LayerTreeFreezeReasons.toRaw());
-    m_LayerTreeFreezeReasons.remove(reason);
+        this, m_pageID, static_cast<unsigned>(reason), m_layerTreeFreezeReasons.toRaw());
+    m_layerTreeFreezeReasons.remove(reason);
     updateDrawingAreaLayerTreeFreezeState();
 }
 
@@ -2491,7 +2491,7 @@ void WebPage::updateDrawingAreaLayerTreeFreezeState()
 {
     if (!m_drawingArea)
         return;
-    m_drawingArea->setLayerTreeStateIsFrozen(!!m_LayerTreeFreezeReasons);
+    m_drawingArea->setLayerTreeStateIsFrozen(!!m_layerTreeFreezeReasons);
 }
 
 void WebPage::callVolatilityCompletionHandlers(bool succeeded)
@@ -4610,10 +4610,12 @@ void WebPage::setUseSystemAppearance(bool useSystemAppearance)
 
 #endif
 
+#if !PLATFORM(GTK)
 void WebPage::setUseDarkAppearance(bool useDarkAppearance)
 {
     corePage()->setUseDarkAppearance(useDarkAppearance);
 }
+#endif
 
 void WebPage::beginPrinting(uint64_t frameID, const PrintInfo& printInfo)
 {
@@ -6230,6 +6232,19 @@ void WebPage::removeAllUserContent()
     m_userContentController->removeAllUserContent();
 }
 
+void WebPage::updateIntrinsicContentSizeIfNeeded(const WebCore::IntSize& size)
+{
+    if (!viewLayoutSize().width())
+        return;
+    ASSERT(mainFrameView());
+    ASSERT(mainFrameView()->isAutoSizeEnabled());
+    ASSERT(!mainFrameView()->needsLayout());
+    if (m_lastSentIntrinsicContentSize == size)
+        return;
+    m_lastSentIntrinsicContentSize = size;
+    send(Messages::WebPageProxy::DidChangeIntrinsicContentSize(size));
+}
+
 void WebPage::dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone> milestones)
 {
     RefPtr<API::Object> userData;
@@ -6244,6 +6259,10 @@ void WebPage::dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone
         auto drawingAreaRelatedMilestones = milestones & paintMilestones;
         if (drawingAreaRelatedMilestones && m_drawingArea->addMilestonesToDispatch(drawingAreaRelatedMilestones))
             milestones.remove(drawingAreaRelatedMilestones);
+    }
+    if (milestones.contains(DidFirstLayout) && mainFrameView()) {
+        // Ensure we never send DidFirstLayout milestone without updating the intrinsic size.
+        updateIntrinsicContentSizeIfNeeded(mainFrameView()->autoSizingIntrinsicContentSize());
     }
 
     send(Messages::WebPageProxy::DidReachLayoutMilestone(milestones));

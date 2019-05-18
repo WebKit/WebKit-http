@@ -1,3 +1,109 @@
+2019-04-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Support prefers-color-scheme media query
+        https://bugs.webkit.org/show_bug.cgi?id=196685
+
+        Reviewed by Michael Catanzaro.
+
+        Enable DARK_MODE_CSS. Supported color schemes feature is not supported for now. I'm not sure we will be able to
+        suport it, because it requires to change the theme too many times, which is very slow in GTK.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2019-04-29  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add WEBKIT_EXECUTABLE macro
+        https://bugs.webkit.org/show_bug.cgi?id=197206
+
+        Unreviewed build fix.
+
+        Calls to add_dependencies were not happening.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2019-04-29  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Win] Add flag to enable version information stamping and disable by default.
+        https://bugs.webkit.org/show_bug.cgi?id=197249
+        <rdar://problem/50224412>
+
+        Reviewed by Ross Kirsling.
+
+        This feature is only used in AppleWin port. Add flag for this task and make it OFF by default.
+        Then enable it by default on AppleWin.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2019-04-28  Andy Estes  <aestes@apple.com>
+
+        Fix the watchOS engineering build.
+
+        * Source/Makefile: Moved libwebrtc logic into Source/ThirdParty/Makefile.
+
+2019-04-26  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add WEBKIT_EXECUTABLE macro
+        https://bugs.webkit.org/show_bug.cgi?id=197206
+
+        Reviewed by Konstantin Tokarev.
+
+        Add WEBKIT_EXECUTABLE macro for creating executable targets. This wraps the creation of
+        executable targets using the same conventions of WEBKIT_FRAMEWORK.
+
+        Common code from the two macros were moved to WEBKIT_TARGET which is meant as an internal
+        macro.
+
+        Add WEBKIT_WRAP_EXECUTABLE macro to support Windows targets which use a DLLLauncherMain to
+        launch the executable.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2019-04-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed, rolling out r244669.
+
+        Windows ports can't clean build.
+
+        Reverted changeset:
+
+        "[Win] Add flag to enable version information stamping and
+        disable by default."
+        https://bugs.webkit.org/show_bug.cgi?id=197249
+        https://trac.webkit.org/changeset/244669
+
+2019-04-25  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Win] Add flag to enable version information stamping and disable by default.
+        https://bugs.webkit.org/show_bug.cgi?id=197249
+
+        Reviewed by Ross Kirsling.
+
+        This feature is only used in AppleWin port. Add flag for this task and make it OFF by default.
+        Then enable it by default on AppleWin.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2019-04-25  Alex Christensen  <achristensen@webkit.org>
+
+        Start using C++17
+        https://bugs.webkit.org/show_bug.cgi?id=197131
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/OptionsMSVC.cmake:
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2019-04-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Hardcoded text color in input fields
+        https://bugs.webkit.org/show_bug.cgi?id=126907
+
+        Reviewed by Michael Catanzaro.
+
+        Set and expose to build HAVE_OS_DARK_MODE_SUPPORT=1.
+
+        * Source/cmake/OptionsGTK.cmake:
+
 2019-04-23  Don Olmstead  <don.olmstead@sony.com>
 
         [CMake][Win] Use target oriented design for WebKit

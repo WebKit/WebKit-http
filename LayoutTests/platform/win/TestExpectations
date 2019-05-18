@@ -494,6 +494,7 @@ webkit.org/b/61540 http/tests/security/isolatedWorld/cross-origin-xhr.html [ Ski
 
 # TODO For now, Web Audio tests are disabled
 webkit.org/b/86914 webaudio/ [ Skip ]
+webkit.org/b/86914 http/wpt/webaudio/ [ Skip ]
 webkit.org/b/86914 fast/history/page-cache-closed-audiocontext.html [ Skip ]
 webkit.org/b/86914 fast/history/page-cache-running-audiocontext.html [ Skip ]
 webkit.org/b/86914 fast/history/page-cache-suspended-audiocontext.html [ Skip ]
@@ -3597,6 +3598,7 @@ svg/custom/second-inline-text.xhtml [ Failure ]
 tables/mozilla/bugs/bug4427.html [ Failure ]
 transitions/clip-path-path-transitions.html [ Failure ]
 legacy-animation-engine/transitions/clip-path-path-transitions.html [ Failure ]
+fast/text/font-weight-1-1000.html [ Failure ]
 # Unexpected image-only failures tracked in webkit.org/b/172437.
 editing/selection/update-selection-by-style-change.html [ ImageOnlyFailure ]
 fast/borders/border-painting-correctness-dashed.html [ ImageOnlyFailure ]
@@ -4333,3 +4335,5 @@ webkit.org/b/196869 legacy-animation-engine/animations/animation-multiple-callba
 webkit.org/b/196869 imported/mozilla/css-animations/test_animation-currenttime.html [ Failure ]
 
 webkit.org/b/194450 storage/indexeddb/modern/gc-closes-database-private.html [ Skip ]
+
+webkit.org/b/197310 fast/harness/render-tree-as-text-options.html [ Failure ]

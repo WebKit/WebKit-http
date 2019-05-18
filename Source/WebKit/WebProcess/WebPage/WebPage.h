@@ -622,6 +622,7 @@ public:
     void cancelPotentialTapInFrame(WebFrame&);
     void tapHighlightAtPosition(uint64_t requestID, const WebCore::FloatPoint&);
     void didRecognizeLongPress();
+    void handleDoubleTapForDoubleClickAtPoint(const WebCore::IntPoint&, OptionSet<WebKit::WebEvent::Modifier>, uint64_t lastLayerTreeTransactionId);
 
     void inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint&);
     void inspectorNodeSearchEndedAtPosition(const WebCore::FloatPoint&);
@@ -1177,6 +1178,8 @@ public:
 #endif
 
     void setRemoteObjectRegistry(RemoteObjectRegistry&);
+
+    void updateIntrinsicContentSizeIfNeeded(const WebCore::IntSize&);
 
 private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);
@@ -1884,12 +1887,13 @@ private:
     HashMap<uint64_t, uint64_t> m_applicationManifestFetchCallbackMap;
 #endif
 
-    OptionSet<LayerTreeFreezeReason> m_LayerTreeFreezeReasons;
+    OptionSet<LayerTreeFreezeReason> m_layerTreeFreezeReasons;
     bool m_isSuspended { false };
     bool m_needsFontAttributes { false };
 #if PLATFORM(COCOA)
     WeakPtr<RemoteObjectRegistry> m_remoteObjectRegistry;
 #endif
+    WebCore::IntSize m_lastSentIntrinsicContentSize;
 };
 
 } // namespace WebKit

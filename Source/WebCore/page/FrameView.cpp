@@ -3000,8 +3000,13 @@ void FrameView::setBaseBackgroundColor(const Color& backgroundColor)
 
 void FrameView::updateBackgroundRecursively(const Optional<Color>& backgroundColor)
 {
-#if HAVE(OS_DARK_MODE_SUPPORT) && ENABLE(DARK_MODE_CSS)
-    Color baseBackgroundColor = backgroundColor.valueOr(RenderTheme::singleton().systemColor(CSSValueAppleSystemControlBackground, styleColorOptions()));
+#if HAVE(OS_DARK_MODE_SUPPORT)
+#if PLATFORM(MAC) || PLATFORM(IOS_FAMILY)
+    static const auto cssValueControlBackground = CSSValueAppleSystemControlBackground;
+#else
+    static const auto cssValueControlBackground = CSSValueWindow;
+#endif
+    Color baseBackgroundColor = backgroundColor.valueOr(RenderTheme::singleton().systemColor(cssValueControlBackground, styleColorOptions()));
 #else
     Color baseBackgroundColor = backgroundColor.valueOr(Color::white);
 #endif
@@ -3463,12 +3468,15 @@ void FrameView::autoSizeIfEnabled()
     resize(m_autoSizeConstraint.width(), m_autoSizeConstraint.height());
     document->updateStyleIfNeeded();
     document->updateLayoutIgnorePendingStylesheets();
-    m_autoSizeContentSize = contentsSize();
 
-    auto finalWidth = std::max(m_autoSizeConstraint.width(), m_autoSizeContentSize.width());
-    auto finalHeight = m_autoSizeFixedMinimumHeight ? std::max(m_autoSizeFixedMinimumHeight, m_autoSizeContentSize.height()) : m_autoSizeContentSize.height();
+    auto currentContentsSize = this->contentsSize();
+    auto finalWidth = std::max(m_autoSizeConstraint.width(), currentContentsSize.width());
+    auto finalHeight = m_autoSizeFixedMinimumHeight ? std::max(m_autoSizeFixedMinimumHeight, currentContentsSize.height()) : currentContentsSize.height();
     resize(finalWidth, finalHeight);
     document->updateLayoutIgnorePendingStylesheets();
+    m_autoSizeContentSize = contentsSize(); 
+    if (auto* page = frame().page())
+        page->chrome().client().intrinsicContentsSizeChanged(m_autoSizeContentSize);
     m_didRunAutosize = true;
 }
 
@@ -4470,6 +4478,7 @@ void FrameView::enableAutoSizeMode(bool enable, const IntSize& viewSize)
 
     m_shouldAutoSize = enable;
     m_autoSizeConstraint = viewSize;
+    m_autoSizeContentSize = contentsSize();
     m_didRunAutosize = false;
 
     setNeedsLayoutAfterViewConfigurationChange();

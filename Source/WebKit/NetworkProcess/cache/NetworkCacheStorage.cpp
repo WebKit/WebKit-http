@@ -228,7 +228,6 @@ Storage::Storage(const String& baseDirectoryPath, Mode mode, Salt salt)
     , m_recordsPath(makeRecordsDirectoryPath(baseDirectoryPath))
     , m_mode(mode)
     , m_salt(salt)
-    , m_canUseBlobsForForBodyData(isSafeToUseMemoryMapForPath(baseDirectoryPath))
     , m_readOperationTimeoutTimer(*this, &Storage::cancelAllReadOperations)
     , m_writeOperationDispatchTimer(*this, &Storage::dispatchPendingWriteOperations)
     , m_ioQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage", WorkQueue::Type::Concurrent))
@@ -295,7 +294,6 @@ void Storage::synchronize()
         auto blobFilter = std::make_unique<ContentsFilter>();
 
         // Most of the disk space usage is in blobs if we are using them. Approximate records file sizes to avoid expensive stat() calls.
-        bool shouldComputeExactRecordsSize = !m_canUseBlobsForForBodyData;
         size_t recordsSize = 0;
         unsigned recordCount = 0;
         unsigned blobCount = 0;
@@ -318,17 +316,10 @@ void Storage::synchronize()
 
             ++recordCount;
 
-            if (shouldComputeExactRecordsSize) {
-                long long fileSize = 0;
-                FileSystem::getFileSize(filePath, fileSize);
-                recordsSize += fileSize;
-            }
-
             recordFilter->add(hash);
         });
 
-        if (!shouldComputeExactRecordsSize)
-            recordsSize = estimateRecordsSize(recordCount, blobCount);
+        recordsSize = estimateRecordsSize(recordCount, blobCount);
 
         m_blobStorage.synchronize();
 
@@ -349,6 +340,8 @@ void Storage::synchronize()
             m_blobFilter = WTFMove(blobFilter);
             m_approximateRecordsSize = recordsSize;
             m_synchronizationInProgress = false;
+            if (m_mode == Mode::AvoidRandomness)
+                dispatchPendingWriteOperations();
         });
 
     });
@@ -375,8 +368,6 @@ bool Storage::mayContain(const Key& key) const
 bool Storage::mayContainBlob(const Key& key) const
 {
     ASSERT(RunLoop::isMain());
-    if (!m_canUseBlobsForForBodyData)
-        return false;
     return !m_blobFilter || m_blobFilter->mayContain(key.hash());
 }
 
@@ -792,8 +783,6 @@ void Storage::dispatchPendingWriteOperations()
 
 bool Storage::shouldStoreBodyAsBlob(const Data& bodyData)
 {
-    if (!m_canUseBlobsForForBodyData)
-        return false;
     return bodyData.size() > maximumInlineBodySize;
 }
 
@@ -897,7 +886,7 @@ void Storage::store(const Record& record, MappedBodyHandler&& mappedBodyHandler,
     addToRecordFilter(record.key);
 
     bool isInitialWrite = m_pendingWriteOperations.size() == 1;
-    if (!isInitialWrite)
+    if (!isInitialWrite || (m_synchronizationInProgress && m_mode == Mode::AvoidRandomness))
         return;
 
     m_writeOperationDispatchTimer.startOneShot(m_initialWriteDelay);
@@ -1120,8 +1109,7 @@ void Storage::shrink()
 
 void Storage::deleteOldVersions()
 {
-    backgroundIOQueue().dispatch([this, protectedThis = makeRef(*this)] () mutable {
-        auto cachePath = basePath();
+    backgroundIOQueue().dispatch([cachePath = basePath()] () mutable {
         traverseDirectory(cachePath, [&cachePath](const String& subdirName, DirectoryEntryType type) {
             if (type != DirectoryEntryType::Directory)
                 return;

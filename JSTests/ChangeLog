@@ -1,3 +1,120 @@
+2019-05-01  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed correction to Test262 expectations following r244828.
+
+        * test262/expectations.yaml:
+
+2019-05-01  Stephan Szabo  <stephan.szabo@sony.com>
+
+        Add memory-limited skipping to some tests generating very large strings
+        https://bugs.webkit.org/show_bug.cgi?id=197437
+
+        Reviewed by Ross Kirsling.
+
+        * stress/StringObject-define-length-getter-rope-string-oom.js:
+        * stress/create-error-out-of-memory-rope-string.js:
+        * stress/string-16bit-repeat-overflow.js:
+
+2019-04-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244806.
+        https://bugs.webkit.org/show_bug.cgi?id=197446
+
+        Causing Test262 and JSC test failures on multiple builds
+        (Requested by ShawnRoberts on #webkit).
+
+        Reverted changeset:
+
+        "TypeArrays should not store properties that are canonical
+        numeric indices"
+        https://bugs.webkit.org/show_bug.cgi?id=197228
+        https://trac.webkit.org/changeset/244806
+
+2019-04-30  Tadeu Zagallo  <tzagallo@apple.com>
+
+        TypeArrays should not store properties that are canonical numeric indices
+        https://bugs.webkit.org/show_bug.cgi?id=197228
+        <rdar://problem/49557381>
+
+        Reviewed by Darin Adler.
+
+        * stress/typed-array-canonical-numeric-index-string.js: Added.
+        (makeTest.assert):
+        (makeTest):
+        (const.testInvalidIndices.makeTest.set assert):
+        (const.testInvalidIndices.makeTest):
+        (const.testValidIndices.makeTest.set assert):
+        (const.testValidIndices.makeTest):
+
+2019-04-29  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        normalizeMapKey should normalize NaN to one PureNaN bit pattern to make MapHash same
+        https://bugs.webkit.org/show_bug.cgi?id=197362
+
+        Reviewed by Saam Barati.
+
+        * stress/map-with-nan.js: Added.
+        (shouldBe):
+        (div):
+        (NaN1):
+        (NaN2):
+        (NaN3):
+        (NaN4):
+        (NaN1NoInline):
+        (NaN2NoInline):
+        (NaN3NoInline):
+        (NaN4NoInline):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        * stress/set-with-nan.js: Added.
+        (shouldBe):
+        (div):
+        (NaN1):
+        (NaN2):
+        (NaN3):
+        (NaN4):
+        (NaN1NoInline):
+        (NaN2NoInline):
+        (NaN3NoInline):
+        (NaN4NoInline):
+        (test2):
+        (test4):
+
+2019-04-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244708.
+        https://bugs.webkit.org/show_bug.cgi?id=197334
+
+        "Broke the debug build" (Requested by rmorisset on #webkit).
+
+        Reverted changeset:
+
+        "All prototypes should call didBecomePrototype()"
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+        https://trac.webkit.org/changeset/244708
+
+2019-04-25  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] linkPolymorphicCall now does GC
+        https://bugs.webkit.org/show_bug.cgi?id=197306
+
+        Reviewed by Saam Barati.
+
+        * stress/link-polymorphic-call-can-gc.js: Added.
+        (module):
+        (instance):
+
+2019-04-26  Robin Morisset  <rmorisset@apple.com>
+
+        All prototypes should call didBecomePrototype()
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+
+        Reviewed by Saam Barati.
+
+        * stress/function-prototype-indexed-accessor.js: Added.
+
 2019-04-23  Saam Barati  <sbarati@apple.com>
 
         LICM incorrectly assumes it'll never insert a node which provably OSR exits

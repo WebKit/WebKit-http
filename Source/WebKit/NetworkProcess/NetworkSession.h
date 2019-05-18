@@ -39,6 +39,7 @@
 
 namespace WebCore {
 class NetworkStorageSession;
+class ResourceRequest;
 enum class IncludeHttpOnlyCookies : bool;
 enum class ShouldSample : bool;
 }
@@ -48,6 +49,7 @@ namespace WebKit {
 class AdClickAttributionManager;
 class NetworkDataTask;
 class NetworkProcess;
+class NetworkResourceLoader;
 class WebResourceLoadStatisticsStore;
 struct NetworkSessionCreationParameters;
 
@@ -80,12 +82,16 @@ public:
     void notifyPageStatisticsTelemetryFinished(unsigned totalPrevalentResources, unsigned totalPrevalentResourcesWithUserInteraction, unsigned top3SubframeUnderTopFrameOrigins);
 #endif
     void storeAdClickAttribution(WebCore::AdClickAttribution&&);
-    void convertAdClickAttribution(const WebCore::AdClickAttribution::Source&, const WebCore::AdClickAttribution::Destination&, WebCore::AdClickAttribution::Conversion&&);
+    void handleAdClickAttributionConversion(WebCore::AdClickAttribution::Conversion&&, const URL& requestURL, const WebCore::ResourceRequest& redirectRequest);
     void dumpAdClickAttribution(CompletionHandler<void(String)>&&);
     void clearAdClickAttribution();
     void clearAdClickAttributionForRegistrableDomain(WebCore::RegistrableDomain&&);
     void setAdClickAttributionOverrideTimerForTesting(bool value);
     void setAdClickAttributionConversionURLForTesting(URL&&);
+    void markAdClickAttributionsAsExpiredForTesting();
+
+    void addKeptAliveLoad(Ref<NetworkResourceLoader>&&);
+    void removeKeptAliveLoad(NetworkResourceLoader&);
 
 protected:
     NetworkSession(NetworkProcess&, PAL::SessionID);
@@ -101,6 +107,8 @@ protected:
     WebCore::RegistrableDomain m_resourceLoadStatisticsManualPrevalentResource;
 #endif
     UniqueRef<AdClickAttributionManager> m_adClickAttribution;
+
+    HashSet<Ref<NetworkResourceLoader>> m_keptAliveLoads;
 };
 
 } // namespace WebKit

@@ -171,7 +171,8 @@ namespace WebKit {
 enum SuppressSelectionAssistantReason : uint8_t {
     EditableRootIsTransparentOrFullyClipped = 1 << 0,
     FocusedElementIsTooSmall = 1 << 1,
-    DropAnimationIsRunning = 1 << 2
+    DropAnimationIsRunning = 1 << 2,
+    InteractionIsHappening = 1 << 3
 };
 
 struct WKSelectionDrawingInfo {
@@ -220,6 +221,7 @@ struct WKAutoCorrectionData {
     RetainPtr<UILongPressGestureRecognizer> _longPressGestureRecognizer;
     RetainPtr<WKSyntheticTapGestureRecognizer> _doubleTapGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _nonBlockingDoubleTapGestureRecognizer;
+    RetainPtr<UITapGestureRecognizer> _doubleTapGestureRecognizerForDoubleClick;
     RetainPtr<UITapGestureRecognizer> _twoFingerDoubleTapGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _twoFingerSingleTapGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _stylusSingleTapGestureRecognizer;

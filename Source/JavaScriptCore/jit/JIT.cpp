@@ -903,15 +903,15 @@ CompilationResult JIT::link()
     
     CodeRef<JSEntryPtrTag> result = FINALIZE_CODE(
         patchBuffer, JSEntryPtrTag,
-        "Baseline JIT code for %s", toCString(CodeBlockWithJITType(m_codeBlock, JITCode::BaselineJIT)).data());
+        "Baseline JIT code for %s", toCString(CodeBlockWithJITType(m_codeBlock, JITType::BaselineJIT)).data());
     
     m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT->add(
         static_cast<double>(result.size()) /
-        static_cast<double>(m_codeBlock->instructionCount()));
+        static_cast<double>(m_codeBlock->instructionsSize()));
 
     m_codeBlock->shrinkToFit(CodeBlock::LateShrink);
     m_codeBlock->setJITCode(
-        adoptRef(*new DirectJITCode(result, withArityCheck, JITCode::BaselineJIT)));
+        adoptRef(*new DirectJITCode(result, withArityCheck, JITType::BaselineJIT)));
 
     if (JITInternal::verbose)
         dataLogF("JIT generated code for %p at [%p, %p).\n", m_codeBlock, result.executableMemory()->start().untaggedPtr(), result.executableMemory()->end().untaggedPtr());

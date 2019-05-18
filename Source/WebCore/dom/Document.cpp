@@ -3184,13 +3184,6 @@ void Document::updateBaseURL()
 
     if (!m_baseURL.isValid())
         m_baseURL = URL();
-
-    if (!equalIgnoringFragmentIdentifier(oldBaseURL, m_baseURL)) {
-        // Base URL change changes any relative visited links.
-        // FIXME: There are other URLs in the tree that would need to be re-evaluated on dynamic base URL change. Style should be invalidated too.
-        for (auto& anchor : descendantsOfType<HTMLAnchorElement>(*this))
-            anchor.invalidateCachedVisitedLinkHash();
-    }
 }
 
 void Document::setBaseURLOverride(const URL& url)
@@ -3909,13 +3902,13 @@ void Document::updateViewportUnitsOnResize()
 
 void Document::addAudioProducer(MediaProducer& audioProducer)
 {
-    m_audioProducers.add(&audioProducer);
+    m_audioProducers.add(audioProducer);
     updateIsPlayingMedia();
 }
 
 void Document::removeAudioProducer(MediaProducer& audioProducer)
 {
-    m_audioProducers.remove(&audioProducer);
+    m_audioProducers.remove(audioProducer);
     updateIsPlayingMedia();
 }
 
@@ -3934,8 +3927,8 @@ void Document::noteUserInteractionWithMediaElement()
 void Document::updateIsPlayingMedia(uint64_t sourceElementID)
 {
     MediaProducer::MediaStateFlags state = MediaProducer::IsNotPlaying;
-    for (auto* audioProducer : m_audioProducers)
-        state |= audioProducer->mediaState();
+    for (auto& audioProducer : m_audioProducers)
+        state |= audioProducer.mediaState();
 
 #if ENABLE(MEDIA_SESSION)
     if (HTMLMediaElement* sourceElement = HTMLMediaElement::elementWithID(sourceElementID)) {
@@ -3976,8 +3969,8 @@ void Document::updateIsPlayingMedia(uint64_t sourceElementID)
 
 void Document::pageMutedStateDidChange()
 {
-    for (auto* audioProducer : m_audioProducers)
-        audioProducer->pageMutedStateDidChange();
+    for (auto& audioProducer : m_audioProducers)
+        audioProducer.pageMutedStateDidChange();
 }
 
 static bool isNodeInSubtree(Node& node, Node& container, Document::NodeRemoval nodeRemoval)

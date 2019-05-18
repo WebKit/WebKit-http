@@ -1,3 +1,107 @@
+2019-04-29  Alex Christensen  <achristensen@webkit.org>
+
+        <rdar://problem/50299396> Fix internal High Sierra build
+        https://bugs.webkit.org/show_bug.cgi?id=197388
+
+        * Configurations/Base.xcconfig:
+        * Configurations/WebKitLegacy.xcconfig:
+
+2019-04-26  Keith Rollin  <krollin@apple.com>
+
+        Enable new build rule for post-processing headers when using XCBuild
+        https://bugs.webkit.org/show_bug.cgi?id=197340
+        <rdar://problem/50226685>
+
+        Reviewed by Brent Fulgham.
+
+        In Bug 197116, we conditionally disabled the old method for
+        post-processing header files when we are using the new XCBuild build
+        system. This check-in conditionally enables the new post-processing
+        facility. Note that the old system is disabled and the new system
+        enabled only when the USE_NEW_BUILD_SYSTEM environment variable is set
+        to YES.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2019-04-26  Jessie Berlin  <jberlin@webkit.org>
+
+        Add new mac target numbers
+        https://bugs.webkit.org/show_bug.cgi?id=197313
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/Version.xcconfig:
+        * Configurations/WebKitTargetConditionals.xcconfig:
+
+2019-04-26  Eric Carlson  <eric.carlson@apple.com>
+
+        Create AVFoundationSoftLink.{h,mm} to reduce duplicate code
+        https://bugs.webkit.org/show_bug.cgi?id=197171
+        <rdar://problem/47454979>
+
+        Reviewed by Youenn Fablet.
+
+        * WebView/WebVideoFullscreenController.mm:
+        (-[WebVideoFullscreenController setVideoElement:]):
+        (-[WebVideoFullscreenController windowDidExitFullscreen]):
+        (SOFT_LINK_CLASS): Deleted.
+
+2019-04-25  Timothy Hatcher  <timothy@apple.com>
+
+        Disable date and time inputs on iOSMac.
+        https://bugs.webkit.org/show_bug.cgi?id=197287
+        rdar://problem/46794376
+
+        Reviewed by Wenson Hsieh.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-04-25  Alex Christensen  <achristensen@webkit.org>
+
+        Start using C++17
+        https://bugs.webkit.org/show_bug.cgi?id=197131
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+
+2019-04-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244627.
+        https://bugs.webkit.org/show_bug.cgi?id=197282
+
+        Causing internal build failures (Requested by ShawnRoberts on
+        #webkit).
+
+        Reverted changeset:
+
+        "Create AVFoundationSoftLink.{h,mm} to reduce duplicate code"
+        https://bugs.webkit.org/show_bug.cgi?id=197171
+        https://trac.webkit.org/changeset/244627
+
+2019-04-24  Zalan Bujtas  <zalan@apple.com>
+
+        Regression (r244291): Broken API Test AutoLayoutRenderingProgressRelativeOrdering
+        https://bugs.webkit.org/show_bug.cgi?id=196948
+        <rdar://problem/49927131>
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebChromeClient.h:
+
+2019-04-24  Eric Carlson  <eric.carlson@apple.com>
+
+        Create AVFoundationSoftLink.{h,mm} to reduce duplicate code
+        https://bugs.webkit.org/show_bug.cgi?id=197171
+        <rdar://problem/47454979>
+
+        Reviewed by Youenn Fablet.
+
+        * WebView/WebVideoFullscreenController.mm:
+        (-[WebVideoFullscreenController setVideoElement:]):
+        (-[WebVideoFullscreenController windowDidExitFullscreen]):
+        (SOFT_LINK_CLASS): Deleted.
+
 2019-04-24  Simon Fraser  <simon.fraser@apple.com>
 
         Make it possible to control the renderTreeAsText output by setting options on testRunner

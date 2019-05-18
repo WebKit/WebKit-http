@@ -155,7 +155,7 @@
     {
       "name": "ews151",
       "platform": "*",
-      "max_builds": 2
+      "max_builds": 3
     },
     {
       "name": "ews152",
@@ -276,7 +276,7 @@
       "shortname": "style",
       "factory": "StyleFactory",
       "platform": "*",
-      "workernames": ["webkit-misc"]
+      "workernames": ["ews151"]
     },
     {
       "name": "GTK-Webkit2-EWS",
@@ -398,14 +398,14 @@
       "shortname": "bindings",
       "factory": "BindingsFactory",
       "platform": "*",
-      "workernames": ["webkit-misc"]
+      "workernames": ["ews151"]
     },
     {
       "name": "WebKitPy-Tests-EWS",
       "shortname": "webkitpy",
       "factory": "WebKitPyFactory",
       "platform": "*",
-      "workernames": ["webkit-misc"]
+      "workernames": ["ews151"]
     },
     {
       "name": "WebKitPerl-Tests-EWS",
@@ -426,7 +426,7 @@
       "shortname": "api-mac",
       "factory": "APITestsFactory",
       "platform": "*",
-      "workernames": ["ews120", "ews150", "ews151", "ews153", "ews155"]
+      "workernames": ["ews120", "ews150", "ews153", "ews155"]
     }
   ],
   "schedulers": [
@@ -434,16 +434,16 @@
       "type": "Try_Userpass",
       "name": "try",
       "port": 5555,
-      "builderNames": ["macOS-High-Sierra-Release-Build-EWS",
-                       "iOS-12-Simulator-Build-EWS", "WebKitPerl-Tests-EWS"]
+      "builderNames": ["Bindings-Tests-EWS", "macOS-High-Sierra-Release-Build-EWS",
+                       "iOS-12-Simulator-Build-EWS", "WebKitPerl-Tests-EWS", "WebKitPy-Tests-EWS"]
     },
     {
       "type": "Try_Userpass",
       "name": "disabled",
       "port": 5556,
-      "builderNames": ["Bindings-Tests-EWS", "GTK-Webkit2-EWS", "iOS-12-Build-EWS", "JSC-Tests-EWS",
+      "builderNames": ["GTK-Webkit2-EWS", "iOS-12-Build-EWS", "JSC-Tests-EWS",
                        "iOS-12-Simulator-WK2-Tests-EWS", "macOS-High-Sierra-Release-WK2-Tests-EWS",  "macOS-High-Sierra-Release-WK1-Tests-EWS",
-                       "macOS-High-Sierra-Debug-Build-EWS", "Style-EWS", "WinCairo-EWS", "Windows-EWS", "WebKitPy-Tests-EWS", "WPE-EWS"]
+                       "macOS-High-Sierra-Debug-Build-EWS", "Style-EWS", "WinCairo-EWS", "Windows-EWS", "WPE-EWS"]
     },
     {
       "type": "Triggerable",

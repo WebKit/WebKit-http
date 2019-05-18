@@ -790,7 +790,6 @@ public:
     NSView *inspectorAttachmentView();
     _WKRemoteObjectRegistry *remoteObjectRegistry();
 
-    void intrinsicContentSizeDidChange(const WebCore::IntSize& intrinsicContentSize);
     CGRect boundsOfLayerInLayerBackedWindowCoordinates(CALayer *) const;
 #endif // PLATFORM(MAC)
 
@@ -1211,6 +1210,7 @@ public:
     void tapHighlightAtPosition(const WebCore::FloatPoint&, uint64_t& requestID);
     void handleTap(const WebCore::FloatPoint&, OptionSet<WebKit::WebEvent::Modifier>, uint64_t layerTreeTransactionIdAtLastTouchStart);
     void didRecognizeLongPress();
+    void handleDoubleTapForDoubleClickAtPoint(const WebCore::IntPoint&, OptionSet<WebEvent::Modifier>, uint64_t layerTreeTransactionIdAtLastTouchStart);
 
     void inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint&);
     void inspectorNodeSearchEndedAtPosition(const WebCore::FloatPoint&);
@@ -1507,6 +1507,7 @@ public:
     void clearAdClickAttribution(CompletionHandler<void()>&&);
     void setAdClickAttributionOverrideTimerForTesting(bool value, CompletionHandler<void()>&&);
     void setAdClickAttributionConversionURLForTesting(const URL&, CompletionHandler<void()>&&);
+    void markAdClickAttributionsAsExpiredForTesting(CompletionHandler<void()>&&);
 
 #if ENABLE(SPEECH_SYNTHESIS)
     void speechSynthesisVoiceList(CompletionHandler<void(Vector<WebSpeechSynthesisVoice>&&)>&&);
@@ -1713,6 +1714,7 @@ private:
     void didDestroyNotification(uint64_t notificationID);
 
     void didChangeContentSize(const WebCore::IntSize&);
+    void didChangeIntrinsicContentSize(const WebCore::IntSize&);
 
 #if ENABLE(INPUT_TYPE_COLOR)
     void showColorPicker(const WebCore::Color& initialColor, const WebCore::IntRect&, Vector<WebCore::Color>&&);
@@ -1999,7 +2001,7 @@ private:
 
     void viewIsBecomingVisible();
 
-    void stopAllURLSchemeTasks();
+    void stopAllURLSchemeTasks(WebProcessProxy* = nullptr);
 
     void clearInspectorTargets();
     void createInspectorTargets();

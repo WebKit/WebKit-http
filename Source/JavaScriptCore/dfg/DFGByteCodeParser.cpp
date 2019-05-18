@@ -1559,7 +1559,7 @@ unsigned ByteCodeParser::inliningCost(CallVariant callee, int argumentCountInclu
     VERBOSE_LOG("    Inlining should be possible.\n");
     
     // It might be possible to inline.
-    return codeBlock->instructionCount();
+    return codeBlock->bytecodeCost();
 }
 
 template<typename ChecksFunctor>
@@ -1904,11 +1904,11 @@ bool ByteCodeParser::handleVarargsInlining(Node* callTargetNode, VirtualRegister
 
 unsigned ByteCodeParser::getInliningBalance(const CallLinkStatus& callLinkStatus, CodeSpecializationKind specializationKind)
 {
-    unsigned inliningBalance = Options::maximumFunctionForCallInlineCandidateInstructionCount();
+    unsigned inliningBalance = Options::maximumFunctionForCallInlineCandidateBytecodeCost();
     if (specializationKind == CodeForConstruct)
-        inliningBalance = std::min(inliningBalance, Options::maximumFunctionForConstructInlineCandidateInstructionCount());
+        inliningBalance = std::min(inliningBalance, Options::maximumFunctionForConstructInlineCandidateBytecoodeCost());
     if (callLinkStatus.isClosureCall())
-        inliningBalance = std::min(inliningBalance, Options::maximumFunctionForClosureCallInlineCandidateInstructionCount());
+        inliningBalance = std::min(inliningBalance, Options::maximumFunctionForClosureCallInlineCandidateBytecodeCost());
     return inliningBalance;
 }
 
@@ -7094,7 +7094,7 @@ void ByteCodeParser::parseCodeBlock()
     if (UNLIKELY(Options::dumpSourceAtDFGTime())) {
         Vector<DeferredSourceDump>& deferredSourceDump = m_graph.m_plan.callback()->ensureDeferredSourceDump();
         if (inlineCallFrame()) {
-            DeferredSourceDump dump(codeBlock->baselineVersion(), m_codeBlock, JITCode::DFGJIT, inlineCallFrame()->directCaller.bytecodeIndex());
+            DeferredSourceDump dump(codeBlock->baselineVersion(), m_codeBlock, JITType::DFGJIT, inlineCallFrame()->directCaller.bytecodeIndex());
             deferredSourceDump.append(dump);
         } else
             deferredSourceDump.append(DeferredSourceDump(codeBlock->baselineVersion()));
@@ -7104,7 +7104,7 @@ void ByteCodeParser::parseCodeBlock()
         dataLog("Parsing ", *codeBlock);
         if (inlineCallFrame()) {
             dataLog(
-                " for inlining at ", CodeBlockWithJITType(m_codeBlock, JITCode::DFGJIT),
+                " for inlining at ", CodeBlockWithJITType(m_codeBlock, JITType::DFGJIT),
                 " ", inlineCallFrame()->directCaller);
         }
         dataLog(

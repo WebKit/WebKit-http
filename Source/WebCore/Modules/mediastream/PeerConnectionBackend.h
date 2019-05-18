@@ -192,6 +192,14 @@ protected:
 
     String filterSDP(String&&) const;
 
+    struct PendingTrackEvent {
+        Ref<RTCRtpReceiver> receiver;
+        Ref<MediaStreamTrack> track;
+        Vector<RefPtr<MediaStream>> streams;
+        RefPtr<RTCRtpTransceiver> transceiver;
+    };
+    void addPendingTrackEvent(PendingTrackEvent&&);
+
 private:
     virtual void doCreateOffer(RTCOfferOptions&&) = 0;
     virtual void doCreateAnswer(RTCAnswerOptions&&) = 0;
@@ -210,7 +218,6 @@ private:
     Optional<PeerConnection::SessionDescriptionPromise> m_offerAnswerPromise;
     Optional<DOMPromiseDeferred<void>> m_setDescriptionPromise;
     Optional<DOMPromiseDeferred<void>> m_addIceCandidatePromise;
-    Optional<DOMPromiseDeferred<void>> m_endOfIceCandidatePromise;
 
     bool m_shouldFilterICECandidates { true };
     struct PendingICECandidate {
@@ -222,6 +229,8 @@ private:
     };
     Vector<PendingICECandidate> m_pendingICECandidates;
 
+    Vector<PendingTrackEvent> m_pendingTrackEvents;
+
 #if !RELEASE_LOG_DISABLED
     Ref<const Logger> m_logger;
     const void* m_logIdentifier;
@@ -229,11 +238,6 @@ private:
     bool m_negotiationNeeded { false };
     bool m_finishedGatheringCandidates { false };
     uint64_t m_waitingForMDNSRegistration { 0 };
-
-    bool m_finishedReceivingCandidates { false };
-    uint64_t m_waitingForMDNSResolution { 0 };
-
-    HashMap<String, String> m_mdnsMapping;
 };
 
 } // namespace WebCore

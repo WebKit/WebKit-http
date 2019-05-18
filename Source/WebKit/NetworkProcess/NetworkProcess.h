@@ -92,6 +92,7 @@ class AuthenticationManager;
 class NetworkConnectionToWebProcess;
 class NetworkProcessSupplement;
 class NetworkProximityManager;
+class NetworkResourceLoader;
 class WebSWServerConnection;
 class WebSWServerToContextConnection;
 enum class ShouldGrandfatherStatistics : bool;
@@ -330,8 +331,12 @@ public:
     void clearAdClickAttribution(PAL::SessionID, CompletionHandler<void()>&&);
     void setAdClickAttributionOverrideTimerForTesting(PAL::SessionID, bool value, CompletionHandler<void()>&&);
     void setAdClickAttributionConversionURLForTesting(PAL::SessionID, URL&&, CompletionHandler<void()>&&);
+    void markAdClickAttributionsAsExpiredForTesting(PAL::SessionID, CompletionHandler<void()>&&);
 
     WebCore::StorageQuotaManager& storageQuotaManager(PAL::SessionID, const WebCore::ClientOrigin&);
+
+    void addKeptAliveLoad(Ref<NetworkResourceLoader>&&);
+    void removeKeptAliveLoad(NetworkResourceLoader&);
 
 private:
     void platformInitializeNetworkProcess(const NetworkProcessCreationParameters&);
@@ -429,6 +434,8 @@ private:
 
     void removeCredential(WebCore::Credential&&, WebCore::ProtectionSpace&&, CompletionHandler<void()>&&);
 
+    void originsWithPersistentCredentials(CompletionHandler<void(Vector<WebCore::SecurityOriginData>)>&&);
+    
     void registerURLSchemeAsSecure(const String&) const;
     void registerURLSchemeAsBypassingContentSecurityPolicy(const String&) const;
     void registerURLSchemeAsLocal(const String&) const;

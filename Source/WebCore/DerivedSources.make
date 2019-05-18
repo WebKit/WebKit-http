@@ -374,7 +374,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webdatabase/SQLTransactionCallback.idl \
     $(WebCore)/Modules/webdatabase/SQLTransactionErrorCallback.idl \
     $(WebCore)/Modules/webdriver/NavigatorWebDriver.idl \
-    $(WebCore)/Modules/webgpu/DOMWindowWebGPU.idl \
     $(WebCore)/Modules/webgpu/GPUCanvasContext.idl \
     $(WebCore)/Modules/webgpu/GPUColor.idl \
     $(WebCore)/Modules/webgpu/GPUColorStateDescriptor.idl \
@@ -399,6 +398,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/GPUTextureUsage.idl \
     $(WebCore)/Modules/webgpu/GPUVertexAttributeDescriptor.idl \
 	$(WebCore)/Modules/webgpu/GPUVertexInputDescriptor.idl \
+    $(WebCore)/Modules/webgpu/NavigatorGPU.idl \
     $(WebCore)/Modules/webgpu/WebGPU.idl \
     $(WebCore)/Modules/webgpu/WebGPUAdapter.idl \
     $(WebCore)/Modules/webgpu/WebGPUBindGroup.idl \
@@ -429,6 +429,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webgpu/WebGPUSwapChain.idl \
     $(WebCore)/Modules/webgpu/WebGPUTexture.idl \
     $(WebCore)/Modules/webgpu/WebGPUTextureView.idl \
+    $(WebCore)/Modules/webgpu/WorkerNavigatorGPU.idl \
     $(WebCore)/Modules/websockets/CloseEvent.idl \
     $(WebCore)/Modules/websockets/WebSocket.idl \
     $(WebCore)/Modules/webvr/DOMWindowWebVR.idl \
@@ -1115,35 +1116,35 @@ ifeq ($(USE_LLVM_TARGET_TRIPLES_FOR_CLANG),YES)
     TARGET_TRIPLE_FLAGS=-target $(WK_CURRENT_ARCH)-$(LLVM_TARGET_TRIPLE_VENDOR)-$(LLVM_TARGET_TRIPLE_OS_VERSION)$(LLVM_TARGET_TRIPLE_SUFFIX)
 endif
 
-ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS_FAMILY ' | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++1z -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS_FAMILY ' | cut -d' ' -f3), 1)
     WTF_PLATFORM_IOS_FAMILY = 1
 else
     WTF_PLATFORM_IOS_FAMILY = 0
 endif
 
-ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_MAC ' | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++1z -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_MAC ' | cut -d' ' -f3), 1)
     WTF_PLATFORM_MAC = 1
 else
     WTF_PLATFORM_MAC = 0
 endif
 
-ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep USE_APPLE_INTERNAL_SDK | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++1z -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep USE_APPLE_INTERNAL_SDK | cut -d' ' -f3), 1)
     USE_APPLE_INTERNAL_SDK = 1
 else
     USE_APPLE_INTERNAL_SDK = 0
 endif
 
-ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep HAVE_OS_DARK_MODE_SUPPORT | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++1z -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep HAVE_OS_DARK_MODE_SUPPORT | cut -d' ' -f3), 1)
     HAVE_OS_DARK_MODE_SUPPORT = 1
 else
     HAVE_OS_DARK_MODE_SUPPORT = 0
 endif
 
-ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++1z -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
     ENABLE_ORIENTATION_EVENTS = 1
 endif
 
-ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_MEDIA_SOURCE | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++1z -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_MEDIA_SOURCE | cut -d' ' -f3), 1)
 	ENABLE_MEDIA_SOURCE = 1
 endif
 

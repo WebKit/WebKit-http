@@ -27,6 +27,8 @@
 
 #if ENABLE(REMOTE_INSPECTOR)
 
+#include "RemoteControllableTarget.h"
+
 #include <utility>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -117,16 +119,16 @@ public:
     void registerTarget(RemoteControllableTarget*);
     void unregisterTarget(RemoteControllableTarget*);
     void updateTarget(RemoteControllableTarget*);
-    void sendMessageToRemote(unsigned targetIdentifier, const String& message);
+    void sendMessageToRemote(TargetID, const String& message);
 
     RemoteInspector::Client* client() const { return m_client; }
     void setClient(RemoteInspector::Client*);
     void clientCapabilitiesDidChange();
     Optional<RemoteInspector::Client::Capabilities> clientCapabilities() const { return m_clientCapabilities; }
 
-    void setupFailed(unsigned targetIdentifier);
-    void setupCompleted(unsigned targetIdentifier);
-    bool waitingForAutomaticInspection(unsigned targetIdentifier);
+    void setupFailed(TargetID);
+    void setupCompleted(TargetID);
+    bool waitingForAutomaticInspection(TargetID);
     void updateAutomaticInspectionCandidate(RemoteInspectionTarget*);
 
     bool enabled() const { return m_enabled; }
@@ -143,14 +145,14 @@ public:
     void setParentProcessInfomationIsDelayed();
 #endif
 
-    void updateTargetListing(unsigned targetIdentifier);
+    void updateTargetListing(TargetID);
 
 #if USE(GLIB)
     void requestAutomationSession(const char* sessionID, const Client::SessionCapabilities&);
 #endif
 #if USE(GLIB) || PLATFORM(PLAYSTATION)
-    void setup(unsigned targetIdentifier);
-    void sendMessageToTarget(unsigned targetIdentifier, const char* message);
+    void setup(TargetID);
+    void sendMessageToTarget(TargetID, const char* message);
 #endif
 #if PLATFORM(PLAYSTATION)
     static void setConnectionIdentifier(PlatformSocketType);
@@ -159,7 +161,7 @@ public:
 private:
     RemoteInspector();
 
-    unsigned nextAvailableTargetIdentifier();
+    TargetID nextAvailableTargetIdentifier();
 
     enum class StopSource { API, XPCMessage };
     void stopInternal(StopSource);
@@ -172,9 +174,9 @@ private:
     static const GDBusInterfaceVTable s_interfaceVTable;
 
     void receivedGetTargetListMessage();
-    void receivedSetupMessage(unsigned targetIdentifier);
-    void receivedDataMessage(unsigned targetIdentifier, const char* message);
-    void receivedCloseMessage(unsigned targetIdentifier);
+    void receivedSetupMessage(TargetID);
+    void receivedDataMessage(TargetID, const char* message);
+    void receivedCloseMessage(TargetID);
     void receivedAutomationSessionRequestMessage(const char* sessionID);
 #endif
 
@@ -210,14 +212,14 @@ private:
 #endif
 #if PLATFORM(PLAYSTATION)
     HashMap<String, CallHandler>& dispatchMap() override;
-    void didClose(ClientID) override;
+    void didClose(ConnectionID) override;
 
     void sendWebInspectorEvent(const String&);
 
-    void receivedGetTargetListMessage(const struct Event&);
-    void receivedSetupMessage(const struct Event&);
-    void receivedDataMessage(const struct Event&);
-    void receivedCloseMessage(const struct Event&);
+    void receivedGetTargetListMessage(const Event&);
+    void receivedSetupMessage(const Event&);
+    void receivedDataMessage(const Event&);
+    void receivedCloseMessage(const Event&);
 #endif
     static bool startEnabled;
 
@@ -227,9 +229,9 @@ private:
     // from any thread.
     Lock m_mutex;
 
-    HashMap<unsigned, RemoteControllableTarget*> m_targetMap;
-    HashMap<unsigned, RefPtr<RemoteConnectionToTarget>> m_targetConnectionMap;
-    HashMap<unsigned, TargetListing> m_targetListingMap;
+    HashMap<TargetID, RemoteControllableTarget*> m_targetMap;
+    HashMap<TargetID, RefPtr<RemoteConnectionToTarget>> m_targetConnectionMap;
+    HashMap<TargetID, TargetListing> m_targetListingMap;
 
 #if PLATFORM(COCOA)
     RefPtr<RemoteInspectorXPCConnection> m_relayConnection;
@@ -242,7 +244,7 @@ private:
 #if PLATFORM(PLAYSTATION)
     std::unique_ptr<RemoteInspectorSocketEndpoint> m_socketConnection;
     static PlatformSocketType s_connectionIdentifier;
-    Optional<ClientID> m_clientID;
+    Optional<ConnectionID> m_clientID;
 #endif
 
     RemoteInspector::Client* m_client { nullptr };
@@ -251,7 +253,7 @@ private:
 #if PLATFORM(COCOA)
     dispatch_queue_t m_xpcQueue;
 #endif
-    unsigned m_nextAvailableTargetIdentifier { 1 };
+    TargetID m_nextAvailableTargetIdentifier { 1 };
     int m_notifyToken { 0 };
     bool m_enabled { false };
     bool m_hasActiveDebugSession { false };
@@ -264,7 +266,7 @@ private:
     bool m_shouldSendParentProcessInformation { false };
     bool m_automaticInspectionEnabled { false };
     bool m_automaticInspectionPaused { false };
-    unsigned m_automaticInspectionCandidateTargetIdentifier { 0 };
+    TargetID m_automaticInspectionCandidateTargetIdentifier { 0 };
 };
 
 } // namespace Inspector

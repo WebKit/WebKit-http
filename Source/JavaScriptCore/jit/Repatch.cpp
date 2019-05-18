@@ -72,7 +72,7 @@ static FunctionPtr<CFunctionPtrTag> readPutICCallTarget(CodeBlock* codeBlock, Co
 {
     FunctionPtr<OperationPtrTag> target = MacroAssembler::readCallTarget<OperationPtrTag>(call);
 #if ENABLE(FTL_JIT)
-    if (codeBlock->jitType() == JITCode::FTLJIT) {
+    if (codeBlock->jitType() == JITType::FTLJIT) {
         MacroAssemblerCodePtr<JITThunkPtrTag> thunk = MacroAssemblerCodePtr<OperationPtrTag>::createFromExecutableAddress(target.executableAddress()).retagged<JITThunkPtrTag>();
         return codeBlock->vm()->ftlThunks->keyForSlowPathCallThunk(thunk).callTarget().retagged<CFunctionPtrTag>();
     }
@@ -85,7 +85,7 @@ static FunctionPtr<CFunctionPtrTag> readPutICCallTarget(CodeBlock* codeBlock, Co
 void ftlThunkAwareRepatchCall(CodeBlock* codeBlock, CodeLocationCall<JSInternalPtrTag> call, FunctionPtr<CFunctionPtrTag> newCalleeFunction)
 {
 #if ENABLE(FTL_JIT)
-    if (codeBlock->jitType() == JITCode::FTLJIT) {
+    if (codeBlock->jitType() == JITType::FTLJIT) {
         VM& vm = *codeBlock->vm();
         FTL::Thunks& thunks = *vm.ftlThunks;
         FunctionPtr<OperationPtrTag> target = MacroAssembler::readCallTarget<OperationPtrTag>(call);
@@ -955,19 +955,23 @@ void linkPolymorphicCall(
     ExecState* exec, CallLinkInfo& callLinkInfo, CallVariant newVariant)
 {
     RELEASE_ASSERT(callLinkInfo.allowStubs());
+
+    CallFrame* callerFrame = exec->callerFrame();
+    VM& vm = callerFrame->vm();
+
+    // During execution of linkPolymorphicCall, we strongly assume that we never do GC.
+    // GC jettisons CodeBlocks, changes CallLinkInfo etc. and breaks assumption done before and after this call.
+    DeferGCForAWhile deferGCForAWhile(vm.heap);
     
     if (!newVariant) {
         linkVirtualFor(exec, callLinkInfo);
         return;
     }
 
-    CallFrame* callerFrame = exec->callerFrame();
-
     // Our caller must be have a cell for a callee. When calling
     // this from Wasm, we ensure the callee is a cell.
     ASSERT(callerFrame->callee().isCell());
 
-    VM& vm = callerFrame->vm();
     CodeBlock* callerCodeBlock = callerFrame->codeBlock();
     bool isWebAssembly = isWebAssemblyToJSCallee(callerFrame->callee().asCell());
 

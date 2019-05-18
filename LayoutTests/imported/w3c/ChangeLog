@@ -1,3 +1,176 @@
+2019-05-01  Darin Adler  <darin@apple.com>
+
+        WebKit has too much of its own UTF-8 code and should rely more on ICU's UTF-8 support
+        https://bugs.webkit.org/show_bug.cgi?id=195535
+
+        Reviewed by Alexey Proskuryakov.
+
+        * web-platform-tests/encoding/textdecoder-utf16-surrogates-expected.txt:
+        Updated expected results to have the Unicode replacement character in cases where the
+        text contains unpaired surrogates. The tests are still doing the same operations, and
+        still getting the same results, but the text output no longer includes illegal UTF-8.
+
+2019-05-01  Shawn Roberts  <sroberts@apple.com>
+
+        Unreviewed, rolling out r244821.
+
+        Causing
+
+        Reverted changeset:
+
+        "WebKit has too much of its own UTF-8 code and should rely
+        more on ICU's UTF-8 support"
+        https://bugs.webkit.org/show_bug.cgi?id=195535
+        https://trac.webkit.org/changeset/244821
+
+2019-05-01  Youenn Fablet  <youenn@apple.com>
+
+        Kept alive loaders should use the redirected request in case of redirections
+        https://bugs.webkit.org/show_bug.cgi?id=197337
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/basic/keepalive-expected.txt:
+
+2019-04-29  Darin Adler  <darin@apple.com>
+
+        WebKit has too much of its own UTF-8 code and should rely more on ICU's UTF-8 support
+        https://bugs.webkit.org/show_bug.cgi?id=195535
+
+        Reviewed by Alexey Proskuryakov.
+
+        * web-platform-tests/encoding/textdecoder-utf16-surrogates-expected.txt:
+        Updated expected results to have the Unicode replacement character in cases where the
+        text contains unpaired surrogates. The tests are still doing the same operations, and
+        still getting the same results, but the text output no longer includes illegal UTF-8.
+
+2019-04-30  Youenn Fablet  <youenn@apple.com>
+
+        [macOS WK1] ASSERTION FAILED: formData in WebCore::ResourceRequest::doUpdateResourceHTTPBody()
+        https://bugs.webkit.org/show_bug.cgi?id=196864
+        <rdar://problem/49854497>
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/xhr/send-redirect-post-upload-expected.txt:
+
+2019-04-30  Youenn Fablet  <youenn@apple.com>
+
+        Update WPT service-worker resource-timing test to use hosts[alt]
+        https://bugs.webkit.org/show_bug.cgi?id=197329
+
+        Reviewed by Chris Dumez.
+
+        Set alt server as 127.0.0.1.
+        Use hosts[alt][] instead of domains[www] to trigger a cross origin load.
+
+        * resources/config.json:
+        * web-platform-tests/service-workers/service-worker/resource-timing.https-expected.txt: Removed.
+        * web-platform-tests/service-workers/service-worker/resource-timing.sub.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/resource-timing.sub.https.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/service-workers/service-worker/resource-timing.https.html.
+        * web-platform-tests/service-workers/service-worker/resources/resource-timing-iframe.sub.html:
+
+2019-04-29  Javier Fernandez  <jfernandez@igalia.com>
+
+        line should not be broken before the first space after a word
+        https://bugs.webkit.org/show_bug.cgi?id=197278
+
+        Reviewed by Myles C. Maxfield.
+
+        Added new Web Platform Tests to cover the cases discussed [1] with the CSS WG.
+
+        [1] https://github.com/w3c/csswg-drafts/issues/3701
+
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-001-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-001.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-002-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-002.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-003-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-003.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-004-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-004.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-005-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-005.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-006-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-006.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-007-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-007.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-008-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-008.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-009-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-009.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-010-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-010.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-011-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-011.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-012-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-012.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-013-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-before-first-char-013.html: Added.
+
+2019-04-29  Javier Fernandez  <jfernandez@igalia.com>
+
+        Update the CSS Text WPT test suite
+        https://bugs.webkit.org/show_bug.cgi?id=197326
+
+        Unreviewed test gardening.
+
+        * web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-break-word-007.html:
+        * web-platform-tests/css/css-text/overflow-wrap/w3c-import.log:
+        * web-platform-tests/css/css-text/parsing/text-transform-valid.html:
+        * web-platform-tests/css/css-text/parsing/word-break-invalid-expected.txt:
+        * web-platform-tests/css/css-text/parsing/word-break-invalid.html:
+        * web-platform-tests/css/css-text/parsing/word-break-valid-expected.txt:
+        * web-platform-tests/css/css-text/parsing/word-break-valid.html:
+        * web-platform-tests/css/css-text/text-transform/w3c-import.log:
+        * web-platform-tests/css/css-text/white-space/break-spaces-003-expected.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-003.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-004.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-005-expected.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-005.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-006-expected.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-006.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-007-expected.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-007.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-008-expected.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-008.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-009-expected.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-009.html:
+        * web-platform-tests/css/css-text/white-space/pre-wrap-008-expected.html:
+        * web-platform-tests/css/css-text/white-space/pre-wrap-008.html:
+        * web-platform-tests/css/css-text/white-space/pre-wrap-015.html:
+        * web-platform-tests/css/css-text/white-space/pre-wrap-016.html:
+        * web-platform-tests/css/css-text/white-space/textarea-break-spaces-001-expected.html:
+        * web-platform-tests/css/css-text/white-space/w3c-import.log:
+
+2019-04-28  Youenn Fablet  <youenn@apple.com>
+
+        Fix imported/w3c/web-platform-tests/fetch/api/request/request-keepalive.html assert_throws call
+        https://bugs.webkit.org/show_bug.cgi?id=197338
+
+        Reviewed by Darin Adler.
+
+
+2019-04-26  Youenn Fablet  <youenn@apple.com>
+
+        Use normal loading path for ping loads
+        https://bugs.webkit.org/show_bug.cgi?id=196807
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/beacon/headers/header-content-type-expected.txt:
+        * web-platform-tests/fetch/api/request/request-keepalive-expected.txt:
+
+2019-04-26  Youenn Fablet  <youenn@apple.com>
+
+        [Mac WK2 iOS Sim] Layout Test imported/w3c/web-platform-tests/webrtc/RTCRtpReceiver-getSynchronizationSources.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=196633
+        <rdar://problem/49627667>
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/webrtc/RTCRtpReceiver-getSynchronizationSources.https-expected.txt:
+
 2019-04-22  Youenn Fablet  <youenn@apple.com>
 
         Cache API should return Abort error in case of putting an aborted fetch

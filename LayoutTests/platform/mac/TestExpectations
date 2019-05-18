@@ -22,6 +22,8 @@ fast/images/eps-as-image.html [ Pass ]
 fast/text-autosizing/ios/programmatic-text-size-adjust.html [ Skip ]
 fast/text-autosizing/ios/text-size-adjust-inline-style.html [ Skip ]
 fast/text-autosizing [ Pass ]
+# Tests for idempotent autosizing mode rely on viewport scaling which isn't implemented on Mac.
+fast/text-autosizing/ios/idempotentmode [ Pass Failure ImageOnlyFailure ]
 
 fast/attachment/attachment-subtitle-resize.html [ Pass ]
 
@@ -1593,8 +1595,6 @@ webkit.org/b/175998 http/tests/security/mixedContent/insecure-css-with-secure-co
 
 webkit.org/b/165311 [ Sierra+ ] media/modern-media-controls/pip-support/pip-support-click.html [ Pass Failure ]
 
-webkit.org/b/176693 storage/indexeddb/modern/idbtransaction-objectstore-failures-private.html [ Pass Failure ]
-
 # User-installed font infrastructure is ony present on certain OSes.
 webkit.org/b/180062 [ Sierra HighSierra ] fast/text/user-installed-fonts/disable.html [ ImageOnlyFailure ]
 webkit.org/b/180062 fast/text/user-installed-fonts/shadow-postscript.html [ ImageOnlyFailure ]
@@ -1884,3 +1884,5 @@ webkit.org/b/197008 imported/w3c/web-platform-tests/pointerevents/pointerevent_s
 webkit.org/b/197007 imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_coordinates_when_locked.html [ Skip ]
 webkit.org/b/197009 imported/w3c/web-platform-tests/pointerevents/pointerevent_setpointercapture_invalid_pointerid.html [ Failure Pass ]
 webkit.org/b/197058 imported/w3c/web-platform-tests/pointerevents/pointerevent_mouse_pointercapture_in_frame.html [ Failure Pass ]
+
+webkit.org/b/192501 [ Debug ] animations/play-state-in-shorthand.html [ Pass Failure ]

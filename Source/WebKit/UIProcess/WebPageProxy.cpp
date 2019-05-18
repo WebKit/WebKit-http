@@ -727,7 +727,8 @@ void WebPageProxy::launchProcess(const RegistrableDomain& registrableDomain)
 
     auto& processPool = m_process->processPool();
 
-    if (auto* relatedPage = m_configuration->relatedPage())
+    auto* relatedPage = m_configuration->relatedPage();
+    if (relatedPage && !relatedPage->isClosed())
         m_process = relatedPage->ensureRunningProcess();
     else
         m_process = processPool.processForRegistrableDomain(m_websiteDataStore.get(), this, registrableDomain);
@@ -4541,7 +4542,12 @@ void WebPageProxy::decidePolicyForNavigationAction(Ref<WebProcessProxy>&& proces
     if (!fromAPI)
         m_pageLoadState.clearPendingAPIRequestURL(transaction);
 
-    MESSAGE_CHECK_URL(process, request.url());
+    if (!checkURLReceivedFromCurrentOrPreviousWebProcess(process, request.url())) {
+        RELEASE_LOG_ERROR_IF_ALLOWED(Process, "Ignoring request to load this main resource because it is outside the sandbox");
+        sender->send(PolicyAction::Ignore, 0, DownloadID(), WTF::nullopt);
+        return;
+    }
+
     MESSAGE_CHECK_URL(process, originalRequest.url());
 
     RefPtr<API::Navigation> navigation;
@@ -5470,6 +5476,13 @@ void WebPageProxy::handleDownloadRequest(DownloadProxy& download)
 void WebPageProxy::didChangeContentSize(const IntSize& size)
 {
     pageClient().didChangeContentSize(size);
+}
+
+void WebPageProxy::didChangeIntrinsicContentSize(const IntSize& intrinsicContentSize)
+{
+#if USE(APPKIT)
+    pageClient().intrinsicContentSizeDidChange(intrinsicContentSize);
+#endif
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -6712,6 +6725,7 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
     PageLoadState::Transaction transaction = m_pageLoadState.transaction();
 
     resetStateAfterProcessExited(reason);
+    stopAllURLSchemeTasks(m_process.ptr());
 
     // For bringup of process swapping, NavigationSwap termination will not go out to clients.
     // If it does *during* process swapping, and the client triggers a reload, that causes bizarre WebKit re-entry.
@@ -6727,8 +6741,6 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
         if (auto* automationSession = process().processPool().automationSession())
             automationSession->terminate();
     }
-
-    stopAllURLSchemeTasks();
 }
 
 void WebPageProxy::provisionalProcessDidTerminate()
@@ -6788,14 +6800,14 @@ void WebPageProxy::resetRecentCrashCount()
     m_recentCrashCount = 0;
 }
 
-void WebPageProxy::stopAllURLSchemeTasks()
+void WebPageProxy::stopAllURLSchemeTasks(WebProcessProxy* process)
 {
     HashSet<WebURLSchemeHandler*> handlers;
     for (auto& handler : m_urlSchemeHandlersByScheme.values())
         handlers.add(handler.ptr());
 
     for (auto* handler : handlers)
-        handler->stopAllTasksForPage(*this);
+        handler->stopAllTasksForPage(*this, process);
 }
 
 #if PLATFORM(IOS_FAMILY)
@@ -7604,7 +7616,7 @@ void WebPageProxy::setViewLayoutSize(const IntSize& viewLayoutSize)
 
 #if USE(APPKIT)
     if (m_viewLayoutSize.width() <= 0)
-        intrinsicContentSizeDidChange(IntSize(-1, -1));
+        didChangeIntrinsicContentSize(IntSize(-1, -1));
 #endif
 }
 
@@ -8943,6 +8955,17 @@ void WebPageProxy::setAdClickAttributionConversionURLForTesting(const URL& url, 
             return;
         }
         networkProcess->sendWithAsyncReply(Messages::NetworkProcess::SetAdClickAttributionConversionURLForTesting(m_websiteDataStore->sessionID(), url), WTFMove(completionHandler));
+    }
+}
+
+void WebPageProxy::markAdClickAttributionsAsExpiredForTesting(CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* networkProcess = m_process->processPool().networkProcess()) {
+        if (!networkProcess->canSendMessage()) {
+            completionHandler();
+            return;
+        }
+        networkProcess->sendWithAsyncReply(Messages::NetworkProcess::MarkAdClickAttributionsAsExpiredForTesting(m_websiteDataStore->sessionID()), WTFMove(completionHandler));
     }
 }
 

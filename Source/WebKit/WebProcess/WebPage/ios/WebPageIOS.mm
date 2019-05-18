@@ -689,8 +689,10 @@ void WebPage::completeSyntheticClick(Node& nodeRespondingToClick, const WebCore:
     if (newFocusedElement && newFocusedElement == oldFocusedElement)
         elementDidRefocus(*newFocusedElement);
 
-    if (!tapWasHandled && nodeRespondingToClick.document().frame())
+    // Only send a synthetic mouse out event if synthetic mouse move events were sent; this is true when ContentChangeObserver is enabled.
+    if (nodeRespondingToClick.document().settings().contentChangeObserverEnabled() && !tapWasHandled && nodeRespondingToClick.document().frame())
         nodeRespondingToClick.document().frame()->eventHandler().dispatchSyntheticMouseOut(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::NoType, 0, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::NoTap));
+
     if (m_isClosed)
         return;
 
@@ -718,6 +720,28 @@ void WebPage::handleTap(const IntPoint& point, OptionSet<WebEvent::Modifier> mod
 #endif
     else
         handleSyntheticClick(*nodeRespondingToClick, adjustedPoint, modifiers);
+}
+
+void WebPage::handleDoubleTapForDoubleClickAtPoint(const IntPoint& point, OptionSet<WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId)
+{
+    FloatPoint adjustedPoint;
+    auto* nodeRespondingToDoubleClick = m_page->mainFrame().nodeRespondingToDoubleClickEvent(point, adjustedPoint);
+    if (!nodeRespondingToDoubleClick)
+        return;
+
+    auto* frameRespondingToDoubleClick = nodeRespondingToDoubleClick->document().frame();
+    if (!frameRespondingToDoubleClick || lastLayerTreeTransactionId < WebFrame::fromCoreFrame(*frameRespondingToDoubleClick)->firstLayerTreeTransactionIDAfterDidCommitLoad())
+        return;
+
+    bool shiftKey = modifiers.contains(WebEvent::Modifier::ShiftKey);
+    bool ctrlKey = modifiers.contains(WebEvent::Modifier::ControlKey);
+    bool altKey = modifiers.contains(WebEvent::Modifier::AltKey);
+    bool metaKey = modifiers.contains(WebEvent::Modifier::MetaKey);
+    auto roundedAdjustedPoint = roundedIntPoint(adjustedPoint);
+    nodeRespondingToDoubleClick->document().frame()->eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 2, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::NoTap));
+    if (m_isClosed)
+        return;
+    nodeRespondingToDoubleClick->document().frame()->eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 2, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::NoTap));
 }
 
 void WebPage::requestFocusedElementInformation(WebKit::CallbackID callbackID)
@@ -2849,7 +2873,8 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const W
     }
 
     LOG_WITH_STREAM(VisibleRects, stream << "WebPage::dynamicViewportSizeUpdate setting view layout size to " << viewLayoutSize);
-    m_viewportConfiguration.setViewLayoutSize(viewLayoutSize);
+    if (m_viewportConfiguration.setViewLayoutSize(viewLayoutSize))
+        viewportConfigurationChanged();
     IntSize newLayoutSize = m_viewportConfiguration.layoutSize();
 
     if (setFixedLayoutSize(newLayoutSize))
@@ -3028,10 +3053,12 @@ void WebPage::resetViewportDefaultConfiguration(WebFrame* frame, bool hasMobileD
 
 void WebPage::viewportConfigurationChanged(ZoomToInitialScale zoomToInitialScale)
 {
+    double initialScale = m_viewportConfiguration.initialScale();
+    m_page->setInitialScale(initialScale);
+
     if (setFixedLayoutSize(m_viewportConfiguration.layoutSize()))
         resetTextAutosizing();
 
-    double initialScale = m_viewportConfiguration.initialScale();
     double scale;
     if (m_userHasChangedPageScaleFactor && zoomToInitialScale == ZoomToInitialScale::No)
         scale = std::max(std::min(pageScaleFactor(), m_viewportConfiguration.maximumScale()), m_viewportConfiguration.minimumScale());

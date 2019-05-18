@@ -34,6 +34,8 @@
 #include "config.h"
 #include "PingLoader.h"
 
+#include "CachedResourceLoader.h"
+#include "CachedResourceRequest.h"
 #include "ContentRuleListResults.h"
 #include "ContentSecurityPolicy.h"
 #include "Document.h"
@@ -46,6 +48,7 @@
 #include "Page.h"
 #include "PlatformStrategies.h"
 #include "ProgressTracker.h"
+#include "ResourceError.h"
 #include "ResourceHandle.h"
 #include "ResourceLoadInfo.h"
 #include "ResourceRequest.h"
@@ -57,18 +60,10 @@
 
 namespace WebCore {
 
-#if !ENABLE(CONTENT_EXTENSIONS)
+#if ENABLE(CONTENT_EXTENSIONS)
 
 // Returns true if we should block the load.
-static inline bool processContentRuleListsForLoad(const Frame&, ResourceRequest&, ResourceType)
-{
-    return false;
-}
-
-#else
-
-// Returns true if we should block the load.
-static bool processContentRuleListsForLoad(const Frame& frame, ResourceRequest& request, ResourceType resourceType)
+static bool processContentRuleListsForLoad(const Frame& frame, ResourceRequest& request, OptionSet<ContentExtensions::ResourceType> resourceType)
 {
     auto* documentLoader = frame.loader().documentLoader();
     if (!documentLoader)
@@ -95,8 +90,10 @@ void PingLoader::loadImage(Frame& frame, const URL& url)
     }
 
     ResourceRequest request(url);
-    if (processContentRuleListsForLoad(frame, request, ResourceType::Image))
+#if ENABLE(CONTENT_EXTENSIONS)
+    if (processContentRuleListsForLoad(frame, request, ContentExtensions::ResourceType::Image))
         return;
+#endif
 
     document.contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(request, ContentSecurityPolicy::InsecureRequestType::Load);
 
@@ -109,7 +106,7 @@ void PingLoader::loadImage(Frame& frame, const URL& url)
         request.setHTTPReferrer(referrer);
     frame.loader().addExtraFieldsToSubresourceRequest(request);
 
-    startPingLoad(frame, request, WTFMove(originalRequestHeader), ShouldFollowRedirects::Yes, ContentSecurityPolicyImposition::DoPolicyCheck);
+    startPingLoad(frame, request, WTFMove(originalRequestHeader), ShouldFollowRedirects::Yes, ContentSecurityPolicyImposition::DoPolicyCheck, ReferrerPolicy::EmptyString);
 }
 
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/links.html#hyperlink-auditing
@@ -121,8 +118,10 @@ void PingLoader::sendPing(Frame& frame, const URL& pingURL, const URL& destinati
         return;
 
     ResourceRequest request(pingURL);
-    if (processContentRuleListsForLoad(frame, request, ResourceType::Raw))
+#if ENABLE(CONTENT_EXTENSIONS)
+    if (processContentRuleListsForLoad(frame, request, { ContentExtensions::ResourceType::Raw, ContentExtensions::ResourceType::Ping }))
         return;
+#endif
 
     auto& document = *frame.document();
     document.contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(request, ContentSecurityPolicy::InsecureRequestType::Load);
@@ -148,7 +147,7 @@ void PingLoader::sendPing(Frame& frame, const URL& pingURL, const URL& destinati
         }
     }
 
-    startPingLoad(frame, request, WTFMove(originalRequestHeader), ShouldFollowRedirects::Yes, ContentSecurityPolicyImposition::DoPolicyCheck);
+    startPingLoad(frame, request, WTFMove(originalRequestHeader), ShouldFollowRedirects::Yes, ContentSecurityPolicyImposition::DoPolicyCheck, request.httpReferrer().isEmpty() ? ReferrerPolicy::NoReferrer : ReferrerPolicy::UnsafeUrl);
 }
 
 void PingLoader::sendViolationReport(Frame& frame, const URL& reportURL, Ref<FormData>&& report, ViolationReportType reportType)
@@ -156,8 +155,10 @@ void PingLoader::sendViolationReport(Frame& frame, const URL& reportURL, Ref<For
     ASSERT(frame.document());
 
     ResourceRequest request(reportURL);
-    if (processContentRuleListsForLoad(frame, request, ResourceType::Raw))
+#if ENABLE(CONTENT_EXTENSIONS)
+    if (processContentRuleListsForLoad(frame, request, ContentExtensions::ResourceType::Raw))
         return;
+#endif
 
     auto& document = *frame.document();
     document.contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(request, ContentSecurityPolicy::InsecureRequestType::Load);
@@ -187,10 +188,10 @@ void PingLoader::sendViolationReport(Frame& frame, const URL& reportURL, Ref<For
     if (!referrer.isEmpty())
         request.setHTTPReferrer(referrer);
 
-    startPingLoad(frame, request, WTFMove(originalRequestHeader), ShouldFollowRedirects::No, ContentSecurityPolicyImposition::SkipPolicyCheck);
+    startPingLoad(frame, request, WTFMove(originalRequestHeader), ShouldFollowRedirects::No, ContentSecurityPolicyImposition::SkipPolicyCheck, ReferrerPolicy::EmptyString);
 }
 
-void PingLoader::startPingLoad(Frame& frame, ResourceRequest& request, HTTPHeaderMap&& originalRequestHeaders, ShouldFollowRedirects shouldFollowRedirects, ContentSecurityPolicyImposition policyCheck)
+void PingLoader::startPingLoad(Frame& frame, ResourceRequest& request, HTTPHeaderMap&& originalRequestHeaders, ShouldFollowRedirects shouldFollowRedirects, ContentSecurityPolicyImposition policyCheck, ReferrerPolicy referrerPolicy)
 {
     unsigned long identifier = frame.page()->progress().createUniqueIdentifier();
     // FIXME: Why activeDocumentLoader? I would have expected documentLoader().
@@ -199,22 +200,33 @@ void PingLoader::startPingLoad(Frame& frame, ResourceRequest& request, HTTPHeade
     // with the provisional DocumentLoader if there is a provisional
     // DocumentLoader.
     bool shouldUseCredentialStorage = frame.loader().client().shouldUseCredentialStorage(frame.loader().activeDocumentLoader(), identifier);
-    FetchOptions options;
+    ResourceLoaderOptions options;
     options.credentials = shouldUseCredentialStorage ? FetchOptions::Credentials::Include : FetchOptions::Credentials::Omit;
     options.redirect = shouldFollowRedirects == ShouldFollowRedirects::Yes ? FetchOptions::Redirect::Follow : FetchOptions::Redirect::Error;
+    options.keepAlive = true;
+    options.contentSecurityPolicyImposition = policyCheck;
+    options.referrerPolicy = referrerPolicy;
+    options.sendLoadCallbacks = SendCallbackPolicy::SendCallbacks;
+    options.cache = FetchOptions::Cache::NoCache;
 
-    // FIXME: Move ping loads to normal subresource loading to get normal inspector request instrumentation hooks.
-    InspectorInstrumentation::willSendRequestOfType(&frame, identifier, frame.loader().activeDocumentLoader(), request, InspectorInstrumentation::LoadType::Ping);
+    // FIXME: Deprecate the ping load code path.
+    if (platformStrategies()->loaderStrategy()->usePingLoad()) {
+        InspectorInstrumentation::willSendRequestOfType(&frame, identifier, frame.loader().activeDocumentLoader(), request, InspectorInstrumentation::LoadType::Ping);
 
-    platformStrategies()->loaderStrategy()->startPingLoad(frame, request, WTFMove(originalRequestHeaders), options, policyCheck, [protectedFrame = makeRef(frame), identifier] (const ResourceError& error, const ResourceResponse& response) {
-        if (!response.isNull())
-            InspectorInstrumentation::didReceiveResourceResponse(protectedFrame, identifier, protectedFrame->loader().activeDocumentLoader(), response, nullptr);
-        if (error.isNull()) {
-            NetworkLoadMetrics emptyMetrics;
-            InspectorInstrumentation::didFinishLoading(protectedFrame.ptr(), protectedFrame->loader().activeDocumentLoader(), identifier, emptyMetrics, nullptr);
-        } else
-            InspectorInstrumentation::didFailLoading(protectedFrame.ptr(), protectedFrame->loader().activeDocumentLoader(), identifier, error);
-    });
+        platformStrategies()->loaderStrategy()->startPingLoad(frame, request, WTFMove(originalRequestHeaders), options, policyCheck, [protectedFrame = makeRef(frame), identifier] (const ResourceError& error, const ResourceResponse& response) {
+            if (!response.isNull())
+                InspectorInstrumentation::didReceiveResourceResponse(protectedFrame, identifier, protectedFrame->loader().activeDocumentLoader(), response, nullptr);
+            if (!error.isNull()) {
+                InspectorInstrumentation::didFailLoading(protectedFrame.ptr(), protectedFrame->loader().activeDocumentLoader(), identifier, error);
+                return;
+            }
+            InspectorInstrumentation::didFinishLoading(protectedFrame.ptr(), protectedFrame->loader().activeDocumentLoader(), identifier, { }, nullptr);
+        });
+        return;
+    }
+
+    CachedResourceRequest cachedResourceRequest { ResourceRequest { request }, options };
+    frame.document()->cachedResourceLoader().requestPingResource(WTFMove(cachedResourceRequest));
 }
 
 }

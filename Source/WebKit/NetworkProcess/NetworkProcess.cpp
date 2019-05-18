@@ -306,6 +306,8 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     WebCore::RuntimeEnabledFeatures::sharedFeatures().setIsITPDatabaseEnabled(parameters.shouldEnableITPDatabase);
     WebCore::RuntimeEnabledFeatures::sharedFeatures().setIsITPFirstPartyWebsiteDataRemovalEnabled(parameters.isITPFirstPartyWebsiteDataRemovalEnabled);
 
+    WebCore::RuntimeEnabledFeatures::sharedFeatures().setAdClickAttributionDebugModeEnabled(parameters.enableAdClickAttributionDebugMode);
+
     SandboxExtension::consumePermanently(parameters.defaultDataStoreParameters.networkSessionParameters.resourceLoadStatisticsDirectoryExtensionHandle);
 
     auto sessionID = parameters.defaultDataStoreParameters.networkSessionParameters.sessionID;
@@ -2007,6 +2009,10 @@ void NetworkProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend 
 
 void NetworkProcess::processWillSuspendImminently(CompletionHandler<void(bool)>&& completionHandler)
 {
+#if PLATFORM(IOS_FAMILY) && ENABLE(INDEXED_DATABASE)
+    for (auto& server : m_idbServers.values())
+        server->tryStop(IDBServer::ShouldForceStop::Yes);
+#endif
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
     completionHandler(true);
 }
@@ -2014,6 +2020,11 @@ void NetworkProcess::processWillSuspendImminently(CompletionHandler<void(bool)>&
 void NetworkProcess::prepareToSuspend()
 {
     RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::prepareToSuspend()", this);
+
+#if PLATFORM(IOS_FAMILY) && ENABLE(INDEXED_DATABASE)
+    for (auto& server : m_idbServers.values())
+        server->tryStop(IDBServer::ShouldForceStop::No);
+#endif
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::Yes);
 }
 
@@ -2052,6 +2063,10 @@ void NetworkProcess::resume()
 #if ENABLE(SERVICE_WORKER)
     for (auto& server : m_swServers.values())
         server->endSuspension();
+#endif
+#if PLATFORM(IOS_FAMILY) && ENABLE(INDEXED_DATABASE)
+    for (auto& server : m_idbServers.values())
+        server->resume();
 #endif
 }
 
@@ -2487,6 +2502,11 @@ void NetworkProcess::removeCredential(WebCore::Credential&&, WebCore::Protection
     completionHandler();
 }
 
+void NetworkProcess::originsWithPersistentCredentials(CompletionHandler<void(Vector<WebCore::SecurityOriginData>)>&& completionHandler)
+{
+    completionHandler(Vector<WebCore::SecurityOriginData>());
+}
+    
 void NetworkProcess::initializeProcess(const AuxiliaryProcessInitializationParameters&)
 {
 }
@@ -2546,6 +2566,26 @@ void NetworkProcess::setAdClickAttributionConversionURLForTesting(PAL::SessionID
         session->setAdClickAttributionConversionURLForTesting(WTFMove(url));
     
     completionHandler();
+}
+
+void NetworkProcess::markAdClickAttributionsAsExpiredForTesting(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
+{
+    if (auto* session = networkSession(sessionID))
+        session->markAdClickAttributionsAsExpiredForTesting();
+
+    completionHandler();
+}
+
+void NetworkProcess::addKeptAliveLoad(Ref<NetworkResourceLoader>&& loader)
+{
+    if (auto session = m_networkSessions.get(loader->sessionID()))
+        session->addKeptAliveLoad(WTFMove(loader));
+}
+
+void NetworkProcess::removeKeptAliveLoad(NetworkResourceLoader& loader)
+{
+    if (auto session = m_networkSessions.get(loader.sessionID()))
+        session->removeKeptAliveLoad(loader);
 }
 
 } // namespace WebKit

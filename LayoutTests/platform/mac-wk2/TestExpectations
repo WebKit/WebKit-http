@@ -673,8 +673,6 @@ webkit.org/b/171763 compositing/tiling/non-active-window-tiles-size.html [ Pass 
 
 webkit.org/b/171837 [ Debug ] http/tests/security/storage-blocking-loosened-plugin.html [ Pass Failure ]
 
-webkit.org/b/171862  storage/indexeddb/modern/idbtransaction-objectstore-failures.html [ Pass Failure ]
-
 webkit.org/b/171935 [ Sierra ] tiled-drawing/scrolling/fast-scroll-select-latched-mainframe.html [ Pass Failure ]
 
 webkit.org/b/171939 [ Sierra Release ] media/track/track-cue-rendering-on-resize.html [ Pass Timeout ]
@@ -917,12 +915,6 @@ webkit.org/b/194253 scrollingcoordinator/scrolling-tree/fixed-inside-frame.html 
 
 webkit.org/b/194916 fast/mediastream/MediaStream-video-element.html [ Pass Failure ]
 
-webkit.org/b/195719 fast/events/wheel-event-destroys-overflow.html [ Pass Timeout ]
-webkit.org/b/195719 fast/events/wheelevent-mousewheel-interaction.html  [ Pass Timeout ]
-webkit.org/b/195719 fast/events/wheel-event-destroys-frame.html  [ Pass Timeout ]
-webkit.org/b/195719 fast/events/wheelevent-basic.html  [ Pass Timeout ]
-webkit.org/b/195719 fast/events/wheelevent-in-text-node.html [ Pass Timeout ]
-
 webkit.org/b/196307 http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html [ Pass Failure ]
 
 webkit.org/b/196376 storage/domstorage/localstorage/private-browsing-affects-storage.html [ Pass Failure ]
@@ -940,9 +932,17 @@ webkit.org/b/196448 [ Debug ] inspector/audit/basic.html [ Pass Timeout ]
 
 webkit.org/b/194164 http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-but-access-from-wrong-frame.html [ Pass Timeout ]
 
-webkit.org/b/196633 imported/w3c/web-platform-tests/webrtc/RTCRtpReceiver-getSynchronizationSources.https.html [ Pass Failure ]
-
 webkit.org/b/195961 [ Debug ] imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex7-event_order.html [ Pass Failure ]
 webkit.org/b/195961 [ Debug ] imported/w3c/IndexedDB-private-browsing/idbobjectstore_createIndex6-event_order.html [ Pass Failure ]
 
 webkit.org/b/197068 [ Debug ] fast/selectors/matches-backtracking.html [ Pass Timeout ]
+
+webkit.org/b/197283 fast/css-custom-paint/animate-repaint.html [ Pass Failure ]
+
+webkit.org/b/197285 [ Debug ] http/tests/resourceLoadStatistics/prune-statistics.html [ Pass Failure ]
+
+webkit.org/b/197207 http/wpt/resource-timing/rt-resources-per-frame.html [ Pass Failure ]
+
+webkit.org/b/197286 imported/w3c/web-platform-tests/visual-viewport/viewport-resize-event-on-load-overflowing-page.html [ Pass Failure ]
+
+webkit.org/b/197425 [ Mojave Debug ] scrollingcoordinator/scrolling-tree/scrolling-tree-includes-frame.html [ Pass Failure ]

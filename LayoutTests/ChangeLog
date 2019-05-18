@@ -1,3 +1,744 @@
+2019-05-01  Darin Adler  <darin@apple.com>
+
+        WebKit has too much of its own UTF-8 code and should rely more on ICU's UTF-8 support
+        https://bugs.webkit.org/show_bug.cgi?id=195535
+
+        Reviewed by Alexey Proskuryakov.
+
+        * css3/escape-dom-api-expected.txt:
+        * fast/text/dangling-surrogates-expected.txt:
+        * js/dom/webidl-type-mapping-expected.txt:
+        * js/invalid-utf8-in-syntax-error-expected.txt:
+        Updated expected results to have the Unicode replacement character in cases where the
+        text contains unpaired surrogates. The tests are still doing the same operations, and
+        still getting the same results, but the text output no longer includes illegal UTF-8.
+
+        * js/invalid-utf8-in-syntax-error.html: Added. Before adding this, the test was
+        run, but unlike the rest of the tests in this directory, was only run as part of
+        run-javascriptcore-tests. There are two reasons for adding this. One is to be
+        consistent with the rest of the tests here and run a second time as part of the
+        broader WebKit tests. The second is that we can now use "--reset-results" to generate
+        new expected results, something that run-webkit-tests has but run-javascriptcore-tests
+        does not have.
+
+2019-05-01  Shawn Roberts  <sroberts@apple.com>
+
+        Unreviewed, rolling out r244821.
+
+        Causing 4 Test262 failures on JSC Release and Debug
+
+        Reverted changeset:
+
+        "WebKit has too much of its own UTF-8 code and should rely
+        more on ICU's UTF-8 support"
+        https://bugs.webkit.org/show_bug.cgi?id=195535
+        https://trac.webkit.org/changeset/244821
+
+2019-05-01  Youenn Fablet  <youenn@apple.com>
+
+        Reject/throw when calling AudioContext methods on a stopped AudioContext
+        https://bugs.webkit.org/show_bug.cgi?id=197391
+
+        Reviewed by Eric Carlson.
+
+        * http/wpt/webaudio/audiocontext-stopped-expected.txt: Added.
+        * http/wpt/webaudio/audiocontext-stopped.html: Added.
+        * http/wpt/webaudio/resources/audiocontext-stopped-iframe.html: Added.
+        * platform/win/TestExpectations: Skip test for win.
+
+2019-05-01  Youenn Fablet  <youenn@apple.com>
+
+        Enable Fetch Keep Alive by default
+        https://bugs.webkit.org/show_bug.cgi?id=197331
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/imported/w3c/web-platform-tests/fetch/api/basic/keepalive-expected.txt: Added.
+
+2019-05-01  Eric Carlson  <eric.carlson@apple.com>
+
+        XMLHttpRequest should propagate user gestures for media playback
+        https://bugs.webkit.org/show_bug.cgi?id=197428
+        <rdar://problem/46677392>
+
+        Reviewed by Jer Noble.
+
+        * fast/events/popup-blocking-timers5-expected.txt:
+        * fast/events/popup-blocking-timers5.html: Decrease the timer interval from 1000 to 900
+        because the user gesture is invalidated based on wall clock time.
+        * fast/events/popup-blocking-timers6-expected.txt:
+        * fast/events/popup-blocking-timers6.html: Increase the timer interval from 1001 to 1100
+        because the user gesture is invalidated based on wall clock time.
+        * http/tests/media/user-gesture-preserved-across-xmlhttprequest-expected.txt: Added.
+        * http/tests/media/user-gesture-preserved-across-xmlhttprequest.html: Added.
+
+2019-04-29  Darin Adler  <darin@apple.com>
+
+        WebKit has too much of its own UTF-8 code and should rely more on ICU's UTF-8 support
+        https://bugs.webkit.org/show_bug.cgi?id=195535
+
+        Reviewed by Alexey Proskuryakov.
+
+        * css3/escape-dom-api-expected.txt:
+        * fast/text/dangling-surrogates-expected.txt:
+        * js/dom/webidl-type-mapping-expected.txt:
+        * js/invalid-utf8-in-syntax-error-expected.txt:
+        Updated expected results to have the Unicode replacement character in cases where the
+        text contains unpaired surrogates. The tests are still doing the same operations, and
+        still getting the same results, but the text output no longer includes illegal UTF-8
+        because the WTF changes affect the code path that DumpRenderTree and WebKitTestRunner
+        use to produce the text output.
+
+        * js/invalid-utf8-in-syntax-error.html: Added. Before adding this, the test was
+        run, but unlike the rest of the tests in this directory, was only run as part of
+        run-javascriptcore-tests. There are two reasons for adding this. One is to be
+        consistent with the rest of the tests here and run a second time as part of the
+        broader WebKit tests. The second is that we can now use "--reset-results" to generate
+        new expected results, something that run-webkit-tests has but run-javascriptcore-tests
+        does not have.
+
+2019-04-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        font-weight: 1000 is not parsed successfully
+        https://bugs.webkit.org/show_bug.cgi?id=197427
+
+        Reviewed by Dean Jackson.
+
+        * platform/win/TestExpectations: Windows disables variation fonts, so requires values to be divisible by 100
+        * fast/text/font-weight-1-1000-expected.txt: Added.
+        * fast/text/font-weight-1-1000.html: Added.
+
+2019-04-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244806.
+        https://bugs.webkit.org/show_bug.cgi?id=197446
+
+        Causing Test262 and JSC test failures on multiple builds
+        (Requested by ShawnRoberts on #webkit).
+
+        Reverted changeset:
+
+        "TypeArrays should not store properties that are canonical
+        numeric indices"
+        https://bugs.webkit.org/show_bug.cgi?id=197228
+        https://trac.webkit.org/changeset/244806
+
+2019-04-30  Youenn Fablet  <youenn@apple.com>
+
+        [macOS WK1] ASSERTION FAILED: formData in WebCore::ResourceRequest::doUpdateResourceHTTPBody()
+        https://bugs.webkit.org/show_bug.cgi?id=196864
+        <rdar://problem/49854497>
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-04-30  Shawn Roberts  <sroberts@apple.com>
+
+        imported/w3c/web-platform-tests/xhr/event-upload-progress-crossorigin.htm is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=182849
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations: Updating expectations for flaky failure on iOS
+
+2019-04-30  Tadeu Zagallo  <tzagallo@apple.com>
+
+        TypeArrays should not store properties that are canonical numeric indices
+        https://bugs.webkit.org/show_bug.cgi?id=197228
+        <rdar://problem/49557381>
+
+        Reviewed by Darin Adler.
+
+        * fast/canvas/canvas-ImageData-behaviour-expected.txt:
+        * fast/canvas/canvas-ImageData-behaviour.js:
+
+2019-04-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244774.
+        https://bugs.webkit.org/show_bug.cgi?id=197431
+
+        Causing assertion failures on debug queues (Requested by
+        ShawnRoberts on #webkit).
+
+        Reverted changeset:
+
+        "Reject/throw when calling AudioContext methods on a stopped
+        AudioContext"
+        https://bugs.webkit.org/show_bug.cgi?id=197391
+        https://trac.webkit.org/changeset/244774
+
+2019-04-30  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKContentRuleList ping resource-type
+        https://bugs.webkit.org/show_bug.cgi?id=197325
+        <rdar://problem/49841404>
+
+        Reviewed by Geoff Garen.
+
+        * http/tests/contentextensions/block-ping-resource-type-raw--expected.txt: Copied from LayoutTests/http/tests/contentextensions/block-ping-expected.txt.
+        * http/tests/contentextensions/block-ping-resource-type-raw.html: Copied from LayoutTests/http/tests/contentextensions/block-ping.html.
+        * http/tests/contentextensions/block-ping-resource-type-raw.html.json: Copied from LayoutTests/http/tests/contentextensions/block-ping.html.json.
+        * http/tests/contentextensions/block-ping-resource-type-ping-expected.txt: Copied from LayoutTests/http/tests/contentextensions/block-ping-expected.txt.
+        * http/tests/contentextensions/block-ping-resource-type-ping.html: Copied from LayoutTests/http/tests/contentextensions/block-ping.html.
+        * http/tests/contentextensions/block-ping-resource-type-ping.html.json: Copied from LayoutTests/http/tests/contentextensions/block-ping.html.json.
+
+2019-04-30  Shawn Roberts  <sroberts@apple.com>
+
+        Fixing typo in https://trac.webkit.org/changeset/244780/webkit.
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2019-04-30  Shawn Roberts  <sroberts@apple.com>
+
+        scrollingcoordinator/scrolling-tree/scrolling-tree-includes-frame.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=197425
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Updating expectations for flaky failure
+
+2019-04-30  Shawn Roberts  <sroberts@apple.com>
+
+        animations/play-state-in-shorthand.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=192501
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations: Updating expectations for flaky failure
+        * platform/mac/TestExpectations: Ditto
+
+2019-04-30  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Move 'gpu' API entry point from DOMWindow to Navigator
+        https://bugs.webkit.org/show_bug.cgi?id=197348
+
+        Reviewed by Myles C. Maxfield.
+
+        WebGPU is now accessed through navigator.gpu instead of window.gpu.
+        Add webgpu-enabled-in-worker to ensure workers can access WebGPU.
+
+        * webgpu/adapter-options.html:
+        * webgpu/js/create-worker-device.js: Added.
+        (async.tryCreateDevice):
+        * webgpu/js/webgpu-functions.js:
+        (async.getBasicDevice):
+        * webgpu/queue-creation.html:
+        * webgpu/webgpu-enabled-in-worker-expected.txt: Added.
+        * webgpu/webgpu-enabled-in-worker.html: Added.
+        * webgpu/webgpu-enabled.html:
+        * webgpu/whlsl.html:
+
+        Add navigator.gpu to expectations for navigator-detached-no-crash.
+        * fast/dom/navigator-detached-no-crash-expected.txt:
+        * platform/mac-highsierra/fast/dom/navigator-detached-no-crash-expected.txt:
+        * platform/mac-wk2/fast/dom/navigator-detached-no-crash-expected.txt:
+
+2019-04-30  Youenn Fablet  <youenn@apple.com>
+
+        Update WPT service-worker resource-timing test to use hosts[alt]
+        https://bugs.webkit.org/show_bug.cgi?id=197329
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+
+2019-04-30  Zalan Bujtas  <zalan@apple.com>
+
+        Double-tapping a post to like doesn't work on Instagram.com (needs 'dblclick' event)
+        https://bugs.webkit.org/show_bug.cgi?id=197347
+        <rdar://problem/49393423>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/events/touch/ios/double-tap-for-double-click1-expected.txt: Added.
+        * fast/events/touch/ios/double-tap-for-double-click1.html: Added.
+        * fast/events/touch/ios/double-tap-for-double-click2-expected.txt: Added.
+        * fast/events/touch/ios/double-tap-for-double-click2.html: Added.
+
+2019-04-30  Youenn Fablet  <youenn@apple.com>
+
+        Reject/throw when calling AudioContext methods on a stopped AudioContext
+        https://bugs.webkit.org/show_bug.cgi?id=197391
+
+        Reviewed by Eric Carlson.
+
+        * http/wpt/webaudio/audiocontext-stopped-expected.txt: Added.
+        * http/wpt/webaudio/audiocontext-stopped.html: Added.
+        * http/wpt/webaudio/resources/audiocontext-stopped-iframe.html: Added.
+        * platform/win/TestExpectations: Skip test for win.
+
+2019-04-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Support prefers-color-scheme media query
+        https://bugs.webkit.org/show_bug.cgi?id=196685
+
+        Reviewed by Michael Catanzaro.
+
+        Unskip css-dark-mode tests and add platform specific results for some of the tests using the supported color
+        scheme feature.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/css-dark-mode/color-scheme-css-expected.txt: Added.
+        * platform/gtk/css-dark-mode/color-scheme-meta-expected.txt: Added.
+        * platform/gtk/css-dark-mode/default-colors-expected.txt: Added.
+        * platform/gtk/css-dark-mode/older-syntax/supported-color-schemes-css-expected.txt: Added.
+        * platform/gtk/css-dark-mode/older-syntax/supported-color-schemes-meta-expected.txt: Added.
+        * platform/gtk/css-dark-mode/prefers-color-scheme-expected.txt: Added.
+
+2019-04-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK gardening. Rebaseline tests after r244635.
+
+        * platform/gtk/css3/selectors3/html/css3-modsel-24-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-24-expected.txt:
+        * platform/gtk/css3/selectors3/html/css3-modsel-68-expected.png:
+        * platform/gtk/css3/selectors3/html/css3-modsel-68-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-24-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-24-expected.txt:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-68-expected.png:
+        * platform/gtk/css3/selectors3/xhtml/css3-modsel-68-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-24-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-24-expected.txt:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-68-expected.png:
+        * platform/gtk/css3/selectors3/xml/css3-modsel-68-expected.txt:
+        * platform/gtk/fast/forms/basic-inputs-expected.png:
+        * platform/gtk/fast/forms/basic-inputs-expected.txt:
+        * platform/gtk/fast/forms/basic-textareas-expected.png:
+        * platform/gtk/fast/forms/basic-textareas-expected.txt:
+        * platform/gtk/fast/forms/basic-textareas-quirks-expected.png:
+        * platform/gtk/fast/forms/basic-textareas-quirks-expected.txt:
+        * platform/gtk/fast/forms/disabled-select-change-index-expected.png:
+        * platform/gtk/fast/forms/disabled-select-change-index-expected.txt:
+        * platform/gtk/fast/forms/file/file-input-disabled-expected.png:
+        * platform/gtk/fast/forms/file/file-input-disabled-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-disabled-expected.png:
+        * platform/gtk/fast/forms/input-appearance-disabled-expected.txt:
+        * platform/gtk/fast/forms/input-disabled-color-expected.png:
+        * platform/gtk/fast/forms/input-disabled-color-expected.txt:
+        * platform/gtk/fast/forms/placeholder-pseudo-style-expected.txt:
+        * platform/gtk/fast/forms/textarea-placeholder-pseudo-style-expected.txt:
+
+2019-04-29  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r244755.
+
+        Casued several test failures on iOS
+
+        Reverted changeset:
+
+        "Double-tapping a post to like doesn't work on Instagram.com
+        (needs 'dblclick' event)"
+        https://bugs.webkit.org/show_bug.cgi?id=197347
+        https://trac.webkit.org/changeset/244755
+
+2019-04-29  Zalan Bujtas  <zalan@apple.com>
+
+        Double-tapping a post to like doesn't work on Instagram.com (needs 'dblclick' event)
+        https://bugs.webkit.org/show_bug.cgi?id=197347
+        <rdar://problem/49393423>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/events/touch/ios/double-tap-for-double-click1-expected.txt: Added.
+        * fast/events/touch/ios/double-tap-for-double-click1.html: Added.
+        * fast/events/touch/ios/double-tap-for-double-click2-expected.txt: Added.
+        * fast/events/touch/ios/double-tap-for-double-click2.html: Added.
+
+2019-04-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Transform is sometimes left in a bad state after an animation
+        https://bugs.webkit.org/show_bug.cgi?id=197401
+        rdar://problem/48179186
+
+        Reviewed by Dean Jackson.
+        
+        Share code between all the overlap tests that work by creating dot matrices, and strip
+        out the transforms from the layer tree dumps, because they can vary with timing in these
+        tests.
+
+        * compositing/animation/transform-after-animation-expected.html: Added.
+        * compositing/animation/transform-after-animation.html: Added.
+        * compositing/backing/backing-store-attachment-empty-keyframe-expected.txt:
+        * compositing/layer-creation/animation-overlap-with-children.html:
+        * compositing/layer-creation/mismatched-rotated-transform-animation-overlap-expected.txt:
+        * compositing/layer-creation/mismatched-rotated-transform-animation-overlap.html:
+        * compositing/layer-creation/mismatched-rotated-transform-transition-overlap.html:
+        * compositing/layer-creation/mismatched-transform-transition-overlap.html:
+        * compositing/layer-creation/multiple-keyframes-animation-overlap-expected.txt:
+        * compositing/layer-creation/multiple-keyframes-animation-overlap.html:
+        * compositing/layer-creation/resources/compositing-overlap-utils.js: Added.
+        (makeDots):
+        (layerTreeWithoutTransforms):
+        (dumpLayers):
+        * compositing/layer-creation/scale-rotation-animation-overlap-expected.txt:
+        * compositing/layer-creation/scale-rotation-animation-overlap.html:
+        * compositing/layer-creation/scale-rotation-transition-overlap.html:
+        * compositing/layer-creation/translate-animation-overlap-expected.txt:
+        * compositing/layer-creation/translate-animation-overlap.html:
+        * compositing/layer-creation/translate-scale-animation-overlap-expected.txt:
+        * compositing/layer-creation/translate-scale-animation-overlap.html:
+        * compositing/layer-creation/translate-scale-transition-overlap.html:
+        * compositing/layer-creation/translate-transition-overlap.html:
+        * legacy-animation-engine/compositing/backing/backing-store-attachment-empty-keyframe-expected.txt:
+        * legacy-animation-engine/compositing/backing/backing-store-attachment-empty-keyframe.html:
+        * legacy-animation-engine/compositing/backing/transform-transition-from-outside-view-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/animation-overlap-with-children.html:
+        * legacy-animation-engine/compositing/layer-creation/mismatched-rotated-transform-animation-overlap-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/mismatched-rotated-transform-animation-overlap.html:
+        * legacy-animation-engine/compositing/layer-creation/mismatched-rotated-transform-transition-overlap-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/mismatched-rotated-transform-transition-overlap.html:
+        * legacy-animation-engine/compositing/layer-creation/mismatched-transform-transition-overlap-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/mismatched-transform-transition-overlap.html:
+        * legacy-animation-engine/compositing/layer-creation/multiple-keyframes-animation-overlap-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/multiple-keyframes-animation-overlap.html:
+        * legacy-animation-engine/compositing/layer-creation/scale-rotation-animation-overlap-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/scale-rotation-animation-overlap.html:
+        * legacy-animation-engine/compositing/layer-creation/scale-rotation-transition-overlap-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/scale-rotation-transition-overlap.html:
+        * legacy-animation-engine/compositing/layer-creation/translate-animation-overlap-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/translate-animation-overlap.html:
+        * legacy-animation-engine/compositing/layer-creation/translate-scale-animation-overlap-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/translate-scale-animation-overlap.html:
+        * legacy-animation-engine/compositing/layer-creation/translate-scale-transition-overlap-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/translate-scale-transition-overlap.html:
+        * legacy-animation-engine/compositing/layer-creation/translate-transition-overlap-expected.txt:
+        * legacy-animation-engine/compositing/layer-creation/translate-transition-overlap.html:
+        * platform/ios/compositing/layer-creation/scale-rotation-animation-overlap-expected.txt:
+
+2019-04-29  Javier Fernandez  <jfernandez@igalia.com>
+
+        line should not be broken before the first space after a word
+        https://bugs.webkit.org/show_bug.cgi?id=197278
+
+        Reviewed by Myles C. Maxfield.
+
+        Added a few Skip (due to unimplemented features) and Failure (break-all related
+        issues) entries for some of the tests added by this patch.
+
+        * TestExpectations:
+
+2019-04-29  Youenn Fablet  <youenn@apple.com>
+
+        getDisplayMedia should be called on user gesture
+        https://bugs.webkit.org/show_bug.cgi?id=197356
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/media-stream-page-muted.html:
+        * fast/mediastream/screencapture-user-gesture-expected.txt: Added.
+        * fast/mediastream/screencapture-user-gesture.html: Added.
+        * http/tests/media/media-stream/get-display-media-iframe-allow-attribute-expected.txt:
+        * http/tests/media/media-stream/get-display-media-iframe-allow-attribute.html:
+        * http/tests/media/media-stream/get-display-media-prompt.html:
+        * http/tests/media/media-stream/resources/get-display-media-devices-iframe.html:
+
+        * resources/testharnessreport.js:
+
+2019-04-29  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r238090): animation on https://www.robotodyssey.online gets stuck; site broken
+        https://bugs.webkit.org/show_bug.cgi?id=197381
+        <rdar://problem/50308128>
+
+        Reviewed by Zalan Bujtas.
+
+        * compositing/style-change/clip-path-change-expected.html: Added.
+        * compositing/style-change/clip-path-change.html: Added.
+
+2019-04-29  Youenn Fablet  <youenn@apple.com>
+
+        RTCTrackEvent should be delayed until the whole remote description is set
+        https://bugs.webkit.org/show_bug.cgi?id=196808
+        <rdar://problem/49802649>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-addTrack.html:
+
+2019-04-29  Javier Fernandez  <jfernandez@igalia.com>
+
+        Update the CSS Text WPT test suite
+        https://bugs.webkit.org/show_bug.cgi?id=197326
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+          - The break-spaces-008.html fails due to bug 197277
+
+2019-04-26  Youenn Fablet  <youenn@apple.com>
+
+        Use normal loading path for ping loads
+        https://bugs.webkit.org/show_bug.cgi?id=196807
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        * http/tests/blink/sendbeacon/beacon-cross-origin.https-expected.txt:
+        * http/tests/blink/sendbeacon/connect-src-beacon-allowed.html:
+        * http/tests/security/contentSecurityPolicy/connect-src-beacon-allowed.html:
+        * http/tests/security/contentSecurityPolicy/report-only-connect-src-beacon-redirect-blocked-expected.txt:
+        * http/tests/security/contentSecurityPolicy/report-only-connect-src-beacon-redirect-blocked.php:
+        * http/tests/security/contentSecurityPolicy/user-style-sheet-font-crasher-expected.txt:
+        * http/wpt/beacon/beacon-async-error-logging-expected.txt:
+        * http/wpt/beacon/beacon-async-error-logging.html:
+        * http/wpt/beacon/connect-src-beacon-redirect-blocked.sub-expected.txt:
+        * http/wpt/beacon/contentextensions/beacon-redirect-blocked-expected.txt:
+        * http/wpt/beacon/resources/beacon-preflight.py:
+        (respondToCORSPreflight):
+        (main):
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-report-only-expected.txt:
+
+2019-04-26  Youenn Fablet  <youenn@apple.com>
+
+        Mark some cache-storage as slow on iOS-simulator
+        https://bugs.webkit.org/show_bug.cgi?id=197316
+
+        Unreviewed.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2019-04-26  Shawn Roberts  <sroberts@apple.com>
+
+        Removing test expectation changes for tests no longer timing out
+        https://bugs.webkit.org/show_bug.cgi?id=195719
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-04-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        propertyRegistry() was not overridden for SVGFEFloodElement and SVGFEMergeElement
+        https://bugs.webkit.org/show_bug.cgi?id=197303
+
+        Reviewed by Alex Christensen.
+
+        * svg/dom/SVGFEFloodElement-filter-standard-attributes-expected.svg: Added.
+        * svg/dom/SVGFEFloodElement-filter-standard-attributes.svg: Added.
+
+2019-04-26  Youenn Fablet  <youenn@apple.com>
+
+        [Mac WK2 iOS Sim] Layout Test imported/w3c/web-platform-tests/webrtc/RTCRtpReceiver-getSynchronizationSources.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=196633
+        <rdar://problem/49627667>
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-04-26  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test fast/harness/render-tree-as-text-options.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=197310
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-04-26  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Fix Curl Request Scheduler not to release wrong Curl handle when request is cancelled.
+        https://bugs.webkit.org/show_bug.cgi?id=191650
+
+        Reviewed by Fujii Hironori.
+
+        * http/tests/misc/repeat-open-cancel-expected.txt: Added.
+        * http/tests/misc/repeat-open-cancel.html: Added.
+
+2019-04-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Implement idempotent mode for text autosizing
+        https://bugs.webkit.org/show_bug.cgi?id=197250
+        <rdar://problem/50211034>
+
+        Reviewed by Jon Lee.
+
+        Add two simple tests that make sure that fonts get autosized > 1x when the layout viewport is wide,
+        and that fonts don't get autosized when the layout viewport isn't wide.
+
+        We don't want to add tons of tests to test exact values because the curve will likely be tweaked
+        in the future.
+
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-expected.txt: Added.
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-identity-expected.txt: Added.
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-identity.html: Added.
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing.html: Added.
+
+2019-04-25  Sihui Liu  <sihui_liu@apple.com>
+
+        [ iOS Sim ] REGRESSION (r242986) Layout Test storage/indexeddb/modern/idbtransaction-objectstore-failures-private.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=196357
+        <rdar://problem/49386836>
+
+        Reviewed by Geoffrey Garen.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-04-25  Shawn Roberts  <sroberts@apple.com>
+
+        fast/harness/render-tree-as-text-options.html Rebaselined test for windows
+        https://bugs.webkit.org/show_bug.cgi?id=197290
+
+        Unreviewed test gardening.
+
+        * platform/win/fast/render-tree-as-text-options-expected.txt: Added.
+
+2019-04-25  Frederic Wang  <fwang@igalia.com>
+
+        Add more tests for ios programmatic iframe scrolling with fixed/sticky layers
+        https://bugs.webkit.org/show_bug.cgi?id=197280
+
+        This commit adds iOS tests for scrolling iframes containing fixed/sticky layers. They are
+        extracted from earlier experimental patches for iOS frame scrolling but failed with the
+        alternative patches initially landed in bug 193539 and follow-up bugs. They now pass again
+        on trunk, so we can finally import them.
+
+        Reviewed by Darin Adler.
+
+        * fast/scrolling/ios/programmatic-scroll-iframe-010-expected.html: Added.
+        * fast/scrolling/ios/programmatic-scroll-iframe-010.html: Added.
+        * fast/scrolling/ios/programmatic-scroll-iframe-011-expected.html: Added.
+        * fast/scrolling/ios/programmatic-scroll-iframe-011.html: Added.
+        * fast/scrolling/ios/programmatic-scroll-iframe-012-expected.html: Added.
+        * fast/scrolling/ios/programmatic-scroll-iframe-012.html: Added.
+
+2019-04-25  Shawn Roberts  <sroberts@apple.com>
+
+        imported/w3c/web-platform-tests/visual-viewport/viewport-resize-event-on-load-overflowing-page.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=197286
+
+        Unreviewed test gardening
+
+        * platform/mac-wk2/TestExpectations: Updating test expectations for flaky failure
+
+2019-04-25  Shawn Roberts  <sroberts@apple.com>
+
+        http/wpt/resource-timing/rt-resources-per-frame.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=197207
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations: Updating test expectations for flaky failure
+
+2019-04-25  Shawn Roberts  <sroberts@apple.com>
+
+        http/tests/resourceLoadStatistics/prune-statistics.html is a flaky failure on Debug testers
+        https://bugs.webkit.org/show_bug.cgi?id=197285
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Updating expectations for flaky failure
+
+2019-04-25  Shawn Roberts  <sroberts@apple.com>
+
+        fast/css-custom-paint/animate-repaint.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=197283
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Updating expectations for flaky failure
+
+2019-04-25  Antti Koivisto  <antti@apple.com>
+
+        Visited link hash should be computed only once
+        https://bugs.webkit.org/show_bug.cgi?id=197229
+        <rdar://problem/48438924>
+
+        Reviewed by Alex Christensen.
+
+        * fast/history/visited-href-mutation-expected.html: Added.
+        * fast/history/visited-href-mutation.html: Added.
+
+2019-04-25  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] gst_element_get_state: assertion 'GST_IS_ELEMENT (element)' failed in WebCore::MediaPlayerPrivateGStreamer::paused
+        https://bugs.webkit.org/show_bug.cgi?id=196691
+
+        Reviewed by Eric Carlson.
+
+        Unflag test no longer crashing.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/replaced/border-radius-clip-expected.txt:
+
+2019-04-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Hardcoded text color in input fields
+        https://bugs.webkit.org/show_bug.cgi?id=126907
+
+        Reviewed by Michael Catanzaro.
+
+        Remove expectations for tests that are passing again.
+
+        * platform/gtk/TestExpectations:
+
+2019-04-24  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r242132): Nested position:sticky elements move incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=197255
+        rdar://problem/50137744
+
+        Reviewed by Zalan Bujtas.
+
+        * scrollingcoordinator/mac/nested-sticky-expected.html: Added.
+        * scrollingcoordinator/mac/nested-sticky.html: Added.
+
+2019-04-24  Alicia Boya García  <aboya@igalia.com>
+
+        Unreviewed GTK test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=197261
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/http/tests/inspector/network/har/har-page-expected.txt:
+        * platform/gtk/imported/blink/media/track/media-element-move-to-new-document-assert-expected.txt: Removed.
+
+2019-04-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244228.
+        https://bugs.webkit.org/show_bug.cgi?id=197262
+
+        Causes compat issues (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed test gardening for Windows."
+        https://trac.webkit.org/changeset/244228
+
+2019-04-24  John Wilander  <wilander@apple.com>
+
+        Age out unconverted Ad Click Attributions after one week.
+        https://bugs.webkit.org/show_bug.cgi?id=197238
+        <rdar://problem/50177349>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/adClickAttribution/expired-attributions-removed-expected.txt: Added.
+        * http/tests/adClickAttribution/expired-attributions-removed.html: Added.
+
+2019-04-24  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (iOS 12.2): CSS perspective property value can only be set correctly once
+        https://bugs.webkit.org/show_bug.cgi?id=197105
+
+        Reviewed by Zalan Bujtas.
+
+        * compositing/style-change/backface-visibility-change-expected.html: Added.
+        * compositing/style-change/backface-visibility-change.html: Added.
+        * compositing/style-change/perspective-change-expected.html: Added.
+        * compositing/style-change/perspective-change.html: Added.
+        * compositing/style-change/perspective-origin-change-expected.html: Added.
+        * compositing/style-change/perspective-origin-change.html: Added.
+        * compositing/style-change/transform-origin-change-expected.html: Added.
+        * compositing/style-change/transform-origin-change.html: Added.
+        * compositing/style-change/transform-style-change-expected.html: Added.
+        * compositing/style-change/transform-style-change.html: Added.
+
 2019-04-24  Simon Fraser  <simon.fraser@apple.com>
 
         Make it possible to control the renderTreeAsText output by setting options on testRunner

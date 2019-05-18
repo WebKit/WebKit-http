@@ -48,6 +48,7 @@
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <WebKit/_WKWebsiteDataStoreConfiguration.h>
 #import <WebKit/_WKWebsitePolicies.h>
+#import <wtf/BlockPtr.h>
 #import <wtf/Deque.h>
 #import <wtf/HashMap.h>
 #import <wtf/HashSet.h>
@@ -238,6 +239,8 @@ static RetainPtr<WKWebView> createdWebView;
     const char* _bytes;
     HashMap<String, String> _redirects;
     HashMap<String, RetainPtr<NSData>> _dataMappings;
+    HashSet<id <WKURLSchemeTask>> _runningTasks;
+    bool _shouldRespondAsynchronously;
 }
 - (instancetype)initWithBytes:(const char*)bytes;
 - (void)addRedirectFromURLString:(NSString *)sourceURLString toURLString:(NSString *)destinationURLString;
@@ -263,8 +266,29 @@ static RetainPtr<WKWebView> createdWebView;
     _dataMappings.set(urlString, [NSData dataWithBytesNoCopy:(void*)data length:strlen(data) freeWhenDone:NO]);
 }
 
+- (void)setShouldRespondAsynchronously:(BOOL)value
+{
+    _shouldRespondAsynchronously = value;
+}
+
 - (void)webView:(WKWebView *)webView startURLSchemeTask:(id <WKURLSchemeTask>)task
 {
+    if ([(id<WKURLSchemeTaskPrivate>)task _requestOnlyIfCached]) {
+        [task didFailWithError:[NSError errorWithDomain:@"TestWebKitAPI" code:1 userInfo:nil]];
+        return;
+    }
+
+    _runningTasks.add(task);
+
+    auto doAsynchronouslyIfNecessary = [self, strongSelf = retainPtr(self), task = retainPtr(task)](Function<void(id <WKURLSchemeTask>)>&& f, double delay) {
+        if (!_shouldRespondAsynchronously)
+            return f(task.get());
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay * NSEC_PER_SEC), dispatch_get_main_queue(), makeBlockPtr([self, strongSelf, task, f = WTFMove(f)] {
+            if (_runningTasks.contains(task.get()))
+                f(task.get());
+        }).get());
+    };
+
     NSURL *finalURL = task.request.URL;
     auto target = _redirects.get(task.request.URL.absoluteString);
     if (!target.isEmpty()) {
@@ -276,27 +300,30 @@ static RetainPtr<WKWebView> createdWebView;
         [(id<WKURLSchemeTaskPrivate>)task _didPerformRedirection:redirectResponse.get() newRequest:request.get()];
     }
 
-    if ([(id<WKURLSchemeTaskPrivate>)task _requestOnlyIfCached]) {
-        [task didFailWithError:[NSError errorWithDomain:@"TestWebKitAPI" code:1 userInfo:nil]];
-        return;
-    }
+    doAsynchronouslyIfNecessary([finalURL = retainPtr(finalURL)](id <WKURLSchemeTask> task) {
+        RetainPtr<NSURLResponse> response = adoptNS([[NSURLResponse alloc] initWithURL:finalURL.get() MIMEType:@"text/html" expectedContentLength:1 textEncodingName:nil]);
+        [task didReceiveResponse:response.get()];
+    }, 0.1);
 
-    RetainPtr<NSURLResponse> response = adoptNS([[NSURLResponse alloc] initWithURL:finalURL MIMEType:@"text/html" expectedContentLength:1 textEncodingName:nil]);
-    [task didReceiveResponse:response.get()];
+    doAsynchronouslyIfNecessary([self, finalURL = retainPtr(finalURL)](id <WKURLSchemeTask> task) {
+        if (auto data = _dataMappings.get([finalURL absoluteString]))
+            [task didReceiveData:data.get()];
+        else if (_bytes) {
+            RetainPtr<NSData> data = adoptNS([[NSData alloc] initWithBytesNoCopy:(void *)_bytes length:strlen(_bytes) freeWhenDone:NO]);
+            [task didReceiveData:data.get()];
+        } else
+            [task didReceiveData:[@"Hello" dataUsingEncoding:NSUTF8StringEncoding]];
+    }, 0.2);
 
-    if (auto data = _dataMappings.get([finalURL absoluteString]))
-        [task didReceiveData:data.get()];
-    else if (_bytes) {
-        RetainPtr<NSData> data = adoptNS([[NSData alloc] initWithBytesNoCopy:(void *)_bytes length:strlen(_bytes) freeWhenDone:NO]);
-        [task didReceiveData:data.get()];
-    } else
-        [task didReceiveData:[@"Hello" dataUsingEncoding:NSUTF8StringEncoding]];
-
-    [task didFinish];
+    doAsynchronouslyIfNecessary([self](id <WKURLSchemeTask> task) {
+        [task didFinish];
+        _runningTasks.remove(task);
+    }, 0.3);
 }
 
 - (void)webView:(WKWebView *)webView stopURLSchemeTask:(id <WKURLSchemeTask>)task
 {
+    _runningTasks.remove(task);
 }
 
 @end
@@ -471,7 +498,8 @@ static RetainPtr<_WKProcessPoolConfiguration> psonProcessPoolConfiguration()
     return processPoolConfiguration;
 }
 
-TEST(ProcessSwap, Basic)
+enum class SchemeHandlerShouldBeAsync { No, Yes };
+static void runBasicTest(SchemeHandlerShouldBeAsync schemeHandlerShouldBeAsync)
 {
     auto processPoolConfiguration = psonProcessPoolConfiguration();
     auto processPool = adoptNS([[WKProcessPool alloc] _initWithConfiguration:processPoolConfiguration.get()]);
@@ -479,6 +507,7 @@ TEST(ProcessSwap, Basic)
     auto webViewConfiguration = adoptNS([[WKWebViewConfiguration alloc] init]);
     [webViewConfiguration setProcessPool:processPool.get()];
     auto handler = adoptNS([[PSONScheme alloc] init]);
+    [handler setShouldRespondAsynchronously:(schemeHandlerShouldBeAsync == SchemeHandlerShouldBeAsync::Yes)];
     [webViewConfiguration setURLSchemeHandler:handler.get() forURLScheme:@"PSON"];
 
     auto webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webViewConfiguration.get()]);
@@ -514,6 +543,16 @@ TEST(ProcessSwap, Basic)
 
     // 3 loads, 3 decidePolicy calls (e.g. the load that did perform a process swap should not have generated an additional decidePolicy call)
     EXPECT_EQ(numberOfDecidePolicyCalls, 3);
+}
+
+TEST(ProcessSwap, Basic)
+{
+    runBasicTest(SchemeHandlerShouldBeAsync::No);
+}
+
+TEST(ProcessSwap, BasicWithAsyncSchemeHandler)
+{
+    runBasicTest(SchemeHandlerShouldBeAsync::Yes);
 }
 
 TEST(ProcessSwap, LoadAfterPolicyDecision)
@@ -4709,6 +4748,66 @@ TEST(ProcessSwap, RelatedWebViewBeforeWebProcessLaunch)
     EXPECT_EQ(pid1, pid2); // WebViews are related so they should share the same process.
 }
 
+TEST(ProcessSwap, ReloadRelatedWebViewAfterCrash)
+{
+    auto processPoolConfiguration = psonProcessPoolConfiguration();
+    auto processPool = adoptNS([[WKProcessPool alloc] _initWithConfiguration:processPoolConfiguration.get()]);
+
+    auto webView1Configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [webView1Configuration setProcessPool:processPool.get()];
+    auto handler = adoptNS([[PSONScheme alloc] init]);
+    [webView1Configuration setURLSchemeHandler:handler.get() forURLScheme:@"PSON"];
+
+    auto webView1 = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webView1Configuration.get()]);
+    auto delegate = adoptNS([[TestNavigationDelegate alloc] init]);
+    __block bool didCrash = false;
+    [delegate setWebContentProcessDidTerminate:^(WKWebView *view) {
+        [view reload];
+        didCrash = true;
+    }];
+    [delegate setDidFinishNavigation:^(WKWebView *, WKNavigation *) {
+        done = true;
+    }];
+
+    [webView1 setNavigationDelegate:delegate.get()];
+
+    auto webView2Configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [webView2Configuration setProcessPool:processPool.get()];
+    [webView2Configuration setURLSchemeHandler:handler.get() forURLScheme:@"PSON"];
+    webView2Configuration.get()._relatedWebView = webView1.get(); // webView2 will be related to webView1 and webView1's URL will be used for process swap decision.
+    auto webView2 = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:webView2Configuration.get()]);
+    [webView2 setNavigationDelegate:delegate.get()];
+
+    NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main1.html"]];
+    [webView1 loadRequest:request];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    auto pid1 = [webView1 _webProcessIdentifier];
+
+    request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/main2.html"]];
+    [webView2 loadRequest:request];
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+
+    auto pid2 = [webView2 _webProcessIdentifier];
+
+    EXPECT_EQ(pid1, pid2); // WebViews are related so they should share the same process.
+
+    [webView1 _close];
+    webView1 = nullptr;
+
+    kill(pid1, 9);
+
+    TestWebKitAPI::Util::run(&didCrash);
+    didCrash = false;
+
+    TestWebKitAPI::Util::run(&done);
+    done = false;
+}
+
 TEST(ProcessSwap, TerminatedSuspendedPageProcess)
 {
     auto processPoolConfiguration = psonProcessPoolConfiguration();
@@ -5914,8 +6013,8 @@ TEST(ProcessSwap, GetUserMediaCaptureState)
     auto uiDelegate = adoptNS([[GetUserMediaUIDelegate alloc] init]);
     [webView setUIDelegate: uiDelegate.get()];
 
-    auto request = adoptNS([NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/getUserMedia.html"]]);
-    [webView loadRequest:request.get()];
+    auto request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/getUserMedia.html"]];
+    [webView loadRequest:request];
 
     TestWebKitAPI::Util::run(&done);
     done = false;
@@ -5924,8 +6023,8 @@ TEST(ProcessSwap, GetUserMediaCaptureState)
 
     auto pid1 = [webView _webProcessIdentifier];
 
-    request = adoptNS([NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.org/test.html"]]);
-    [webView loadRequest:request.get()];
+    request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.org/test.html"]];
+    [webView loadRequest:request];
 
     TestWebKitAPI::Util::run(&done);
     done = false;
@@ -5980,8 +6079,8 @@ TEST(ProcessSwap, PageOverlayLayerPersistence)
     auto navigationDelegate = adoptNS([[PSONNavigationDelegate alloc] init]);
     [webView setNavigationDelegate:navigationDelegate.get()];
 
-    auto request = adoptNS([NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/page-overlay"]]);
-    [webView loadRequest:request.get()];
+    auto request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.webkit.org/page-overlay"]];
+    [webView loadRequest:request];
 
     TestWebKitAPI::Util::run(&done);
     done = false;
@@ -5994,8 +6093,8 @@ TEST(ProcessSwap, PageOverlayLayerPersistence)
     EXPECT_TRUE(hasOverlay([webView layer]));
 #endif
 
-    request = adoptNS([NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.com/page-overlay"]]);
-    [webView loadRequest:request.get()];
+    request = [NSURLRequest requestWithURL:[NSURL URLWithString:@"pson://www.apple.com/page-overlay"]];
+    [webView loadRequest:request];
 
     TestWebKitAPI::Util::run(&done);
     done = false;
