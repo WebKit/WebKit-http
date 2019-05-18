@@ -35,7 +35,7 @@
 #include "EditingCallbacks.h"
 #include "EventSender.h"
 #include "Frame.h"
-#include "GCController.h"
+#include <GCController.h>
 #include "NotImplemented.h"
 #include "PixelDumpSupport.h"
 #include "ScriptController.h"

@@ -35,18 +35,18 @@
 #include <Bitmap.h>
 #include <DocumentLoader.h>
 #include <dom/Document.h>
-#include <DOMWindow.h>
+#include "DOMWindow.h"
 #include <Editor.h>
-#include <FocusController.h>
-#include <Frame.h>
+#include "FocusController.h"
+#include "Frame.h"
 #include <FrameLoader.h>
-#include <FrameView.h>
+#include "FrameView.h"
 #include "NotImplemented.h"
-#include <Page.h>
-#include <PageGroup.h>
+#include "Page.h"
+#include "PageGroup.h"
 #include <ScriptController.h>
 #include <Settings.h>
-#include <UserContentTypes.h>
+#include "UserContentTypes.h"
 
 namespace WebCore {
 

@@ -27,7 +27,7 @@
 
 #include "NetworkStorageSessionMap.h"
 #include <NetworkStorageSession.h>
-#include <Page.h>
+#include <WebCore/Page.h>
 #include <StorageSessionProvider.h>
 #include <wtf/WeakPtr.h>
 

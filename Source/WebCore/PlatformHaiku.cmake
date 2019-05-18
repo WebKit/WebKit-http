@@ -5,7 +5,6 @@ include(platform/TextureMapper.cmake)
 list(APPEND WebCore_INCLUDE_DIRECTORIES
   "${THIRDPARTY_DIR}/ANGLE/"
   "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-  "${WEBCORE_DIR}/PAL"
   "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
   "${WEBCORE_DIR}/platform/haiku"
   "${WEBCORE_DIR}/platform/graphics/haiku"
@@ -13,8 +12,8 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
   "${WEBCORE_DIR}/platform/graphics/texmap/coordinated"
   "${WEBCORE_DIR}/platform/mediacapabilities"
   "${WEBCORE_DIR}/platform/network/haiku"
-  "${WTF_DIR}"
   "${FORWARDING_HEADERS_DIR}/JavaScriptCore"
+  "${CMAKE_SOURCE_DIR}/Source"
 )
 
 list(APPEND WebCore_SOURCES
@@ -348,13 +347,13 @@ endif ()
 # FIXME: We do not need everything from all of these directories.
 # Move some to WebCore_FORWARDING_HEADERS_FILES once people start actually maintaining this.
 set(WebCore_FORWARDING_HEADERS_DIRECTORIES
-    .
     accessibility
     animation
     bindings
     bridge
     contentextensions
     crypto
+	css
     dom
     editing
     fileapi
@@ -420,6 +419,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     platform/animation
     platform/audio
+	platform/graphics
     platform/mediacapabilities
     platform/mock
     platform/network
@@ -457,38 +457,6 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 )
 
 set(WebCore_FORWARDING_HEADERS_FILES
-	# As individual files to avoid conflicts with system includes...
-	css/CSSStyleDeclaration.h
-	css/StyleProperties.h
-
-	platform/graphics/BitmapImage.h
-	platform/graphics/Color.h
-	platform/graphics/ColorSpace.h
-	platform/graphics/DisplayRefreshMonitor.h
-	platform/graphics/FloatPoint.h
-	platform/graphics/FloatRect.h
-	platform/graphics/FloatSize.h
-	platform/graphics/FloatQuad.h
-	platform/graphics/FontCache.h
-	platform/graphics/FontCascade.h
-	platform/graphics/GlyphPage.h
-	platform/graphics/GraphicsContext.h
-	platform/graphics/GraphicsContext3D.h
-	platform/graphics/GraphicsLayer.h
-	platform/graphics/Icon.h
-	platform/graphics/Image.h
-	platform/graphics/ImageBuffer.h
-	platform/graphics/IntPoint.h
-	platform/graphics/IntRect.h
-	platform/graphics/IntSize.h
-	platform/graphics/IntSizeHash.h
-	platform/graphics/LayoutPoint.h
-	platform/graphics/LayoutSize.h
-	platform/graphics/MediaPlaybackTargetContext.h
-	platform/graphics/Path.h
-	platform/graphics/PathUtilities.h
-	platform/graphics/Region.h
-
 	platform/graphics/transforms/TransformationMatrix.h
 
     platform/PlatformExportMacros.h

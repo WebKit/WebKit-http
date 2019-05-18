@@ -24,7 +24,6 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
     "${WEBCORE_DIR}/Modules/webdatabase"
-    "${WEBCORE_DIR}/page"
     "${WEBCORE_DIR}/page/animation"
     "${WEBCORE_DIR}/page/csp"
     "${WEBCORE_DIR}/page/scrolling"
@@ -40,10 +39,8 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/network/haiku"
     "${WEBCORE_DIR}/platform/sql"
     "${WEBCORE_DIR}/plugins"
-    "${WEBCORE_DIR}/rendering"
     "${WEBCORE_DIR}/rendering/line"
     "${WEBCORE_DIR}/rendering/shapes"
-    "${WEBCORE_DIR}/rendering/style"
     "${WEBCORE_DIR}/rendering/svg"
     "${WEBCORE_DIR}/svg"
     "${WEBCORE_DIR}/svg/animation"
@@ -61,11 +58,9 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
 # add them with -iquote only, as a way to reach the Haiku includes with
 # #include <>
 SET(WebKitLegacy_LOCAL_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/css" # Rect.h
-    "${WEBCORE_DIR}/dom" # Node.h
+	"${FORWARDING_HEADERS_DIR}/WebCore"
     "${WEBCORE_DIR}/Modules/notifications" # Notification.h
     "${WEBCORE_DIR}/platform" # Language.h
-    "${WEBCORE_DIR}/platform/graphics" # Region.h
     "${WEBCORE_DIR}/platform/graphics/transforms" # AffineTransform.h
     "${WEBCORE_DIR}/platform/text" # DateTimeFormat.h
 )

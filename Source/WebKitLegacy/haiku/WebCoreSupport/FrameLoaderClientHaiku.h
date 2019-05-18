@@ -111,7 +111,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void dispatchDidReceiveIcon() override;
     void dispatchDidStartProvisionalLoad() override;
     void dispatchDidReceiveTitle(const StringWithDirection&) override;
-    void dispatchDidFailProvisionalLoad(const ResourceError&) override;
+    void dispatchDidFailProvisionalLoad(const ResourceError&, WillContinueLoading) override;
     void dispatchDidFailLoad(const ResourceError&) override;
     void dispatchDidFinishDocumentLoad() override;
     void dispatchDidFinishLoad() override;
@@ -120,7 +120,8 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void dispatchShow() override;
 
     void dispatchDecidePolicyForResponse(const ResourceResponse&,
-		const ResourceRequest&, PolicyCheckIdentifier, FramePolicyFunction&&) override;
+		const ResourceRequest&, PolicyCheckIdentifier,
+		const String& downloadAttribute, FramePolicyFunction&&) override;
     void dispatchDecidePolicyForNewWindowAction(const NavigationAction&,
         const ResourceRequest&, FormState*, const String& formName,
 		PolicyCheckIdentifier, FramePolicyFunction&&) override;

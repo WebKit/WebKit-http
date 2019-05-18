@@ -71,4 +71,14 @@ void WebDiagnosticLoggingClient::logDiagnosticMessageWithEnhancedPrivacy(const S
 	fprintf(stderr, "%s: %s\n", message.utf8().data(), description.utf8().data());
 }
 
+void WebDiagnosticLoggingClient::logDiagnosticMessageWithValueDictionary(
+	const String& message, const String& description, const ValueDictionary&,
+	WebCore::ShouldSample shouldSample)
+{
+    if (!shouldLogAfterSampling(shouldSample))
+        return;
+
+	fprintf(stderr, "%s: %s\n", message.utf8().data(), description.utf8().data());
+}
+
 } // namespace WebKit

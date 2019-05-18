@@ -431,7 +431,7 @@ void FrameLoaderClientHaiku::dispatchDidCommitLoad(WTF::Optional<WebCore::HasIns
     dispatchMessage(titleMessage);
 }
 
-void FrameLoaderClientHaiku::dispatchDidFailProvisionalLoad(const ResourceError& error)
+void FrameLoaderClientHaiku::dispatchDidFailProvisionalLoad(const ResourceError& error, WillContinueLoading)
 {
     dispatchDidFailLoad(error);
 }
@@ -510,7 +510,7 @@ void FrameLoaderClientHaiku::dispatchShow()
 void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(
 	const WebCore::ResourceResponse& response,
 	const WebCore::ResourceRequest& request, PolicyCheckIdentifier identifier,
-	FramePolicyFunction&& function)
+	const WTF::String&, FramePolicyFunction&& function)
 {
     if (request.isNull()) {
         function(PolicyAction::Ignore, identifier);
@@ -529,7 +529,8 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(
 	const NavigationAction& action, const ResourceRequest& request,
 	FormState* /*formState*/, const String& /*targetName*/,
-	PolicyCheckIdentifier identifier, FramePolicyFunction&& function)
+	PolicyCheckIdentifier identifier,
+	FramePolicyFunction&& function)
 {
     ASSERT(function);
     if (!function)

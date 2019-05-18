@@ -27,7 +27,7 @@
  */
 
 #include "config.h"
-#include "GCController.h"
+#include <GCController.h>
 
 void GCController::collect() const
 {

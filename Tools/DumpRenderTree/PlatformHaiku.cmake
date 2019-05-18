@@ -26,6 +26,14 @@ list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
     ${TOOLS_DIR}/DumpRenderTree/haiku
 )
 
+list(APPEND DumpRenderTree_LOCAL_INCLUDE_DIRECTORIES
+	${FORWARDING_HEADERS_DIR}/WebCore
+)
+
+foreach(inc ${DumpRenderTree_LOCAL_INCLUDE_DIRECTORIES})
+    ADD_DEFINITIONS(-iquote ${inc})
+endforeach(inc)
+
 if (ENABLE_ACCESSIBILITY)
     list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
         ${TOOLS_DIR}/DumpRenderTree/haiku
@@ -35,5 +43,5 @@ endif ()
 # FIXME: DOWNLOADED_FONTS_DIR should not hardcode the directory
 # structure. See <https://bugs.webkit.org/show_bug.cgi?id=81475>.
 add_definitions(-DFONTS_CONF_DIR="${TOOLS_DIR}/DumpRenderTree/gtk/fonts"
-                -DDOWNLOADED_FONTS_DIR="${CMAKE_SOURCE_DIR}/WebKitBuild/Dependencies/Source/webkitgtk-test-fonts-0.0.3"
+    -DDOWNLOADED_FONTS_DIR="${CMAKE_SOURCE_DIR}/WebKitBuild/Dependencies/Source/webkitgtk-test-fonts-0.0.3"
 )
