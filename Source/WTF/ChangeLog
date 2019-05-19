@@ -1,3 +1,161 @@
+2019-05-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] Rework WPE RunLoopSourcePriority values
+        https://bugs.webkit.org/show_bug.cgi?id=197167
+
+        Reviewed by Carlos Garcia Campos.
+
+        The GLib priorities for the WPE port were initially aligned on the -70
+        value, theory being that this would help avoid any default-priority
+        GSources spawned in different dependency libraries affecting our
+        scheduling. Today it seems that extra caution might not be really
+        necessary.
+
+        This change aligns the base priority value with GLib's default priority
+        value of 0. We maintain the relativity of priority values by effectively
+        increasing each priority by 70.
+
+        * wtf/glib/RunLoopSourcePriority.h:
+
+2019-05-08  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to set HSTS storage directory
+        https://bugs.webkit.org/show_bug.cgi?id=197259
+
+        Reviewed by Brady Eidson.
+
+        * wtf/Platform.h:
+
+2019-05-08  Keith Miller  <keith_miller@apple.com>
+
+        Remove Gigacage from arm64 and use PAC for arm64e instead
+        https://bugs.webkit.org/show_bug.cgi?id=197110
+
+        Reviewed by Saam Barati.
+
+        This patch changes the Gigacage to use PAC on arm64e. As part of
+        this process all platforms must provide their length when
+        materializing the caged pointer. Since it would be somewhat
+        confusing to have two parameters for an operator [] those methods
+        have been removed. Lastly, this patch removes the specializations
+        for void* caged pointers, instead opting to use enable_if on the
+        methods that would normally fail on void* e.g. anything that
+        returns a T&.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/CagedPtr.h:
+        (WTF::CagedPtr::CagedPtr):
+        (WTF::CagedPtr::get const):
+        (WTF::CagedPtr::getMayBeNull const):
+        (WTF::CagedPtr::getUnsafe const):
+        (WTF::CagedPtr::at const):
+        (WTF::CagedPtr::reauthenticate):
+        (WTF::CagedPtr::operator=):
+        (WTF::CagedPtr::operator== const):
+        (WTF::CagedPtr::operator bool const):
+        (WTF::CagedPtr::operator* const): Deleted.
+        (WTF::CagedPtr::operator-> const): Deleted.
+        (WTF::CagedPtr::operator[] const): Deleted.
+        (): Deleted.
+        * wtf/CagedUniquePtr.h:
+        (WTF::CagedUniquePtr::CagedUniquePtr):
+        (WTF::CagedUniquePtr::create):
+        (WTF::CagedUniquePtr::~CagedUniquePtr):
+        (WTF::CagedUniquePtr::destroy):
+        (): Deleted.
+        * wtf/Gigacage.h:
+        (Gigacage::cagedMayBeNull):
+        * wtf/PtrTag.h:
+        (WTF::tagArrayPtr):
+        (WTF::untagArrayPtr):
+        (WTF::removeArrayPtrTag):
+        (WTF::retagArrayPtr):
+        * wtf/TaggedArrayStoragePtr.h: Copied from Source/JavaScriptCore/runtime/ArrayBufferView.cpp.
+        (WTF::TaggedArrayStoragePtr::TaggedArrayStoragePtr):
+        (WTF::TaggedArrayStoragePtr::get const):
+        (WTF::TaggedArrayStoragePtr::getUnsafe const):
+        (WTF::TaggedArrayStoragePtr::resize):
+        (WTF::TaggedArrayStoragePtr::operator bool const):
+
+2019-05-08  Robin Morisset  <rmorisset@apple.com>
+
+        WTF::TimingScope should show the total duration and not just the mean
+        https://bugs.webkit.org/show_bug.cgi?id=197672
+
+        Reviewed by Alex Christensen.
+
+        * wtf/TimingScope.cpp:
+        (WTF::TimingScope::scopeDidEnd):
+
+2019-05-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] LLIntPrototypeLoadAdaptiveStructureWatchpoint does not require Bag<>
+        https://bugs.webkit.org/show_bug.cgi?id=197645
+
+        Reviewed by Saam Barati.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Nonmovable.h: Copied from Source/JavaScriptCore/bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.h.
+        * wtf/Vector.h:
+        (WTF::minCapacity>::uncheckedConstructAndAppend):
+
+2019-05-07  Eric Carlson  <eric.carlson@apple.com>
+
+        Define media buffering policy
+        https://bugs.webkit.org/show_bug.cgi?id=196979
+        <rdar://problem/28383861>
+
+        Reviewed by Jer Noble.
+
+        * wtf/Platform.h:
+
+2019-05-07  Robin Morisset  <rmorisset@apple.com>
+
+        WTF::BitVector should have an isEmpty() method
+        https://bugs.webkit.org/show_bug.cgi?id=197637
+
+        Reviewed by Keith Miller.
+
+        * wtf/BitVector.cpp:
+        (WTF::BitVector::isEmptySlow const):
+        * wtf/BitVector.h:
+        (WTF::BitVector::isEmpty const):
+
+2019-05-07  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct JSON parser to address unterminated escape character
+        https://bugs.webkit.org/show_bug.cgi?id=197582
+        <rdar://problem/50459177>
+
+        Reviewed by Alex Christensen.
+
+        Correct JSON parser code to properly deal with unterminated escape
+        characters.
+
+        * wtf/JSONValues.cpp:
+        (WTF::JSONImpl::decodeString):
+        (WTF::JSONImpl::parseStringToken):
+
+2019-05-07  Alex Christensen  <achristensen@webkit.org>
+
+        Add a release assertion that Functions can only be constructed from non-null CompletionHandlers
+        https://bugs.webkit.org/show_bug.cgi?id=197641
+
+        Reviewed by Chris Dumez.
+
+        This will help us find the cause of rdar://problem/48679972 by seeing the crash when the Function is dispatched,
+        not when it's called with no interesting stack trace.  I manually verified this assertion is hit in such a case.
+        We should also have no legitimate use of creating a Function out of a null CompletionHandler then never calling it.
+
+        * wtf/CompletionHandler.h:
+        (WTF::Detail::CallableWrapper<CompletionHandler<Out):
+        * wtf/Function.h:
+        (WTF::Detail::CallableWrapperBase::~CallableWrapperBase):
+        (WTF::Detail::CallableWrapper::CallableWrapper):
+        (WTF::Function<Out):
+
 2019-05-06  Christopher Reid  <chris.reid@sony.com>
 
         [JSC] Respect already defined USE_LLINT_EMBEDDED_OPCODE_ID compiler variable.

@@ -147,6 +147,7 @@
 #include <WebCore/DocumentFragment.h>
 #include <WebCore/DocumentLoader.h>
 #include <WebCore/DocumentMarkerController.h>
+#include <WebCore/DocumentStorageAccess.h>
 #include <WebCore/DragController.h>
 #include <WebCore/DragData.h>
 #include <WebCore/Editing.h>
@@ -252,6 +253,7 @@
 #endif
 
 #if PLATFORM(COCOA)
+#include "InsertTextOptions.h"
 #include "PDFPlugin.h"
 #include "PlaybackSessionManager.h"
 #include "RemoteLayerTreeTransaction.h"
@@ -415,9 +417,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #endif
     , m_layerVolatilityTimer(*this, &WebPage::layerVolatilityTimerFired)
     , m_activityState(parameters.activityState)
-    , m_processSuppressionEnabled(true)
-    , m_userActivity("Process suppression disabled for page.")
-    , m_userActivityHysteresis([this](PAL::HysteresisState) { updateUserActivity(); })
+    , m_userActivity("App nap disabled for page due to user activity")
     , m_userInterfaceLayoutDirection(parameters.userInterfaceLayoutDirection)
     , m_overrideContentSecurityPolicy { parameters.overrideContentSecurityPolicy }
     , m_cpuLimit(parameters.cpuLimit)
@@ -558,7 +558,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     setGapBetweenPages(parameters.gapBetweenPages);
     setPaginationLineGridEnabled(parameters.paginationLineGridEnabled);
 
-    setUseDarkAppearance(parameters.useDarkAppearance);
+    effectiveAppearanceDidChange(parameters.useDarkAppearance, parameters.useInactiveAppearance);
 
     if (parameters.isEditable)
         setEditable(true);
@@ -764,22 +764,15 @@ void WebPage::updateThrottleState()
 {
     bool isActive = m_activityState.containsAny({ ActivityState::IsLoading, ActivityState::IsAudible, ActivityState::IsCapturingMedia, ActivityState::WindowIsActive });
     bool isVisuallyIdle = m_activityState.contains(ActivityState::IsVisuallyIdle);
-    bool pageSuppressed = m_processSuppressionEnabled && !isActive && isVisuallyIdle;
 
-    // The UserActivity keeps the processes runnable. So if the page should be suppressed, stop the activity.
-    // If the page should not be supressed, start it.
-    if (pageSuppressed)
-        m_userActivityHysteresis.stop();
-    else
-        m_userActivityHysteresis.start();
-}
+    bool shouldAllowAppNap = m_isAppNapEnabled && !isActive && isVisuallyIdle;
 
-void WebPage::updateUserActivity()
-{
-    if (m_userActivityHysteresis.state() == PAL::HysteresisState::Started)
-        m_userActivity.start();
-    else
+    // The UserActivity prevents App Nap. So if we want to allow App Nap of the page, stop the activity.
+    // If the page should not be app nap'd, start it.
+    if (shouldAllowAppNap)
         m_userActivity.stop();
+    else
+        m_userActivity.start();
 }
 
 WebPage::~WebPage()
@@ -1108,6 +1101,26 @@ void WebPage::executeEditCommandWithCallback(const String& commandName, const St
     executeEditCommand(commandName, argument);
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
+
+void WebPage::selectAll()
+{
+    executeEditingCommand("SelectAll"_s, { });
+    platformDidSelectAll();
+}
+
+bool WebPage::shouldDispatchSyntheticMouseEventsWhenModifyingSelection() const
+{
+    auto* document = m_page->mainFrame().document();
+    return document && document->quirks().shouldDispatchSyntheticMouseEventsWhenModifyingSelection();
+}
+
+#if !PLATFORM(IOS_FAMILY)
+
+void WebPage::platformDidSelectAll()
+{
+}
+
+#endif // !PLATFORM(IOS_FAMILY)
 
 void WebPage::updateEditorStateAfterLayoutIfEditabilityChanged()
 {
@@ -2661,7 +2674,7 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 {
     SetForScope<bool> userIsInteractingChange { m_userIsInteracting, true };
 
-    m_userActivityHysteresis.impulse();
+    m_userActivity.impulse();
 
     bool shouldHandleEvent = true;
 
@@ -2709,7 +2722,7 @@ static bool handleWheelEvent(const WebWheelEvent& wheelEvent, Page* page)
 
 void WebPage::wheelEvent(const WebWheelEvent& wheelEvent)
 {
-    m_userActivityHysteresis.impulse();
+    m_userActivity.impulse();
 
     CurrentEvent currentEvent(wheelEvent);
 
@@ -2732,7 +2745,7 @@ void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
 {
     SetForScope<bool> userIsInteractingChange { m_userIsInteracting, true };
 
-    m_userActivityHysteresis.impulse();
+    m_userActivity.impulse();
 
     PlatformKeyboardEvent::setCurrentModifierState(platform(keyboardEvent).modifiers());
 
@@ -3518,9 +3531,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     else if (!store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && sessionID() == PAL::SessionID::legacyPrivateSessionID())
         setSessionID(PAL::SessionID::defaultSessionID());
 
-    bool processSuppressionEnabled = store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey());
-    if (m_processSuppressionEnabled != processSuppressionEnabled) {
-        m_processSuppressionEnabled = processSuppressionEnabled;
+    bool isAppNapEnabled = store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey());
+    if (m_isAppNapEnabled != isAppNapEnabled) {
+        m_isAppNapEnabled = isAppNapEnabled;
         updateThrottleState();
     }
 
@@ -4609,9 +4622,9 @@ void WebPage::setUseSystemAppearance(bool useSystemAppearance)
 #endif
 
 #if !PLATFORM(GTK)
-void WebPage::setUseDarkAppearance(bool useDarkAppearance)
+void WebPage::effectiveAppearanceDidChange(bool useDarkAppearance, bool useInactiveAppearance)
 {
-    corePage()->setUseDarkAppearance(useDarkAppearance);
+    corePage()->effectiveAppearanceDidChange(useDarkAppearance, useInactiveAppearance);
 }
 #endif
 
@@ -5116,7 +5129,7 @@ void WebPage::setTextAsync(const String& text)
     ASSERT_NOT_REACHED();
 }
 
-void WebPage::insertTextAsync(const String& text, const EditingRange& replacementEditingRange, bool registerUndoGroup, uint32_t editingRangeIsRelativeTo, bool suppressSelectionUpdate)
+void WebPage::insertTextAsync(const String& text, const EditingRange& replacementEditingRange, InsertTextOptions&& options)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
 
@@ -5124,14 +5137,14 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
 
     bool replacesText = false;
     if (replacementEditingRange.location != notFound) {
-        if (auto replacementRange = EditingRange::toRange(frame, replacementEditingRange, static_cast<EditingRangeIsRelativeTo>(editingRangeIsRelativeTo))) {
-            SetForScope<bool> isSelectingTextWhileInsertingAsynchronously(m_isSelectingTextWhileInsertingAsynchronously, suppressSelectionUpdate);
+        if (auto replacementRange = EditingRange::toRange(frame, replacementEditingRange, options.editingRangeIsRelativeTo)) {
+            SetForScope<bool> isSelectingTextWhileInsertingAsynchronously(m_isSelectingTextWhileInsertingAsynchronously, options.suppressSelectionUpdate);
             frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
             replacesText = replacementEditingRange.length;
         }
     }
     
-    if (registerUndoGroup)
+    if (options.registerUndoGroup)
         send(Messages::WebPageProxy::RegisterInsertionUndoGrouping());
     
     if (!frame.editor().hasComposition()) {
@@ -6440,14 +6453,14 @@ void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remote
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-void WebPage::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
+void WebPage::hasStorageAccess(RegistrableDomain&& subFrameDomain, RegistrableDomain&& topFrameDomain, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
 {
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::HasStorageAccess(sessionID(), RegistrableDomain::uncheckedCreateFromHost(subFrameHost), RegistrableDomain::uncheckedCreateFromHost(topFrameHost), frameID, m_pageID), WTFMove(completionHandler));
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::HasStorageAccess(sessionID(), WTFMove(subFrameDomain), WTFMove(topFrameDomain), frameID, m_pageID), WTFMove(completionHandler));
 }
-    
-void WebPage::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& completionHandler)
+
+void WebPage::requestStorageAccess(RegistrableDomain&& subFrameDomain, RegistrableDomain&& topFrameDomain, uint64_t frameID, CompletionHandler<void(WebCore::StorageAccessWasGranted, WebCore::StorageAccessPromptWasShown)>&& completionHandler)
 {
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::RequestStorageAccess(sessionID(), RegistrableDomain::uncheckedCreateFromHost(subFrameHost), RegistrableDomain::uncheckedCreateFromHost(topFrameHost), frameID, m_pageID), WTFMove(completionHandler));
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::RequestStorageAccess(sessionID(), WTFMove(subFrameDomain), WTFMove(topFrameDomain), frameID, m_pageID), WTFMove(completionHandler));
 }
 #endif
 

@@ -36,6 +36,7 @@
 #import "FocusedElementInformation.h"
 #import "GestureTypes.h"
 #import "InteractionInformationAtPosition.h"
+#import "SyntheticEditingCommandType.h"
 #import "TextCheckingController.h"
 #import "UIKitSPI.h"
 #import "WKActionSheetAssistant.h"
@@ -230,6 +231,7 @@ struct WKAutoCorrectionData {
 #if PLATFORM(IOSMAC)
     RetainPtr<UIHoverGestureRecognizer> _hoverGestureRecognizer;
     RetainPtr<_UILookupGestureRecognizer> _lookupGestureRecognizer;
+    CGPoint _lastHoverLocation;
 #endif
 
     RetainPtr<UIWKTextInteractionAssistant> _textSelectionAssistant;
@@ -407,6 +409,7 @@ struct WKAutoCorrectionData {
 
 #if ENABLE(POINTER_EVENTS)
 - (void)cancelPointersForGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
+- (WTF::Optional<unsigned>)activeTouchIdentifierForGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer;
 #endif
 
 #define DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW(_action) \
@@ -469,6 +472,9 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_didChangeWebViewEditability;
 
 - (void)willFinishIgnoringCalloutBarFadeAfterPerformingAction;
+
+- (BOOL)hasHiddenContentEditable;
+- (void)generateSyntheticEditingCommand:(WebKit::SyntheticEditingCommandType)command;
 
 // UIWebFormAccessoryDelegate protocol
 - (void)accessoryDone;

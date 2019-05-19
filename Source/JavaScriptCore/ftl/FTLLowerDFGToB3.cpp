@@ -780,6 +780,9 @@ private:
         case ArithDiv:
             compileArithDiv();
             break;
+        case ValueMod:
+            compileValueMod();
+            break;
         case ArithMod:
             compileArithMod();
             break;
@@ -1923,12 +1926,20 @@ private:
         
         DFG_ASSERT(m_graph, m_node, isConcrete(data->format), data->format);
         
-        if (data->format == FlushedDouble)
+        switch (data->format) {
+        case FlushedDouble:
             setDouble(m_out.loadDouble(addressFor(data->machineLocal)));
-        else if (isInt32Speculation(value.m_type))
-            setInt32(m_out.load32(payloadFor(data->machineLocal)));
-        else
-            setJSValue(m_out.load64(addressFor(data->machineLocal)));
+            break;
+        case FlushedInt52:
+            setInt52(m_out.load64(addressFor(data->machineLocal)));
+            break;
+        default:
+            if (isInt32Speculation(value.m_type))
+                setInt32(m_out.load32(payloadFor(data->machineLocal)));
+            else
+                setJSValue(m_out.load64(addressFor(data->machineLocal)));
+            break;
+        }
     }
     
     void compilePutStack()
@@ -2538,6 +2549,24 @@ private:
         }
     }
     
+    void compileValueMod()
+    {
+        if (m_node->binaryUseKind() == BigIntUse) {
+            LValue left = lowBigInt(m_node->child1());
+            LValue right = lowBigInt(m_node->child2());
+
+            LValue result = vmCall(pointerType(), m_out.operation(operationModBigInt), m_callFrame, left, right);
+            setJSValue(result);
+            return;
+        }
+
+        DFG_ASSERT(m_graph, m_node, m_node->binaryUseKind() == UntypedUse, m_node->binaryUseKind());
+        LValue left = lowJSValue(m_node->child1());
+        LValue right = lowJSValue(m_node->child2());
+        LValue result = vmCall(Int64, m_out.operation(operationValueMod), m_callFrame, left, right);
+        setJSValue(result);
+    }
+
     void compileArithMod()
     {
         switch (m_node->binaryUseKind()) {
@@ -3839,7 +3868,7 @@ private:
 
         DFG_ASSERT(m_graph, m_node, isTypedView(m_node->arrayMode().typedArrayType()), m_node->arrayMode().typedArrayType());
         LValue vector = m_out.loadPtr(cell, m_heaps.JSArrayBufferView_vector);
-        setStorage(caged(Gigacage::Primitive, vector));
+        setStorage(caged(Gigacage::Primitive, vector, cell));
     }
     
     void compileCheckArray()
@@ -3883,10 +3912,10 @@ private:
 
         m_out.appendTo(notNull, continuation);
 
-        LValue butterflyPtr = caged(Gigacage::JSValue, m_out.loadPtr(basePtr, m_heaps.JSObject_butterfly));
+        LValue butterflyPtr = caged(Gigacage::JSValue, m_out.loadPtr(basePtr, m_heaps.JSObject_butterfly), basePtr);
         LValue arrayBufferPtr = m_out.loadPtr(butterflyPtr, m_heaps.Butterfly_arrayBuffer);
 
-        LValue vectorPtr = caged(Gigacage::Primitive, vector);
+        LValue vectorPtr = caged(Gigacage::Primitive, vector, basePtr);
 
         // FIXME: This needs caging.
         // https://bugs.webkit.org/show_bug.cgi?id=175515
@@ -6437,6 +6466,17 @@ private:
                 m_out.castToInt32(m_out.lShr(byteSize, m_out.constIntPtr(3))),
                 m_out.int64Zero,
                 m_heaps.typedArrayProperties);
+
+#if !GIGACAGE_ENABLED && CPU(ARM64E)
+            PatchpointValue* authenticate = m_out.patchpoint(pointerType());
+            authenticate->appendSomeRegister(storage);
+            authenticate->append(size, B3::ValueRep(B3::ValueRep::SomeLateRegister));
+            authenticate->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                jit.move(params[1].gpr(), params[0].gpr());
+                jit.tagArrayPtr(params[2].gpr(), params[0].gpr());
+            });
+            storage = authenticate;
+#endif
 
             ValueFromBlock haveStorage = m_out.anchor(storage);
 
@@ -12656,7 +12696,7 @@ private:
             indexToCheck = m_out.add(indexToCheck, m_out.constInt64(data.byteSize - 1));
         speculate(OutOfBounds, noValue(), nullptr, m_out.aboveOrEqual(indexToCheck, length));
 
-        LValue vector = caged(Gigacage::Primitive, m_out.loadPtr(dataView, m_heaps.JSArrayBufferView_vector));
+        LValue vector = caged(Gigacage::Primitive, m_out.loadPtr(dataView, m_heaps.JSArrayBufferView_vector), dataView);
 
         TypedPointer pointer(m_heaps.typedArrayProperties, m_out.add(vector, m_out.zeroExtPtr(index)));
 
@@ -12815,7 +12855,7 @@ private:
             RELEASE_ASSERT_NOT_REACHED();
         }
 
-        LValue vector = caged(Gigacage::Primitive, m_out.loadPtr(dataView, m_heaps.JSArrayBufferView_vector));
+        LValue vector = caged(Gigacage::Primitive, m_out.loadPtr(dataView, m_heaps.JSArrayBufferView_vector), dataView);
         TypedPointer pointer(m_heaps.typedArrayProperties, m_out.add(vector, m_out.zeroExtPtr(index)));
 
         if (data.isFloatingPoint) {
@@ -14062,10 +14102,29 @@ private:
             m_out.appendTo(performStore, lastNext);
         }
     }
-    
-    LValue caged(Gigacage::Kind kind, LValue ptr)
+
+    LValue untagArrayPtr(LValue ptr, LValue size)
+    {
+
+#if !GIGACAGE_ENABLED && CPU(ARM64E)
+        PatchpointValue* authenticate = m_out.patchpoint(pointerType());
+        authenticate->appendSomeRegister(ptr);
+        authenticate->append(size, B3::ValueRep(B3::ValueRep::SomeLateRegister));
+        authenticate->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.move(params[1].gpr(), params[0].gpr());
+            jit.untagArrayPtr(params[2].gpr(), params[0].gpr());
+        });
+        return authenticate;
+#else
+        UNUSED_PARAM(size);
+        return ptr;
+#endif
+    }
+
+    LValue caged(Gigacage::Kind kind, LValue ptr, LValue base)
     {
 #if GIGACAGE_ENABLED
+        UNUSED_PARAM(base);
         if (!Gigacage::isEnabled(kind))
             return ptr;
         
@@ -14094,8 +14153,16 @@ private:
         // and possibly other smart things if we want to be able to remove this opaque.
         // https://bugs.webkit.org/show_bug.cgi?id=175493
         return m_out.opaque(result);
+#elif CPU(ARM64E)
+        if (kind == Gigacage::Primitive) {
+            LValue size = m_out.load32(base, m_heaps.JSArrayBufferView_length);
+            return untagArrayPtr(ptr, size);
+        }
+
+        return ptr;
 #else
         UNUSED_PARAM(kind);
+        UNUSED_PARAM(base);
         return ptr;
 #endif
     }
@@ -16509,6 +16576,16 @@ private:
 
         LBasicBlock lastNext = m_out.appendTo(isWasteful, continuation);
         LValue vector = m_out.loadPtr(base, m_heaps.JSArrayBufferView_vector);
+#if !GIGACAGE_ENABLED && CPU(ARM64E)
+        // FIXME: We could probably make this a mask. https://bugs.webkit.org/show_bug.cgi?id=197701
+        PatchpointValue* authenticate = m_out.patchpoint(pointerType());
+        authenticate->appendSomeRegister(vector);
+        authenticate->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.move(params[1].gpr(), params[0].gpr());
+            jit.removeArrayPtrTag(params[0].gpr());
+        });
+        vector = authenticate;
+#endif
         speculate(Uncountable, jsValueValue(vector), m_node, m_out.isZero64(vector));
         m_out.jump(continuation);
 

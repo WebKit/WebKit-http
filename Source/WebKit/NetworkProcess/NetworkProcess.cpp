@@ -133,7 +133,7 @@ NetworkProcess::NetworkProcess(AuxiliaryProcessInitializationParameters&& parame
     , m_networkContentRuleListManager(*this)
 #endif
 #if PLATFORM(IOS_FAMILY)
-    , m_webSQLiteDatabaseTracker(*this)
+    , m_webSQLiteDatabaseTracker([this](bool isHoldingLockedFiles) { parentProcessConnection()->send(Messages::NetworkProcessProxy::SetIsHoldingLockedFiles(isHoldingLockedFiles), 0); })
 #endif
 {
     NetworkProcessPlatformStrategies::initialize();
@@ -270,6 +270,9 @@ void NetworkProcess::lowMemoryHandler(Critical critical)
         return;
 
     WTF::releaseFastMallocFreeMemory();
+
+    for (auto& networkSession : m_networkSessions.values())
+        networkSession.get().clearPrefetchCache();
 }
 
 void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&& parameters)
@@ -950,17 +953,6 @@ void NetworkProcess::setLastSeen(PAL::SessionID sessionID, const RegistrableDoma
     }
 }
 
-void NetworkProcess::hasStorageAccessForFrame(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&& completionHandler)
-{
-    bool hasStorageAccess = false;
-    if (auto* networkStorageSession = storageSession(sessionID))
-        hasStorageAccess = networkStorageSession->hasStorageAccess(subFrameDomain, topFrameDomain, frameID, pageID);
-    else
-        ASSERT_NOT_REACHED();
-
-    completionHandler(hasStorageAccess);
-}
-
 void NetworkProcess::getAllStorageAccessEntries(PAL::SessionID sessionID, CompletionHandler<void(Vector<String> domains)>&& completionHandler)
 {
     if (auto* networkStorageSession = storageSession(sessionID))
@@ -968,64 +960,6 @@ void NetworkProcess::getAllStorageAccessEntries(PAL::SessionID sessionID, Comple
     else {
         ASSERT_NOT_REACHED();
         completionHandler({ });
-    }
-}
-
-void NetworkProcess::hasStorageAccess(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, Optional<uint64_t> frameID, uint64_t pageID, CompletionHandler<void(bool)>&& completionHandler)
-{
-    if (auto* networkSession = this->networkSession(sessionID)) {
-        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
-            resourceLoadStatistics->hasStorageAccess(subFrameDomain, topFrameDomain, frameID, pageID, WTFMove(completionHandler));
-        else
-            completionHandler(false);
-    } else {
-        ASSERT_NOT_REACHED();
-        completionHandler(false);
-    }
-}
-
-void NetworkProcess::requestStorageAccess(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, Optional<uint64_t> frameID, uint64_t pageID, CompletionHandler<void(StorageAccessStatus)>&& completionHandler)
-{
-    if (auto* networkSession = this->networkSession(sessionID)) {
-        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
-            resourceLoadStatistics->requestStorageAccess(subFrameDomain, topFrameDomain, frameID.value(), pageID, WTFMove(completionHandler));
-        else
-            completionHandler(StorageAccessStatus::CannotRequestAccess);
-    } else {
-        ASSERT_NOT_REACHED();
-        completionHandler(StorageAccessStatus::CannotRequestAccess);
-    }
-}
-
-void NetworkProcess::requestStorageAccessGranted(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, uint64_t frameID, uint64_t pageID, CompletionHandler<void(bool)>&& completionHandler)
-{
-    if (auto* networkSession = this->networkSession(sessionID)) {
-        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
-            resourceLoadStatistics->requestStorageAccessGranted(subFrameDomain, topFrameDomain, frameID, pageID, WTFMove(completionHandler));
-        else
-            completionHandler(false);
-    } else {
-        ASSERT_NOT_REACHED();
-        completionHandler(false);
-    }
-}
-
-void NetworkProcess::grantStorageAccess(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, Optional<uint64_t> frameID, uint64_t pageID, bool userWasPrompted, CompletionHandler<void(bool)>&& completionHandler)
-{
-    // FIXME: We should not accept an optional frame ID since we call frameID.value() unconditionally.
-    if (!frameID) {
-        completionHandler(false);
-        return;
-    }
-
-    if (auto* networkSession = this->networkSession(sessionID)) {
-        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
-            resourceLoadStatistics->grantStorageAccess(subFrameDomain, topFrameDomain, frameID.value(), pageID, userWasPrompted, WTFMove(completionHandler));
-        else
-            completionHandler(false);
-    } else {
-        ASSERT_NOT_REACHED();
-        completionHandler(false);
     }
 }
 
@@ -1075,15 +1009,6 @@ void NetworkProcess::clearUserInteraction(PAL::SessionID sessionID, const Regist
         ASSERT_NOT_REACHED();
         completionHandler();
     }
-}
-
-void NetworkProcess::removeAllStorageAccess(PAL::SessionID sessionID, CompletionHandler<void()>&& completionHandler)
-{
-    if (auto* networkStorageSession = storageSession(sessionID))
-        networkStorageSession->removeAllStorageAccess();
-    else
-        ASSERT_NOT_REACHED();
-    completionHandler();
 }
 
 void NetworkProcess::removePrevalentDomains(PAL::SessionID sessionID, const Vector<RegistrableDomain>& domains)

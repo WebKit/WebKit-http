@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ANGLEWebKitBridge_h
-#define ANGLEWebKitBridge_h
+#pragma once
 
 #if USE(LIBEPOXY)
 // libepoxy headers have to be included before <ANGLE/ShaderLang.h> in order to avoid
@@ -96,5 +95,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

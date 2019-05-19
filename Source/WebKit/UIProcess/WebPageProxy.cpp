@@ -81,6 +81,7 @@
 #include "SafeBrowsingWarning.h"
 #include "ShareSheetCallbackID.h"
 #include "SharedBufferDataReference.h"
+#include "SyntheticEditingCommandType.h"
 #include "TextChecker.h"
 #include "TextCheckerState.h"
 #include "TextInputContext.h"
@@ -188,6 +189,7 @@
 
 #if PLATFORM(COCOA)
 #include "AttributedString.h"
+#include "InsertTextOptions.h"
 #include "RemoteLayerTreeDrawingAreaProxy.h"
 #include "RemoteLayerTreeScrollingPerformanceData.h"
 #include "TouchBarMenuData.h"
@@ -2012,6 +2014,14 @@ void WebPageProxy::scheduleFullEditorStateUpdate()
         return;
 
     m_process->send(Messages::WebPage::ScheduleFullEditorStateUpdate(), m_pageID);
+}
+
+void WebPageProxy::selectAll()
+{
+    if (!hasRunningProcess())
+        return;
+
+    m_process->send(Messages::WebPage::SelectAll(), m_pageID);
 }
 
 void WebPageProxy::executeEditCommand(const String& commandName, const String& argument, WTF::Function<void(CallbackBase::Error)>&& callbackFunction)
@@ -7097,6 +7107,7 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
     parameters.layerHostingMode = m_layerHostingMode;
     parameters.controlledByAutomation = m_controlledByAutomation;
     parameters.useDarkAppearance = useDarkAppearance();
+    parameters.useInactiveAppearance = useInactiveAppearance();
 #if PLATFORM(MAC)
     parameters.colorSpace = pageClient().colorSpace();
     parameters.useSystemAppearance = m_useSystemAppearance;
@@ -7903,12 +7914,12 @@ void WebPageProxy::setTextAsync(const String& text)
         process().send(Messages::WebPage::SetTextAsync(text), m_pageID);
 }
 
-void WebPageProxy::insertTextAsync(const String& text, const EditingRange& replacementRange, bool registerUndoGroup, EditingRangeIsRelativeTo editingRangeIsRelativeTo, bool suppressSelectionUpdate)
+void WebPageProxy::insertTextAsync(const String& text, const EditingRange& replacementRange, InsertTextOptions&& options)
 {
     if (!hasRunningProcess())
         return;
 
-    process().send(Messages::WebPage::InsertTextAsync(text, replacementRange, registerUndoGroup, static_cast<uint32_t>(editingRangeIsRelativeTo), suppressSelectionUpdate), m_pageID);
+    process().send(Messages::WebPage::InsertTextAsync(text, replacementRange, WTFMove(options)), m_pageID);
 }
 
 void WebPageProxy::getMarkedRangeAsync(WTF::Function<void (EditingRange, CallbackBase::Error)>&& callbackFunction)
@@ -8584,12 +8595,17 @@ bool WebPageProxy::useDarkAppearance() const
     return pageClient().effectiveAppearanceIsDark();
 }
 
+bool WebPageProxy::useInactiveAppearance() const
+{
+    return pageClient().effectiveAppearanceIsInactive();
+}
+
 void WebPageProxy::effectiveAppearanceDidChange()
 {
     if (!hasRunningProcess())
         return;
 
-    m_process->send(Messages::WebPage::SetUseDarkAppearance(useDarkAppearance()), m_pageID);
+    m_process->send(Messages::WebPage::EffectiveAppearanceDidChange(useDarkAppearance(), useInactiveAppearance()), m_pageID);
 }
 
 #if PLATFORM(COCOA)

@@ -139,6 +139,7 @@ set(WTF_PUBLIC_HEADERS
     NoLock.h
     NoTailCalls.h
     Noncopyable.h
+    Nonmovable.h
     NotFound.h
     NumberOfCores.h
     OSAllocator.h
@@ -228,6 +229,7 @@ set(WTF_PUBLIC_HEADERS
     SynchronizedFixedQueue.h
     SystemFree.h
     SystemTracing.h
+    TaggedArrayStoragePtr.h
     ThreadGroup.h
     ThreadMessage.h
     ThreadSafeRefCounted.h

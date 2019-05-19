@@ -2233,6 +2233,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case ValueMod: {
+        compileValueMod(node);
+        break;
+    }
+
     case ArithMod: {
         compileArithMod(node);
         break;
@@ -4673,7 +4678,7 @@ void SpeculativeJIT::compile(Node* node)
             m_jit.branch64(MacroAssembler::AboveOrEqual, t2, t1));
 
         m_jit.loadPtr(JITCompiler::Address(dataViewGPR, JSArrayBufferView::offsetOfVector()), t2);
-        cageTypedArrayStorage(t2);
+        cageTypedArrayStorage(dataViewGPR, t2);
 
         m_jit.zeroExtend32ToPtr(indexGPR, t1);
         auto baseIndex = JITCompiler::BaseIndex(t2, t1, MacroAssembler::TimesOne);
@@ -4869,7 +4874,7 @@ void SpeculativeJIT::compile(Node* node)
             m_jit.branch64(MacroAssembler::AboveOrEqual, t2, t1));
 
         m_jit.loadPtr(JITCompiler::Address(dataViewGPR, JSArrayBufferView::offsetOfVector()), t2);
-        cageTypedArrayStorage(t2);
+        cageTypedArrayStorage(dataViewGPR, t2);
 
         m_jit.zeroExtend32ToPtr(indexGPR, t1);
         auto baseIndex = JITCompiler::BaseIndex(t2, t1, MacroAssembler::TimesOne);

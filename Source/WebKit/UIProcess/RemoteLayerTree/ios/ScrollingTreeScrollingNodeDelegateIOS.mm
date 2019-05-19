@@ -79,19 +79,19 @@
 {
 #if ENABLE(POINTER_EVENTS)
     if (![scrollView isZooming]) {
-        if (auto touchActionData = _scrollingTreeNodeDelegate->touchActionData()) {
-            auto touchActions = touchActionData->touchActions;
-            if (touchActions != WebCore::TouchAction::Auto && touchActions != WebCore::TouchAction::Manipulation) {
-                bool canPanX = true;
-                bool canPanY = true;
-                if (!touchActions.contains(WebCore::TouchAction::PanX)) {
-                    canPanX = false;
-                    targetContentOffset->x = scrollView.contentOffset.x;
-                }
-                if (!touchActions.contains(WebCore::TouchAction::PanY)) {
-                    canPanY = false;
-                    targetContentOffset->y = scrollView.contentOffset.y;
-                }
+        auto touchActions = _scrollingTreeNodeDelegate->activeTouchActions();
+        _scrollingTreeNodeDelegate->clearActiveTouchActions();
+        
+        if (touchActions && !touchActions.containsAny({ WebCore::TouchAction::Auto, WebCore::TouchAction::Manipulation })) {
+            bool canPanX = true;
+            bool canPanY = true;
+            if (!touchActions.contains(WebCore::TouchAction::PanX)) {
+                canPanX = false;
+                targetContentOffset->x = scrollView.contentOffset.x;
+            }
+            if (!touchActions.contains(WebCore::TouchAction::PanY)) {
+                canPanY = false;
+                targetContentOffset->y = scrollView.contentOffset.y;
             }
         }
     }
@@ -148,14 +148,16 @@
 #if ENABLE(POINTER_EVENTS)
 - (CGPoint)_scrollView:(UIScrollView *)scrollView adjustedOffsetForOffset:(CGPoint)offset translation:(CGPoint)translation startPoint:(CGPoint)start locationInView:(CGPoint)locationInView horizontalVelocity:(inout double *)hv verticalVelocity:(inout double *)vv
 {
-    auto touchActionData = _scrollingTreeNodeDelegate->touchActionData();
-    if (!touchActionData) {
-        [self cancelPointersForGestureRecognizer:scrollView.panGestureRecognizer];
+    auto* panGestureRecognizer = scrollView.panGestureRecognizer;
+    _scrollingTreeNodeDelegate->computeActiveTouchActionsForGestureRecognizer(panGestureRecognizer);
+    auto touchActions = _scrollingTreeNodeDelegate->activeTouchActions();
+
+    if (!touchActions) {
+        [self cancelPointersForGestureRecognizer:panGestureRecognizer];
         return offset;
     }
 
-    auto touchActions = touchActionData->touchActions;
-    if (touchActions == WebCore::TouchAction::Auto || touchActions == WebCore::TouchAction::Manipulation)
+    if (touchActions.containsAny({ WebCore::TouchAction::Auto, WebCore::TouchAction::Manipulation }))
         return offset;
 
     CGPoint adjustedContentOffset = CGPointMake(offset.x, offset.y);
@@ -338,9 +340,11 @@ void ScrollingTreeScrollingNodeDelegateIOS::currentSnapPointIndicesDidChange(uns
 }
 
 #if ENABLE(POINTER_EVENTS)
-Optional<TouchActionData> ScrollingTreeScrollingNodeDelegateIOS::touchActionData() const
+void ScrollingTreeScrollingNodeDelegateIOS::computeActiveTouchActionsForGestureRecognizer(UIGestureRecognizer* gestureRecognizer)
 {
-    return downcast<RemoteScrollingTree>(scrollingTree()).scrollingCoordinatorProxy().touchActionDataForScrollNodeID(scrollingNode().scrollingNodeID());
+    auto& scrollingCoordinatorProxy = downcast<RemoteScrollingTree>(scrollingTree()).scrollingCoordinatorProxy();
+    if (auto touchIdentifier = scrollingCoordinatorProxy.webPageProxy().pageClient().activeTouchIdentifierForGestureRecognizer(gestureRecognizer))
+        m_activeTouchActions = scrollingCoordinatorProxy.activeTouchActionsForTouchIdentifier(*touchIdentifier);
 }
 
 void ScrollingTreeScrollingNodeDelegateIOS::cancelPointersForGestureRecognizer(UIGestureRecognizer* gestureRecognizer)

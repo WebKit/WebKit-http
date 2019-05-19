@@ -1,3 +1,202 @@
+2019-05-08  Saam barati  <sbarati@apple.com>
+
+        AccessGenerationState::emitExplicitExceptionHandler can clobber an in use register
+        https://bugs.webkit.org/show_bug.cgi?id=197715
+        <rdar://problem/50399252>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/polymorphic-access-exception-handler-should-not-clobber-used-register.js: Added.
+        (foo):
+        (bar):
+
+2019-05-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r245068.
+
+        Caused debug layout tests to exit early due to an assertion
+        failure.
+
+        Reverted changeset:
+
+        "All prototypes should call didBecomePrototype()"
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+        https://trac.webkit.org/changeset/245068
+
+2019-05-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Invalid DFG JIT genereation in high CPU usage state
+        https://bugs.webkit.org/show_bug.cgi?id=197453
+
+        Reviewed by Saam Barati.
+
+        * stress/string-ident-use-clears-abstract-value-if-rope-string-constant-is-held.js: Added.
+        (trigger):
+        (main):
+
+2019-05-08  Robin Morisset  <rmorisset@apple.com>
+
+        All prototypes should call didBecomePrototype()
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+
+        Reviewed by Saam Barati.
+
+        This changelog already landed, but the commit was missing the actual changes.
+
+        * stress/function-prototype-indexed-accessor.js: Added.
+
+2019-05-08  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueMod into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186174
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/mod-untyped.js: Added.
+        * stress/big-int-mod-osr.js: Added.
+        * stress/value-div-ai-rule.js: Added.
+        * stress/value-mod-ai-rule.js: Added.
+
+2019-05-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DFG_ASSERT failed in lowInt52
+        https://bugs.webkit.org/show_bug.cgi?id=197569
+
+        Reviewed by Saam Barati.
+
+        * stress/getstack-int52.js: Added.
+        (opt):
+        (main):
+
+2019-05-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        JSC: A bug in BytecodeGenerator::emitEqualityOpImpl
+        https://bugs.webkit.org/show_bug.cgi?id=197479
+
+        Reviewed by Saam Barati.
+
+        * stress/do-not-perform-bytecode-peephole-optimization-in-jump-target.js: Added.
+        (shouldBe):
+
+2019-05-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        TemplateObject passed to template literal tags are not always identical for the same source location.
+        https://bugs.webkit.org/show_bug.cgi?id=190756
+
+        Reviewed by Saam Barati.
+
+        * complex.yaml:
+        * complex/tagged-template-regeneration-after.js: Added.
+        (shouldBe):
+        * complex/tagged-template-regeneration.js: Added.
+        (call):
+        (test):
+        * modules/tagged-template-inside-module.js: Added.
+        (from.string_appeared_here.call):
+        * modules/tagged-template-inside-module/other-tagged-templates.js: Added.
+        (call):
+        (export.otherTaggedTemplates):
+        * stress/call-and-construct-should-return-same-tagged-templates.js: Added.
+        (shouldBe):
+        (call):
+        (poly):
+        * stress/tagged-templates-in-direct-eval-should-not-produce-same-site-object.js: Added.
+        (shouldBe):
+        (call):
+        * stress/tagged-templates-in-function-in-direct-eval.js: Added.
+        (shouldBe):
+        (call):
+        (test):
+        * stress/tagged-templates-in-global-function-should-not-produce-same-site-object.js: Added.
+        (shouldBe):
+        (call):
+        * stress/tagged-templates-in-indirect-eval-should-not-produce-same-site-object.js: Added.
+        (shouldBe):
+        (call):
+        * stress/tagged-templates-in-multiple-functions.js: Added.
+        (shouldBe):
+        (call):
+        (a):
+        (b):
+        (c):
+        * stress/tagged-templates-with-same-start-offset.js: Added.
+        (shouldBe):
+
+2019-05-07  Robin Morisset  <rmorisset@apple.com>
+
+        All prototypes should call didBecomePrototype()
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+
+        Reviewed by Saam Barati.
+
+        * stress/function-prototype-indexed-accessor.js: Added.
+
+2019-05-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244978.
+        https://bugs.webkit.org/show_bug.cgi?id=197671
+
+        TemplateObject map should use start/end offsets (Requested by
+        yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "TemplateObject passed to template literal tags are not always
+        identical for the same source location."
+        https://bugs.webkit.org/show_bug.cgi?id=190756
+        https://trac.webkit.org/changeset/244978
+
+2019-05-07  Tadeu Zagallo  <tzagallo@apple.com>
+
+        tryCachePutByID should not crash if target offset changes
+        https://bugs.webkit.org/show_bug.cgi?id=197311
+        <rdar://problem/48033612>
+
+        Reviewed by Filip Pizlo.
+
+        Add a series of tests related tryCachePutByID. Two of these tests used to crash and were fixed
+        by this patch: `cache-put-by-id-different-attributes.js` and `cache-put-by-id-different-offset.js`
+
+        * stress/cache-put-by-id-delete-prototype.js: Added.
+        (A.prototype.set y):
+        (A):
+        (B.prototype.set y):
+        (B):
+        (C):
+        * stress/cache-put-by-id-different-__proto__.js: Added.
+        (A.prototype.set y):
+        (A):
+        (B1):
+        (B2.prototype.set y):
+        (B2):
+        (C):
+        (D):
+        * stress/cache-put-by-id-different-attributes.js: Added.
+        (Foo):
+        (set x):
+        * stress/cache-put-by-id-different-offset.js: Added.
+        (Foo):
+        (set x):
+        * stress/cache-put-by-id-insert-prototype.js: Added.
+        (A.prototype.set y):
+        (A):
+        (C):
+        * stress/cache-put-by-id-poly-proto.js: Added.
+        (Foo):
+        (set _):
+        (createBar.Bar):
+        (createBar):
+
+2019-05-07  Saam Barati  <sbarati@apple.com>
+
+        Don't OSR enter into an FTL CodeBlock that has been jettisoned
+        https://bugs.webkit.org/show_bug.cgi?id=197531
+        <rdar://problem/50162379>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/dont-osr-enter-into-jettisoned-ftl-code-block.js: Added.
+
 2019-05-06  Dean Jackson  <dino@apple.com>
 
         Update test262 expectations for Proxy passes

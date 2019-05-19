@@ -31,12 +31,13 @@
 #import "APIUIClient.h"
 #import "DocumentEditingContext.h"
 #import "EditableImageController.h"
-#import "EditingRange.h"
 #import "InputViewUpdateDeferrer.h"
+#import "InsertTextOptions.h"
 #import "Logging.h"
 #import "NativeWebKeyboardEvent.h"
 #import "NativeWebTouchEvent.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
+#import "RemoteLayerTreeViews.h"
 #import "SmartMagnificationController.h"
 #import "TextInputSPI.h"
 #import "UIKitSPI.h"
@@ -1257,6 +1258,20 @@ typedef NS_ENUM(NSInteger, EndEditingReason) {
     }
 #endif
 }
+
+- (WTF::Optional<unsigned>)activeTouchIdentifierForGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
+{
+#if HAVE(UI_WEB_TOUCH_EVENTS_GESTURE_RECOGNIZER_WITH_ACTIVE_TOUCHES_BY_ID)
+    // FIXME: <rdar://problem/48035706>
+    NSMapTable<NSNumber *, UITouch *> *activeTouches = [_touchEventGestureRecognizer activeTouchesByIdentifier];
+    for (NSNumber *touchIdentifier in activeTouches) {
+        UITouch *touch = [activeTouches objectForKey:touchIdentifier];
+        if ([touch.gestureRecognizers containsObject:gestureRecognizer])
+            return [touchIdentifier unsignedIntValue];
+    }
+#endif
+    return WTF::nullopt;
+}
 #endif
 
 inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecognizer *recognizer)
@@ -1318,19 +1333,18 @@ inline static UIKeyModifierFlags gestureRecognizerModifierFlags(UIGestureRecogni
     for (const auto& touchPoint : touchEvent.touchPoints()) {
         auto phase = touchPoint.phase();
         if (phase == WebKit::WebPlatformTouchPoint::TouchPressed) {
-            auto touchActionData = scrollingCoordinator->touchActionDataAtPoint(touchPoint.location());
-            if (!touchActionData || touchActionData->touchActions.contains(WebCore::TouchAction::Manipulation))
+            auto touchActions = WebKit::touchActionsForPoint(self, touchPoint.location());
+            if (!touchActions || touchActions.containsAny({ WebCore::TouchAction::Auto, WebCore::TouchAction::Manipulation }))
                 continue;
-            if (auto scrollingNodeID = touchActionData->scrollingNodeID)
-                scrollingCoordinator->setTouchDataForTouchIdentifier(*touchActionData, touchPoint.identifier());
-            else {
-                if (!touchActionData->touchActions.contains(WebCore::TouchAction::PinchZoom))
-                    _webView.scrollView.pinchGestureRecognizer.enabled = NO;
-                _preventsPanningInXAxis = !touchActionData->touchActions.contains(WebCore::TouchAction::PanX);
-                _preventsPanningInYAxis = !touchActionData->touchActions.contains(WebCore::TouchAction::PanY);
-            }
+            scrollingCoordinator->setTouchActionsForTouchIdentifier(touchActions, touchPoint.identifier());
+
+            if (!touchActions.contains(WebCore::TouchAction::PinchZoom))
+                _webView.scrollView.pinchGestureRecognizer.enabled = NO;
+            _preventsPanningInXAxis = !touchActions.contains(WebCore::TouchAction::PanX);
+            _preventsPanningInYAxis = !touchActions.contains(WebCore::TouchAction::PanY);
+
         } else if (phase == WebKit::WebPlatformTouchPoint::TouchReleased || phase == WebKit::WebPlatformTouchPoint::TouchCancelled)
-            scrollingCoordinator->clearTouchDataForTouchIdentifier(touchPoint.identifier());
+            scrollingCoordinator->clearTouchActionsForTouchIdentifier(touchPoint.identifier());
     }
 }
 #endif
@@ -2348,12 +2362,6 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
     ASSERT(_potentialTapInProgress);
 
-    // We don't want to clear the selection if it is in editable content.
-    // The selection could have been set by autofocusing on page load and not
-    // reflected in the UI process since the user was not interacting with the page.
-    if (!_page->editorState().isContentEditable)
-        _page->clearSelection();
-
     _lastInteractionLocation = gestureRecognizer.location;
 
     [self _endPotentialTapAndEnableDoubleTapGesturesIfNecessary];
@@ -3079,7 +3087,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 - (void)selectAllForWebView:(id)sender
 {
     [_textSelectionAssistant selectAll:sender];
-    _page->executeEditCommand("selectAll"_s);
+    _page->selectAll();
 }
 
 - (void)toggleBoldfaceForWebView:(id)sender
@@ -4171,7 +4179,7 @@ static WebKit::WritingDirection coreWritingDirection(NSWritingDirection directio
 // Inserts the given string, replacing any selected or marked text.
 - (void)insertText:(NSString *)aStringValue
 {
-    _page->insertTextAsync(aStringValue, WebKit::EditingRange());
+    _page->insertTextAsync(aStringValue, WebKit::EditingRange(), { });
 }
 
 - (BOOL)hasText
@@ -4482,6 +4490,11 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     [super _handleKeyUIEvent:event];
 }
 
+- (void)generateSyntheticEditingCommand:(WebKit::SyntheticEditingCommandType)command
+{
+    _page->generateSyntheticEditingCommand(command);
+}
+
 #if !USE(UIKIT_KEYBOARD_ADDITIONS)
 - (void)handleKeyEvent:(::UIEvent *)event
 {
@@ -4618,6 +4631,9 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
         return NO;
 
     if (_focusedElementInformation.elementType == WebKit::InputType::Select)
+        return NO;
+
+    if (!_webView.scrollView.scrollEnabled)
         return NO;
 
     return YES;
@@ -5169,6 +5185,7 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
     BOOL editableChanged = [self setIsEditable:NO];
 
     _focusedElementInformation.elementType = WebKit::InputType::None;
+    _focusedElementInformation.shouldSynthesizeKeyEventsForUndoAndRedo = false;
     _inputPeripheral = nil;
     _focusRequiresStrongPasswordAssistance = NO;
 
@@ -5733,6 +5750,11 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     return !_ignoreSelectionCommandFadeCount;
 }
 
+- (BOOL)hasHiddenContentEditable
+{
+    return _suppressSelectionAssistantReasons.contains(WebKit::EditableRootIsTransparentOrFullyClipped);
+}
+
 - (BOOL)_shouldSuppressSelectionCommands
 {
     return !!_suppressSelectionAssistantReasons;
@@ -5861,6 +5883,13 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     
     _shareSheet = adoptNS([[WKShareSheet alloc] initWithView:_webView]);
     [_shareSheet setDelegate:self];
+
+#if PLATFORM(IOSMAC)
+    if (!rect) {
+        auto hoverLocationInWebView = [self convertPoint:_lastHoverLocation toView:_webView];
+        rect = WebCore::FloatRect(hoverLocationInWebView.x, hoverLocationInWebView.y, 1, 1);
+    }
+#endif
     
     [_shareSheet presentWithParameters:data inRect:rect completionHandler:WTFMove(completionHandler)];
 #endif
@@ -7072,6 +7101,7 @@ static WebEventFlags webEventFlagsForUIKeyModifierFlags(UIKeyModifierFlags flags
     case UIGestureRecognizerStateBegan:
     case UIGestureRecognizerStateChanged:
         point = [gestureRecognizer locationInView:self];
+        _lastHoverLocation = point;
         break;
     case UIGestureRecognizerStateEnded:
     case UIGestureRecognizerStateCancelled:

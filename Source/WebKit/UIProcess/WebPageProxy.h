@@ -46,6 +46,7 @@
 #include "ShareSheetCallbackID.h"
 #include "ShareableBitmap.h"
 #include "SuspendedPageProxy.h"
+#include "SyntheticEditingCommandType.h"
 #include "SystemPreviewController.h"
 #include "UserMediaPermissionRequestManagerProxy.h"
 #include "VisibleContentRectUpdateInfo.h"
@@ -283,6 +284,7 @@ struct DocumentEditingContextRequest;
 struct EditingRange;
 struct EditorState;
 struct FrameInfoData;
+struct InsertTextOptions;
 struct InteractionInformationRequest;
 struct LoadParameters;
 struct PlatformPopupMenuData;
@@ -595,6 +597,7 @@ public:
 
     void addMIMETypeWithCustomContentProvider(const String& mimeType);
 
+    void selectAll();
     void executeEditCommand(const String& commandName, const String& argument = String());
     void validateCommand(const String& commandName, WTF::Function<void (const String&, bool, int32_t, CallbackBase::Error)>&&);
 
@@ -720,6 +723,7 @@ public:
     void requestEvasionRectsAboveSelection(CompletionHandler<void(const Vector<WebCore::FloatRect>&)>&&);
     void updateSelectionWithDelta(int64_t locationDelta, int64_t lengthDelta, CompletionHandler<void()>&&);
     void requestDocumentEditingContext(WebKit::DocumentEditingContextRequest, CompletionHandler<void(WebKit::DocumentEditingContext)>&&);
+    void generateSyntheticEditingCommand(SyntheticEditingCommandType);
 #if ENABLE(DATA_INTERACTION)
     void didHandleDragStartRequest(bool started);
     void didHandleAdditionalDragItemsRequest(bool added);
@@ -727,7 +731,7 @@ public:
     void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, WebCore::DragSourceAction allowedActions);
     void didConcludeEditDrag(Optional<WebCore::TextIndicatorData>);
 #endif
-#endif
+#endif // PLATFORM(IOS_FAMILY)
 #if ENABLE(DATA_DETECTION)
     void setDataDetectionResult(const DataDetectionResult&);
 #endif
@@ -762,7 +766,7 @@ public:
     CALayer *acceleratedCompositingRootLayer() const;
 
     void setTextAsync(const String&);
-    void insertTextAsync(const String& text, const EditingRange& replacementRange, bool registerUndoGroup = false, EditingRangeIsRelativeTo = EditingRangeIsRelativeTo::EditableRoot, bool suppressSelectionUpdate = false);
+    void insertTextAsync(const String& text, const EditingRange& replacementRange, InsertTextOptions&&);
     void getMarkedRangeAsync(WTF::Function<void (EditingRange, CallbackBase::Error)>&&);
     void getSelectedRangeAsync(WTF::Function<void (EditingRange, CallbackBase::Error)>&&);
     void characterIndexForPointAsync(const WebCore::IntPoint&, WTF::Function<void (uint64_t, CallbackBase::Error)>&&);
@@ -942,6 +946,7 @@ public:
 
     void effectiveAppearanceDidChange();
     bool useDarkAppearance() const;
+    bool useInactiveAppearance() const;
 
 #if PLATFORM(COCOA)
     // Called by the web process through a message.

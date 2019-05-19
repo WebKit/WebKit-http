@@ -1,3 +1,371 @@
+2019-05-09  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win10] Some tests are failing only on specific machines
+        https://bugs.webkit.org/show_bug.cgi?id=197509
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-05-09  Antoine Quint  <graouts@apple.com>
+
+        pointerevents/ios/touch-action-none-in-overflow-scrolling-touch.html is a timeout
+        https://bugs.webkit.org/show_bug.cgi?id=197738
+        <rdar://problem/50588613>
+
+        Reviewed by Antti Koivisto.
+
+        To pass, this test must also disable the legacy "-webkit-overflow-scrolling: touch" behavior.
+
+        * pointerevents/ios/touch-action-none-in-overflow-scrolling-touch.html:
+
+2019-05-09  Antti Koivisto  <antti@apple.com>
+
+        Elements with "display: inline-block" don't have a touch-action region
+        https://bugs.webkit.org/show_bug.cgi?id=197281
+        <rdar://problem/50535081>
+
+        Reviewed by Antoine Quint.
+
+        * pointerevents/ios/touch-action-region-inline-block-expected.txt: Added.
+        * pointerevents/ios/touch-action-region-inline-block.html: Added.
+
+2019-05-08  Antoine Quint  <graouts@apple.com>
+
+        [iOS] Correctly handle overlapping regions for elements with a touch-action property
+        https://bugs.webkit.org/show_bug.cgi?id=194813
+        <rdar://problem/48194708>
+
+        Reviewed by Antti Koivisto.
+
+        Add new tests that check that an element overlapping another element with a "touch-action" property is not affected
+        by the property set on that underlying element.
+
+        * pointerevents/ios/touch-action-none-overlap-expected.txt: Added.
+        * pointerevents/ios/touch-action-none-overlap.html: Added.
+        * pointerevents/ios/touch-action-pan-x-overlap-expected.txt: Added.
+        * pointerevents/ios/touch-action-pan-x-overlap.html: Added.
+        * pointerevents/ios/touch-action-pan-y-overlap-expected.txt: Added.
+        * pointerevents/ios/touch-action-pan-y-overlap.html: Added.
+        * pointerevents/ios/touch-action-pinch-zoom-overlap-expected.txt: Added.
+        * pointerevents/ios/touch-action-pinch-zoom-overlap.html: Added.
+
+2019-05-08  Chris Dumez  <cdumez@apple.com>
+
+        [iOS Debug] ASSERTION FAILED: !m_originalNode in WebCore::JSLazyEventListener::checkValidityForEventTarget(WebCore::EventTarget &)
+        https://bugs.webkit.org/show_bug.cgi?id=197696
+        <rdar://problem/50586956>
+
+        Reviewed by Simon Fraser.
+
+        Add layout test coverage.
+
+        * fast/events/ios/rotation/orientationchange-event-listener-on.body-expected.txt: Added.
+        * fast/events/ios/rotation/orientationchange-event-listener-on.body.html: Added.
+
+2019-05-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r245058.
+
+        Causes crashes under ASan / GuardMalloc
+
+        Reverted changeset:
+
+        "Implement backing-sharing in compositing layers, allowing
+        overlap layers to paint into the backing store of another
+        layer"
+        https://bugs.webkit.org/show_bug.cgi?id=197561
+        https://trac.webkit.org/changeset/245058
+
+2019-05-08  Tim Horton  <timothy_horton@apple.com>
+
+        Unreviewed test rebaselines.
+
+        * platform/ios/editing/deleting/smart-delete-paragraph-003-expected.txt:
+        * platform/ios/editing/pasteboard/smart-paste-paragraph-003-expected.txt:
+        I over-did it with my rebaselines earlier.
+
+2019-05-08  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=197717
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt:
+        * platform/gtk/inspector/css/shadow-scoped-style-expected.txt: Removed.
+        * platform/gtk/js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2019-05-08  Tim Horton  <timothy_horton@apple.com>
+
+        iOS: Selection is dismissed even if click is preventDefault()'d
+        https://bugs.webkit.org/show_bug.cgi?id=197686
+        <rdar://problem/49398824>
+
+        Reviewed by Wenson Hsieh.
+
+        * editing/selection/ios/clear-selection-after-tapping-on-element-with-no-click-handler-expected.txt: Added.
+        * editing/selection/ios/clear-selection-after-tapping-on-element-with-no-click-handler.html: Added.
+        * editing/selection/ios/persist-selection-after-tapping-on-element-with-click-handler-expected.txt: Added.
+        * editing/selection/ios/persist-selection-after-tapping-on-element-with-click-handler.html: Added.
+        New tests.
+
+        * platform/ios/editing/deleting/smart-delete-paragraph-003-expected.txt:
+        * platform/ios/editing/pasteboard/smart-paste-paragraph-003-expected.txt:
+        Rebaseline since we changed the timing of editing callbacks by changing where the selection happens.
+
+2019-05-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Add a quirk to synthesize mouse events when modifying the selection
+        https://bugs.webkit.org/show_bug.cgi?id=197683
+        <rdar://problem/48003980>
+
+        Reviewed by Tim Horton.
+
+        Adds a new layout test to enable the site-specific quirk and verify that mouse events are dispatched when
+        changing selection, both via the callout menu and by moving the selection grabber using gestures.
+
+        * editing/selection/ios/dispatch-mouse-events-when-modifying-selection-quirk-expected.txt: Added.
+        * editing/selection/ios/dispatch-mouse-events-when-modifying-selection-quirk.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.waitForMenuToHide.return.new.Promise):
+        (window.UIHelper.waitForMenuToHide):
+
+        Introduce a new helper method to wait for the menu to hide (on iOS, this refers to the callout menu).
+
+2019-05-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening for Mojave.
+
+        * platform/mac-wk2/TestExpectations: Skip two webgl tests that time out very frequently.
+
+2019-05-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement backing-sharing in compositing layers, allowing overlap layers to paint into the backing store of another layer
+        https://bugs.webkit.org/show_bug.cgi?id=197561
+        <rdar://problem/50445998>
+
+        Reviewed by Antti Koivisto.
+        
+        New tests for backing sharing, and new baselines of tests whose behavior is changed.
+
+        Scrolling tree tests that would be invalidate by sharing are changed to defeat sharing by adding
+        compositing layers early in stacking order.
+
+        * TestExpectations:
+        * compositing/geometry/limit-layer-bounds-clipping-ancestor-expected.txt:
+        * compositing/layer-creation/overflow-scroll-overlap-expected.txt:
+        * compositing/layer-creation/overflow-scroll-overlap.html:
+        * compositing/overflow/scrolling-content-clip-to-viewport.html:
+        * compositing/rtl/rtl-scrolling-with-transformed-descendants-expected.txt:
+        * compositing/shared-backing/overflow-scroll/absolute-in-stacking-relative-in-scroller-expected.txt: Copied from LayoutTests/platform/ios/compositing/overflow/scrolling-content-clip-to-viewport-expected.txt.
+        * compositing/shared-backing/overflow-scroll/absolute-in-stacking-relative-in-scroller.html: Added.
+        * compositing/shared-backing/overflow-scroll/composited-absolute-in-absolute-in-relative-in-scroller-expected.txt: Added.
+        * compositing/shared-backing/overflow-scroll/composited-absolute-in-absolute-in-relative-in-scroller.html: Added.
+        * compositing/shared-backing/overflow-scroll/nested-absolute-with-clipping-in-stacking-overflow-expected.txt: Added.
+        * compositing/shared-backing/overflow-scroll/nested-absolute-with-clipping-in-stacking-overflow.html: Copied from LayoutTests/scrollingcoordinator/scrolling-tree/nested-absolute-in-sc-overflow.html.
+        * compositing/shared-backing/overflow-scroll/previous-sibling-prevents-inclusiveness-expected.txt: Added.
+        * compositing/shared-backing/overflow-scroll/previous-sibling-prevents-inclusiveness.html: Added.
+        * compositing/shared-backing/overflow-scroll/relative-in-clipping-in-scroller-in-clipping-expected.txt: Added.
+        * compositing/shared-backing/overflow-scroll/relative-in-clipping-in-scroller-in-clipping.html: Added.
+        * compositing/shared-backing/overflow-scroll/relative-in-clipping-in-scroller-in-relative-clipping-expected.txt: Added.
+        * compositing/shared-backing/overflow-scroll/relative-in-clipping-in-scroller-in-relative-clipping.html: Added.
+        * compositing/shared-backing/overflow-scroll/relative-in-div-in-overflow-scroll-expected.txt: Copied from LayoutTests/platform/ios/compositing/overflow/scrolling-content-clip-to-viewport-expected.txt.
+        * compositing/shared-backing/overflow-scroll/relative-in-div-in-overflow-scroll.html: Added.
+        * compositing/shared-backing/overflow-scroll/scrolled-contents-has-painted-content-expected.txt: Copied from LayoutTests/platform/ios/compositing/overflow/scrolling-content-clip-to-viewport-expected.txt.
+        * compositing/shared-backing/overflow-scroll/scrolled-contents-has-painted-content.html: Added.
+        * compositing/shared-backing/overflow-scroll/scrolled-contents-unconstrained-clip-expected.html: Added.
+        * compositing/shared-backing/overflow-scroll/scrolled-contents-unconstrained-clip.html: Added.
+        * compositing/shared-backing/overflow-scroll/shared-layer-clipping-expected.html: Added.
+        * compositing/shared-backing/overflow-scroll/shared-layer-clipping.html: Added.
+        * compositing/shared-backing/overflow-scroll/shared-layer-composited-bounds-expected.txt: Added.
+        * compositing/shared-backing/overflow-scroll/shared-layer-composited-bounds.html: Added.
+        * compositing/shared-backing/overflow-scroll/shared-layer-nested-relative-stacking-expected.txt: Added.
+        * compositing/shared-backing/overflow-scroll/shared-layer-nested-relative-stacking.html: Added.
+        * compositing/shared-backing/overflow-scroll/shared-layer-repaint-expected.txt: Added.
+        * compositing/shared-backing/overflow-scroll/shared-layer-repaint.html: Added.
+        * compositing/shared-backing/partial-compositing-update-expected.txt: Added.
+        * compositing/shared-backing/partial-compositing-update.html: Added.
+        * compositing/shared-backing/partial-compositing-update2-expected.txt: Added.
+        * compositing/shared-backing/partial-compositing-update2.html: Added.
+        * compositing/shared-backing/remove-sharing-layer-expected.txt: Added.
+        * compositing/shared-backing/remove-sharing-layer.html: Added.
+        * compositing/shared-backing/sharing-cached-clip-rects-expected.txt: Added.
+        * compositing/shared-backing/sharing-cached-clip-rects.html: Added.
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios-wk2/compositing/shared-backing/overflow-scroll/absolute-in-stacking-relative-in-scroller-expected.txt: Copied from LayoutTests/platform/ios/compositing/overflow/scrolling-content-clip-to-viewport-expected.txt.
+        * platform/ios-wk2/compositing/shared-backing/overflow-scroll/composited-absolute-in-absolute-in-relative-in-scroller-expected.txt: Added.
+        * platform/ios-wk2/compositing/shared-backing/overflow-scroll/nested-absolute-with-clipping-in-stacking-overflow-expected.txt: Added.
+        * platform/ios-wk2/compositing/shared-backing/overflow-scroll/previous-sibling-prevents-inclusiveness-expected.txt: Added.
+        * platform/ios-wk2/compositing/shared-backing/overflow-scroll/relative-in-clipping-in-scroller-in-clipping-expected.txt: Added.
+        * platform/ios-wk2/compositing/shared-backing/overflow-scroll/relative-in-clipping-in-scroller-in-relative-clipping-expected.txt: Added.
+        * platform/ios-wk2/compositing/shared-backing/overflow-scroll/relative-in-div-in-overflow-scroll-expected.txt: Copied from LayoutTests/platform/ios/compositing/overflow/scrolling-content-clip-to-viewport-expected.txt.
+        * platform/ios-wk2/compositing/shared-backing/overflow-scroll/scrolled-contents-has-painted-content-expected.txt: Copied from LayoutTests/platform/ios/compositing/overflow/scrolling-content-clip-to-viewport-expected.txt.
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/nested-absolute-in-absolute-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/nested-absolute-in-relative-in-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/nested-absolute-in-sc-overflow-expected.txt:
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/positioned-nodes-complex-expected.txt:
+        * platform/ios/compositing/geometry/limit-layer-bounds-clipping-ancestor-expected.txt:
+        * platform/ios/compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants-expected.txt:
+        * platform/ios/compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants2-expected.txt:
+        * platform/ios/compositing/overflow/scrolling-content-clip-to-viewport-expected.txt:
+        * platform/mac-wk1/compositing/overflow/scrolling-content-clip-to-viewport-expected.txt:
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants-expected.txt:
+        * platform/mac/compositing/overflow/clipping-behaviour-change-is-not-propagated-to-descendants2-expected.txt:
+        * scrollingcoordinator/scrolling-tree/nested-absolute-in-absolute-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/nested-absolute-in-absolute-overflow.html:
+        * scrollingcoordinator/scrolling-tree/nested-absolute-in-relative-in-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/nested-absolute-in-relative-in-overflow.html:
+        * scrollingcoordinator/scrolling-tree/nested-absolute-in-sc-overflow-expected.txt:
+        * scrollingcoordinator/scrolling-tree/nested-absolute-in-sc-overflow.html:
+        * scrollingcoordinator/scrolling-tree/positioned-nodes-complex-expected.txt:
+        * scrollingcoordinator/scrolling-tree/positioned-nodes-complex.html:
+
+2019-05-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        TestRunnerWKWebView's menu callbacks should be cleared upon UI script completion
+        https://bugs.webkit.org/show_bug.cgi?id=197685
+
+        Reviewed by Alex Christensen.
+
+        Adjust a couple of existing layout tests such that they don't rely on didShowMenuCallback and
+        didHideMenuCallback sticking around across UI scripts. Currently, these layout tests do the following:
+
+        1. Run a UI script that registers menu callback handlers.
+        2. Run a subsequent UI script that will cause the callback handlers to be fired (e.g. clicking on an element).
+
+        After making the change in the test runner to clear menu callbacks upon script completion, callbacks registered
+        in step (1) are now unregistered when step (2) completes. Instead, we can rewrite this test logic so that
+        they're driven by a single UI script.
+
+        * editing/pasteboard/ios/dom-paste-consecutive-confirmations.html:
+        * editing/pasteboard/ios/dom-paste-requires-user-gesture.html:
+
+        Instead of using internals.withUserGesture, put the test logic under a click handler (which is inside the scope
+        of a user gesture token), and then use requestAnimationFrame to schedule a second programmatic paste that is
+        outside the scope of user interaction. As opposed to setTimeout, requestAnimationFrame does not propagate the
+        current user gesture token.
+
+        * editing/pasteboard/ios/resources/dom-paste-helper.js:
+        (return.new.Promise.):
+        (async._waitForOrTriggerPasteMenu):
+
+2019-05-08  Rob Buis  <rbuis@igalia.com>
+
+        Link prefetch not useful for top-level navigation
+        https://bugs.webkit.org/show_bug.cgi?id=195623
+
+        Reviewed by Youenn Fablet.
+
+        Verify that prefetching a cross-domain top-level main resource
+        is cached in the prefetch cache and only loaded once, and that non
+        top-level prefetches keep the old behavior.
+
+        * http/tests/cache/link-prefetch-main-resource-expected.txt: Added.
+        * http/tests/cache/link-prefetch-main-resource-iframe-expected.txt: Added.
+        * http/tests/cache/link-prefetch-main-resource-iframe.html: Added.
+        * http/tests/cache/link-prefetch-main-resource.html: Added.
+        * http/tests/cache/resources/prefetched-main-resource-iframe.php: Added.
+        * http/tests/cache/resources/prefetched-main-resource.php: Added.
+        * http/tests/contentextensions/prefetch-blocked-expected.txt: Added.
+        * http/tests/contentextensions/prefetch-blocked.html: Added.
+        * http/tests/contentextensions/prefetch-blocked.html.json: Added.
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-05-08  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, a build fix after r245043
+
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https.html:
+
+2019-05-07  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] A new request should always suppress the pending request if any
+        https://bugs.webkit.org/show_bug.cgi?id=191517
+        <rdar://problem/46888222>
+
+        Reviewed by Brent Fulgham.
+
+        * http/wpt/webauthn/public-key-credential-create-failure.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-failure.https.html:
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-create-success-hid.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-failure.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https-expected.txt:
+        * http/wpt/webauthn/public-key-credential-get-success-hid.https.html:
+        * http/wpt/webauthn/resources/new-page.html: Added.
+
+2019-05-07  Youenn Fablet  <youenn@apple.com>
+
+        Video stream freeze on front camera orientation changing
+        https://bugs.webkit.org/show_bug.cgi?id=197227
+        <rdar://problem/50175498>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-rotation-expected.txt:
+        * webrtc/video-rotation.html:
+
+2019-05-07  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct JSON parser to address unterminated escape character
+        https://bugs.webkit.org/show_bug.cgi?id=197582
+        <rdar://problem/50459177>
+
+        Reviewed by Alex Christensen.
+
+        * applicationmanifest/display-mode-bad-manifest-expected.txt:
+        * applicationmanifest/display-mode-bad-manifest.html:
+        * applicationmanifest/resources/bad.manifest: Added.
+        * js/resources/JSON-parse.js: Add test case for unterminated escape.
+        * js/dom/JSON-parse-expected.txt: Add new test case.
+        * TestWebKitAPI/Tests/WTF/JSONValue.cpp: Add new false test case
+          for unterminated escape character.
+
+2019-05-07  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Make two changes requested by developers and complete refactoring and cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=197648
+        <rdar://problem/50527493>
+
+        Reviewed by Chris Dumez.
+
+        The changed test cases have had calls to WebCore::Internals::setUserGrantsStorageAccess() removed
+        since it was dead code.
+
+        One of the new tests, deny-with-prompt-does-not-preserve-gesture.html, is marked [ Skip ] for now since
+        we lack the ability to click "Don't allow" in the prompt. I wanted to include the test anyway so that
+        we have it. I have done a manual test to make sure the code does the right thing for this case.
+
+        * http/tests/storageAccess/deny-with-prompt-does-not-preserve-gesture-expected.txt: Added.
+        * http/tests/storageAccess/deny-with-prompt-does-not-preserve-gesture.html: Copied from LayoutTests/http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe-pop-window.html.
+        * http/tests/storageAccess/deny-without-prompt-preserves-gesture-expected.txt: Added.
+        * http/tests/storageAccess/deny-without-prompt-preserves-gesture.html: Copied from LayoutTests/http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe-pop-window.html.
+        * http/tests/storageAccess/grant-with-prompt-preserves-gesture-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe-pop-window-expected.txt.
+        * http/tests/storageAccess/grant-with-prompt-preserves-gesture.html: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-access-cross-origin-non-sandboxed-iframe-pop-window.html.
+        * http/tests/storageAccess/has-storage-access-true-if-feature-off-expected.txt: Added.
+        * http/tests/storageAccess/has-storage-access-true-if-feature-off.html: Added.
+        * http/tests/storageAccess/resources/request-storage-access-and-immediately-postmessage-iframe.html:
+        * http/tests/storageAccess/resources/request-storage-access-iframe-and-pop-window.html:
+        * http/tests/storageAccess/resources/request-storage-access-iframe.html:
+        * http/tests/storageAccess/resources/request-storage-access-without-user-gesture-iframe.html:
+        * http/tests/storageAccess/resources/self-navigating-frame-after-granted-access.html:
+        * platform/mac-wk2/TestExpectations:
+            Added expectations for the new tests.
+
+2019-05-07  Antti Koivisto  <antti@apple.com>
+
+        <body> with overflow:hidden shouldn't be keyboard scrollable on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=197659
+
+        Reviewed by Antoine Quint.
+
+        * fast/scrolling/ios/body-overflow-hidden-keyboard-expected.html: Added.
+        * fast/scrolling/ios/body-overflow-hidden-keyboard.html: Added.
+
 2019-05-07  Ryan Haddad  <ryanhaddad@apple.com>
 
         media/W3C/video/events/event_progress.html is flaky.

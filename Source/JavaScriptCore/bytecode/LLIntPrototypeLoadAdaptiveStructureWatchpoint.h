@@ -33,7 +33,7 @@ namespace JSC {
 
 class LLIntPrototypeLoadAdaptiveStructureWatchpoint final : public Watchpoint {
 public:
-    LLIntPrototypeLoadAdaptiveStructureWatchpoint(CodeBlock*, const ObjectPropertyCondition&, OpGetById::Metadata&);
+    LLIntPrototypeLoadAdaptiveStructureWatchpoint(CodeBlock*, const ObjectPropertyCondition&, unsigned bytecodeOffset);
 
     void install(VM&);
 
@@ -47,7 +47,7 @@ protected:
 private:
     CodeBlock* m_owner;
     ObjectPropertyCondition m_key;
-    OpGetById::Metadata& m_getByIdMetadata;
+    unsigned m_bytecodeOffset;
 };
 
 } // namespace JSC

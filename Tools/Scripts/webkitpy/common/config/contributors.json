@@ -3148,10 +3148,11 @@
       "emails" : [
          "jbedard@apple.com"
       ],
+      "expertise" : "webkitpy",
       "nicks" : [
          "jbedard"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Jonathan Davis" : {
       "emails" : [
@@ -3201,12 +3202,13 @@
    "Joonghun Park" : {
       "emails" : [
          "jh718.park@samsung.com",
-         "jh718.park@gmail.com"
+         "jh718.park@gmail.com",
+         "pjh0718@gmail.com"
       ],
       "nicks" : [
          "joonghunpark"
       ],
-      "status" : "contributor"
+      "status" : "committer"
    },
    "Joost de Valk" : {
       "emails" : [
@@ -4561,6 +4563,15 @@
          "olliej"
       ],
       "status" : "contributor"
+   },
+   "Oriol Brufau" : {
+      "emails" : [
+         "obrufau@igalia.com"
+      ],
+      "nicks" : [
+         "obrufau"
+      ],
+      "status" : "committer"
    },
    "Pablo Flouret" : {
       "emails" : [

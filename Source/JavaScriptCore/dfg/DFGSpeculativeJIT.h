@@ -1356,6 +1356,7 @@ public:
     void compileValueDiv(Node*);
     void compileArithDiv(Node*);
     void compileArithFRound(Node*);
+    void compileValueMod(Node*);
     void compileArithMod(Node*);
     void compileArithPow(Node*);
     void compileArithRounding(Node*);
@@ -1650,7 +1651,7 @@ public:
     template<bool strict>
     GPRReg fillSpeculateInt32Internal(Edge, DataFormat& returnFormat);
     
-    void cageTypedArrayStorage(GPRReg);
+    void cageTypedArrayStorage(GPRReg, GPRReg);
     
     void recordSetLocal(
         VirtualRegister bytecodeReg, VirtualRegister machineReg, DataFormat format)

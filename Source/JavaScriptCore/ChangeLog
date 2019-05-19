@@ -1,3 +1,774 @@
+2019-05-09  Xan López  <xan@igalia.com>
+
+        [CMake] Detect SSE2 at compile time
+        https://bugs.webkit.org/show_bug.cgi?id=196488
+
+        Reviewed by Carlos Garcia Campos.
+
+        * assembler/MacroAssemblerX86Common.cpp: Remove unnecessary (and
+        incorrect) static_assert.
+        (JSC::MacroAssemblerX86Common::collectCPUFeatures):
+        * assembler/MacroAssemblerX86Common.h: Remove SSE2 flags.
+
+2019-05-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, build fix after r245064
+        https://bugs.webkit.org/show_bug.cgi?id=197110
+
+        * runtime/GenericTypedArrayView.h:
+
+2019-05-08  Saam barati  <sbarati@apple.com>
+
+        AccessGenerationState::emitExplicitExceptionHandler can clobber an in use register
+        https://bugs.webkit.org/show_bug.cgi?id=197715
+        <rdar://problem/50399252>
+
+        Reviewed by Filip Pizlo.
+
+        AccessGenerationState::emitExplicitExceptionHandler was always clobbering
+        x86's r9 without considering if that register was needed to be preserved
+        by the IC. This leads to bad things when the DFG/FTL need that register when
+        OSR exitting after an exception from a GetById call.
+
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::Code):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessGenerationState::emitExplicitExceptionHandler):
+        * runtime/Options.h:
+
+2019-05-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r245068.
+
+        Caused debug layout tests to exit early due to an assertion
+        failure.
+
+        Reverted changeset:
+
+        "All prototypes should call didBecomePrototype()"
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+        https://trac.webkit.org/changeset/245068
+
+2019-05-08  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Invalid DFG JIT genereation in high CPU usage state
+        https://bugs.webkit.org/show_bug.cgi?id=197453
+
+        Reviewed by Saam Barati.
+
+        We have a DFG graph like this.
+
+            a: JSConstant(rope JSString)
+            b: CheckStringIdent(Check:StringUse:@a)
+            ... AI think this is unreachable ...
+
+        When executing StringUse edge filter onto @a, AbstractValue::filterValueByType clears AbstractValue and makes it None.
+        This is because @a constant produces SpecString (SpecStringVar | SpecStringIdent) while StringUse edge filter requires
+        SpecStringIdent. AbstractValue::filterValueByType has an assumption that the JS constant always produces the same
+        SpeculatedType. So it clears AbstractValue completely.
+        But this assumption is wrong. JSString can produce SpecStringIdent later if the string is resolved to AtomicStringImpl.
+        AI think that we always fail. But once the string is resolved to AtomicStringImpl, we pass this check. So we execute
+        the breakpoint emitted by DFG since DFG think this is unreachable.
+
+        In this patch, we just clear the `m_value` if AbstractValue type filter fails with the held constant, since the constant
+        may produce a narrower type which can meet the type filter later.
+
+        * dfg/DFGAbstractValue.cpp:
+        (JSC::DFG::AbstractValue::filterValueByType):
+
+2019-05-08  Robin Morisset  <rmorisset@apple.com>
+
+        All prototypes should call didBecomePrototype()
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+
+        Reviewed by Saam Barati.
+
+        This changelog already landed, but the commit was missing the actual changes.
+
+        Otherwise we won't remember to run haveABadTime() when someone adds to them an indexed accessor.
+
+        I added a check used in both Structure::finishCreation() and Structure::changePrototypeTransition to make sure we don't
+        create structures with invalid prototypes.
+        It found a lot of objects that are used as prototypes in JSGlobalObject and yet were missing didBecomePrototype() in their finishCreation().
+        Somewhat surprisingly, some of them have names like FunctionConstructor and not only FooPrototype.
+
+        * runtime/BigIntPrototype.cpp:
+        (JSC::BigIntPrototype::finishCreation):
+        * runtime/BooleanPrototype.cpp:
+        (JSC::BooleanPrototype::finishCreation):
+        * runtime/DatePrototype.cpp:
+        (JSC::DatePrototype::finishCreation):
+        * runtime/ErrorConstructor.cpp:
+        (JSC::ErrorConstructor::finishCreation):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::ErrorPrototype::finishCreation):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::FunctionConstructor::finishCreation):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::FunctionPrototype::finishCreation):
+        * runtime/IntlCollatorPrototype.cpp:
+        (JSC::IntlCollatorPrototype::finishCreation):
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototype::finishCreation):
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatPrototype::finishCreation):
+        * runtime/IntlPluralRulesPrototype.cpp:
+        (JSC::IntlPluralRulesPrototype::finishCreation):
+        * runtime/JSArrayBufferPrototype.cpp:
+        (JSC::JSArrayBufferPrototype::finishCreation):
+        * runtime/JSDataViewPrototype.cpp:
+        (JSC::JSDataViewPrototype::finishCreation):
+        * runtime/JSGenericTypedArrayViewPrototypeInlines.h:
+        (JSC::JSGenericTypedArrayViewPrototype<ViewClass>::finishCreation):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::createConsoleProperty):
+        * runtime/JSPromisePrototype.cpp:
+        (JSC::JSPromisePrototype::finishCreation):
+        * runtime/JSTypedArrayViewConstructor.cpp:
+        (JSC::JSTypedArrayViewConstructor::finishCreation):
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+        * runtime/NumberPrototype.cpp:
+        (JSC::NumberPrototype::finishCreation):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        * runtime/Structure.cpp:
+        (JSC::Structure::isValidPrototype):
+        (JSC::Structure::changePrototypeTransition):
+        * runtime/Structure.h:
+        * runtime/SymbolPrototype.cpp:
+        (JSC::SymbolPrototype::finishCreation):
+        * wasm/js/WebAssemblyCompileErrorPrototype.cpp:
+        (JSC::WebAssemblyCompileErrorPrototype::finishCreation):
+        * wasm/js/WebAssemblyInstancePrototype.cpp:
+        (JSC::WebAssemblyInstancePrototype::finishCreation):
+        * wasm/js/WebAssemblyLinkErrorPrototype.cpp:
+        (JSC::WebAssemblyLinkErrorPrototype::finishCreation):
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        (JSC::WebAssemblyMemoryPrototype::finishCreation):
+        * wasm/js/WebAssemblyModulePrototype.cpp:
+        (JSC::WebAssemblyModulePrototype::finishCreation):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::WebAssemblyPrototype::finishCreation):
+        * wasm/js/WebAssemblyRuntimeErrorPrototype.cpp:
+        (JSC::WebAssemblyRuntimeErrorPrototype::finishCreation):
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+        (JSC::WebAssemblyTablePrototype::finishCreation):
+
+2019-05-08  Keith Miller  <keith_miller@apple.com>
+
+        Remove Gigacage from arm64 and use PAC for arm64e instead
+        https://bugs.webkit.org/show_bug.cgi?id=197110
+
+        Reviewed by Saam Barati.
+
+        This patch makes a bunch of changes. I'll start with global changes then go over changes to each tier and finish with bug fixes.
+
+        Global Changes:
+        Change CagedBarrierPtr to work with PAC so constructors and accessors now expect to receive a length.
+        Update assembler helper methods to use do PAC when caging.
+
+        LLInt:
+        Add arm64e.rb backend as we missed that when originally open sourcing our arm64e code.
+        Add a new optional t6 temporary, which is only used currently on arm64e for GetByVal on a TypedArray.
+        Refactor caging into two helper macros for Primitive/JSValue cages.
+
+        Baseline/DFG:
+        Add authentication where needed for GetByVal and inline object construction.
+
+        FTL:
+        Add a new ValueRep that allows for a late register use. We want this for the authentication patchpoint since we use the length register at the same time as we are defing the authenticated pointer.
+
+        Wasm:
+        Use the TaggedArrayStoragePtr class for the memory base pointer. In theory we should be caging those pointers but I don't want to risk introducing a performance regression with the rest of this change. I've filed https://bugs.webkit.org/show_bug.cgi?id=197620 to do this later.
+        As we no longer have the Gigacage using most of our VA memory, we can enable fast memories on iOS.
+        Using fast memories leads to roughly a 2% JetStream2 speedup.
+
+        * assembler/MacroAssemblerARM64E.h:
+        (JSC::MacroAssemblerARM64E::tagArrayPtr):
+        (JSC::MacroAssemblerARM64E::untagArrayPtr):
+        (JSC::MacroAssemblerARM64E::removeArrayPtrTag):
+        * b3/B3LowerToAir.cpp:
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::admitsStack):
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::forEachArgImpl):
+        (JSC::B3::StackmapSpecial::isArgValidForRep):
+        * b3/B3Validate.cpp:
+        * b3/B3ValueRep.cpp:
+        (JSC::B3::ValueRep::addUsedRegistersTo const):
+        (JSC::B3::ValueRep::dump const):
+        (WTF::printInternal):
+        * b3/B3ValueRep.h:
+        (JSC::B3::ValueRep::ValueRep):
+        (JSC::B3::ValueRep::isReg const):
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::newTypedArrayWithSize):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::jumpForTypedArrayIsNeuteredIfOutOfBounds):
+        (JSC::DFG::SpeculativeJIT::cageTypedArrayStorage):
+        (JSC::DFG::SpeculativeJIT::compileGetIndexedPropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileGetTypedArrayByteOffset):
+        (JSC::DFG::SpeculativeJIT::compileNewTypedArrayWithSize):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetIndexedPropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetTypedArrayByteOffset):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewTypedArray):
+        (JSC::FTL::DFG::LowerDFGToB3::compileDataViewGet):
+        (JSC::FTL::DFG::LowerDFGToB3::compileDataViewSet):
+        (JSC::FTL::DFG::LowerDFGToB3::untagArrayPtr):
+        (JSC::FTL::DFG::LowerDFGToB3::caged):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateTypedArrayIsNotNeutered):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::cageConditionally):
+        * jit/IntrinsicEmitter.cpp:
+        (JSC::IntrinsicGetterAccessCase::emitIntrinsicGetter):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitDirectArgumentsGetByVal):
+        (JSC::JIT::emitIntTypedArrayGetByVal):
+        (JSC::JIT::emitFloatTypedArrayGetByVal):
+        (JSC::JIT::emitIntTypedArrayPutByVal):
+        (JSC::JIT::emitFloatTypedArrayPutByVal):
+        * jit/PolymorphicCallStubRoutine.cpp:
+        (JSC::PolymorphicCallNode::clearCallLinkInfo):
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/arm64.rb:
+        * offlineasm/arm64e.rb: Added.
+        * offlineasm/ast.rb:
+        * offlineasm/instructions.rb:
+        * offlineasm/registers.rb:
+        * offlineasm/x86.rb:
+        * runtime/ArrayBuffer.cpp:
+        (JSC::SharedArrayBufferContents::SharedArrayBufferContents):
+        (JSC::SharedArrayBufferContents::~SharedArrayBufferContents):
+        (JSC::ArrayBufferContents::ArrayBufferContents):
+        (JSC::ArrayBufferContents::destroy):
+        (JSC::ArrayBufferContents::tryAllocate):
+        (JSC::ArrayBufferContents::makeShared):
+        (JSC::ArrayBufferContents::copyTo):
+        * runtime/ArrayBuffer.h:
+        (JSC::SharedArrayBufferContents::data const):
+        (JSC::ArrayBufferContents::data const):
+        (JSC::ArrayBuffer::data):
+        (JSC::ArrayBuffer::data const):
+        (JSC::ArrayBuffer::byteLength const):
+        * runtime/ArrayBufferView.cpp:
+        (JSC::ArrayBufferView::ArrayBufferView):
+        * runtime/ArrayBufferView.h:
+        (JSC::ArrayBufferView::baseAddress const):
+        (JSC::ArrayBufferView::byteLength const):
+        (JSC::ArrayBufferView::setRangeImpl):
+        (JSC::ArrayBufferView::getRangeImpl):
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedScopedArgumentsTable::encode):
+        (JSC::CachedScopedArgumentsTable::decode const):
+        * runtime/CagedBarrierPtr.h:
+        (JSC::CagedBarrierPtr::CagedBarrierPtr):
+        (JSC::CagedBarrierPtr::set):
+        (JSC::CagedBarrierPtr::get const):
+        (JSC::CagedBarrierPtr::getMayBeNull const):
+        (JSC::CagedBarrierPtr::getUnsafe const):
+        (JSC::CagedBarrierPtr::at const):
+        (JSC::CagedBarrierPtr::operator== const):
+        (JSC::CagedBarrierPtr::operator bool const):
+        (JSC::CagedBarrierPtr::setWithoutBarrier):
+        (JSC::CagedBarrierPtr::operator* const): Deleted.
+        (JSC::CagedBarrierPtr::operator-> const): Deleted.
+        (JSC::CagedBarrierPtr::operator[] const): Deleted.
+        (): Deleted.
+        * runtime/DataView.cpp:
+        (JSC::DataView::DataView):
+        * runtime/DataView.h:
+        (JSC::DataView::get):
+        (JSC::DataView::set):
+        * runtime/DirectArguments.cpp:
+        (JSC::DirectArguments::visitChildren):
+        (JSC::DirectArguments::overrideThings):
+        (JSC::DirectArguments::unmapArgument):
+        * runtime/DirectArguments.h:
+        * runtime/GenericArguments.h:
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::visitChildren):
+        (JSC::GenericArguments<Type>::initModifiedArgumentsDescriptor):
+        (JSC::GenericArguments<Type>::setModifiedArgumentDescriptor):
+        (JSC::GenericArguments<Type>::isModifiedArgumentDescriptor):
+        * runtime/GenericTypedArrayView.h:
+        * runtime/GenericTypedArrayViewInlines.h:
+        (JSC::GenericTypedArrayView<Adaptor>::GenericTypedArrayView):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::ConstructionContext::ConstructionContext):
+        (JSC::JSArrayBufferView::JSArrayBufferView):
+        (JSC::JSArrayBufferView::finalize):
+        (JSC::JSArrayBufferView::slowDownAndWasteMemory):
+        * runtime/JSArrayBufferView.h:
+        (JSC::JSArrayBufferView::ConstructionContext::vector const):
+        (JSC::JSArrayBufferView::isNeutered):
+        (JSC::JSArrayBufferView::hasVector const):
+        (JSC::JSArrayBufferView::vector const):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::createUninitialized):
+        (JSC::JSGenericTypedArrayView<Adaptor>::estimatedSize):
+        (JSC::JSGenericTypedArrayView<Adaptor>::visitChildren):
+        * runtime/Options.h:
+        * runtime/ScopedArgumentsTable.cpp:
+        (JSC::ScopedArgumentsTable::clone):
+        (JSC::ScopedArgumentsTable::setLength):
+        * runtime/ScopedArgumentsTable.h:
+        * runtime/SymbolTable.h:
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::restoreWebAssemblyGlobalState):
+        (JSC::Wasm::AirIRGenerator::addCallIndirect):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::restoreWebAssemblyGlobalState):
+        (JSC::Wasm::B3IRGenerator::addCallIndirect):
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::complete):
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::wasmToWasm):
+        * wasm/WasmInstance.h:
+        (JSC::Wasm::Instance::cachedMemory const):
+        (JSC::Wasm::Instance::updateCachedMemory):
+        * wasm/WasmMemory.cpp:
+        (JSC::Wasm::Memory::Memory):
+        (JSC::Wasm::Memory::~Memory):
+        (JSC::Wasm::Memory::grow):
+        (JSC::Wasm::Memory::dump const):
+        * wasm/WasmMemory.h:
+        (JSC::Wasm::Memory::memory const):
+        * wasm/js/JSToWasm.cpp:
+        (JSC::Wasm::createJSToWasmWrapper):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::WebAssemblyFunction::jsCallEntrypointSlow):
+
+2019-05-08  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueMod into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186174
+
+        Reviewed by Saam Barati.
+
+        This patch is introducing a new DFG node called ValueMod, that is
+        responsible to handle BigInt and Untyped specialization of op_mod.
+        With the introduction of BigInt, we think that cases with
+        ValueMod(Untyped, Untyped) can be more common and we introduced
+        support for such kind of node.
+
+        * dfg/DFGAbstractInterpreter.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::handleConstantDivOp):
+
+        We are abstracting the constant rules of division operations. It
+        includes ArithDiv, ValueDiv, ArithMod and ValueMod, since they perform
+        the same analysis.
+
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::makeSafe):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+
+        Here we check if lhs and rhs have number result to emit ArithMod.
+        Otherwise, we need to fallback to ValueMod and let fixup replace this
+        operation when possible.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+
+        ValueMod(BigIntUse) doesn't clobberize world because it only calls
+        `operationModBigInt`.
+
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+
+        ValueMod(BigIntUse) can trigger GC since it allocates intermediate
+        JSBigInt to perform calculation. ValueMod(UntypedUse) can trigger GC
+        because it can execute arbritary code from user.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupArithDivInt32):
+
+        Function created to simplify readability of ArithDiv/AirthMod fixup
+        operation.
+
+        (JSC::DFG::FixupPhase::fixupArithDiv):
+        (JSC::DFG::FixupPhase::fixupNode):
+
+        Following the same fixup rules of ArithDiv.
+
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::binaryOp):
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+
+        ValueMod follows the same prediction propagation rules of ArithMod and
+        the same rules for `doDoubleVoting`.
+
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueMod):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGValidate.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueMod):
+
+2019-05-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] DFG_ASSERT failed in lowInt52
+        https://bugs.webkit.org/show_bug.cgi?id=197569
+
+        Reviewed by Saam Barati.
+
+        GetStack with FlushedInt52 should load the flushed value in Int52 form and put the result in m_int52Values / m_strictInt52Values. Previously,
+        we load it in JSValue / Int32 form and lowInt52 fails to get appropriate one since GetStack does not put the result in m_int52Values / m_strictInt52Values.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetStack):
+
+2019-05-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] LLIntPrototypeLoadAdaptiveStructureWatchpoint does not require Bag<>
+        https://bugs.webkit.org/show_bug.cgi?id=197645
+
+        Reviewed by Saam Barati.
+
+        We are using HashMap<std::tuple<Structure*, const Instruction*>, Bag<LLIntPrototypeLoadAdaptiveStructureWatchpoint>> for LLIntPrototypeLoadAdaptiveStructureWatchpoint,
+        but this has several memory inefficiency.
+
+        1. Structure* and Instruction* are too large. We can just use StructureID and bytecodeOffset (unsigned).
+        2. While we are using Bag<>, we do not add a new LLIntPrototypeLoadAdaptiveStructureWatchpoint after constructing this Bag first. So we can
+           use Vector<LLIntPrototypeLoadAdaptiveStructureWatchpoint> instead. We ensure that new entry won't be added to this Vector by making Watchpoint
+           non-movable.
+        3. Instead of having OpGetById::Metadata&, we just hold `unsigned` bytecodeOffset, and get Metadata& from the owner CodeBlock when needed.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finalizeLLIntInlineCaches):
+        * bytecode/CodeBlock.h:
+        * bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp:
+        (JSC::LLIntPrototypeLoadAdaptiveStructureWatchpoint::LLIntPrototypeLoadAdaptiveStructureWatchpoint):
+        (JSC::LLIntPrototypeLoadAdaptiveStructureWatchpoint::fireInternal):
+        * bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.h:
+        * bytecode/Watchpoint.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::setupGetByIdPrototypeCache):
+
+2019-05-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        JSC: A bug in BytecodeGenerator::emitEqualityOpImpl
+        https://bugs.webkit.org/show_bug.cgi?id=197479
+
+        Reviewed by Saam Barati.
+
+        Our peephole optimization in BytecodeGenerator is (1) rewinding the previous instruction and (2) emit optimized instruction instead.
+        If we have jump target between the previous instruction and the subsequent instruction, this peephole optimization breaks the jump target.
+        To prevent it, we had a mechanism disabling peephole optimization, setting m_lastOpcodeID = op_end and checking m_lastOpcodeID when performing
+        peephole optimization. However, BytecodeGenerator::emitEqualityOpImpl checks `m_lastInstruction->is<OpTypeof>` instead of `m_lastOpcodeID == op_typeof`,
+        and miss `op_end` case.
+
+        This patch makes the following changes.
+
+        1. Add canDoPeepholeOptimization method to clarify the intent of `m_lastInstruction = op_end`.
+        2. Check canDoPeepholeOptimization status before performing peephole optimization in emitJumpIfTrue, emitJumpIfFalse, and emitEqualityOpImpl.
+        3. Add `ASSERT(canDoPeepholeOptimization())` in fuseCompareAndJump and fuseTestAndJmp to ensure that peephole optimization is allowed.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::fuseCompareAndJump):
+        (JSC::BytecodeGenerator::fuseTestAndJmp):
+        (JSC::BytecodeGenerator::emitJumpIfTrue):
+        (JSC::BytecodeGenerator::emitJumpIfFalse):
+        (JSC::BytecodeGenerator::emitEqualityOpImpl):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::canDoPeepholeOptimization const):
+
+2019-05-07  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        TemplateObject passed to template literal tags are not always identical for the same source location.
+        https://bugs.webkit.org/show_bug.cgi?id=190756
+
+        Reviewed by Saam Barati.
+
+        Tagged template literal requires that the site object is allocated per source location. Previously, we create the site object
+        when linking CodeBlock and cache it in CodeBlock. But this is wrong because,
+
+        1. CodeBlock can be jettisoned and regenerated. So every time CodeBlock is regenerated, we get the different site object.
+        2. Call and Construct can have different CodeBlock. Even if the function is called in call-form or construct-form, we should return the same site object.
+
+        In this patch, we start caching these site objects in the top-level ScriptExecutable, this matches the spec's per source location since the only one top-level
+        ScriptExecutable is created for the given script code. Each ScriptExecutable of JSFunction can be created multiple times because CodeBlock creates it.
+        But the top-level one is not created by CodeBlock. This top-level ScriptExecutable is well-aligned to the Script itself. The top-level ScriptExecutable now has HashMap,
+        which maps source locations to cached site objects.
+
+        1. This patch threads the top-level ScriptExecutable to each FunctionExecutable creation. Each FunctionExecutable has a reference to the top-level ScriptExecutable.
+        2. We put TemplateObjectMap in ScriptExecutable, which manages cached template objects.
+        3. We move FunctionExecutable::m_cachedPolyProtoStructure to the FunctionExecutable::RareDate to keep FunctionExecutable 128 bytes.
+        4. TemplateObjectMap is indexed with endOffset of TaggedTemplate.
+
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-InternalClashingNames-Combined.js-result:
+        * Scripts/tests/builtins/expected/WebCore-AnotherGuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-ArbitraryConditionalGuard-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-UnguardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-xmlCasingTest-Separate.js-result:
+        * Scripts/wkbuiltins/builtins_templates.py:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::setConstantRegisters):
+        * bytecode/CodeBlock.h:
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::link):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::addTemplateObjectConstant):
+        (JSC::BytecodeGenerator::emitGetTemplateObject):
+        * bytecompiler/BytecodeGenerator.h:
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createTaggedTemplate):
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedTemplateObjectDescriptor::encode):
+        (JSC::CachedTemplateObjectDescriptor::decode const):
+        (JSC::CachedJSValue::encode):
+        (JSC::CachedJSValue::decode const):
+        * runtime/EvalExecutable.cpp:
+        (JSC::EvalExecutable::ensureTemplateObjectMap):
+        (JSC::EvalExecutable::visitChildren):
+        * runtime/EvalExecutable.h:
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::finishCreation):
+        (JSC::FunctionExecutable::visitChildren):
+        (JSC::FunctionExecutable::fromGlobalCode):
+        (JSC::FunctionExecutable::ensureRareDataSlow):
+        (JSC::FunctionExecutable::ensureTemplateObjectMap):
+        * runtime/FunctionExecutable.h:
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::instantiateDeclarations):
+        * runtime/JSTemplateObjectDescriptor.cpp:
+        (JSC::JSTemplateObjectDescriptor::JSTemplateObjectDescriptor):
+        (JSC::JSTemplateObjectDescriptor::create):
+        * runtime/JSTemplateObjectDescriptor.h:
+        * runtime/ModuleProgramExecutable.cpp:
+        (JSC::ModuleProgramExecutable::ensureTemplateObjectMap):
+        (JSC::ModuleProgramExecutable::visitChildren):
+        * runtime/ModuleProgramExecutable.h:
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::ensureTemplateObjectMap):
+        (JSC::ProgramExecutable::visitChildren):
+        * runtime/ProgramExecutable.h:
+        * runtime/ScriptExecutable.cpp:
+        (JSC::ScriptExecutable::topLevelExecutable):
+        (JSC::ScriptExecutable::createTemplateObject):
+        (JSC::ScriptExecutable::ensureTemplateObjectMapImpl):
+        (JSC::ScriptExecutable::ensureTemplateObjectMap):
+        * runtime/ScriptExecutable.h:
+        * tools/JSDollarVM.cpp:
+        (JSC::functionCreateBuiltin):
+        (JSC::functionDeleteAllCodeWhenIdle):
+        (JSC::JSDollarVM::finishCreation):
+
+2019-05-07  Robin Morisset  <rmorisset@apple.com>
+
+        [B3] Constants should be hoisted to the root block until moveConstants
+        https://bugs.webkit.org/show_bug.cgi?id=197265
+
+        Reviewed by Saam Barati.
+
+        This patch does the following:
+        - B3ReduceStrength now hoists all constants to the root BB, and de-duplicates them along the way
+        - B3PureCSE no longer bothers with constants, since they are already de-duplicated by the time it gets to see them
+        - We now run eliminateDeadCode just after moveConstants, so that the Nops that moveConstants generates are freed instead of staying live throughout Air compilation, reducing memory pressure.
+        - I also took the opportunity to fix typos in comments in various parts of the code base.
+
+        Here are a few numbers to justify this patch:
+        - In JetStream2, about 27% of values at the beginning of B3 are constants
+        - In JetStream2, about 11% of values at the end of B3 are Nops
+        - In JetStream2, this patch increases the number of times that tail duplication happens from a bit less than 24k to a bit more than 25k (hoisting constants makes blocks smaller).
+
+        When I tried measuring the total effect on JetStream2 I got a tiny and almost certainly non-significant progression.
+
+        * b3/B3Generate.cpp:
+        (JSC::B3::generateToAir):
+        * b3/B3MoveConstants.cpp:
+        * b3/B3PureCSE.cpp:
+        (JSC::B3::PureCSE::process):
+        * b3/B3PureCSE.h:
+        * b3/B3ReduceStrength.cpp:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback):
+        * dfg/DFGCSEPhase.cpp:
+        * dfg/DFGOSRAvailabilityAnalysisPhase.h:
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::executeOSRExit):
+
+2019-05-07  Robin Morisset  <rmorisset@apple.com>
+
+        All prototypes should call didBecomePrototype()
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+
+        Reviewed by Saam Barati.
+
+        Otherwise we won't remember to run haveABadTime() when someone adds to them an indexed accessor.
+
+        I added a check used in both Structure::finishCreation() and Structure::changePrototypeTransition to make sure we don't
+        create structures with invalid prototypes.
+        It found a lot of objects that are used as prototypes in JSGlobalObject and yet were missing didBecomePrototype() in their finishCreation().
+        Somewhat surprisingly, some of them have names like FunctionConstructor and not only FooPrototype.
+
+        * runtime/BigIntPrototype.cpp:
+        (JSC::BigIntPrototype::finishCreation):
+        * runtime/BooleanPrototype.cpp:
+        (JSC::BooleanPrototype::finishCreation):
+        * runtime/DatePrototype.cpp:
+        (JSC::DatePrototype::finishCreation):
+        * runtime/ErrorConstructor.cpp:
+        (JSC::ErrorConstructor::finishCreation):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::ErrorPrototype::finishCreation):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::FunctionConstructor::finishCreation):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::FunctionPrototype::finishCreation):
+        * runtime/IntlCollatorPrototype.cpp:
+        (JSC::IntlCollatorPrototype::finishCreation):
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototype::finishCreation):
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatPrototype::finishCreation):
+        * runtime/IntlPluralRulesPrototype.cpp:
+        (JSC::IntlPluralRulesPrototype::finishCreation):
+        * runtime/JSArrayBufferPrototype.cpp:
+        (JSC::JSArrayBufferPrototype::finishCreation):
+        * runtime/JSDataViewPrototype.cpp:
+        (JSC::JSDataViewPrototype::finishCreation):
+        * runtime/JSGenericTypedArrayViewPrototypeInlines.h:
+        (JSC::JSGenericTypedArrayViewPrototype<ViewClass>::finishCreation):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::createConsoleProperty):
+        * runtime/JSPromisePrototype.cpp:
+        (JSC::JSPromisePrototype::finishCreation):
+        * runtime/JSTypedArrayViewConstructor.cpp:
+        (JSC::JSTypedArrayViewConstructor::finishCreation):
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+        * runtime/NumberPrototype.cpp:
+        (JSC::NumberPrototype::finishCreation):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        * runtime/Structure.cpp:
+        (JSC::Structure::isValidPrototype):
+        (JSC::Structure::changePrototypeTransition):
+        * runtime/Structure.h:
+        * runtime/SymbolPrototype.cpp:
+        (JSC::SymbolPrototype::finishCreation):
+        * wasm/js/WebAssemblyCompileErrorPrototype.cpp:
+        (JSC::WebAssemblyCompileErrorPrototype::finishCreation):
+        * wasm/js/WebAssemblyInstancePrototype.cpp:
+        (JSC::WebAssemblyInstancePrototype::finishCreation):
+        * wasm/js/WebAssemblyLinkErrorPrototype.cpp:
+        (JSC::WebAssemblyLinkErrorPrototype::finishCreation):
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        (JSC::WebAssemblyMemoryPrototype::finishCreation):
+        * wasm/js/WebAssemblyModulePrototype.cpp:
+        (JSC::WebAssemblyModulePrototype::finishCreation):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::WebAssemblyPrototype::finishCreation):
+        * wasm/js/WebAssemblyRuntimeErrorPrototype.cpp:
+        (JSC::WebAssemblyRuntimeErrorPrototype::finishCreation):
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+        (JSC::WebAssemblyTablePrototype::finishCreation):
+
+2019-05-07  Robin Morisset  <rmorisset@apple.com>
+
+        WTF::BitVector should have an isEmpty() method
+        https://bugs.webkit.org/show_bug.cgi?id=197637
+
+        Reviewed by Keith Miller.
+
+        Just replaces some comparison of bitCount() to 0 by calls to isEmpty()
+
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+
+2019-05-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244978.
+        https://bugs.webkit.org/show_bug.cgi?id=197671
+
+        TemplateObject map should use start/end offsets (Requested by
+        yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "TemplateObject passed to template literal tags are not always
+        identical for the same source location."
+        https://bugs.webkit.org/show_bug.cgi?id=190756
+        https://trac.webkit.org/changeset/244978
+
+2019-05-07  Tadeu Zagallo  <tzagallo@apple.com>
+
+        tryCachePutByID should not crash if target offset changes
+        https://bugs.webkit.org/show_bug.cgi?id=197311
+        <rdar://problem/48033612>
+
+        Reviewed by Filip Pizlo.
+
+        When tryCachePutID is called with a cacheable setter, if the target object where the setter was
+        found is still in the prototype chain and there's no poly protos in the chain, we use
+        generateConditionsForPrototypePropertyHit to validate that the target object remains the same.
+        It checks for the absence of the property in every object in the prototype chain from the base
+        down to the target object and checks that the property is still present in the target object. It
+        also bails if there are any uncacheable objects, proxies or dictionary objects in the prototype
+        chain. However, it does not consider two edge cases:
+        - It asserts that the property should still be at the same offset in the target object, but this
+        assertion does not hold if the setter deletes properties of the object and causes the structure
+        to be flattened after the deletion. Instead of asserting, we just use the updated offset.
+        - It does not check whether the new slot is also a setter, which leads to a crash in case it's not.
+
+        * jit/Repatch.cpp:
+        (JSC::tryCachePutByID):
+
+2019-05-07  Saam Barati  <sbarati@apple.com>
+
+        Don't OSR enter into an FTL CodeBlock that has been jettisoned
+        https://bugs.webkit.org/show_bug.cgi?id=197531
+        <rdar://problem/50162379>
+
+        Reviewed by Yusuke Suzuki.
+
+        Sometimes we make silly mistakes. This is one of those times. It's invalid to OSR
+        enter into an FTL OSR entry code block that has been jettisoned already.
+
+        * dfg/DFGJITCode.cpp:
+        (JSC::DFG::JITCode::clearOSREntryBlockAndResetThresholds):
+        * dfg/DFGJITCode.h:
+        (JSC::DFG::JITCode::clearOSREntryBlock): Deleted.
+        * dfg/DFGOSREntry.cpp:
+        (JSC::DFG::prepareOSREntry):
+        (JSC::DFG::prepareCatchOSREntry):
+        * dfg/DFGOperations.cpp:
+        * ftl/FTLOSREntry.cpp:
+        (JSC::FTL::prepareOSREntry):
+
 2019-05-06  Keith Miller  <keith_miller@apple.com>
 
         JSWrapperMap should check if existing prototype properties are wrappers when copying exported methods.

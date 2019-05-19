@@ -74,8 +74,8 @@ Platform/foundation/LoggingFoundation.mm
 Platform/ios/AccessibilityIOS.mm
 Platform/ios/PaymentAuthorizationController.mm
 
-Platform/IPC/mac/ConnectionMac.mm
-Platform/IPC/mac/MachMessage.cpp
+Platform/IPC/cocoa/ConnectionCocoa.mm
+Platform/IPC/cocoa/MachMessage.cpp
 
 Platform/mac/LayerHostingContext.mm
 Platform/mac/MachUtilities.cpp
@@ -141,6 +141,7 @@ Shared/Cocoa/ArgumentCodersCocoa.mm
 Shared/Cocoa/AuxiliaryProcessCocoa.mm
 Shared/Cocoa/CompletionHandlerCallChecker.mm
 Shared/Cocoa/DataDetectionResult.mm
+Shared/Cocoa/InsertTextOptions.cpp
 Shared/Cocoa/LoadParametersCocoa.mm
 Shared/Cocoa/SandboxExtensionCocoa.mm
 Shared/Cocoa/SandboxInitialiationParametersCocoa.mm

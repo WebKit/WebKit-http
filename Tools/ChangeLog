@@ -1,3 +1,217 @@
+2019-05-09  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Production and Development env should configure DEBUG appropriately
+        https://bugs.webkit.org/show_bug.cgi?id=197700
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-app/ews-app/settings.py:
+
+2019-05-09  Xan López  <xan@igalia.com>
+
+        [CMake] Detect SSE2 at compile time
+        https://bugs.webkit.org/show_bug.cgi?id=196488
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject): Do not add SSE2 flags here
+        for x86 builds. This is now handled in WebKitCompilerFlags.cmake.
+
+2019-05-08  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Update dependencies to use libwpe + WPEBackend-fdo 1.3.0
+        https://bugs.webkit.org/show_bug.cgi?id=197697
+
+        Reviewed by Žan Doberšek.
+
+        * flatpak/org.webkit.WPEModules.yaml: Bump version and update checksums.
+        * wpe/jhbuild.modules: Ditto.
+
+2019-05-08  Don Olmstead  <don.olmstead@sony.com>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=197676
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/PlatformWin.cmake:
+        Remove unnecessary library linkage.
+
+2019-05-08  Stephan Szabo  <stephan.szabo@sony.com> and Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] build-webkit should be ready for Visual Studio 2019
+        https://bugs.webkit.org/show_bug.cgi?id=196622
+
+        Reviewed by Ross Kirsling.
+
+        1. Accommodated to the new msbuild.exe location of VS 2019.
+        2. Removed the hard coded "Visual Studio 15" generator.
+
+        build-webkit is going to choose a Visual Studio generator version
+        matching with the latest installed VS. If you invoke vcvars.bat
+        before build-webkit, it chooses the corresponding Visual Studio
+        generator version by cheking 'VisualStudioVersion' env var which
+        is set by vcvars.bat.
+
+        * Scripts/webkitdirs.pm: Renamed $vcBuildPath to $msBuildPath. Removed $msBuildInstallDir.
+        (msBuildPath): When looking for MSBuild, look in
+        "MSBuild\Current\bin" (the new expected location) and fallback
+        to "MSBuild\15.0\bin" if we can't find an MSBuild.exe in the
+        first location.
+        (msBuildInstallDir): Renamed to msBuildPath.
+        (generateBuildSystemFromCMakeProject): Use -A switch to specify x64.
+        Add -G "Visual Studio " switch if a env var 'VisualStudioVersion'
+
+2019-05-08  Don Olmstead  <don.olmstead@sony.com>
+
+        [PlayStation] Update port options
+        https://bugs.webkit.org/show_bug.cgi?id=197723
+
+        Reviewed by Ross Kirsling.
+
+        ICU headers were missing from TestWTF.
+
+        * TestWebKitAPI/PlatformPlayStation.cmake:
+
+2019-05-08  Alex Christensen  <achristensen@webkit.org>
+
+        Don't crash when DOMNode.addEventListener:listener:useCapture: is called with a nil listener
+        https://bugs.webkit.org/show_bug.cgi?id=197712
+        <rdar://problem/50429770>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitLegacy/mac/DeallocWebViewInEventListener.mm:
+        (TestWebKitAPI::TEST):
+
+2019-05-08  Jonathan Bedard  <jbedard@apple.com>
+
+        Change my status to be a WebKit reviewer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-05-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r244952.
+
+        Caused inspector to appear blank.
+
+        Reverted changeset:
+
+        "Web Inspector: Provide UIString descriptions to improve
+        localizations"
+        https://bugs.webkit.org/show_bug.cgi?id=195132
+        https://trac.webkit.org/changeset/244952
+
+2019-05-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        TestRunnerWKWebView's menu callbacks should be cleared upon UI script completion
+        https://bugs.webkit.org/show_bug.cgi?id=197685
+
+        Reviewed by Alex Christensen.
+
+        Fixes a bug in the test runner wherein didShowMenuCallback and didHideMenuCallback are not reset upon UI script
+        completion. See LayoutTests/ChangeLog for more details.
+
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::platformClearAllCallbacks):
+
+2019-05-07  Oriol Brufau  <obrufau@igalia.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-05-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r245038.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Add SPI to set a list of hosts to which to send custom header
+        fields cross-origin"
+        https://bugs.webkit.org/show_bug.cgi?id=197397
+        https://trac.webkit.org/changeset/245038
+
+2019-05-07  Joonghun Park  <pjh0718@gmail.com>
+
+        Unreviewed. Add myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-05-07  Eric Carlson  <eric.carlson@apple.com>
+
+        Define media buffering policy
+        https://bugs.webkit.org/show_bug.cgi?id=196979
+        <rdar://problem/28383861>
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/MediaBufferingPolicy.mm: Added.
+        (waitUntilBufferingPolicyIsEqualTo):
+        (TEST):
+
+2019-05-07  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI to set a list of hosts to which to send custom header fields cross-origin
+        https://bugs.webkit.org/show_bug.cgi?id=197397
+
+        Reviewed by Geoff Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsitePolicies.mm:
+        (TEST):
+        (expectLegacyHeaders):
+        (expectHeaders):
+        (-[CustomHeaderFieldsDelegate webView:decidePolicyForNavigationAction:preferences:decisionHandler:]):
+        (-[CustomHeaderFieldsDelegate webView:startURLSchemeTask:]):
+        (-[CustomHeaderFieldsDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]): Deleted.
+
+2019-05-07  Keith Rollin  <krollin@apple.com>
+
+        Add option to build-webkit to control whether or not XCBuild is used
+        https://bugs.webkit.org/show_bug.cgi?id=197668
+        <rdar://problem/50549728>
+
+        Reviewed by Tim Horton.
+
+        Add --[no-]xcbuild to build-webkit to force the use of XCBuild or not.
+        Also update build-webkit and the makefiles with the foundation for
+        automatically using XCBuild when the conditions allow it. This latter
+        facility is currently turned off until Xcode fully supports building
+        WebKit with XCBuild.
+
+        * Scripts/build-webkit:
+        * Scripts/webkitdirs.pm:
+        (XcodeOptions):
+        (canUseXCBuild):
+
+2019-05-07  Andy Estes  <aestes@apple.com>
+
+        run-bindings-tests should test global scope constructor generation
+        https://bugs.webkit.org/show_bug.cgi?id=197669
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/bindings/main.py:
+        Updated to specify --testGlobalContextName and --testGlobalScopeConstructorsFile when
+        invoking preprocess-idls.pl.
+
+2019-05-07  Youenn Fablet  <youenn@apple.com>
+
+        Flaky API Test: TestWebKitAPI.ServiceWorkers.ServiceWorkerAndCacheStorageDefaultDirectories
+        https://bugs.webkit.org/show_bug.cgi?id=195997
+        <rdar://problem/50509884>
+
+        Reviewed by Chris Dumez.
+
+        Spin test until successful.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+
 2019-05-07  Adrian Perez de Castro  <aperez@igalia.com>
 
         [Flatpak] webkit-build fails due to missing GTK2 in build environment

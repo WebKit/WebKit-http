@@ -160,9 +160,8 @@ my $unknownPortProhibited = 0;
 
 # Variables for Win32 support
 my $programFilesPath;
-my $vcBuildPath;
+my $msBuildPath;
 my $vsInstallDir;
-my $msBuildInstallDir;
 my $vsVersion;
 my $windowsSourceDir;
 my $winVersion;
@@ -681,18 +680,20 @@ sub visualStudioInstallDir
     return $vsInstallDir;
 }
 
-sub msBuildInstallDir
+sub msBuildPath
 {
-    return $msBuildInstallDir if defined $msBuildInstallDir;
-
     my $installDir = visualStudioInstallDir();
-    $msBuildInstallDir = File::Spec->catdir($installDir,
-        "MSBuild", "15.0", "bin");
 
-    chomp($msBuildInstallDir = `cygpath "$msBuildInstallDir"`) if isCygwin();
+    # FIXME: vswhere.exe should be used to find msbuild.exe after AppleWin will get vswhere with -find switch.
+    # <https://github.com/Microsoft/vswhere/wiki/Find-MSBuild>
+    # <https://github.com/Microsoft/vswhere/releases/tag/2.6.6%2Bd9dbe79db3>
+    my $path = File::Spec->catdir($installDir, "MSBuild", "Current", "bin", "MSBuild.exe");
+    $path = File::Spec->catdir($installDir, "MSBuild", "15.0", "bin", "MSBuild.exe") unless -e $path;
 
-    print "Using MSBuild: $msBuildInstallDir\n";
-    return $msBuildInstallDir;
+    chomp($path = `cygpath "$path"`) if isCygwin();
+
+    print "Using MSBuild: $path\n";
+    return $path;
 }
 
 sub determineConfigurationForVisualStudio
@@ -854,7 +855,6 @@ sub XcodeOptions
     determineXcodeSDK();
 
     my @options;
-    push @options, "-UseNewBuildSystem=NO";
     push @options, "-UseSanitizedBuildSystemEnvironment=YES";
     push @options, "-ShowBuildOperationDuration=YES";
     push @options, ("-configuration", $configuration);
@@ -898,6 +898,11 @@ sub XcodeCoverageSupportOptions()
 sub XcodeStaticAnalyzerOption()
 {
     return "RUN_CLANG_STATIC_ANALYZER=YES";
+}
+
+sub canUseXCBuild()
+{
+    return 0;
 }
 
 my $passedConfiguration;
@@ -1852,7 +1857,7 @@ sub setupAppleWinEnv()
 sub setupCygwinEnv()
 {
     return if !isAnyWindows();
-    return if $vcBuildPath;
+    return if $msBuildPath;
 
     my $programFilesPath = programFilesPath();
 
@@ -1864,10 +1869,10 @@ sub setupCygwinEnv()
 
     # We will actually use MSBuild to build WebKit, but we need to find the Visual Studio install (above) to make
     # sure we use the right options.
-    $vcBuildPath = File::Spec->catfile(msBuildInstallDir(), qw(MSBuild.exe));
-    if (! -e $vcBuildPath) {
+    $msBuildPath = msBuildPath();
+    if (! -e $msBuildPath) {
         print "*************************************************************\n";
-        print "Cannot find '$vcBuildPath'\n";
+        print "Cannot find '$msBuildPath'\n";
         print "Please make sure execute that the Microsoft .NET Framework SDK\n";
         print "is installed on this machine.\n";
         print "*************************************************************\n";
@@ -1927,7 +1932,7 @@ sub buildVisualStudioProject
 
     my $maxCPUCount = '/maxcpucount:' . numberOfCPUs();
 
-    my @command = ($vcBuildPath, "/verbosity:minimal", $project, $action, $config, $platform, "/fl", $errorLogging, "/fl1", $warningLogging, $maxCPUCount);
+    my @command = ($msBuildPath, "/verbosity:minimal", $project, $action, $config, $platform, "/fl", $errorLogging, "/fl1", $warningLogging, $maxCPUCount);
     print join(" ", @command), "\n";
     return system @command;
 }
@@ -2213,11 +2218,14 @@ sub generateBuildSystemFromCMakeProject
             push @args, "Ninja";
         }
         push @args, "-DUSE_THIN_ARCHIVES=OFF" if isPlayStation();
-    } elsif (isAnyWindows() && isWin64()) {
-        push @args, '-G "Visual Studio 15 2017 Win64"';
-        push @args, '-DCMAKE_GENERATOR_TOOLSET="host=x64"';
-    } elsif (isPlayStation()) {
-        push @args, '-G "Visual Studio 15"';
+    } else {
+        if (isAnyWindows() && isWin64()) {
+            push @args, '-A x64';
+        }
+        if ((isAnyWindows() || isPlayStation()) && defined $ENV{VisualStudioVersion}) {
+            my $var = int($ENV{VisualStudioVersion});
+            push @args, qq(-G "Visual Studio $var");
+        }
     }
 
     # Do not show progress of generating bindings in interactive Ninja build not to leave noisy lines on tty
@@ -2239,15 +2247,6 @@ sub generateBuildSystemFromCMakeProject
 
     my $cmakeSourceDir = isCygwin() ? windowsSourceDir() : sourceDir();
     push @args, '"' . $cmakeSourceDir . '"';
-
-    # Compiler options to keep floating point values consistent
-    # between 32-bit and 64-bit architectures. This makes us use SSE
-    # when our architecture is 32-bit ('i686') or when it's not but
-    # the user has requested a 32-bit build.
-    if ((architecture() eq "i686" || architecture() eq "x86" || (architecture() eq "x86_64" && shouldBuild32Bit())) && !isCrossCompilation() && !isAnyWindows()) {
-        $ENV{'CFLAGS'} = "-march=pentium4 -msse2 -mfpmath=sse " . ($ENV{'CFLAGS'} || "");
-        $ENV{'CXXFLAGS'} = "-march=pentium4 -msse2 -mfpmath=sse " . ($ENV{'CXXFLAGS'} || "");
-    }
 
     # We call system("cmake @args") instead of system("cmake", @args) so that @args is
     # parsed for shell metacharacters.

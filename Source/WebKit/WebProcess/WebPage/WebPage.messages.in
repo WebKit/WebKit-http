@@ -113,6 +113,7 @@ messages -> WebPage LegacyReceiver {
     SetIsShowingInputViewForFocusedElement(bool showingInputView)
     UpdateSelectionWithDelta(int64_t locationDelta, int64_t lengthDelta) -> () Async
     RequestDocumentEditingContext(struct WebKit::DocumentEditingContextRequest request) -> (struct WebKit::DocumentEditingContext response) Async
+GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType command)
 #endif
 
     SetControlledByAutomation(bool controlled)
@@ -202,6 +203,7 @@ messages -> WebPage LegacyReceiver {
     RunJavaScriptInFrame(uint64_t frameID, String script, bool forceUserGesture, WebKit::CallbackID callbackID)
     ForceRepaint(WebKit::CallbackID callbackID)
 
+    SelectAll()
     ScheduleFullEditorStateUpdate()
 
 #if PLATFORM(COCOA)
@@ -431,7 +433,7 @@ messages -> WebPage LegacyReceiver {
     AcceptsFirstMouse(int eventNumber, WebKit::WebMouseEvent event) -> (bool result) Synchronous
 
     SetTextAsync(String text)
-    InsertTextAsync(String text, struct WebKit::EditingRange replacementRange, bool registerUndoGroup, uint32_t editingRangeIsRelativeTo, bool suppressSelectionUpdate)
+    InsertTextAsync(String text, struct WebKit::EditingRange replacementRange, struct WebKit::InsertTextOptions options)
     GetMarkedRangeAsync(WebKit::CallbackID callbackID)
     GetSelectedRangeAsync(WebKit::CallbackID callbackID)
     CharacterIndexForPointAsync(WebCore::IntPoint point, WebKit::CallbackID callbackID);
@@ -487,7 +489,7 @@ messages -> WebPage LegacyReceiver {
     SetFooterBannerHeightForTesting(int height);
 #endif
 
-    SetUseDarkAppearance(bool useDarkAppearance);
+    EffectiveAppearanceDidChange(bool useDarkAppearance, bool useInactiveAppearance);
 
 #if PLATFORM(COCOA)
     RequestActiveNowPlayingSessionInfo(WebKit::CallbackID callbackID)

@@ -42,6 +42,7 @@
 #import "PrintInfo.h"
 #import "RemoteLayerTreeDrawingArea.h"
 #import "SandboxUtilities.h"
+#import "SyntheticEditingCommandType.h"
 #import "TextCheckingControllerProxy.h"
 #import "UIKitSPI.h"
 #import "UserData.h"
@@ -419,6 +420,11 @@ bool WebPage::handleEditingKeyboardEvent(KeyboardEvent& event)
     auto* platformEvent = event.underlyingPlatformEvent();
     if (!platformEvent)
         return false;
+    
+    // Don't send synthetic events to the UIProcess. They are only
+    // used for interacting with JavaScript.
+    if (platformEvent->isSyntheticEvent())
+        return false;
 
     // FIXME: Interpret the event immediately upon receiving it in UI process, without sending to WebProcess first.
     bool eventWasHandled = false;
@@ -578,6 +584,46 @@ static bool nodeAlwaysTriggersClick(const Node& targetNode)
 
     auto ariaRole = AccessibilityObject::ariaRoleToWebCoreRole(downcast<Element>(targetNode).getAttribute(HTMLNames::roleAttr));
     return AccessibilityObject::isARIAControl(ariaRole) || AccessibilityObject::isARIAInput(ariaRole);
+}
+
+void WebPage::generateSyntheticEditingCommand(SyntheticEditingCommandType command)
+{
+    PlatformKeyboardEvent keyEvent;
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    
+    OptionSet<PlatformEvent::Modifier> modifiers;
+    modifiers.add(PlatformEvent::Modifier::MetaKey);
+    
+    switch (command) {
+    case SyntheticEditingCommandType::Undo:
+        keyEvent = PlatformKeyboardEvent(PlatformEvent::KeyDown, "z", "z",
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+        "z",
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+        "KeyZ"_s,
+#endif
+        @"U+005A", 90, false, false, false, modifiers, WallTime::now());
+        break;
+    case SyntheticEditingCommandType::Redo:
+        keyEvent = PlatformKeyboardEvent(PlatformEvent::KeyDown, "y", "y",
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+        "y",
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+        "KeyY"_s,
+#endif
+        @"U+0059", 89, false, false, false, modifiers, WallTime::now());
+        break;
+    default:
+        break;
+    }
+
+    keyEvent.setIsSyntheticEvent();
+    
+    PlatformKeyboardEvent::setCurrentModifierState(modifiers);
+    
+    frame.eventHandler().keyEvent(keyEvent);
 }
 
 void WebPage::handleSyntheticClick(Node& nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebEvent::Modifier> modifiers)
@@ -947,6 +993,9 @@ void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64
 
 void WebPage::commitPotentialTapFailed()
 {
+    if (!m_page->focusController().focusedOrMainFrame().selection().selection().isContentEditable())
+        clearSelection();
+
     send(Messages::WebPageProxy::CommitPotentialTapFailed());
     send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(m_potentialTapLocation)));
 }
@@ -1367,7 +1416,6 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
         if (wkGestureState == GestureRecognizerState::Began) {
             m_blockSelectionDesiredSize.setWidth(blockSelectionStartWidth);
             m_blockSelectionDesiredSize.setHeight(blockSelectionStartHeight);
-            m_currentBlockSelection = nullptr;
         }
         range = rangeForWebSelectionAtPosition(point, position, flags);
         break;
@@ -1479,10 +1527,58 @@ static RefPtr<Range> rangeAtWordBoundaryForPosition(Frame* frame, const VisibleP
     return (base < extent) ? Range::create(*frame->document(), base, extent) : Range::create(*frame->document(), extent, base);
 }
 
-void WebPage::clearSelection(){
+static IntRect elementRectInRootViewCoordinates(const Element& element)
+{
+    auto* frame = element.document().frame();
+    if (!frame)
+        return { };
+
+    auto* view = frame->view();
+    if (!view)
+        return { };
+
+    auto* renderer = element.renderer();
+    if (!renderer)
+        return { };
+
+    return view->contentsToRootView(renderer->absoluteBoundingBoxRect());
+}
+
+void WebPage::clearSelection()
+{
     m_startingGestureRange = nullptr;
-    m_currentBlockSelection = nullptr;
     m_page->focusController().focusedOrMainFrame().selection().clear();
+}
+
+void WebPage::dispatchSyntheticMouseEventsForSelectionGesture(SelectionTouch touch, const IntPoint& point)
+{
+    auto frame = makeRef(m_page->focusController().focusedOrMainFrame());
+    if (!frame->selection().selection().isContentEditable())
+        return;
+
+    IntRect focusedElementRect;
+    if (m_focusedElement)
+        focusedElementRect = elementRectInRootViewCoordinates(*m_focusedElement);
+
+    if (focusedElementRect.isEmpty())
+        return;
+
+    auto adjustedPoint = point.constrainedBetween(focusedElementRect.minXMinYCorner(), focusedElementRect.maxXMaxYCorner());
+    auto& eventHandler = m_page->mainFrame().eventHandler();
+    switch (touch) {
+    case SelectionTouch::Started:
+        eventHandler.handleMousePressEvent({ adjustedPoint, adjustedPoint, LeftButton, PlatformEvent::MousePressed, 1, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, NoTap });
+        break;
+    case SelectionTouch::Moved:
+        eventHandler.dispatchSyntheticMouseMove({ adjustedPoint, adjustedPoint, LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, NoTap });
+        break;
+    case SelectionTouch::Ended:
+    case SelectionTouch::EndedMovingForward:
+    case SelectionTouch::EndedMovingBackward:
+    case SelectionTouch::EndedNotMoving:
+        eventHandler.handleMouseReleaseEvent({ adjustedPoint, adjustedPoint, LeftButton, PlatformEvent::MouseReleased, 1, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, NoTap });
+        break;
+    }
 }
 
 void WebPage::updateSelectionWithTouches(const IntPoint& point, uint32_t touches, bool baseIsStart, CallbackID callbackID)
@@ -1499,7 +1595,11 @@ void WebPage::updateSelectionWithTouches(const IntPoint& point, uint32_t touches
     VisiblePosition result;
     SelectionFlags flags = None;
 
-    switch (static_cast<SelectionTouch>(touches)) {
+    auto selectionTouch = static_cast<SelectionTouch>(touches);
+    if (shouldDispatchSyntheticMouseEventsWhenModifyingSelection())
+        dispatchSyntheticMouseEventsForSelectionGesture(selectionTouch, point);
+
+    switch (selectionTouch) {
     case SelectionTouch::Started:
     case SelectionTouch::EndedNotMoving:
         break;
@@ -1557,7 +1657,36 @@ void WebPage::extendSelection(uint32_t granularity)
         return;
 
     VisiblePosition position = frame.selection().selection().start();
-    frame.selection().setSelectedRange(wordRangeFromPosition(position).get(), position.affinity(), WebCore::FrameSelection::ShouldCloseTyping::Yes, UserTriggered);
+    auto wordRange = wordRangeFromPosition(position);
+    if (!wordRange)
+        return;
+
+    IntPoint endLocationForSyntheticMouseEvents;
+    bool shouldDispatchMouseEvents = shouldDispatchSyntheticMouseEventsWhenModifyingSelection();
+    if (shouldDispatchMouseEvents) {
+        auto startLocationForSyntheticMouseEvents = frame.view()->contentsToRootView(VisiblePosition(wordRange->startPosition()).absoluteCaretBounds()).center();
+        endLocationForSyntheticMouseEvents = frame.view()->contentsToRootView(VisiblePosition(wordRange->endPosition()).absoluteCaretBounds()).center();
+        dispatchSyntheticMouseEventsForSelectionGesture(SelectionTouch::Started, startLocationForSyntheticMouseEvents);
+        dispatchSyntheticMouseEventsForSelectionGesture(SelectionTouch::Moved, endLocationForSyntheticMouseEvents);
+    }
+
+    frame.selection().setSelectedRange(wordRange.get(), position.affinity(), WebCore::FrameSelection::ShouldCloseTyping::Yes, UserTriggered);
+
+    if (shouldDispatchMouseEvents)
+        dispatchSyntheticMouseEventsForSelectionGesture(SelectionTouch::Ended, endLocationForSyntheticMouseEvents);
+}
+
+void WebPage::platformDidSelectAll()
+{
+    if (!shouldDispatchSyntheticMouseEventsWhenModifyingSelection())
+        return;
+
+    auto frame = makeRef(m_page->focusController().focusedOrMainFrame());
+    auto startCaretRect = frame->view()->contentsToRootView(VisiblePosition(frame->selection().selection().start()).absoluteCaretBounds());
+    auto endCaretRect = frame->view()->contentsToRootView(VisiblePosition(frame->selection().selection().end()).absoluteCaretBounds());
+    dispatchSyntheticMouseEventsForSelectionGesture(SelectionTouch::Started, startCaretRect.center());
+    dispatchSyntheticMouseEventsForSelectionGesture(SelectionTouch::Moved, endCaretRect.center());
+    dispatchSyntheticMouseEventsForSelectionGesture(SelectionTouch::Ended, endCaretRect.center());
 }
 
 void WebPage::selectWordBackward()
@@ -1876,7 +2005,6 @@ void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, u
     if (!isInteractingWithFocusedElement) {
         m_blockSelectionDesiredSize.setWidth(blockSelectionStartWidth);
         m_blockSelectionDesiredSize.setHeight(blockSelectionStartHeight);
-        m_currentBlockSelection = nullptr;
         auto* renderer = range ? range->startContainer().renderer() : nullptr;
         if (renderer && renderer->style().preserveNewline())
             m_blockRectForTextSelection = renderer->absoluteBoundingBoxRect(true);
@@ -2584,19 +2712,6 @@ void WebPage::focusNextFocusedElement(bool isForward, CallbackID callbackID)
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
-static IntRect elementRectInRootViewCoordinates(const Node& node, const Frame& frame)
-{
-    auto* view = frame.view();
-    if (!view)
-        return { };
-
-    auto* renderer = node.renderer();
-    if (!renderer)
-        return { };
-
-    return view->contentsToRootView(renderer->absoluteBoundingBoxRect());
-}
-
 void WebPage::getFocusedElementInformation(FocusedElementInformation& information)
 {
     layoutIfNeeded();
@@ -2604,8 +2719,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
     information.lastInteractionLocation = m_lastInteractionLocation;
 
     if (auto* renderer = m_focusedElement->renderer()) {
-        auto& elementFrame = m_page->focusController().focusedOrMainFrame();
-        information.elementRect = elementRectInRootViewCoordinates(*m_focusedElement, elementFrame);
+        information.elementRect = elementRectInRootViewCoordinates(*m_focusedElement);
         information.nodeFontSize = renderer->style().fontDescription().computedSize();
 
         bool inFixed = false;
@@ -2621,13 +2735,11 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
     information.allowsUserScaling = m_viewportConfiguration.allowsUserScaling();
     information.allowsUserScalingIgnoringAlwaysScalable = m_viewportConfiguration.allowsUserScalingIgnoringAlwaysScalable();
     if (auto* nextElement = nextAssistableElement(m_focusedElement.get(), *m_page, true)) {
-        if (auto* frame = nextElement->document().frame())
-            information.nextNodeRect = elementRectInRootViewCoordinates(*nextElement, *frame);
+        information.nextNodeRect = elementRectInRootViewCoordinates(*nextElement);
         information.hasNextNode = true;
     }
     if (auto* previousElement = nextAssistableElement(m_focusedElement.get(), *m_page, false)) {
-        if (auto* frame = previousElement->document().frame())
-            information.previousNodeRect = elementRectInRootViewCoordinates(*previousElement, *frame);
+        information.previousNodeRect = elementRectInRootViewCoordinates(*previousElement);
         information.hasPreviousNode = true;
     }
     information.focusedElementIdentifier = m_currentFocusedElementIdentifier;
@@ -2758,6 +2870,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
             information.isAutocorrect = focusedElement.shouldAutocorrect();
             information.autocapitalizeType = focusedElement.autocapitalizeType();
             information.inputMode = focusedElement.canonicalInputMode();
+            information.shouldSynthesizeKeyEventsForUndoAndRedo = focusedElement.document().quirks().shouldEmulateUndoRedoInHiddenEditableAreas();
         } else {
             information.isAutocorrect = true;
             information.autocapitalizeType = AutocapitalizeTypeDefault;

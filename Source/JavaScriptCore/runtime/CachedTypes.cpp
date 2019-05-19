@@ -1028,13 +1028,13 @@ public:
     void encode(Encoder& encoder, const ScopedArgumentsTable& scopedArgumentsTable)
     {
         m_length = scopedArgumentsTable.m_length;
-        m_arguments.encode(encoder, scopedArgumentsTable.m_arguments.get(), m_length);
+        m_arguments.encode(encoder, scopedArgumentsTable.m_arguments.get(m_length), m_length);
     }
 
     ScopedArgumentsTable* decode(Decoder& decoder) const
     {
         ScopedArgumentsTable* scopedArgumentsTable = ScopedArgumentsTable::create(decoder.vm(), m_length);
-        m_arguments.decode(decoder, scopedArgumentsTable->m_arguments.get(), m_length);
+        m_arguments.decode(decoder, scopedArgumentsTable->m_arguments.get(m_length), m_length);
         return scopedArgumentsTable;
     }
 
@@ -1156,7 +1156,7 @@ public:
     {
         m_rawStrings.encode(encoder, descriptor.descriptor().rawStrings());
         m_cookedStrings.encode(encoder, descriptor.descriptor().cookedStrings());
-        m_startOffset = descriptor.startOffset();
+        m_endOffset = descriptor.endOffset();
     }
 
     JSTemplateObjectDescriptor* decode(Decoder& decoder) const
@@ -1165,13 +1165,13 @@ public:
         TemplateObjectDescriptor::OptionalStringVector decodedCookedStrings;
         m_rawStrings.decode(decoder, decodedRawStrings);
         m_cookedStrings.decode(decoder, decodedCookedStrings);
-        return JSTemplateObjectDescriptor::create(decoder.vm(), TemplateObjectDescriptor::create(WTFMove(decodedRawStrings), WTFMove(decodedCookedStrings)), m_startOffset);
+        return JSTemplateObjectDescriptor::create(decoder.vm(), TemplateObjectDescriptor::create(WTFMove(decodedRawStrings), WTFMove(decodedCookedStrings)), m_endOffset);
     }
 
 private:
     CachedVector<CachedString, 4> m_rawStrings;
     CachedVector<CachedOptional<CachedString>, 4> m_cookedStrings;
-    int m_startOffset;
+    int m_endOffset;
 };
 
 class CachedBigInt : public VariableLengthObject<JSBigInt> {

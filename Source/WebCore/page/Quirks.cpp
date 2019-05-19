@@ -235,7 +235,38 @@ static bool shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAre
     return false;
 }
 
+static bool shouldEmulateUndoRedoInHiddenEditableAreasForHost(const StringView&)
+{
+    return false;
+}
+
 #endif
+
+bool Quirks::shouldDispatchSyntheticMouseEventsWhenModifyingSelection() const
+{
+    if (m_document->settings().shouldDispatchSyntheticMouseEventsWhenModifyingSelection())
+        return true;
+
+    if (!needsQuirks())
+        return false;
+
+    auto host = m_document->topDocument().url().host();
+    if (equalLettersIgnoringASCIICase(host, "medium.com") || host.endsWithIgnoringASCIICase(".medium.com"))
+        return true;
+
+    if (equalLettersIgnoringASCIICase(host, "weebly.com") || host.endsWithIgnoringASCIICase(".weebly.com"))
+        return true;
+
+    return false;
+}
+
+bool Quirks::shouldEmulateUndoRedoInHiddenEditableAreas() const
+{
+    if (!needsQuirks())
+        return false;
+
+    return shouldEmulateUndoRedoInHiddenEditableAreasForHost(m_document->topDocument().url().host());
+}
 
 bool Quirks::shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() const
 {

@@ -170,6 +170,7 @@ class ResourceResponse;
 class SelectionRect;
 class SharedBuffer;
 class SubstituteData;
+class SyntheticEditingCommandType;
 class TextCheckingRequest;
 class VisiblePosition;
 
@@ -177,6 +178,8 @@ enum SyntheticClickType : int8_t;
 enum class DOMPasteAccessResponse : uint8_t;
 enum class DragHandlingMethod : uint8_t;
 enum class ShouldTreatAsContinuingLoad : bool;
+enum class StorageAccessPromptWasShown : bool;
+enum class StorageAccessWasGranted : bool;
 enum class TextIndicatorPresentationTransition : uint8_t;
 enum class WritingDirection : uint8_t;
 
@@ -250,9 +253,10 @@ enum FindOptions : uint16_t;
 enum class DragControllerAction : uint8_t;
 
 struct AttributedString;
-struct DataDetectionResult;
 struct BackForwardListItemState;
+struct DataDetectionResult;
 struct EditorState;
+struct InsertTextOptions;
 struct InteractionInformationAtPosition;
 struct InteractionInformationRequest;
 struct LoadParameters;
@@ -545,7 +549,7 @@ public:
     void setUseSystemAppearance(bool);
 #endif
 
-    void setUseDarkAppearance(bool);
+    void effectiveAppearanceDidChange(bool useDarkAppearance, bool useInactiveAppearance);
 
     bool windowIsFocused() const;
     bool windowAndWebPageAreFocused() const;
@@ -597,6 +601,7 @@ public:
     void disabledAdaptationsDidChange(const OptionSet<WebCore::DisabledAdaptations>&);
     void viewportPropertiesDidChange(const WebCore::ViewportArguments&);
     void executeEditCommandWithCallback(const String&, const String& argument, CallbackID);
+    void selectAll();
 
     void textInputContextsInRect(WebCore::FloatRect, CompletionHandler<void(const Vector<WebKit::TextInputContext>&)>&&);
     void focusTextInputContext(const TextInputContext&, CompletionHandler<void(bool)>&&);
@@ -782,7 +787,7 @@ public:
     void sendComplexTextInputToPlugin(uint64_t pluginComplexTextInputIdentifier, const String& textInput);
 
     void setTextAsync(const String&);
-    void insertTextAsync(const String& text, const EditingRange& replacementRange, bool registerUndoGroup = false, uint32_t editingRangeIsRelativeTo = (uint32_t)EditingRangeIsRelativeTo::EditableRoot, bool suppressSelectionUpdate = false);
+    void insertTextAsync(const String& text, const EditingRange& replacementRange, InsertTextOptions&&);
     void getMarkedRangeAsync(CallbackID);
     void getSelectedRangeAsync(CallbackID);
     void characterIndexForPointAsync(const WebCore::IntPoint&, CallbackID);
@@ -1118,8 +1123,8 @@ public:
     void flushPendingEditorStateUpdate();
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& callback);
-    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, CompletionHandler<void(bool)>&& callback);
+    void hasStorageAccess(WebCore::RegistrableDomain&& subFrameDomain, WebCore::RegistrableDomain&& topFrameDomain, uint64_t frameID, CompletionHandler<void(bool)>&&);
+    void requestStorageAccess(WebCore::RegistrableDomain&& subFrameDomain, WebCore::RegistrableDomain&& topFrameDomain, uint64_t frameID, CompletionHandler<void(WebCore::StorageAccessWasGranted, WebCore::StorageAccessPromptWasShown)>&&);
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION)
@@ -1189,7 +1194,6 @@ private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);
 
     void updateThrottleState();
-    void updateUserActivity();
 
     // IPC::MessageSender
     IPC::Connection* messageSenderConnection() const override;
@@ -1221,12 +1225,14 @@ private:
     RefPtr<WebCore::Range> rangeForWebSelectionAtPosition(const WebCore::IntPoint&, const WebCore::VisiblePosition&, SelectionFlags&);
     void getFocusedElementInformation(FocusedElementInformation&);
     void platformInitializeAccessibility();
+    void generateSyntheticEditingCommand(SyntheticEditingCommandType);
     void handleSyntheticClick(WebCore::Node& nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebKit::WebEvent::Modifier>);
     void completeSyntheticClick(WebCore::Node& nodeRespondingToClick, const WebCore::FloatPoint& location, OptionSet<WebKit::WebEvent::Modifier>, WebCore::SyntheticClickType);
     void sendTapHighlightForNodeIfNecessary(uint64_t requestID, WebCore::Node*);
     void resetTextAutosizing();
     WebCore::VisiblePosition visiblePositionInFocusedNodeForPoint(const WebCore::Frame&, const WebCore::IntPoint&, bool isInteractingWithFocusedElement);
     RefPtr<WebCore::Range> rangeForGranularityAtPoint(WebCore::Frame&, const WebCore::IntPoint&, uint32_t granularity, bool isInteractingWithFocusedElement);
+    void dispatchSyntheticMouseEventsForSelectionGesture(SelectionTouch, const WebCore::IntPoint&);
 
     void sendPositionInformation(InteractionInformationAtPosition&&);
     InteractionInformationAtPosition positionInformation(const InteractionInformationRequest&);
@@ -1464,6 +1470,9 @@ private:
     void lowercaseWord();
     void capitalizeWord();
 #endif
+
+    bool shouldDispatchSyntheticMouseEventsWhenModifyingSelection() const;
+    void platformDidSelectAll();
 
 #if ENABLE(CONTEXT_MENUS)
     void didSelectItemFromActiveContextMenu(const WebContextMenuItemData&);
@@ -1812,7 +1821,6 @@ private:
     WebCore::FloatSize m_screenSize;
     WebCore::FloatSize m_availableScreenSize;
     WebCore::FloatSize m_overrideScreenSize;
-    RefPtr<WebCore::Range> m_currentBlockSelection;
     WebCore::IntRect m_blockRectForTextSelection;
 
     RefPtr<WebCore::Range> m_initialSelection;
@@ -1852,9 +1860,8 @@ private:
 
     OptionSet<WebCore::ActivityState::Flag> m_activityState;
 
-    bool m_processSuppressionEnabled;
+    bool m_isAppNapEnabled { true };
     UserActivity m_userActivity;
-    PAL::HysteresisActivity m_userActivityHysteresis;
 
     uint64_t m_pendingNavigationID { 0 };
     Optional<WebsitePoliciesData> m_pendingWebsitePolicies;

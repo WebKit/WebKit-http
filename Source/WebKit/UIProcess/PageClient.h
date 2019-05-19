@@ -327,6 +327,7 @@ public:
 #endif
 
     virtual bool effectiveAppearanceIsDark() const { return false; }
+    virtual bool effectiveAppearanceIsInactive() const { return false; }
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&) = 0;
     virtual void exitAcceleratedCompositingMode() = 0;
@@ -500,6 +501,7 @@ public:
 
 #if ENABLE(POINTER_EVENTS)
     virtual void cancelPointersForGestureRecognizer(UIGestureRecognizer*) { }
+    virtual WTF::Optional<unsigned> activeTouchIdentifierForGestureRecognizer(UIGestureRecognizer*) { return WTF::nullopt; }
 #endif
 
 #if PLATFORM(WPE)

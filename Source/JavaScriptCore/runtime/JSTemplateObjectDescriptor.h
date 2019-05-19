@@ -49,7 +49,7 @@ public:
 
     JSArray* createTemplateObject(ExecState*);
 
-    int startOffset() const { return m_startOffset; }
+    int endOffset() const { return m_endOffset; }
 
 protected:
     static void destroy(JSCell*);
@@ -58,7 +58,7 @@ private:
     JSTemplateObjectDescriptor(VM&, Ref<TemplateObjectDescriptor>&&, int);
 
     Ref<TemplateObjectDescriptor> m_descriptor;
-    int m_startOffset { 0 };
+    int m_endOffset { 0 };
 };
 
 } // namespace JSC

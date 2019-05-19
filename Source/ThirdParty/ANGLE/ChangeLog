@@ -1,3 +1,54 @@
+2019-05-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix internal and Windows builds.
+
+        * ANGLE.txt: Added.
+        Restore this file.  It was deleted, but it's needed.
+        * GLESv2.cmake:
+        It turns out CompositorNativeWindow11.cpp and Renderer11.cpp are needed, but the bot doesn't seem to have the right SDK.
+
+2019-05-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix High Sierra and Windows builds.
+
+        * GLESv2.cmake:
+        CompositorNativeWindow11.cpp was also having a hard time compiling on the bots.
+        * src/libANGLE/validationES3.cpp:
+        (gl::ValidateBindFragDataLocationIndexedEXT):
+        Remove a check for if an unsigned integer is less than 0.
+
+2019-05-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix High Sierra and Windows builds.
+
+        * src/common/utilities.cpp:
+        (gl::priv::gLineModes):
+        * src/common/utilities.h:
+        (gl::IsLineMode):
+        Don't have a global constructor.  Use a function scoped static variable instead.
+        * GLESv2.cmake:
+        Renderer11.cpp was not building successfully on the bots.
+        I don't think it's needed, so just don't build it.
+
+2019-05-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix High Sierra build.
+
+        * src/libANGLE/State.cpp:
+        (gl::State::kBufferSetters):
+        * src/libANGLE/State.h:
+        (gl::State::setBufferBinding):
+        Remove the need for a global constructor.
+
+2019-05-08  Don Olmstead  <don.olmstead@sony.com>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=197676
+
+        Reviewed by Alex Christensen.
+
+        Many changed files.  Updated to trunk ANGLE 565441b1078b.
+
 2019-04-29  Alex Christensen  <achristensen@webkit.org>
 
         <rdar://problem/50299396> Fix internal High Sierra build
