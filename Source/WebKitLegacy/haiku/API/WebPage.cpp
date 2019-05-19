@@ -64,7 +64,7 @@
 #include "MemoryCache.h"
 #include "WebNavigatorContentUtilsClient.h"
 #include "NotificationClientHaiku.h"
-#include "loader/archive/mhtml/MHTMLArchive.h"
+#include "MHTMLArchive.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "PageConfiguration.h"

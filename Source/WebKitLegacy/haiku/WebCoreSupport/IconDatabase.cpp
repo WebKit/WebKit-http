@@ -27,13 +27,14 @@
 #include "config.h"
 #include "IconDatabase.h"
 
+#include "pal/ExportMacros.h"
 #include "Logging.h"
-#include <platform/graphics/BitmapImage.h>
+#include "BitmapImage.h"
 #include <wtf/FileSystem.h>
-#include <platform/graphics/Image.h>
+#include "Image.h"
 #include <SQLiteStatement.h>
 #include <SQLiteTransaction.h>
-#include <platform/SharedBuffer.h>
+#include "SharedBuffer.h"
 #include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/URL.h>
 #include <wtf/MainThread.h>

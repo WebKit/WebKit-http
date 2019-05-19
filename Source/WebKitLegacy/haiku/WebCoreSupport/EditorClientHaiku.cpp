@@ -387,18 +387,18 @@ static const char* interpretEditorCommandKeyEvent(const KeyboardEvent* evt)
 }
 #endif
 
-void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
+void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent& event)
 {
-    const PlatformKeyboardEvent* platformEvent = event->underlyingPlatformEvent();
+    const PlatformKeyboardEvent* platformEvent = event.underlyingPlatformEvent();
     if (!platformEvent || platformEvent->type() == PlatformKeyboardEvent::KeyUp)
         return;
 
-	if (handleEditingKeyboardEvent(event, platformEvent)) {
-	    event->setDefaultHandled();
+	if (handleEditingKeyboardEvent(&event, platformEvent)) {
+	    event.setDefaultHandled();
 	}
 }
 
-void EditorClientHaiku::handleInputMethodKeydown(KeyboardEvent*)
+void EditorClientHaiku::handleInputMethodKeydown(KeyboardEvent&)
 {
     notImplemented();
 }

@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include <platform/graphics/NativeImage.h>
+#include "NativeImage.h"
 #include <SQLiteDatabase.h>
 #include <wtf/Condition.h>
 #include <wtf/HashCountedSet.h>

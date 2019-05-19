@@ -31,10 +31,10 @@
 #include "WebPage.h"
 #include "WebView.h"
 
-#include <bindings/js/DOMWrapperWorld.h>
+#include "DOMWrapperWorld.h"
 #include <Bitmap.h>
 #include <DocumentLoader.h>
-#include <dom/Document.h>
+#include "Document.h"
 #include "DOMWindow.h"
 #include <Editor.h>
 #include "FocusController.h"

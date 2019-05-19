@@ -36,7 +36,7 @@
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <JavaScriptCore/JSStringRef.h>
 #include <JavaScriptCore/OpaqueJSString.h>
-#include <editing/FindOptions.h>
+#include "FindOptions.h"
 #include <stdio.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>

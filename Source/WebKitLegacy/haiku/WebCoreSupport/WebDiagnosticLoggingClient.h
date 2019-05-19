@@ -26,7 +26,7 @@
 #ifndef WebDiagnosticLoggingClient_h
 #define WebDiagnosticLoggingClient_h
 
-#include "page/DiagnosticLoggingClient.h"
+#include "DiagnosticLoggingClient.h"
 #include <wtf/Forward.h>
 
 namespace WebKit {

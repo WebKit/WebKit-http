@@ -95,8 +95,8 @@ public:
     void undo() override;
     void redo() override;
 
-    void handleKeyboardEvent(KeyboardEvent*) override;
-    void handleInputMethodKeydown(KeyboardEvent*) override;
+    void handleKeyboardEvent(KeyboardEvent&) override;
+    void handleInputMethodKeydown(KeyboardEvent&) override;
 
     void textFieldDidBeginEditing(Element*) override;
     void textFieldDidEndEditing(Element*) override;
