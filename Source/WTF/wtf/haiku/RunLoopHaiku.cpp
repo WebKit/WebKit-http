@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "RunLoop.h"
+#include "wtf/RunLoop.h"
 
 #include <Application.h>
 #include <Handler.h>

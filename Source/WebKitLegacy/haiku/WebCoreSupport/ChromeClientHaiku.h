@@ -114,6 +114,7 @@ namespace WebCore {
 
         PlatformPageClient platformPageClient() const override;
         void contentsSizeChanged(Frame&, const IntSize&) const override;
+		void intrinsicContentsSizeChanged(const IntSize&) const override;
         void scrollRectIntoView(const IntRect&) const override;
         void attachViewOverlayGraphicsLayer(WebCore::GraphicsLayer* layer) override;
 

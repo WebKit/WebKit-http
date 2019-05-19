@@ -13,7 +13,6 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/css/parser"
     "${WEBCORE_DIR}/editing"
     "${WEBCORE_DIR}/history"
-    "${WEBCORE_DIR}/html"
     "${WEBCORE_DIR}/html/forms"
     "${WEBCORE_DIR}/inspector"
     "${WEBCORE_DIR}/loader"
