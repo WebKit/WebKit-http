@@ -194,6 +194,8 @@ imported/w3c/web-platform-tests/secure-contexts/shared-worker-secure-first.https
 # Per specification, if the scripts are identical, we do not install the new script and return the existing registration.
 imported/w3c/web-platform-tests/service-workers/service-worker/import-scripts-redirect.https.html [ Skip ]
 
+imported/w3c/web-platform-tests/referrer-policy [ Skip ]
+
 # Newly imported service worker tests that are timing out.
 imported/w3c/web-platform-tests/service-workers/service-worker/dedicated-worker-service-worker-interception.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/embed-and-object-are-not-intercepted.https.html [ Skip ]
@@ -534,6 +536,7 @@ webkit.org/b/142208 inspector/timeline/exception-in-injected-script-while-record
 [ Debug ] inspector/debugger/debugger-stack-overflow.html [ Skip ]
 [ Debug ] inspector/canvas/recording-2d.html [ Slow ]
 [ Debug ] inspector/canvas/recording-webgl.html [ Slow ]
+[ Debug ] inspector/canvas/recording-webgl2.html [ Slow ]
 
 # Debugger stepping tests can timeout if they run slowly due to a short timer scheduled in the frontend.
 webkit.org/b/161951 [ Debug ] inspector/debugger/paused-scopes.html [ Skip ]

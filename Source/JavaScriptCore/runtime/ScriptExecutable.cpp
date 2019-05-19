@@ -34,6 +34,7 @@
 #include "IsoCellSetInlines.h"
 #include "JIT.h"
 #include "JSCInlines.h"
+#include "JSTemplateObjectDescriptor.h"
 #include "LLIntEntrypoint.h"
 #include "ModuleProgramCodeBlock.h"
 #include "Parser.h"
@@ -57,6 +58,7 @@ ScriptExecutable::ScriptExecutable(Structure* structure, VM& vm, const SourceCod
     , m_neverFTLOptimize(false)
     , m_isArrowFunctionContext(isInArrowFunctionContext)
     , m_canUseOSRExitFuzzing(true)
+    , m_codeForGeneratorBodyWasGenerated(false)
     , m_derivedContextType(static_cast<unsigned>(derivedContextType))
     , m_evalContextType(static_cast<unsigned>(evalContextType))
 {
@@ -312,10 +314,19 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
     FunctionExecutable* executable = jsCast<FunctionExecutable*>(this);
     RELEASE_ASSERT(!executable->codeBlockFor(kind));
     ParserError error;
-    DebuggerMode debuggerMode = globalObject->hasInteractiveDebugger() ? DebuggerOn : DebuggerOff;
+    OptionSet<CodeGenerationMode> codeGenerationMode = globalObject->defaultCodeGenerationMode();
+    // We continue using the same CodeGenerationMode for Generators because live generator objects can
+    // keep the state which is only valid with the CodeBlock compiled with the same CodeGenerationMode.
+    if (isGeneratorOrAsyncFunctionBodyParseMode(executable->parseMode())) {
+        if (!m_codeForGeneratorBodyWasGenerated) {
+            m_codeGenerationModeForGeneratorBody = codeGenerationMode;
+            m_codeForGeneratorBodyWasGenerated = true;
+        } else
+            codeGenerationMode = m_codeGenerationModeForGeneratorBody;
+    }
     UnlinkedFunctionCodeBlock* unlinkedCodeBlock = 
         executable->m_unlinkedExecutable->unlinkedCodeBlockFor(
-            *vm, executable->source(), kind, debuggerMode, error, 
+            *vm, executable->source(), kind, codeGenerationMode, error, 
             executable->parseMode());
     recordParse(
         executable->m_unlinkedExecutable->features(), 
@@ -423,6 +434,61 @@ Exception* ScriptExecutable::prepareForExecutionImpl(
     
     installCode(vm, codeBlock, codeBlock->codeType(), codeBlock->specializationKind());
     return nullptr;
+}
+
+ScriptExecutable* ScriptExecutable::topLevelExecutable()
+{
+    switch (type()) {
+    case FunctionExecutableType:
+        return jsCast<FunctionExecutable*>(this)->topLevelExecutable();
+    default:
+        return this;
+    }
+}
+
+JSArray* ScriptExecutable::createTemplateObject(ExecState* exec, JSTemplateObjectDescriptor* descriptor)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    TemplateObjectMap& templateObjectMap = ensureTemplateObjectMap(vm);
+    TemplateObjectMap::AddResult result;
+    {
+        auto locker = holdLock(cellLock());
+        result = templateObjectMap.add(descriptor->startOffset(), WriteBarrier<JSArray>());
+    }
+    if (JSArray* array = result.iterator->value.get())
+        return array;
+    JSArray* templateObject = descriptor->createTemplateObject(exec);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    result.iterator->value.set(vm, this, templateObject);
+    return templateObject;
+}
+
+auto ScriptExecutable::ensureTemplateObjectMapImpl(std::unique_ptr<TemplateObjectMap>& dest) -> TemplateObjectMap&
+{
+    if (dest)
+        return *dest;
+    auto result = std::make_unique<TemplateObjectMap>();
+    WTF::storeStoreFence();
+    dest = WTFMove(result);
+    return *dest;
+}
+
+auto ScriptExecutable::ensureTemplateObjectMap(VM& vm) -> TemplateObjectMap&
+{
+    switch (type()) {
+    case FunctionExecutableType:
+        return static_cast<FunctionExecutable*>(this)->ensureTemplateObjectMap(vm);
+    case EvalExecutableType:
+        return static_cast<EvalExecutable*>(this)->ensureTemplateObjectMap(vm);
+    case ProgramExecutableType:
+        return static_cast<ProgramExecutable*>(this)->ensureTemplateObjectMap(vm);
+    case ModuleProgramExecutableType:
+    default:
+        ASSERT(type() == ModuleProgramExecutableType);
+        return static_cast<ModuleProgramExecutable*>(this)->ensureTemplateObjectMap(vm);
+    }
 }
 
 CodeBlockHash ScriptExecutable::hashFor(CodeSpecializationKind kind) const

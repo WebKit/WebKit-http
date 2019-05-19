@@ -411,9 +411,7 @@ public:
     void clearSelectorQueryCache();
 
     void setViewportArguments(const ViewportArguments& viewportArguments) { m_viewportArguments = viewportArguments; }
-    ViewportArguments viewportArguments() const { return m_overrideViewportArguments.valueOr(m_viewportArguments); }
-
-    WEBCORE_EXPORT void setOverrideViewportArguments(const Optional<ViewportArguments>&);
+    WEBCORE_EXPORT ViewportArguments viewportArguments() const;
 
     OptionSet<DisabledAdaptations> disabledAdaptations() const { return m_disabledAdaptations; }
 #ifndef NDEBUG
@@ -1462,6 +1460,9 @@ public:
     TextAutoSizing& textAutoSizing();
 #endif
 
+    // For debugging rdar://problem/49877867.
+    void setMayBeDetachedFromFrame(bool mayBeDetachedFromFrame) { m_mayBeDetachedFromFrame = mayBeDetachedFromFrame; }
+
     Logger& logger();
 
     void hasStorageAccess(Ref<DeferredPromise>&& passedPromise);
@@ -1643,8 +1644,6 @@ private:
     bool shouldEnforceHTTP09Sandbox() const;
 
     void platformSuspendOrStopActiveDOMObjects();
-
-    bool domainIsRegisterable(const String&) const;
 
     void enableTemporaryTimeUserGesture();
 
@@ -1829,7 +1828,6 @@ private:
     Timer m_loadEventDelayTimer;
 
     ViewportArguments m_viewportArguments;
-    Optional<ViewportArguments> m_overrideViewportArguments;
     OptionSet<DisabledAdaptations> m_disabledAdaptations;
 
     DocumentTiming m_documentTiming;
@@ -2061,6 +2059,7 @@ private:
 
     bool m_hasEvaluatedUserAgentScripts { false };
     bool m_isRunningUserScripts { false };
+    bool m_mayBeDetachedFromFrame { true };
 #if ENABLE(APPLE_PAY)
     bool m_hasStartedApplePaySession { false };
 #endif

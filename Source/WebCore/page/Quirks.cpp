@@ -55,6 +55,37 @@ inline bool Quirks::needsQuirks() const
     return m_document && m_document->settings().needsSiteSpecificQuirks();
 }
 
+bool Quirks::shouldIgnoreShrinkToFitContent() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return false;
+
+    auto host = m_document->topDocument().url().host();
+    if (equalLettersIgnoringASCIICase(host, "outlook.live.com"))
+        return true;
+#endif
+    return false;
+}
+
+Optional<LayoutUnit> Quirks::overriddenViewLayoutWidth(LayoutUnit currentViewLayoutWidth) const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return { };
+
+    auto host = m_document->topDocument().url().host();
+    if (equalLettersIgnoringASCIICase(host, "outlook.live.com")) {
+        if (currentViewLayoutWidth <= 989 || currentViewLayoutWidth >= 1132)
+            return { };
+        return { 989 };
+    }
+#else
+    UNUSED_PARAM(currentViewLayoutWidth);
+#endif
+    return { };
+}
+
 bool Quirks::shouldIgnoreInvalidSignal() const
 {
     if (!needsQuirks())
@@ -231,7 +262,7 @@ bool Quirks::shouldDispatchSimulatedMouseEvents() const
         return true;
     if (equalLettersIgnoringASCIICase(host, "wix.com") || host.endsWithIgnoringASCIICase(".wix.com"))
         return true;
-    if (equalLettersIgnoringASCIICase(host, "desmos.com") || host.endsWithIgnoringASCIICase(".desmos.com"))
+    if ((equalLettersIgnoringASCIICase(host, "desmos.com") || host.endsWithIgnoringASCIICase(".desmos.com")) && url.path().startsWithIgnoringASCIICase("/calculator/"))
         return true;
     if (equalLettersIgnoringASCIICase(host, "figma.com") || host.endsWithIgnoringASCIICase(".figma.com"))
         return true;
@@ -264,5 +295,60 @@ bool Quirks::shouldDisablePointerEventsQuirk() const
 #endif
     return false;
 }
+
+// FIXME(<rdar://problem/50394969>): Remove after desmos.com adopts inputmode="none".
+bool Quirks::needsInputModeNoneImplicitly(const HTMLElement& element) const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return false;
+
+    if (!element.hasTagName(HTMLNames::textareaTag))
+        return false;
+
+    auto& url = m_document->url();
+    auto host = url.host();
+    if (!host.endsWithIgnoringASCIICase(".desmos.com"))
+        return false;
+
+    return element.parentElement() && element.parentElement()->classNames().contains("dcg-mq-textarea");
+#else
+    UNUSED_PARAM(element);
+    return false;
+#endif
+}
+
+// FIXME: Remove after the site is fixed, <rdar://problem/50374200>
+bool Quirks::needsGMailOverflowScrollQuirk() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return false;
+
+    if (!m_needsGMailOverflowScrollQuirk)
+        m_needsGMailOverflowScrollQuirk = equalLettersIgnoringASCIICase(m_document->url().host(), "mail.google.com");
+
+    return *m_needsGMailOverflowScrollQuirk;
+#else
+    return false;
+#endif
+}
+
+// FIXME: Remove after the site is fixed, <rdar://problem/50374311>
+bool Quirks::needsYouTubeOverflowScrollQuirk() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return false;
+
+    if (!m_needsYouTubeOverflowScrollQuirk)
+        m_needsYouTubeOverflowScrollQuirk = equalLettersIgnoringASCIICase(m_document->url().host(), "www.youtube.com");
+
+    return *m_needsYouTubeOverflowScrollQuirk;
+#else
+    return false;
+#endif
+}
+
 
 }

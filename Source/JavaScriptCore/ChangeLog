@@ -1,3 +1,602 @@
+2019-05-06  Keith Miller  <keith_miller@apple.com>
+
+        JSWrapperMap should check if existing prototype properties are wrappers when copying exported methods.
+        https://bugs.webkit.org/show_bug.cgi?id=197324
+        <rdar://problem/50253144>
+
+        Reviewed by Saam Barati.
+
+        The current implementation prevents using JSExport to shadow a
+        method from a super class. This was because we would only add a
+        method if the prototype didn't already claim to have the
+        property. Normally this would only happen if an Objective-C super
+        class already exported a ObjCCallbackFunction for the method,
+        however, if the user exports a property that is already on
+        Object.prototype the overriden method won't be exported.
+
+        This patch fixes the object prototype issue by checking if the
+        property on the prototype chain is an ObjCCallbackFunction, if
+        it's not then it adds an override.
+
+        * API/JSWrapperMap.mm:
+        (copyMethodsToObject):
+        * API/tests/testapi.mm:
+        (-[ToStringClass toString]):
+        (-[ToStringClass other]):
+        (-[ToStringSubclass toString]):
+        (-[ToStringSubclassNoProtocol toString]):
+        (testToString):
+        (testObjectiveCAPI):
+
+2019-05-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] We should check OOM for description string of Symbol
+        https://bugs.webkit.org/show_bug.cgi?id=197634
+
+        Reviewed by Keith Miller.
+
+        When resoling JSString for description of Symbol, we should check OOM error.
+        We also change JSValueMakeSymbol(..., nullptr) to returning a symbol value
+        without description, (1) to simplify the code and (2) give a way for JSC API
+        to create a symbol value without description.
+
+        * API/JSValueRef.cpp:
+        (JSValueMakeSymbol):
+        * API/tests/testapi.cpp:
+        (TestAPI::symbolsTypeof):
+        (TestAPI::symbolsDescription):
+        (testCAPIViaCpp):
+        * dfg/DFGOperations.cpp:
+        * runtime/Symbol.cpp:
+        (JSC::Symbol::createWithDescription):
+        * runtime/Symbol.h:
+        * runtime/SymbolConstructor.cpp:
+        (JSC::callSymbol):
+
+2019-05-06  Keith Rollin  <krollin@apple.com>
+
+        Temporarily disable generate-xcfilelists
+        https://bugs.webkit.org/show_bug.cgi?id=197619
+        <rdar://problem/50507392>
+
+        Reviewed by Alex Christensen.
+
+        We need to perform a significant update to the generate-xcfilelist
+        scripts. This work involves coordinated work with another facility. If
+        the work does not occur in tandem, the build will be broken. To avoid
+        this, disable the invoking of the scripts during the transition. The
+        checking will be restored once the new scripts are in place.
+
+        * Scripts/check-xcfilelists.sh:
+
+2019-05-06  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [PlayStation] Fix build break since r244919
+        https://bugs.webkit.org/show_bug.cgi?id=197627
+
+        Reviewed by Ross Kirsling.
+
+        Bugfix for POSIX socket implementation and suppress warnings.
+
+        * inspector/remote/socket/RemoteInspectorConnectionClient.h:
+        (Inspector::RemoteInspectorConnectionClient::didAccept):
+        * inspector/remote/socket/posix/RemoteInspectorSocketPOSIX.cpp:
+        (Inspector::Socket::getPort):
+
+2019-05-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        TemplateObject passed to template literal tags are not always identical for the same source location.
+        https://bugs.webkit.org/show_bug.cgi?id=190756
+
+        Reviewed by Saam Barati.
+
+        Tagged template literal requires that the site object is allocated per source location. Previously, we create the site object
+        when linking CodeBlock and cache it in CodeBlock. But this is wrong because,
+
+        1. CodeBlock can be jettisoned and regenerated. So every time CodeBlock is regenerated, we get the different site object.
+        2. Call and Construct can have different CodeBlock. Even if the function is called in call-form or construct-form, we should return the same site object.
+
+        In this patch, we start caching these site objects in the top-level ScriptExecutable, this matches the spec's per source location since the only one top-level
+        ScriptExecutable is created for the given script code. Each ScriptExecutable of JSFunction can be created multiple times because CodeBlock creates it.
+        But the top-level one is not created by CodeBlock. This top-level ScriptExecutable is well-aligned to the Script itself. The top-level ScriptExecutable now has HashMap,
+        which maps source locations to cached site objects.
+
+        1. This patch threads the top-level ScriptExecutable to each FunctionExecutable creation. Each FunctionExecutable has a reference to the top-level ScriptExecutable.
+        2. We put TemplateObjectMap in ScriptExecutable, which manages cached template objects.
+        3. We move FunctionExecutable::m_cachedPolyProtoStructure to the FunctionExecutable::RareDate to keep FunctionExecutable 128 bytes.
+
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-InternalClashingNames-Combined.js-result:
+        * Scripts/tests/builtins/expected/WebCore-AnotherGuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-ArbitraryConditionalGuard-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-UnguardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-xmlCasingTest-Separate.js-result:
+        * Scripts/wkbuiltins/builtins_templates.py:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::setConstantRegisters):
+        * bytecode/CodeBlock.h:
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::link):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::addTemplateObjectConstant):
+        (JSC::BytecodeGenerator::emitGetTemplateObject):
+        * bytecompiler/BytecodeGenerator.h:
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedTemplateObjectDescriptor::encode):
+        (JSC::CachedTemplateObjectDescriptor::decode const):
+        (JSC::CachedJSValue::encode):
+        (JSC::CachedJSValue::decode const):
+        * runtime/EvalExecutable.cpp:
+        (JSC::EvalExecutable::ensureTemplateObjectMap):
+        (JSC::EvalExecutable::visitChildren):
+        * runtime/EvalExecutable.h:
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::finishCreation):
+        (JSC::FunctionExecutable::visitChildren):
+        (JSC::FunctionExecutable::fromGlobalCode):
+        (JSC::FunctionExecutable::ensureRareDataSlow):
+        (JSC::FunctionExecutable::ensureTemplateObjectMap):
+        * runtime/FunctionExecutable.h:
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::instantiateDeclarations):
+        * runtime/JSTemplateObjectDescriptor.cpp:
+        (JSC::JSTemplateObjectDescriptor::JSTemplateObjectDescriptor):
+        (JSC::JSTemplateObjectDescriptor::create):
+        * runtime/JSTemplateObjectDescriptor.h:
+        * runtime/ModuleProgramExecutable.cpp:
+        (JSC::ModuleProgramExecutable::ensureTemplateObjectMap):
+        (JSC::ModuleProgramExecutable::visitChildren):
+        * runtime/ModuleProgramExecutable.h:
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::ensureTemplateObjectMap):
+        (JSC::ProgramExecutable::visitChildren):
+        * runtime/ProgramExecutable.h:
+        * runtime/ScriptExecutable.cpp:
+        (JSC::ScriptExecutable::topLevelExecutable):
+        (JSC::ScriptExecutable::createTemplateObject):
+        (JSC::ScriptExecutable::ensureTemplateObjectMap):
+        * runtime/ScriptExecutable.h:
+        * tools/JSDollarVM.cpp:
+        (JSC::functionCreateBuiltin):
+        (JSC::functionDeleteAllCodeWhenIdle):
+        (JSC::JSDollarVM::finishCreation):
+
+2019-05-04  Tadeu Zagallo  <tzagallo@apple.com>
+
+        TypedArrays should not store properties that are canonical numeric indices
+        https://bugs.webkit.org/show_bug.cgi?id=197228
+        <rdar://problem/49557381>
+
+        Reviewed by Saam Barati.
+
+        According to the spec[1]:
+        - TypedArrays should not perform an ordinary GetOwnProperty/SetOwnProperty if the index is a
+        CanonicalNumericIndexString, but invalid according to IntegerIndexedElementGet and similar
+        functions. I.e., there are a few properties that should not be set in a TypedArray, like NaN,
+        Infinity and -0.
+        - On DefineOwnProperty, the out-of-bounds check should be performed before validating the property
+        descriptor.
+        - On GetOwnProperty, the returned descriptor for numeric properties should have writable set to true.
+
+        [1]: https://www.ecma-international.org/ecma-262/9.0/index.html#sec-integer-indexed-exotic-objects-defineownproperty-p-desc
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::getOwnPropertySlot):
+        (JSC::JSGenericTypedArrayView<Adaptor>::put):
+        (JSC::JSGenericTypedArrayView<Adaptor>::defineOwnProperty):
+        (JSC::JSGenericTypedArrayView<Adaptor>::getOwnPropertySlotByIndex):
+        (JSC::JSGenericTypedArrayView<Adaptor>::putByIndex):
+        * runtime/PropertyName.h:
+        (JSC::isCanonicalNumericIndexString):
+
+2019-05-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Need to emit SetLocal if we emit MovHint in DFGByteCodeParser
+        https://bugs.webkit.org/show_bug.cgi?id=197584
+
+        Reviewed by Saam Barati.
+
+        In r244864, we emit MovHint for adhocly created GetterCall/SetterCall frame locals in the callee side to make OSR availability analysis's pruning correct.
+        However, we just emit MovHint, and we do not emit SetLocal since we ensured that these locals are already flushed in the same place before. However, MovHint
+        and SetLocal are needed to be a pair in DFGByteCodeParser because we rely on this assumption in SSA conversion phase. SSA conversion phase always emit KillStack
+        just before MovHint's target location even if the MovHint's target is the same to the previously emitted MovHint and SetLocal.
+        This patch emits SetLocal too when emitting MovHint for GetterCall/SetterCall frame locals.
+
+        The example is like this.
+
+            a:  SomeValueNode
+             :  MovHint(@a, loc10)
+            b:  SetLocal(@a, loc10)
+                ...
+            c:  MovHint(@a, loc10)
+
+        Then, this will be converted to the style in SSA conversion.
+
+            a:  SomeValueNode
+             :  KillStack(loc10)
+            b:  PutStack(@a, loc10)
+                ...
+            c:  KillStack(loc10)
+
+        Then, @b will be removed later since @c kills it.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::MarkedBlock):
+        (JSC::MarkedBlock::Handle::stopAllocating):
+        (JSC::MarkedBlock::Handle::resumeAllocating):
+        (JSC::MarkedBlock::aboutToMarkSlow):
+        (JSC::MarkedBlock::Handle::didConsumeFreeList):
+
+2019-05-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: rename "low power" to "display composited"
+        https://bugs.webkit.org/show_bug.cgi?id=197296
+
+        Reviewed by Joseph Pecoraro.
+
+        Removed specific ChangeLog entries since it is almost entirely mechanical changes.
+
+        * inspector/protocol/DOM.json:
+
+2019-05-03  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [WinCairo] Implement and enable RemoteInspector Server.
+        https://bugs.webkit.org/show_bug.cgi?id=197432
+
+        Reviewed by Ross Kirsling.
+
+        Implement Windows implementation for Socket Backend of RemoteInspector and enable it on WinCairo
+        for experimental feature.
+
+        Also add listener interface for connection between RemoteInspector and RemoteInspectorServer
+        for flexible configuration.
+
+        * PlatformWin.cmake:
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/socket/RemoteInspectorConnectionClient.h:
+        (Inspector::RemoteInspectorConnectionClient::didAccept):
+        * inspector/remote/socket/RemoteInspectorServer.cpp:
+        (Inspector::RemoteInspectorServer::connect):
+        (Inspector::RemoteInspectorServer::listenForTargets):
+        (Inspector::RemoteInspectorServer::didAccept):
+        (Inspector::RemoteInspectorServer::dispatchMap):
+        (Inspector::RemoteInspectorServer::start):
+        (Inspector::RemoteInspectorServer::addServerConnection): Deleted.
+        * inspector/remote/socket/RemoteInspectorServer.h:
+        (Inspector::RemoteInspectorServer::RemoteInspectorServer):
+        * inspector/remote/socket/RemoteInspectorSocket.cpp:
+        (Inspector::RemoteInspector::RemoteInspector):
+        (Inspector::RemoteInspector::dispatchMap):
+        (Inspector::RemoteInspector::start):
+        (Inspector::RemoteInspector::stopInternal):
+        (Inspector::RemoteInspector::setServerPort):
+        * inspector/remote/socket/RemoteInspectorSocket.h:
+        * inspector/remote/socket/RemoteInspectorSocketEndpoint.cpp:
+        (Inspector::RemoteInspectorSocketEndpoint::listenInet):
+        (Inspector::RemoteInspectorSocketEndpoint::getPort const):
+        (Inspector::RemoteInspectorSocketEndpoint::acceptInetSocketIfEnabled):
+        * inspector/remote/socket/RemoteInspectorSocketEndpoint.h:
+        * inspector/remote/socket/posix/RemoteInspectorSocketPOSIX.cpp:
+        (Inspector::Socket::init): Added.
+        (Inspector::Socket::listen): Signature changed.
+        (Inspector::Socket::getPort): Added.
+        * inspector/remote/socket/win/RemoteInspectorSocketWin.cpp: Added.
+        (Inspector::Socket::init):
+        (Inspector::Socket::Socket::Socket):
+        (Inspector::Socket::Socket::~Socket):
+        (Inspector::Socket::Socket::close):
+        (Inspector::Socket::Socket::operator PlatformSocketType const):
+        (Inspector::Socket::Socket::operator bool const):
+        (Inspector::Socket::Socket::leak):
+        (Inspector::Socket::Socket::create):
+        (Inspector::Socket::setOpt):
+        (Inspector::Socket::setOptEnabled):
+        (Inspector::Socket::enableOpt):
+        (Inspector::Socket::connectTo):
+        (Inspector::Socket::bindAndListen):
+        (Inspector::Socket::connect):
+        (Inspector::Socket::listen):
+        (Inspector::Socket::accept):
+        (Inspector::Socket::createPair):
+        (Inspector::Socket::setup):
+        (Inspector::Socket::isValid):
+        (Inspector::Socket::isListening):
+        (Inspector::Socket::getPort):
+        (Inspector::Socket::read):
+        (Inspector::Socket::write):
+        (Inspector::Socket::close):
+        (Inspector::Socket::preparePolling):
+        (Inspector::Socket::poll):
+        (Inspector::Socket::isReadable):
+        (Inspector::Socket::isWritable):
+        (Inspector::Socket::markWaitingWritable):
+        (Inspector::Socket::clearWaitingWritable):
+
+2019-05-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Generator CodeBlock generation should be idempotent
+        https://bugs.webkit.org/show_bug.cgi?id=197552
+
+        Reviewed by Keith Miller.
+
+        ES6 Generator saves and resumes the current execution state. Since ES6 generator can save the execution state at expression
+        granularity (not statement granularity), the saved state involves locals. But if the underlying CodeBlock is jettisoned and
+        recompiled with different code generation option (like, debugger, type profiler etc.), the generated instructions can be largely
+        different and it does not have the same state previously used. If we resume the previously created generator with the newly
+        generator function, resuming is messed up.
+
+            function* gen () { ... }
+            var g = gen();
+            g.next();
+
+            // CodeBlock is destroyed & Debugger is enabled.
+
+            g.next();
+
+        In this patch,
+
+        1. In generatorification, we use index Identifier (localN => Identifier("N")) instead of private symbols to generate the same
+           instructions every time we regenerate the CodeBlock.
+
+        2. We decouple the options which can affect on the generated code (Debugger, TypeProfiler, ControlFlowProfiler) from the BytecodeGenerator,
+           and pass them as a parameter, OptionSet<CodeGeneratorMode>.
+
+        3. Generator ScriptExecutable remembers the previous CodeGeneratorMode and reuses this parameter to regenerate CodeBlock. It means that,
+           even if the debugger is enabled, previously created generators are not debuggable. But newly created generators are debuggable.
+
+        * bytecode/BytecodeGeneratorification.cpp:
+        (JSC::BytecodeGeneratorification::storageForGeneratorLocal):
+        (JSC::BytecodeGeneratorification::run):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::setConstantRegisters):
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::wasCompiledWithDebuggingOpcodes const):
+        (JSC::UnlinkedCodeBlock::wasCompiledWithTypeProfilerOpcodes const):
+        (JSC::UnlinkedCodeBlock::wasCompiledWithControlFlowProfilerOpcodes const):
+        (JSC::UnlinkedCodeBlock::codeGenerationMode const):
+        * bytecode/UnlinkedEvalCodeBlock.h:
+        * bytecode/UnlinkedFunctionCodeBlock.h:
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::generateUnlinkedFunctionCodeBlock):
+        (JSC::UnlinkedFunctionExecutable::fromGlobalCode):
+        (JSC::UnlinkedFunctionExecutable::unlinkedCodeBlockFor):
+        * bytecode/UnlinkedFunctionExecutable.h:
+        * bytecode/UnlinkedGlobalCodeBlock.h:
+        (JSC::UnlinkedGlobalCodeBlock::UnlinkedGlobalCodeBlock):
+        * bytecode/UnlinkedModuleProgramCodeBlock.h:
+        * bytecode/UnlinkedProgramCodeBlock.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitTypeProfilerExpressionInfo):
+        (JSC::BytecodeGenerator::emitProfileType):
+        (JSC::BytecodeGenerator::emitProfileControlFlow):
+        (JSC::BytecodeGenerator::pushLexicalScopeInternal):
+        (JSC::BytecodeGenerator::popLexicalScopeInternal):
+        (JSC::BytecodeGenerator::prepareLexicalScopeForNextForLoopIteration):
+        (JSC::BytecodeGenerator::emitCall):
+        (JSC::BytecodeGenerator::emitCallVarargs):
+        (JSC::BytecodeGenerator::emitLogShadowChickenPrologueIfNecessary):
+        (JSC::BytecodeGenerator::emitLogShadowChickenTailIfNecessary):
+        (JSC::BytecodeGenerator::emitDebugHook):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::shouldEmitDebugHooks const):
+        (JSC::BytecodeGenerator::shouldEmitTypeProfilerHooks const):
+        (JSC::BytecodeGenerator::shouldEmitControlFlowProfilerHooks const):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PrefixNode::emitResolve):
+        (JSC::EmptyVarExpression::emitBytecode):
+        (JSC::ReturnNode::emitBytecode):
+        (JSC::FunctionNode::emitBytecode):
+        * parser/ParserModes.h:
+        (): Deleted.
+        * parser/SourceCodeKey.h:
+        (JSC::SourceCodeFlags::SourceCodeFlags):
+        (JSC::SourceCodeKey::SourceCodeKey):
+        * runtime/CachedTypes.cpp:
+        (JSC::CachedCodeBlock::isClassContext const):
+        (JSC::CachedCodeBlock::codeGenerationMode const):
+        (JSC::UnlinkedCodeBlock::UnlinkedCodeBlock):
+        (JSC::CachedCodeBlock<CodeBlockType>::encode):
+        (JSC::CachedCodeBlock::wasCompiledWithDebuggingOpcodes const): Deleted.
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getUnlinkedGlobalCodeBlock):
+        (JSC::CodeCache::getUnlinkedProgramCodeBlock):
+        (JSC::CodeCache::getUnlinkedEvalCodeBlock):
+        (JSC::CodeCache::getUnlinkedModuleProgramCodeBlock):
+        (JSC::CodeCache::getUnlinkedGlobalFunctionExecutable):
+        (JSC::generateUnlinkedCodeBlockForFunctions):
+        (JSC::sourceCodeKeyForSerializedBytecode):
+        (JSC::sourceCodeKeyForSerializedProgram):
+        (JSC::sourceCodeKeyForSerializedModule):
+        (JSC::serializeBytecode):
+        * runtime/CodeCache.h:
+        (JSC::generateUnlinkedCodeBlockImpl):
+        (JSC::generateUnlinkedCodeBlock):
+        * runtime/Completion.cpp:
+        (JSC::generateProgramBytecode):
+        (JSC::generateModuleBytecode):
+        * runtime/DirectEvalExecutable.cpp:
+        (JSC::DirectEvalExecutable::create):
+        * runtime/IndirectEvalExecutable.cpp:
+        (JSC::IndirectEvalExecutable::create):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::defaultCodeGenerationMode const):
+        * runtime/ModuleProgramExecutable.cpp:
+        (JSC::ModuleProgramExecutable::create):
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+        * runtime/ScriptExecutable.cpp:
+        (JSC::ScriptExecutable::ScriptExecutable):
+        (JSC::ScriptExecutable::newCodeBlockFor):
+        * runtime/ScriptExecutable.h:
+        * tools/JSDollarVM.cpp:
+        (JSC::changeDebuggerModeWhenIdle):
+        (JSC::functionEnableDebuggerModeWhenIdle):
+        (JSC::functionDisableDebuggerModeWhenIdle):
+
+2019-05-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Record actions performed on WebGL2RenderingContext
+        https://bugs.webkit.org/show_bug.cgi?id=176008
+        <rdar://problem/34213884>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Recording.json:
+        * inspector/scripts/codegen/generator.py:
+        Add `canvas-webgl2` as a `Type`.
+
+2019-05-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244881.
+        https://bugs.webkit.org/show_bug.cgi?id=197559
+
+        Breaks compilation of jsconly on linux, breaking compilation
+        for jsc-i386-ews, jsc-mips-ews and jsc-armv7-ews (Requested by
+        guijemont on #webkit).
+
+        Reverted changeset:
+
+        "[CMake] Refactor WEBKIT_MAKE_FORWARDING_HEADERS into
+        WEBKIT_COPY_FILES"
+        https://bugs.webkit.org/show_bug.cgi?id=197174
+        https://trac.webkit.org/changeset/244881
+
+2019-05-02  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Refactor WEBKIT_MAKE_FORWARDING_HEADERS into WEBKIT_COPY_FILES
+        https://bugs.webkit.org/show_bug.cgi?id=197174
+
+        Reviewed by Alex Christensen.
+
+        Replace WEBKIT_MAKE_FORWARDING_HEADERS with WEBKIT_COPY_FILES and make dependencies
+        for framework headers explicit.
+
+        * CMakeLists.txt:
+
+2019-05-02  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed rollout of r244862.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getOwnPropertyDescriptor):
+
+2019-05-01  Saam barati  <sbarati@apple.com>
+
+        Baseline JIT should do argument value profiling after checking for stack overflow
+        https://bugs.webkit.org/show_bug.cgi?id=197052
+        <rdar://problem/50009602>
+
+        Reviewed by Yusuke Suzuki.
+
+        Otherwise, we may do value profiling without running a write barrier, which
+        is against the rules of how we do value profiling.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::compileWithoutLinking):
+
+2019-05-01  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Inlining Getter/Setter should care availability of ad-hocly constructed frame
+        https://bugs.webkit.org/show_bug.cgi?id=197405
+
+        Reviewed by Saam Barati.
+
+        When inlining getter and setter calls, we setup a stack frame which does not appear in the bytecode.
+        Because Inlining can switch on executable, we could have a graph like this.
+
+        BB#0
+            ...
+            30: GetSetter
+            31: MovHint(loc10)
+            32: SetLocal(loc10)
+            33: MovHint(loc9)
+            34: SetLocal(loc9)
+            ...
+            37: GetExecutable(@30)
+            ...
+            41: Switch(@37)
+
+        BB#2
+            42: GetLocal(loc12, bc#7 of caller)
+            ...
+            --> callee: loc9 and loc10 are arguments of callee.
+              ...
+              <HERE, exit to callee, loc9 and loc10 are required in the bytecode>
+
+        When we prune OSR availability at the beginning of BB#2 (bc#7 in the caller), we prune loc9 and loc10's liveness because the caller does not actually have loc9 and loc10.
+        However, when we begin executing the callee, we need OSR exit to be aware of where it can recover the arguments to the setter, loc9 and loc10.
+
+        This patch inserts MovHint at the beginning of callee for a getter / setter stack frame to make arguments (loc9 and loc10 in the above example) recoverable from OSR exit.
+        We also move arity fixup DFG nodes from the caller to the callee, since moved arguments are not live in the caller too.
+
+        Interestingly, this fix also reveals the existing issue in LiveCatchVariablePreservationPhase. We emitted Flush for |this| of InlineCallFrame blindly if we saw InlineCallFrame
+        inside a block which is covered by catch handler. But this is wrong because inlined function can finish its execution within the block, and |this| is completely unrelated to
+        the catch handler if the catch handler is in the outer callee. We already collect all the live locals at the catch handler. And this locals must include arguments too if the
+        catch handler is in inlined function. So, we should not emit Flush for each |this| of seen InlineCallFrame. This emitted Flush may connect unrelated locals in the catch handler
+        to the locals that is only defined and used in the inlined function, and it leads to the results like DFG says the local is live while the bytecode says the local is dead.
+        This results in reading and using garbage in OSR entry because DFG OSR entry needs to fill live DFG values from the stack.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        (JSC::DFG::ByteCodeParser::handlePutById):
+        * dfg/DFGLiveCatchVariablePreservationPhase.cpp:
+        (JSC::DFG::LiveCatchVariablePreservationPhase::handleBlockForTryCatch):
+
+2019-05-01  Michael Saboff  <msaboff@apple.com>
+
+        ASSERTION FAILED: !m_needExceptionCheck with --validateExceptionChecks=1; ProxyObject.getOwnPropertySlotCommon/JSFunction.callerGetter
+        https://bugs.webkit.org/show_bug.cgi?id=197485
+
+        Reviewed by Saam Barati.
+
+        Added an EXCEPTION_ASSERT after call to getOwnPropertySlot().
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getOwnPropertyDescriptor):
+
+2019-05-01  Ross Kirsling  <ross.kirsling@sony.com>
+
+        RemoteInspector::updateAutomaticInspectionCandidate should have a default implementation.
+        https://bugs.webkit.org/show_bug.cgi?id=197439
+
+        Reviewed by Devin Rousso.
+
+        On non-Cocoa platforms, automatic inspection is not currently implemented,
+        so updateAutomaticInspectionCandidate falls back to the logic of updateTarget.
+        This logic already existed in three places, so refactor it into a common private method
+        and allow our websocket-based RWI implementation to make use of it too.
+
+        * inspector/remote/RemoteInspector.cpp:
+        (Inspector::RemoteInspector::updateTarget):
+        (Inspector::RemoteInspector::updateTargetMap):
+        (Inspector::RemoteInspector::updateAutomaticInspectionCandidate):
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/cocoa/RemoteInspectorCocoa.mm:
+        (Inspector::RemoteInspector::updateAutomaticInspectionCandidate):
+        * inspector/remote/glib/RemoteInspectorGlib.cpp:
+        (Inspector::RemoteInspector::updateAutomaticInspectionCandidate): Deleted.
+        * inspector/remote/socket/RemoteInspectorSocket.cpp:
+        (Inspector::RemoteInspector::updateAutomaticInspectionCandidate): Deleted.
+
 2019-05-01  Darin Adler  <darin@apple.com>
 
         WebKit has too much of its own UTF-8 code and should rely more on ICU's UTF-8 support

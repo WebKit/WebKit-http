@@ -1,3 +1,207 @@
+2019-05-06  Dean Jackson  <dino@apple.com>
+
+        Update test262 expectations for Proxy passes
+        https://bugs.webkit.org/show_bug.cgi?id=197628
+
+        Reviewed by Yusuke Suzuki.
+
+        There are two consistent passes in Proxy.ownKeys.
+
+        * test262/expectations.yaml:
+
+2019-05-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] We should check OOM for description string of Symbol
+        https://bugs.webkit.org/show_bug.cgi?id=197634
+
+        Reviewed by Keith Miller.
+
+        * stress/check-symbol-description-oom.js: Added.
+        (shouldThrow):
+
+2019-05-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, land one more test
+        https://bugs.webkit.org/show_bug.cgi?id=197587
+
+        * stress/setter-frame-flush.js: Added.
+        (setter):
+        (foo):
+        (bar):
+
+2019-05-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        TemplateObject passed to template literal tags are not always identical for the same source location.
+        https://bugs.webkit.org/show_bug.cgi?id=190756
+
+        Reviewed by Saam Barati.
+
+        * complex.yaml:
+        * complex/tagged-template-regeneration-after.js: Added.
+        (shouldBe):
+        * complex/tagged-template-regeneration.js: Added.
+        (call):
+        (test):
+        * modules/tagged-template-inside-module.js: Added.
+        (from.string_appeared_here.call):
+        * modules/tagged-template-inside-module/other-tagged-templates.js: Added.
+        (call):
+        (export.otherTaggedTemplates):
+        * stress/call-and-construct-should-return-same-tagged-templates.js: Added.
+        (shouldBe):
+        (call):
+        (poly):
+        * stress/tagged-templates-in-direct-eval-should-not-produce-same-site-object.js: Added.
+        (shouldBe):
+        (call):
+        * stress/tagged-templates-in-global-function-should-not-produce-same-site-object.js: Added.
+        (shouldBe):
+        (call):
+        * stress/tagged-templates-in-indirect-eval-should-not-produce-same-site-object.js: Added.
+        (shouldBe):
+        (call):
+        * stress/tagged-templates-in-multiple-functions.js: Added.
+        (shouldBe):
+        (call):
+        (a):
+        (b):
+        (c):
+
+2019-05-06  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [PlayStation] JSC Stress tests failing due to timezone printing
+        https://bugs.webkit.org/show_bug.cgi?id=197615
+
+        PlayStation's strftime does not give timezone strings, which
+        results in time strings like "Wed Oct 23 1974 11:45:01 GMT-0700"
+        rather than "Wed Oct 23 1974 11:45:01 GMT-0700 (Pacific Daylight Time)"
+        which causes diff failures with the expectations. Add expectations
+        without the timezone string and use those on playstation.
+
+        Reviewed by Ross Kirsling.
+
+        * ChakraCore.yaml: Update these tests to use alternate expectation file on PlayStation
+        * ChakraCore/test/GlobalFunctions/InternalToString.baseline-jsc-playstation: Added.
+        * ChakraCore/test/Operators/equals.baseline-jsc-playstation: Added.
+        * ChakraCore/test/fieldopts/objtypespec-newobj.2.baseline-jsc-playstation: Added.
+
+2019-05-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Add more tests for DFG SetLocal emission for adhoc SetterCall frame
+        https://bugs.webkit.org/show_bug.cgi?id=197587
+
+        Reviewed by Sam Weinig.
+
+        This patch adds more tests to r244939. It also inlines setter calls, and eventually see that no PutStack is emitted because MovHint's KillStack kills it.
+
+        * stress/adhoc-setter-frame-should-not-be-killed.js: Added.
+
+2019-05-04  Tadeu Zagallo  <tzagallo@apple.com>
+
+        TypedArrays should not store properties that are canonical numeric indices
+        https://bugs.webkit.org/show_bug.cgi?id=197228
+        <rdar://problem/49557381>
+
+        Reviewed by Saam Barati.
+
+        * stress/array-species-config-array-constructor.js:
+        (test):
+        * stress/put-direct-index-broken-2.js:
+        * stress/typed-array-canonical-numeric-index-string.js: Added.
+        (makeTest.assert):
+        (makeTest):
+        (const.testInvalidIndices.makeTest.set assert):
+        (const.testInvalidIndices.makeTest):
+        (const.makeTestValidIndex.configurable.set assert):
+        (const.makeTestValidIndex.configurable):
+        * stress/typedarray-access-monomorphic-neutered.js:
+        (checkNoException):
+        (testNoException):
+        (testFTLNoException):
+        * stress/typedarray-access-neutered.js:
+        (testNoException):
+        * stress/typedarray-getownproperty-not-configurable.js:
+        (foo):
+        * test262/expectations.yaml:
+
+2019-05-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Need to emit SetLocal if we emit MovHint in DFGByteCodeParser
+        https://bugs.webkit.org/show_bug.cgi?id=197584
+
+        Reviewed by Saam Barati.
+
+        * stress/adhoc-setter-frame-should-emit-setlocal-again.js: Added.
+        (X):
+        (foo):
+
+2019-05-03  Michael Saboff  <msaboff@apple.com>
+
+        iOS JSC tests frequently exiting with execption after stress/json-stringify-string-builder-overflow.js.no-cjit-validate-phases
+        https://bugs.webkit.org/show_bug.cgi?id=197586
+
+        Reviewed by Keith Miller.
+
+        We should only run one config of this test and only when we think we'll have the memory.
+
+        * stress/json-stringify-string-builder-overflow.js:
+
+2019-05-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Generator CodeBlock generation should be idempotent
+        https://bugs.webkit.org/show_bug.cgi?id=197552
+
+        Reviewed by Keith Miller.
+
+        Add complex.yaml, which controls how to run JSC shell more.
+        We split test files into two to run macro task between them which allows debugger to be attached to VM.
+
+        * complex.yaml: Added.
+        * complex/generator-regeneration-after.js: Added.
+        * complex/generator-regeneration.js: Added.
+        (gen):
+
+2019-05-02  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed rollout of r244862.
+
+        * stress/proxy-getOwnPropertySlots-exceptionChecks.js:
+
+2019-05-01  Saam barati  <sbarati@apple.com>
+
+        Baseline JIT should do argument value profiling after checking for stack overflow
+        https://bugs.webkit.org/show_bug.cgi?id=197052
+        <rdar://problem/50009602>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/check-stack-overflow-before-value-profiling-arguments.js: Added.
+
+2019-05-01  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Inlining Getter/Setter should care availability of ad-hocly constructed frame
+        https://bugs.webkit.org/show_bug.cgi?id=197405
+
+        Reviewed by Saam Barati.
+
+        * stress/getter-setter-inlining-should-emit-movhint.js: Added.
+        (foo):
+        (test):
+        (i.o.get f):
+        (i.o.set f):
+
+2019-05-01  Michael Saboff  <msaboff@apple.com>
+
+        ASSERTION FAILED: !m_needExceptionCheck with --validateExceptionChecks=1; ProxyObject.getOwnPropertySlotCommon/JSFunction.callerGetter
+        https://bugs.webkit.org/show_bug.cgi?id=197485
+
+        Reviewed by Saam Barati.
+
+        New test.
+
+        * stress/proxy-getOwnPropertySlots-exceptionChecks.js: Added.
+        (foo):
+
 2019-05-01  Ross Kirsling  <ross.kirsling@sony.com>
 
         Unreviewed correction to Test262 expectations following r244828.

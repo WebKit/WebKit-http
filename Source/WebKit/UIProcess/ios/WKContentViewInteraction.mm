@@ -839,6 +839,10 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
     _focusRequiresStrongPasswordAssistance = NO;
 
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    _candidateViewNeedsUpdate = NO;
+#endif
+
     if (_interactionViewsContainerView) {
         [self.layer removeObserver:self forKeyPath:@"transform"];
         [_interactionViewsContainerView removeFromSuperview];
@@ -934,7 +938,6 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
 
     _hasSetUpInteractions = NO;
     _suppressSelectionAssistantReasons = { };
-    _isZoomingToRevealFocusedElement = NO;
 
 #if ENABLE(POINTER_EVENTS)
     [self _resetPanningPreventionFlags];
@@ -1030,12 +1033,6 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     }
 
     [self _updateTapHighlight];
-
-    if (_isZoomingToRevealFocusedElement) {
-        // When zooming to the focused element, avoid additionally scrolling to reveal the selection. Since the scale transform has not yet been
-        // applied to the content view at this point, we'll end up scrolling to reveal a rect that is computed using the wrong scale.
-        return;
-    }
 
     _selectionNeedsUpdate = YES;
     [self _updateChangedSelection:YES];
@@ -1671,7 +1668,6 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     if (_suppressSelectionAssistantReasons.contains(WebKit::EditableRootIsTransparentOrFullyClipped) || _suppressSelectionAssistantReasons.contains(WebKit::FocusedElementIsTooSmall))
         return;
 
-    SetForScope<BOOL> isZoomingToRevealFocusedElementForScope { _isZoomingToRevealFocusedElement, YES };
     // In case user scaling is force enabled, do not use that scaling when zooming in with an input field.
     // Zooming above the page's default scale factor should only happen when the user performs it.
     [self _zoomToFocusRect:_focusedElementInformation.elementRect
@@ -3920,6 +3916,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 - (void)willFinishIgnoringCalloutBarFadeAfterPerformingAction
 {
     _ignoreSelectionCommandFadeCount++;
+    _page->scheduleFullEditorStateUpdate();
     _page->callAfterNextPresentationUpdate([weakSelf = WeakObjCPtr<WKContentView>(self)] (auto) {
         if (auto strongSelf = weakSelf.get())
             strongSelf->_ignoreSelectionCommandFadeCount--;
@@ -4047,6 +4044,9 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange
 {
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    _candidateViewNeedsUpdate = !self.hasMarkedText;
+#endif
     _markedText = markedText;
     _page->setCompositionAsync(markedText, Vector<WebCore::CompositionUnderline>(), selectedRange, WebKit::EditingRange());
 }
@@ -4430,6 +4430,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 }
 
 #if USE(UIKIT_KEYBOARD_ADDITIONS)
+
 - (void)modifierFlagsDidChangeFrom:(UIKeyModifierFlags)oldFlags to:(UIKeyModifierFlags)newFlags
 {
     auto dispatchSyntheticFlagsChangedEvents = [&] (UIKeyModifierFlags flags, bool keyDown) {
@@ -4446,6 +4447,12 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if (addedFlags)
         dispatchSyntheticFlagsChangedEvents(addedFlags, true);
 }
+
+- (BOOL)shouldSuppressUpdateCandidateView
+{
+    return _candidateViewNeedsUpdate;
+}
+
 #endif
 
 // Web events.
@@ -4490,15 +4497,24 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
 
 - (void)handleKeyWebEvent:(::WebEvent *)theEvent
 {
-    _page->handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(theEvent));
+    _page->handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(theEvent, WebKit::NativeWebKeyboardEvent::HandledByInputMethod::No));
 }
 
 - (void)handleKeyWebEvent:(::WebEvent *)theEvent withCompletionHandler:(void (^)(::WebEvent *theEvent, BOOL wasHandled))completionHandler
 {
     [self _handleDOMPasteRequestWithResult:WebCore::DOMPasteAccessResponse::DeniedForGesture];
 
+    using HandledByInputMethod = WebKit::NativeWebKeyboardEvent::HandledByInputMethod;
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    auto* keyboard = [UIKeyboardImpl sharedInstance];
+    if ([keyboard respondsToSelector:@selector(handleKeyInputMethodCommandForCurrentEvent)] && [keyboard handleKeyInputMethodCommandForCurrentEvent]) {
+        completionHandler(theEvent, YES);
+        _page->handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(theEvent, HandledByInputMethod::Yes));
+        return;
+    }
+#endif
     _keyWebEventHandler = makeBlockPtr(completionHandler);
-    _page->handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(theEvent));
+    _page->handleKeyboardEvent(WebKit::NativeWebKeyboardEvent(theEvent, HandledByInputMethod::No));
 }
 
 - (void)_didHandleKeyEvent:(::WebEvent *)event eventWasHandled:(BOOL)eventWasHandled
@@ -5639,6 +5655,14 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     // to wait to paint the selection.
     if (_usingGestureForSelection)
         [self _updateChangedSelection];
+
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    if (_candidateViewNeedsUpdate) {
+        _candidateViewNeedsUpdate = NO;
+        if ([self.inputDelegate respondsToSelector:@selector(layoutHasChanged)])
+            [(id <UITextInputDelegatePrivate>)self.inputDelegate layoutHasChanged];
+    }
+#endif
 
     [_webView _didChangeEditorState];
 }

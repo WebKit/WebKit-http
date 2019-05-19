@@ -1846,7 +1846,7 @@ static EncodedJSValue JSC_HOST_CALL functionCreateBuiltin(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     const SourceCode& source = makeSource(functionText, { });
-    JSFunction* func = JSFunction::create(vm, createBuiltinExecutable(vm, source, Identifier::fromString(&vm, "foo"), ConstructorKind::None, ConstructAbility::CannotConstruct)->link(vm, source), exec->lexicalGlobalObject());
+    JSFunction* func = JSFunction::create(vm, createBuiltinExecutable(vm, source, Identifier::fromString(&vm, "foo"), ConstructorKind::None, ConstructAbility::CannotConstruct)->link(vm, nullptr, source), exec->lexicalGlobalObject());
 
     return JSValue::encode(func);
 }
@@ -2061,9 +2061,9 @@ static EncodedJSValue JSC_HOST_CALL functionEnableExceptionFuzz(ExecState*)
     return JSValue::encode(jsUndefined());
 }
 
-static EncodedJSValue changeDebuggerModeWhenIdle(ExecState* exec, DebuggerMode mode)
+static EncodedJSValue changeDebuggerModeWhenIdle(ExecState* exec, OptionSet<CodeGenerationMode> codeGenerationMode)
 {
-    bool newDebuggerMode = (mode == DebuggerOn);
+    bool newDebuggerMode = codeGenerationMode.contains(CodeGenerationMode::Debugger);
     if (Options::forceDebuggerBytecodeGeneration() == newDebuggerMode)
         return JSValue::encode(jsUndefined());
 
@@ -2071,7 +2071,7 @@ static EncodedJSValue changeDebuggerModeWhenIdle(ExecState* exec, DebuggerMode m
     vm->whenIdle([=] () {
         Options::forceDebuggerBytecodeGeneration() = newDebuggerMode;
         vm->deleteAllCode(PreventCollectionAndDeleteAllCode);
-        if (mode == DebuggerMode::DebuggerOn)
+        if (newDebuggerMode)
             vm->ensureShadowChicken();
     });
     return JSValue::encode(jsUndefined());
@@ -2079,12 +2079,21 @@ static EncodedJSValue changeDebuggerModeWhenIdle(ExecState* exec, DebuggerMode m
 
 static EncodedJSValue JSC_HOST_CALL functionEnableDebuggerModeWhenIdle(ExecState* exec)
 {
-    return changeDebuggerModeWhenIdle(exec, DebuggerOn);
+    return changeDebuggerModeWhenIdle(exec, { CodeGenerationMode::Debugger });
 }
 
 static EncodedJSValue JSC_HOST_CALL functionDisableDebuggerModeWhenIdle(ExecState* exec)
 {
-    return changeDebuggerModeWhenIdle(exec, DebuggerOff);
+    return changeDebuggerModeWhenIdle(exec, { });
+}
+
+static EncodedJSValue JSC_HOST_CALL functionDeleteAllCodeWhenIdle(ExecState* exec)
+{
+    VM* vm = &exec->vm();
+    vm->whenIdle([=] () {
+        vm->deleteAllCode(PreventCollectionAndDeleteAllCode);
+    });
+    return JSValue::encode(jsUndefined());
 }
 
 static EncodedJSValue JSC_HOST_CALL functionGlobalObjectCount(ExecState* exec)
@@ -2275,6 +2284,8 @@ void JSDollarVM::finishCreation(VM& vm)
 
     addFunction(vm, "enableDebuggerModeWhenIdle", functionEnableDebuggerModeWhenIdle, 0);
     addFunction(vm, "disableDebuggerModeWhenIdle", functionDisableDebuggerModeWhenIdle, 0);
+
+    addFunction(vm, "deleteAllCodeWhenIdle", functionDeleteAllCodeWhenIdle, 0);
 
     addFunction(vm, "globalObjectCount", functionGlobalObjectCount, 0);
     addFunction(vm, "globalObjectForObject", functionGlobalObjectForObject, 1);

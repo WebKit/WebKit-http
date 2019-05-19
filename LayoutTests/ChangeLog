@@ -1,3 +1,537 @@
+2019-05-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        media/W3C/video/events/event_progress.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=175678
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Mark test as flaky.
+        * platform/mac/TestExpectations: Ditto.
+        * platform/wk2/TestExpectations: Remove old WK2-only expectation.
+
+2019-05-07  Chris Dumez  <cdumez@apple.com>
+
+        fast/dom/frame-src-javascript-url-async.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=197664
+
+        Unreviewed, tweak test so that it is no longer flaky.
+
+        * fast/dom/frame-src-javascript-url-async-expected.txt:
+        * fast/dom/frame-src-javascript-url-async.html:
+
+2019-05-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [macOS / iOS Debug] Layout Test imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-getStats.https.html a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=197662
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations: Mark test as flaky.
+        * platform/mac-wk2/TestExpectations: Ditto.
+
+2019-05-07  Antti Koivisto  <antti@apple.com>
+
+        <body> with overflow:hidden CSS is scrollable on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=153852
+        <rdar://problem/38715356>
+
+        Reviewed by Antoine Quint.
+
+        * fast/scrolling/ios/body-overflow-hidden-expected.html: Added.
+        * fast/scrolling/ios/body-overflow-hidden-frame-expected.html: Added.
+        * fast/scrolling/ios/body-overflow-hidden-frame.html: Added.
+        * fast/scrolling/ios/body-overflow-hidden.html: Added.
+
+2019-05-07  Youenn Fablet  <youenn@apple.com>
+
+        Import WPT referrer-policy tests
+        https://bugs.webkit.org/show_bug.cgi?id=197321
+
+        Reviewed by Alex Christensen.
+
+        fix-197321
+
+        * TestExpectations:
+
+2019-05-06  Andres Gonzalez  <andresg_22@apple.com>
+
+        Hitpoint for link which spans two lines in web content is incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=197511
+        <rdar://problem/49971483>
+
+        Reviewed by Chris Fleizach.
+
+        - Added LayoutTest.
+
+        * accessibility/ios-simulator/links-activation-expected.txt: Added.
+        * accessibility/ios-simulator/links-activation.html: Added.
+        * accessibility/links-activation-expected.txt: Added.
+        * accessibility/links-activation.html: Added.
+
+2019-05-06  Youenn Fablet  <youenn@apple.com>
+
+        WebAudio Node JS wrappers should not be collected if events can be fired
+        https://bugs.webkit.org/show_bug.cgi?id=197533
+
+        Reviewed by Jer Noble.
+
+        * webaudio/webaudio-gc-expected.txt: Added.
+        * webaudio/webaudio-gc.html: Added.
+
+2019-05-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION: Layout test imported/w3c/web-platform-tests/resource-timing/resource-timing-level1.sub.html is frequently failing on EWS
+        https://bugs.webkit.org/show_bug.cgi?id=197473
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Mark test as flaky on iOS.
+
+2019-05-06  Antoine Quint  <graouts@apple.com>
+
+        Tests under pointerevents/ios are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=197624
+
+        Reviewed by Dean Jackson.
+
+        Tests under pointerevents/ios generate touches that use UIScriptController may not succeed if ran in multiple iterations or in a specific
+        order due to not ensuring that all touches are released when the test completes. We now ensure that we do when running swipes, taps, and pinches.
+
+        * pointerevents/ios/pointer-events-dispatch-on-stylus.html: Use the new ui.tapStylus() method to generate a tap with the stylus which ensures all
+        touches are removed upon completion.
+        * pointerevents/ios/pointer-events-dispatch-on-touch.html: Use a tap to ensure all touches are removed upon completion.
+        * pointerevents/ios/pointer-events-implicit-capture-has-pointer-capture-in-pointer-down.html: Use a tap to ensure all touches are removed upon completion.
+        * pointerevents/ios/pointer-events-implicit-capture-release-exception.html: Use a tap to ensure all touches are removed upon completion.
+        * pointerevents/ios/pointer-events-implicit-capture-release.html: Use a tap to ensure all touches are removed upon completion.
+        * pointerevents/ios/pointer-events-prevent-default-allows-click-event.html: Ensure both the "click" event and the tap generation have succeeded before
+        marking the test as complete.
+        * pointerevents/ios/pointer-events-set-pointer-capture-exceptions.html: Use a tap to ensure all touches are removed upon completion.
+        * pointerevents/ios/touch-action-none-link-traversal.html: Ensure both the "load" event and the tap generation have succeeded before marking the test
+        as complete.
+        * pointerevents/ios/touch-action-pan-x-pan-y.html: Remove the requestAnimationFrame() call since ui.swipe() now resolves its promise once all touches
+        have completed.
+        * pointerevents/ios/touch-action-pan-x.html: Remove the requestAnimationFrame() call since ui.swipe() now resolves its promise once all touches
+        have completed.
+        * pointerevents/ios/touch-action-pan-y.html: Remove the requestAnimationFrame() call since ui.swipe() now resolves its promise once all touches
+        have completed.
+        * pointerevents/ios/touch-action-pinch-zoom-allows-zooming.html: Remove the requestAnimationFrame() call since ui.pinchOut() now resolves its promise
+        once all touches have completed.
+        * pointerevents/ios/touch-action-pointercancel-pan-x.html: We don't need to track "pointermove" events since dispatch of "pointercancel" is asynchronous
+        and the number of "pointermove" events prior to its dispatch can legitimately vary.
+        * pointerevents/ios/touch-action-pointercancel-pan-y.html: We don't need to track "pointermove" events since dispatch of "pointercancel" is asynchronous
+        and the number of "pointermove" events prior to its dispatch can legitimately vary.
+        * pointerevents/utils.js:
+        (const.ui.new.UIController.prototype.swipe): Wait until the swipe is complete before resolving the promise.
+        (const.ui.new.UIController.prototype.pinchOut): Use a custom sequence to ensure that the pinch releases touches upon completion.
+        (const.ui.new.UIController.prototype.tapStylus): Introduce this new method to perform a stylus tap which ensures all touches are complete before resolving
+        the promise.
+        (const.ui.new.UIController.prototype.beginTouches): Deleted.
+        (const.ui.new.UIController.prototype.beginStylus): Deleted.
+
+2019-05-06  Truitt Savell  <tsavell@apple.com>
+
+        Fix typo in https://trac.webkit.org/changeset/244962/webkit
+        https://bugs.webkit.org/show_bug.cgi?id=136627
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2019-05-06  Truitt Savell  <tsavell@apple.com>
+
+        mark media/track/track-cue-rendering-vertical.html as failing for Mojave after r244891 unmarked it. 
+        https://bugs.webkit.org/show_bug.cgi?id=136627
+
+        Unreviewed test gardening. 
+
+        * platform/mac/TestExpectations:
+
+2019-05-04  Tadeu Zagallo  <tzagallo@apple.com>
+
+        TypedArrays should not store properties that are canonical numeric indices
+        https://bugs.webkit.org/show_bug.cgi?id=197228
+        <rdar://problem/49557381>
+
+        Reviewed by Saam Barati.
+
+        * fast/canvas/canvas-ImageData-behaviour-expected.txt:
+        * fast/canvas/canvas-ImageData-behaviour.js:
+
+2019-05-04  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win10] Some tests are failing only on specific machines
+        https://bugs.webkit.org/show_bug.cgi?id=197509
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-05-03  Simon Fraser  <simon.fraser@apple.com>
+
+        [macOS] Fix programmatic scrolling with async overflow scroll
+        https://bugs.webkit.org/show_bug.cgi?id=197590
+
+        Reviewed by Sam Weinig.
+
+        Tests for programmatic scrolling of overflow and iframes.
+
+        * scrollingcoordinator/mac/programmatic-frame-scroll-expected.html: Added.
+        * scrollingcoordinator/mac/programmatic-frame-scroll.html: Added.
+        * scrollingcoordinator/mac/programmatic-overflow-scroll-expected.html: Added.
+        * scrollingcoordinator/mac/programmatic-overflow-scroll.html: Added.
+
+2019-05-03  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] A focused document should be required
+        https://bugs.webkit.org/show_bug.cgi?id=197543
+        <rdar://problem/50430989>
+
+        Reviewed by Brent Fulgham.
+
+        * http/wpt/webauthn/public-key-credential-same-origin-with-ancestors.https.html:
+        * http/wpt/webauthn/public-key-credential-unfocused-document.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-unfocused-document.https.html: Copied from LayoutTests/http/wpt/webauthn/public-key-credential-same-origin-with-ancestors.https.html.
+        * http/wpt/webauthn/resources/last-layer-frame.https.html:
+        * http/wpt/webauthn/resources/second-layer-frame.https.html:
+
+2019-05-03  Youenn Fablet  <youenn@apple.com>
+
+        [iOS] set the default maximum camera count to 1 for enumerateDevices
+        https://bugs.webkit.org/show_bug.cgi?id=197566
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/get-user-media-device-id.html:
+
+2019-05-03  Youenn Fablet  <youenn@apple.com>
+
+        Cache.add and Cache.addAll should compute a correct response body size
+        https://bugs.webkit.org/show_bug.cgi?id=197464
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/cache-storage/cache-quota-add.any-expected.txt: Added.
+        * http/wpt/cache-storage/cache-quota-add.any.html: Added.
+        * http/wpt/cache-storage/cache-quota-add.any.js: Added.
+
+2019-05-03  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest imported/w3c/web-platform-tests/xhr/event-upload-progress-crossorigin.htm is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=182849
+        <rdar://problem/50353372>
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-05-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Record actions performed on WebGL2RenderingContext
+        https://bugs.webkit.org/show_bug.cgi?id=176008
+        <rdar://problem/34213884>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/recording-webgl2.html: Added.
+        * inspector/canvas/recording-webgl2-expected.txt: Added.
+        * inspector/canvas/recording-webgl2-snapshots.html: Added.
+        * inspector/canvas/recording-webgl2-snapshots-expected.txt: Added.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2019-05-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make focusing-element-with-tabindex-by-tap-or-click.html more robust on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=197548
+
+        Reviewed by Wenson Hsieh.
+
+        There was a race between the time the editable element was focused and the keyboard was brought up
+        to when the next non-editable element was focused. Made the test explicitly wait for the keyboard
+        to come up and go down between test cases to make it more robust.
+
+        * fast/events/focusing-element-with-tabindex-by-tap-or-click.html:
+
+2019-05-02  Chris Dumez  <cdumez@apple.com>
+
+        Add test coverage for <rdar://problem/49731231>
+        https://bugs.webkit.org/show_bug.cgi?id=196730
+        <rdar://problem/49731231>
+
+        Reviewed by Ryosuke Niwa.
+
+        * http/tests/security/showModalDialog-sync-cross-origin-page-load-expected.txt: Added.
+        * http/tests/security/showModalDialog-sync-cross-origin-page-load.html: Added.
+
+2019-05-02  Chris Dumez  <cdumez@apple.com>
+
+        Setting a frame's src to a javascript URL should not run it synchronously
+        https://bugs.webkit.org/show_bug.cgi?id=197466
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/frame-src-javascript-url-async-expected.txt: Added.
+        * fast/dom/frame-src-javascript-url-async.html: Added.
+        Add layout test coverage for the fact that the javascript URL is executed asynchronously
+        whether set during parsing or later via JS. Also makes sure that executing the javascript
+        URL asynchronously does not replace the frame's window. This test passes in both Chrome
+        and Firefox.
+
+        * imported/blink/fast/frames/navigation-in-pagehide.html:
+        Re-sync this test from the Blink repository.
+
+        * fast/dom/Element/id-in-frameset-expected.txt:
+        * fast/dom/Element/id-in-frameset.html:
+        * fast/dom/insertedIntoDocument-iframe-expected.txt:
+        * fast/dom/javascript-url-exception-isolation-expected.txt:
+        * fast/dom/javascript-url-exception-isolation.html:
+        * fast/dom/no-assert-for-malformed-js-url-attribute-expected.txt:
+        * fast/dom/resources/javascript-url-crash-function-iframe.html:
+        * fast/frames/adopt-from-created-document.html:
+        * fast/frames/out-of-document-iframe-has-child-frame.html:
+        * fast/loader/javascript-url-iframe-remove-on-navigate-async-delegate.html:
+        * fast/loader/javascript-url-iframe-remove-on-navigate.html:
+        * fast/loader/unload-mutation-crash.html:
+        * fast/parser/resources/set-parent-to-javascript-url.html:
+        * fast/parser/xml-error-adopted.xml:
+        * http/tests/navigation/lockedhistory-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-javascript-url-iframe-in-iframe-expected.txt:
+        * http/tests/security/contentSecurityPolicy/javascript-url-allowed-expected.txt:
+        * http/tests/security/contentSecurityPolicy/javascript-url-blocked-by-default-src-star-expected.txt:
+        * http/tests/security/contentSecurityPolicy/javascript-url-blocked-expected.txt:
+        * http/tests/security/javascriptURL/xss-ALLOWED-from-javascript-url-sub-frame-2-level.html:
+        * http/tests/security/javascriptURL/xss-ALLOWED-from-javascript-url-sub-frame.html:
+        * http/tests/security/javascriptURL/xss-ALLOWED-to-javascript-url-from-javscript-url.html:
+        * imported/blink/loader/iframe-sync-loads-expected.txt:
+        * js/dom/call-base-resolution.html:
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-javascript-url-iframe-in-iframe-expected.txt:
+        Update / Rebaseline existing tests to reflect behavior change. I ran those tests in Firefox and Chrome to confirm that our behavior
+        is indeed aligned.
+
+2019-05-02  Gary Katsevman  <git@gkatsev.com>
+
+        WebVTT: vertical cue text alignment is the wrong way around
+        https://bugs.webkit.org/show_bug.cgi?id=136627
+        <rdar://problem/49725538>
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios/media/track/track-cue-rendering-vertical-expected.txt:
+        * platform/mac/TestExpectations: Unskipped test.
+        * platform/mac/media/track/track-cue-rendering-vertical-expected.png: Removed.
+        * platform/mac/media/track/track-cue-rendering-vertical-expected.txt:
+
+2019-05-02  Truitt Savell  <tsavell@apple.com>
+
+        [ Sierra Release WK2 ] Layout Test fast/workers/worker-cloneport.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=191644
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Remove expectation. 
+
+2019-05-02  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r244868.
+
+        * platform/gtk/TestExpectations:
+
+2019-05-02  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win10] Some tests are failing only on specific machines
+        https://bugs.webkit.org/show_bug.cgi?id=197509
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-05-01  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failures after r242992.
+        <rdar://problem/50383600>
+
+        * inspector/console/console-screenshot.html:
+        * inspector/console/console-screenshot-expected.txt:
+        Don't print the dataURL in the expectation file.
+
+2019-05-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Adopt SecurityOrigin::isMatchingRegistrableDomainSuffix()
+        https://bugs.webkit.org/show_bug.cgi?id=197481
+
+        Reviewed by Brent Fulgham.
+
+        * http/wpt/webauthn/public-key-credential-create-failure.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure.https.html:
+        * http/wpt/webauthn/public-key-credential-ip-address-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-ip-address.html: Added.
+        * http/wpt/webauthn/resources/public-key-credential-ip-address.https.html: Added.
+
+2019-05-01  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failures after r242809.
+        <rdar://problem/50383600>
+
+        * inspector/canvas/recording-html-2d.html:
+        * inspector/canvas/recording-html-2d-expected.txt:
+        Don't print the dataURL in the expectation file.
+
+2019-05-01  Justin Fan  <justin_fan@apple.com>
+
+        Update WebGPU class names based on sketch.idl
+        https://bugs.webkit.org/show_bug.cgi?id=194260
+
+        Reviewed by Dean Jackson.
+
+        Update all exposed Web GPU interface names to GPU* prefix.
+
+        * webgpu/adapter-options.html:
+        * webgpu/bind-groups-expected.txt:
+        * webgpu/bind-groups.html:
+        * webgpu/buffer-resource-triangles.html:
+        * webgpu/js/webgpu-functions.js:
+        (beginBasicRenderPass):
+        * webgpu/map-read-buffers.html:
+        * webgpu/map-write-buffers.html:
+        * webgpu/pipeline-layouts-expected.txt:
+        * webgpu/pipeline-layouts.html:
+        * webgpu/queue-creation-expected.txt:
+        * webgpu/queue-creation.html:
+        * webgpu/render-command-encoding-expected.txt:
+        * webgpu/render-command-encoding.html:
+        * webgpu/render-pipelines-expected.txt:
+        * webgpu/render-pipelines.html:
+        * webgpu/textures-textureviews.html:
+        * webgpu/webgpu-enabled.html:
+
+2019-05-01  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Unreviewed test gardening.
+
+        * platform/ios-wk2/fast/block/margin-collapse/103-expected.txt:
+        * platform/ios/compositing/overflow/theme-affects-visual-overflow-expected.txt:
+        * platform/ios/fast/block/margin-collapse/103-expected.txt:
+        * platform/ios/fast/parser/bad-xml-slash-expected.txt:
+        * platform/ios/tables/mozilla/bugs/bug4527-expected.txt:
+
+2019-05-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION(r244494): editing/pasteboard/5761530-1.html is flaky due to a simple line layout bug
+        https://bugs.webkit.org/show_bug.cgi?id=197438
+        <rdar://problem/50348091>
+
+        Reviewed by Zalan Bujtas.
+
+        Work around the simple line layout bug in the flaky layout test by disabling simple line layout.
+
+        * editing/pasteboard/5761530-1.html:
+
+2019-05-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [iOS] Element::focus and Element::scrollIntoView do not clamp scroll positions
+        https://bugs.webkit.org/show_bug.cgi?id=197211
+
+        Reviewed by Simon Fraser.
+
+        Added tests for scrolling via Element.prototype.focus and Element.prototype.scrollIntoView.
+
+        * fast/scrolling/ios/programmatic-scroll-via-focus-should-clamp-top-expected.txt: Added.
+        * fast/scrolling/ios/programmatic-scroll-via-focus-should-clamp-top.html: Added.
+        * fast/scrolling/ios/programmatic-scroll-via-scrollIntoView-inside-iframe-should-clamp-top-expected.txt: Added.
+        * fast/scrolling/ios/programmatic-scroll-via-scrollIntoView-inside-iframe-should-clamp-top.html: Added.
+        * fast/scrolling/ios/programmatic-scroll-via-scrollIntoView-should-clamp-top-expected.txt: Added.
+        * fast/scrolling/ios/programmatic-scroll-via-scrollIntoView-should-clamp-top.html: Added.
+        * platform/ios-wk2/fast/dom/focus-contenteditable-expected.txt: Rebaselined the output now that the scroll position
+        is properly clamped.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/cssom-view/elementFromPoint-expected.txt: Rebaselined as one
+        more test case is passing.
+
+2019-05-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Add a version of viewport shrink-to-fit heuristics that preserves page layout
+        https://bugs.webkit.org/show_bug.cgi?id=197342
+        <rdar://problem/50063091>
+
+        Reviewed by Tim Horton.
+
+        Introduces new layout tests, and adjusts some existing tests. See comments below.
+
+        * fast/viewport/ios/shrink-to-fit-content-constant-width-expected.txt: Added.
+        * fast/viewport/ios/shrink-to-fit-content-constant-width.html: Added.
+
+        Add a new layout test to exercise the scenario where a constant width viewport narrower than the view is used.
+
+        * fast/viewport/ios/shrink-to-fit-content-large-width-breakpoint-expected.txt: Added.
+        * fast/viewport/ios/shrink-to-fit-content-large-width-breakpoint.html: Added.
+
+        Add a new layout test to exercise the scenario where a responsive website that lays out larger than the view
+        width ends up with even more horizontal scrolling when laying out at the initial content width. In this
+        scenario, we shouldn't try to expand the viewport to try and encompass the content width, since that would only
+        induce even worse horizontal scrolling.
+
+        * fast/viewport/ios/shrink-to-fit-content-no-viewport-expected.txt: Added.
+        * fast/viewport/ios/shrink-to-fit-content-no-viewport.html: Added.
+
+        Add a new layout test for the case where there is no viewport, but content lays out wider than the view.
+
+        * fast/viewport/ios/shrink-to-fit-content-responsive-viewport-with-horizontal-overflow-expected.txt: Added.
+        * fast/viewport/ios/shrink-to-fit-content-responsive-viewport-with-horizontal-overflow.html: Added.
+
+        Add a new layout test for the case where the page has opted for a responsive viewport (device-width, initial
+        scale 1), but has laid out wider than the viewport anyways. In this case, we want to shrink the contents down to
+        fit inside the view.
+
+        * fast/viewport/ios/shrink-to-fit-content-temporary-overflow-expected.txt: Added.
+        * fast/viewport/ios/shrink-to-fit-content-temporary-overflow.html: Added.
+
+        Add a new layout test to exercise the case where, during page load, content width temporarily increases, and
+        then decreases such that it once again fits within the viewport. In this case, we don't want to expand the
+        viewport to be as wide as the large temporary width of the page.
+
+        * fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-expected.txt:
+        * fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden.html:
+        * fast/viewport/ios/width-is-device-width-overflowing-expected.txt:
+        * fast/viewport/ios/width-is-device-width-overflowing.html:
+
+        Tweak these 2 existing layout tests to include "shrink-to-fit=no", to prevent the new heuristics from shrinking
+        the page to fit on device classes that use native viewports by default.
+
+        * platform/ipad/fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-expected.txt:
+        * platform/ipad/fast/viewport/ios/width-is-device-width-overflowing-expected.txt:
+
+2019-05-01  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Star rating is covered with a black circle when writing a review on Yelp
+        https://bugs.webkit.org/show_bug.cgi?id=197469
+        <rdar://problem/48094446>
+
+        Reviewed by Dean Jackson.
+
+        * fast/forms/radio-and-checkbox-checked-with-no-appearance-expected.html: Added.
+        * fast/forms/radio-and-checkbox-checked-with-no-appearance.html: Added.
+
+2019-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION: Layout test imported/w3c/web-platform-tests/resource-timing/resource-timing-level1.sub.html is frequently failing on Mac-ews
+        https://bugs.webkit.org/show_bug.cgi?id=197473
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2019-05-01  Truitt Savell  <tsavell@apple.com>
+
+        Win10 failing or flakey tests need to be given expectations to allow for new EWS
+        https://bugs.webkit.org/show_bug.cgi?id=197471
+
+        Unreviewed test Gardening
+
+        * platform/win/TestExpectations:
+
 2019-05-01  Darin Adler  <darin@apple.com>
 
         WebKit has too much of its own UTF-8 code and should rely more on ICU's UTF-8 support

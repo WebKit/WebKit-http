@@ -38,6 +38,10 @@
 #import <wtf/WeakObjCPtr.h>
 #import <wtf/text/WTFString.h>
 
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKElementActionAdditions.h>)
+#include <WebKitAdditions/WKElementActionAdditions.h>
+#endif
+
 #if HAVE(SAFARI_SERVICES_FRAMEWORK)
 #import <SafariServices/SSReadingList.h>
 SOFT_LINK_FRAMEWORK(SafariServices);
@@ -174,6 +178,15 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
 {
     [self _runActionWithElementInfo:info forActionSheetAssistant:_defaultActionSheetAssistant.get().get()];
 }
+
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKElementActionAdditions.mm>)
+#include <WebKitAdditions/WKElementActionAdditions.mm>
+#else
++ (UIImage *)imageForElementActionType:(_WKElementActionType)actionType
+{
+    return nil;
+}
+#endif
 
 @end
 

@@ -791,7 +791,6 @@ webkit.org/b/115048 media/media-element-play-after-eos.html [ Pass Timeout ]
 webkit.org/b/116277 media/video-buffered.html [ Pass Failure ]
 webkit.org/b/121803 media/video-object-fit-change.html [ Pass ImageOnlyFailure ]
 webkit.org/b/121803 media/video-object-fit.html [ Pass ImageOnlyFailure ]
-webkit.org/b/122021 media/track/track-cue-rendering-vertical.html [ Failure ]
 webkit.org/b/122033 media/video-duration-known-after-eos.html [ Pass Timeout ]
 webkit.org/b/122042 media/media-controller-playback.html [ Pass Timeout ]
 webkit.org/b/122126 media/click-volume-bar-not-pausing.html [ Pass Timeout ]
@@ -1033,6 +1032,8 @@ webkit.org/b/173931 inspector/canvas/context-attributes.html [ Pass Timeout ]
 webkit.org/b/178028 inspector/canvas/create-context-2d.html [ Pass Timeout ]
 webkit.org/b/174066 inspector/canvas/create-context-webgl2.html [ Pass Timeout ]
 webkit.org/b/174272 inspector/canvas/css-canvas-clients.html [ Pass Failure ]
+webkit.org/b/174066 inspector/canvas/recording-webgl2.html [ Pass Failure Timeout ]
+webkit.org/b/174066 inspector/canvas/recording-webgl2-snapshots.html [ Pass Failure Timeout ]
 webkit.org/b/174066 inspector/canvas/shaderProgram-add-remove-webgl2.html [ Pass Failure Timeout ]
 webkit.org/b/160048 [ Debug ] inspector/codemirror/prettyprinting-javascript.html [ Pass Timeout ]
 webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Timeout ]
@@ -1886,3 +1887,9 @@ webkit.org/b/197009 imported/w3c/web-platform-tests/pointerevents/pointerevent_s
 webkit.org/b/197058 imported/w3c/web-platform-tests/pointerevents/pointerevent_mouse_pointercapture_in_frame.html [ Failure Pass ]
 
 webkit.org/b/192501 [ Debug ] animations/play-state-in-shorthand.html [ Pass Failure ]
+
+webkit.org/b/197473 imported/w3c/web-platform-tests/resource-timing/resource-timing-level1.sub.html [ Pass Failure ]
+
+webkit.org/b/136627 [ Mojave ] media/track/track-cue-rendering-vertical.html [ Failure ]
+
+webkit.org/b/175678 media/W3C/video/events/event_progress.html [ Pass Failure ]

@@ -1,3 +1,521 @@
+2019-05-07  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [Flatpak] webkit-build fails due to missing GTK2 in build environment
+        https://bugs.webkit.org/show_bug.cgi?id=197352
+
+        Reviewed by Philippe Normand.
+
+        The Flatpak runtimes do not include GTK 2.x anymore, which means that we need
+        to build it ourselves on top in order to be able to build the GTK 2.x plugin
+        process.
+
+        * flatpak/org.webkit.GTK.yaml: Add gtk2 package.
+
+2019-05-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Avoid crashing the UI process when writing empty data to the pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=197644
+        <rdar://problem/50526364>
+
+        Reviewed by Tim Horton.
+
+        Add a new API test to exercise a possible scenario where we may crash while writing data to the pasteboard.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/BundleEditingDelegate.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/BundleEditingDelegatePlugIn.mm:
+        (-[BundleEditingDelegatePlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[BundleEditingDelegatePlugIn _webProcessPlugInBrowserContextController:pasteboardDataForRange:]):
+
+2019-05-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] MiniBrowser: load about:blank for new web views in automation mode
+        https://bugs.webkit.org/show_bug.cgi?id=197651
+
+        Reviewed by Žan Doberšek.
+
+        This is required since the process creation was delayed until something is loaded in the view.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browser_window_get_or_create_web_view_for_automation):
+        * MiniBrowser/wpe/main.cpp:
+        (main):
+
+2019-05-06  Tim Horton  <timothy_horton@apple.com>
+
+        _overrideViewportWithArguments does not work when called before loading
+        https://bugs.webkit.org/show_bug.cgi?id=197638
+        <rdar://problem/50505111>
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/OverrideViewportArguments.mm:
+        (TEST):
+
+2019-05-04  Per Arne Vollan  <pvollan@apple.com>
+
+        -[WKWebsiteDataStore removeDataOfTypes:forDataRecords:completionHandler:] doesn't delete _WKWebsiteDataTypeCredentials
+        https://bugs.webkit.org/show_bug.cgi?id=197510
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebsiteDatastore.mm:
+        (TestWebKitAPI::TEST):
+
+2019-05-06  Keith Rollin  <krollin@apple.com>
+
+        Temporarily disable generate-xcfilelists
+        https://bugs.webkit.org/show_bug.cgi?id=197619
+        <rdar://problem/50507392>
+
+        Reviewed by Alex Christensen.
+
+        We need to perform a significant update to the generate-xcfilelist
+        scripts. This work involves coordinated work with another facility. If
+        the work does not occur in tandem, the build will be broken. To avoid
+        this, disable the invoking of the scripts during the transition. The
+        checking will be restored once the new scripts are in place.
+
+        * DumpRenderTree/Scripts/check-xcfilelists.sh:
+        * WebKitTestRunner/Scripts/check-xcfilelists.sh:
+
+2019-05-04  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r244953 and r244954 because they broke internal builds.
+        https://bugs.webkit.org/show_bug.cgi?id=197534
+
+        * DumpRenderTree/ios/DumpRenderTreeBrowserView.h:
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        * DumpRenderTree/mac/DumpRenderTreeWindow.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/CopyURL.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/DocumentEditingContext.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/EditorStateTests.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/SystemColors.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewEditActions.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewFindString.mm:
+        * TestWebKitAPI/Tests/ios/ActionSheetTests.mm:
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        * TestWebKitAPI/Tests/ios/FocusPreservationTests.mm:
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+        * TestWebKitAPI/Tests/ios/ScrollViewInsetTests.mm:
+        * TestWebKitAPI/Tests/ios/UIPasteboardTests.mm:
+        * TestWebKitAPI/Tests/ios/WKWebViewAutofillTests.mm:
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        * TestWebKitAPI/ios/UIKitSPI.h: Added.
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        * WebKitTestRunner/ios/GeneratedTouchesDebugWindow.mm:
+        * WebKitTestRunner/ios/HIDEventGenerator.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        * WebKitTestRunner/ios/mainIOS.mm:
+
+2019-05-04  Alex Christensen  <achristensen@webkit.org>
+
+        Merge the three UIKitSPI.h files into a single one in PAL
+        https://bugs.webkit.org/show_bug.cgi?id=197534
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/ios/DumpRenderTreeBrowserView.h:
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        * DumpRenderTree/mac/DumpRenderTreeWindow.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/CopyURL.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/DocumentEditingContext.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/EditorStateTests.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/SystemColors.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewEditActions.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewFindString.mm:
+        * TestWebKitAPI/Tests/ios/ActionSheetTests.mm:
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        * TestWebKitAPI/Tests/ios/FocusPreservationTests.mm:
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+        * TestWebKitAPI/Tests/ios/ScrollViewInsetTests.mm:
+        * TestWebKitAPI/Tests/ios/UIPasteboardTests.mm:
+        * TestWebKitAPI/Tests/ios/WKWebViewAutofillTests.mm:
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        * TestWebKitAPI/ios/UIKitSPI.h: Removed.
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        * WebKitTestRunner/ios/GeneratedTouchesDebugWindow.mm:
+        * WebKitTestRunner/ios/HIDEventGenerator.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        * WebKitTestRunner/ios/mainIOS.mm:
+
+2019-05-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Provide UIString descriptions to improve localizations
+        https://bugs.webkit.org/show_bug.cgi?id=195132
+        <rdar://problem/48457817>
+
+        Reviewed by Devin Rousso.
+
+        Allow WI.UIString to take:
+        - WI.UIString(string, key, comment)
+        - WI.UIString(string, comment)
+        - WI.UIString(string)
+
+        * Scripts/extract-localizable-js-strings:
+
+2019-05-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r244897): Caret may appear wider than normal after zooming to focus an editable element
+        https://bugs.webkit.org/show_bug.cgi?id=197579
+
+        Reviewed by Tim Horton.
+
+        Fixes a couple of flaky layout tests (ModifyInputAssistantItemBarButtonGroups and
+        OverrideInputAssistantItemBarButtonGroups) by programmatically blurring focused elements and waiting for the
+        input session to change, rather than relying on -resignFirstResponder and -waitForNextPresentationUpdate to
+        ensure that the the focused element has been blurred.
+
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+
+2019-05-02  Alexey Proskuryakov  <ap@apple.com>
+
+        Add a tool to block spammer accounts
+        https://bugs.webkit.org/show_bug.cgi?id=197537
+
+        Reviewed by Darin Adler.
+
+        Usage: block-spammers email1 email2 ...
+
+        The tool finds and hides all bugs and comments from this account. Before any work
+        is done, these bugs and comments are displayed for confirmation.
+
+        * Scripts/block-spammers: Added.
+        (get_bugzilla_token):
+        (invalidate_bugzilla_token):
+        (get_user_info):
+        (get_user_info_self):
+        (can_use_this_tool):
+        (disable_user):
+        (get_bugs_created_by_user):
+        (get_bugs_commented_on_by_user):
+        (get_comments):
+        (hide_bug):
+        (hide_comments):
+        (ask_yes_no):
+        (sanitized_string):
+        (main):
+
+2019-05-03  Jonathan Bedard  <jbedard@apple.com>
+
+        run-apit-tests: Add --iterations and --repeat-each
+        https://bugs.webkit.org/show_bug.cgi?id=197563
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/api_tests/manager.py:
+        (Manager.run): Add --iterations and --repeat-each/
+        * Scripts/webkitpy/api_tests/run_api_tests.py:
+        (parse_args): Duplicate the test list based on --iterations and --repeat-each.
+
+2019-05-03  Aakash Jain  <aakash_jain@apple.com>
+
+        New EWS: Clicking on white bubble navigates to page with only bubbles
+        https://bugs.webkit.org/show_bug.cgi?id=197520
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/templates/statusbubble.html: Disable clicking if bubble doesn't have any url.
+
+2019-05-03  Daniel Bates  <dabates@apple.com>
+
+        [lldb-webkit] Support adding pretty-printing for qualified types
+        https://bugs.webkit.org/show_bug.cgi?id=197518
+
+        Reviewed by Darin Adler.
+
+        Remove all "::"s from the name of the specified type when computing the name for the Python classes
+        that will provide summary and synthetic details as LLDB is not happy about registering such classes
+        when they contain :: in their name.
+
+        * lldb/lldb_webkit.py:
+        (addSummaryAndSyntheticFormattersForRawBitmaskType):
+
+2019-05-03  Aakash Jain  <aakash_jain@apple.com>
+
+        New EWS: patches on recently added queues listed as #1 for older bugs
+        https://bugs.webkit.org/show_bug.cgi?id=197496
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py:
+        (StatusBubble._build_bubble):
+        (StatusBubble._queue_position):
+
+2019-05-03  Aakash Jain  <aakash_jain@apple.com>
+
+        webkit-patch --no-review upload does not submit patch to New EWS
+        https://bugs.webkit.org/show_bug.cgi?id=197519
+        <rdar://problem/50424887>
+
+        Reviewed by Lucas Forschler.
+
+        * Scripts/webkitpy/tool/steps/submittoews.py:
+        (SubmitToEWS.run): Submit to both old and new EWS.
+        * Scripts/webkitpy/common/config/urls.py: Added url for new EWS server.
+        * Scripts/webkitpy/common/net/ewsserver.py: Added.
+        (EWSServer._server_url): Method to return server url.
+        (EWSServer._post_patch_to_ews): Method to post patch to ews.
+        (EWSServer.submit_to_ews): Method to submit the patch to ews using NetworkTransaction.
+        * Scripts/webkitpy/common/net/ewsserver_mock.py: Added Mock EWS Server.
+        * Scripts/webkitpy/common/net/ewsserver_unittest.py: Added unit-test for EWS Server.
+        * Scripts/webkitpy/common/net/statusserver_mock.py:
+        (MockStatusServer.submit_to_ews): Updated the log text.
+        * Scripts/webkitpy/tool/commands/queues_unittest.py: Updated unit-tests.
+        * Scripts/webkitpy/tool/commands/upload_unittest.py: Ditto.
+        * Scripts/webkitpy/tool/main.py:
+        (WebKitPatch.__init__): Initialize ews_server. 
+        * Scripts/webkitpy/tool/mocktool.py:
+        (MockTool.__init__): Ditto.
+
+2019-05-03  Chris Dumez  <cdumez@apple.com>
+
+        ASSERTION FAILED: [weakThis->m_view window] == weakThis->m_targetWindowForMovePreparation
+        https://bugs.webkit.org/show_bug.cgi?id=197574
+        <rdar://problem/50453181>
+
+        Reviewed by Tim Horton.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PrepareForMoveToWindow.mm:
+        (TEST):
+
+2019-05-03  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Generator CodeBlock generation should be idempotent
+        https://bugs.webkit.org/show_bug.cgi?id=197552
+
+        Reviewed by Keith Miller.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+        * Scripts/run-jsc-stress-tests:
+
+2019-05-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244881.
+        https://bugs.webkit.org/show_bug.cgi?id=197559
+
+        Breaks compilation of jsconly on linux, breaking compilation
+        for jsc-i386-ews, jsc-mips-ews and jsc-armv7-ews (Requested by
+        guijemont on #webkit).
+
+        Reverted changeset:
+
+        "[CMake] Refactor WEBKIT_MAKE_FORWARDING_HEADERS into
+        WEBKIT_COPY_FILES"
+        https://bugs.webkit.org/show_bug.cgi?id=197174
+        https://trac.webkit.org/changeset/244881
+
+2019-05-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE build fix after r244898.
+
+        * WebKitTestRunner/wpe/TestControllerWPE.cpp:
+        (WTR::TestController::abortModal): Add the missing (no-op) definition.
+
+2019-05-02  Alex Christensen  <achristensen@webkit.org>
+
+        Mark U+01C0 as a homograph of U+006C
+        https://bugs.webkit.org/show_bug.cgi?id=197526
+        <rdar://problem/50301904>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WTF/cocoa/URLExtras.mm:
+        (TestWebKitAPI::TEST):
+
+2019-05-02  Chris Dumez  <cdumez@apple.com>
+
+        Add test coverage for <rdar://problem/49731231>
+        https://bugs.webkit.org/show_bug.cgi?id=196730
+        <rdar://problem/49731231>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add support for testRunner.abortModal() in macOS's WebKitTestRunner in order
+        to match DumpRenderTree.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::abortModal):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::runModal):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::abortModal):
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::abortModal):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::abortModal):
+        * WebKitTestRunner/win/TestControllerWin.cpp:
+        (WTR::TestController::abortModal):
+
+2019-05-02  Christopher Reid  <chris.reid@sony.com>
+
+        [CMake] Add support for LTO builds
+        https://bugs.webkit.org/show_bug.cgi?id=188986
+
+        Reviewed by Don Olmstead.
+
+        Add support to configure --lto-mode with cmake builds.
+
+        * Scripts/build-webkit:
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject):
+
+2019-05-02  John Wilander  <wilander@apple.com>
+
+        Make both filterForRegistrableDomains() in WebKit::NetworkProcess use WebCore::RegistrableDomain::uncheckedCreateFromHost()
+        https://bugs.webkit.org/show_bug.cgi?id=197521
+        <rdar://problem/49651503>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/Tests/WebCore/RegistrableDomain.cpp:
+        (TestWebKitAPI::TEST):
+           Added a test for host strings with leading dots since they are
+           often used for the domain attribute in cookies.
+
+2019-05-02  Per Arne Vollan  <pvollan@apple.com>
+
+        -[WKWebsiteDataStore removeDataOfTypes:forDataRecords:completionHandler:] doesn't delete _WKWebsiteDataTypeCredentials
+        https://bugs.webkit.org/show_bug.cgi?id=197510
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebsiteDatastore.mm:
+        (TestWebKitAPI::TEST):
+
+2019-05-02  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Refactor WEBKIT_MAKE_FORWARDING_HEADERS into WEBKIT_COPY_FILES
+        https://bugs.webkit.org/show_bug.cgi?id=197174
+
+        Reviewed by Alex Christensen.
+
+        Make TestJSC dependent on JavaScriptCorePrivateFrameworkHeaders.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/PlatformWPE.cmake:
+
+2019-05-02  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix for internal branch.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Challenge.mm:
+        RetainPtr.h was not explicitly included.
+
+2019-05-02  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Ignore errors when shutting down an already shutdown simulator
+        <https://bugs.webkit.org/show_bug.cgi?id=197514>
+        <rdar://problem/50390247>
+
+        Reviewed by Lucas Forschler.
+
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDevice._shut_down):
+
+2019-05-02  Frederic Wang  <fwang@igalia.com>
+
+        [GTK][WPE] Disable "thin", "thick", "medium" values of mfrac@linethickness at runtime
+        https://bugs.webkit.org/show_bug.cgi?id=196142
+
+        This patch introduces some experimental runtime flag to let users
+        disable MathML features that are removed from MathML Core [1]. For now,
+        these features are only disabled on GTK and WPE ports.
+
+        [1] https://mathml-refresh.github.io/mathml-core/
+
+        Reviewed by Rob Buis.
+
+        * DumpRenderTree/TestOptions.cpp:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setWebPreferencesForTestOptions):
+
+2019-05-01  Don Olmstead  <don.olmstead@sony.com>
+
+        TestWebKitAPI config.h should be aware of what suite is being built
+        https://bugs.webkit.org/show_bug.cgi?id=196583
+
+        Reviewed by Konstantin Tokarev.
+
+        Migrate to WEBKIT_EXECUTABLE to define the Test* executables. As an added
+        benefit the macro defines BUILDING_* for the executable which allows the includes
+        of the config.h to be tailored to the test suite being built. Because of that the
+        dependencies of the Test* executable are specific to the test suite which may
+        speed up the build.
+
+        Some source files were including "PlatformUtilities.h" which includes WebKit headers
+        when "Utilities.h" is what was needed.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/PlatformJSCOnly.cmake:
+        * TestWebKitAPI/PlatformMac.cmake:
+        * TestWebKitAPI/PlatformPlayStation.cmake:
+        * TestWebKitAPI/PlatformUtilities.h:
+        * TestWebKitAPI/PlatformWPE.cmake:
+        * TestWebKitAPI/PlatformWin.cmake:
+        * TestWebKitAPI/Tests/WTF/RefPtr.cpp:
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        * TestWebKitAPI/Tests/WebCore/FileMonitor.cpp:
+        * TestWebKitAPI/Tests/WebCore/LineBreaking.mm:
+        * TestWebKitAPI/Tests/WebCore/cocoa/SharedBuffer.mm:
+        * TestWebKitAPI/Tests/WebCore/cocoa/WebCoreNSURLSession.mm:
+        * TestWebKitAPI/config.h:
+
+2019-05-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Move Document::domainIsRegisterable to SecurityOrigin::isMatchingRegistrableDomainSuffix
+        https://bugs.webkit.org/show_bug.cgi?id=181950
+        <rdar://problem/43357371>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/Tests/WebCore/SecurityOrigin.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2019-05-01  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove webkitpy and bindings EWS queues from dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=197475
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js:
+
+2019-05-01  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove webkitpy and bindings test queues from old EWS
+        https://bugs.webkit.org/show_bug.cgi?id=197468
+
+        Reviewed by Alexey Proskuryakov.
+
+        * QueueStatusServer/config/queues.py:
+
 2019-04-30  Tim Horton  <timothy_horton@apple.com>
 
         Fix the WebKitTestRunner build

@@ -1,3 +1,85 @@
+2019-05-06  Christopher Reid  <chris.reid@sony.com>
+
+        [CMake] fuse-ld should also be set in module linker flags
+        https://bugs.webkit.org/show_bug.cgi?id=197583
+
+        Reviewed by Michael Catanzaro.
+
+        Add fuse-ld to CMAKE_MODULE_LINKER_FLAGS.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2019-05-03  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [WinCairo] Implement and enable RemoteInspector Server.
+        https://bugs.webkit.org/show_bug.cgi?id=197432
+
+        Reviewed by Ross Kirsling.
+
+        Add new build flag USE_INSPECTOR_SOCKET_SERVER to indicate using Socket implementation for RemoteInspector
+        protocol. Currently PlayStation is the only platform which uses this. WinCairo is the second one.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2019-05-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244881.
+        https://bugs.webkit.org/show_bug.cgi?id=197559
+
+        Breaks compilation of jsconly on linux, breaking compilation
+        for jsc-i386-ews, jsc-mips-ews and jsc-armv7-ews (Requested by
+        guijemont on #webkit).
+
+        Reverted changeset:
+
+        "[CMake] Refactor WEBKIT_MAKE_FORWARDING_HEADERS into
+        WEBKIT_COPY_FILES"
+        https://bugs.webkit.org/show_bug.cgi?id=197174
+        https://trac.webkit.org/changeset/244881
+
+2019-05-02  Christopher Reid  <chris.reid@sony.com>
+
+        [CMake] Add support for LTO builds
+        https://bugs.webkit.org/show_bug.cgi?id=188986
+
+        Reviewed by Don Olmstead.
+
+        Add LTO_MODE cmake variable to enable flto in clang builds.
+        Add support to use ld.lld to build with LTO.
+
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2019-05-02  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Refactor WEBKIT_MAKE_FORWARDING_HEADERS into WEBKIT_COPY_FILES
+        https://bugs.webkit.org/show_bug.cgi?id=197174
+
+        Reviewed by Alex Christensen.
+
+        Replace WEBKIT_MAKE_FORWARDING_HEADERS with WEBKIT_COPY_FILES which is a general
+        purpose macro that copies files to a destination. WEBKIT_COPY_FILES removes the
+        requirement of a target being passed in so there is no longer any implicit dependency
+        between the target and the copying. Instead the dependencies need to be explicit.
+
+        This opens the macro up for use by third party libraries and for copying other files
+        to a destination.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2019-05-01  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [PlayStation] Update port for WEBKIT_EXECUTABLE changes
+        https://bugs.webkit.org/show_bug.cgi?id=197483
+
+        Reviewed by Don Olmstead.
+
+        * Source/cmake/OptionsPlayStation.cmake:
+        Update wrapping for configuring executables' playstation
+        specific data to new WEBKIT_EXECUTABLE macro.
+
 2019-04-30  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Support prefers-color-scheme media query

@@ -131,6 +131,8 @@ OBJC_CLASS NSObject;
 OBJC_CLASS WKAccessibilityWebPageObject;
 #endif
 
+#define ENABLE_VIEWPORT_RESIZING PLATFORM(IOS_FAMILY)
+
 namespace API {
 class Array;
 }
@@ -342,14 +344,15 @@ public:
     void drawRect(WebCore::GraphicsContext&, const WebCore::IntRect&);
 
     // -- Called from WebCore clients.
-    bool handleEditingKeyboardEvent(WebCore::KeyboardEvent*);
+    bool handleEditingKeyboardEvent(WebCore::KeyboardEvent&);
 
     void didStartPageTransition();
     void didCompletePageTransition();
     void didCommitLoad(WebFrame*);
     void willReplaceMultipartContent(const WebFrame&);
     void didReplaceMultipartContent(const WebFrame&);
-    void didFinishLoad(WebFrame*);
+    void didFinishDocumentLoad(WebFrame&);
+    void didFinishLoad(WebFrame&);
     void show();
     String userAgent(const URL&) const;
     String platformUserAgent(const URL&) const;
@@ -1180,6 +1183,7 @@ public:
     void setRemoteObjectRegistry(RemoteObjectRegistry&);
 
     void updateIntrinsicContentSizeIfNeeded(const WebCore::IntSize&);
+    void scheduleFullEditorStateUpdate();
 
 private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);
@@ -1196,7 +1200,6 @@ private:
     void platformDetach();
     void platformEditorState(WebCore::Frame&, EditorState& result, IncludePostLayoutDataHint) const;
     void sendEditorStateUpdate();
-    void scheduleFullEditorStateUpdate();
 
 #if PLATFORM(COCOA)
     void sendTouchBarMenuDataAddedUpdate(WebCore::HTMLMenuElement&);
@@ -1208,6 +1211,7 @@ private:
     void didReceiveSyncWebPageMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
 #if PLATFORM(IOS_FAMILY)
+    WebCore::FloatSize viewLayoutSizeAdjustedForQuirks(const WebCore::FloatSize&);
     void resetViewportDefaultConfiguration(WebFrame* mainFrame, bool hasMobileDocType = false);
     enum class ZoomToInitialScale { No, Yes };
     void viewportConfigurationChanged(ZoomToInitialScale = ZoomToInitialScale::No);
@@ -1228,6 +1232,13 @@ private:
     InteractionInformationAtPosition positionInformation(const InteractionInformationRequest&);
     WebAutocorrectionContext autocorrectionContext();
     bool applyAutocorrectionInternal(const String& correction, const String& originalText);
+    bool shouldIgnoreMetaViewport() const;
+#endif
+
+#if ENABLE(VIEWPORT_RESIZING)
+    void scheduleShrinkToFitContent();
+    void shrinkToFitContentTimerFired();
+    bool immediatelyShrinkToFitContent();
 #endif
 
 #if PLATFORM(IOS_FAMILY) && ENABLE(DATA_INTERACTION)
@@ -1894,6 +1905,9 @@ private:
     WeakPtr<RemoteObjectRegistry> m_remoteObjectRegistry;
 #endif
     WebCore::IntSize m_lastSentIntrinsicContentSize;
+#if ENABLE(VIEWPORT_RESIZING)
+    WebCore::DeferrableOneShotTimer m_shrinkToFitContentTimer;
+#endif
 };
 
 } // namespace WebKit

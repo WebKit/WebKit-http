@@ -30,6 +30,7 @@
 namespace WebCore {
 
 class Document;
+class HTMLElement;
 
 class Quirks {
     WTF_MAKE_NONCOPYABLE(Quirks); WTF_MAKE_FAST_ALLOCATED;
@@ -38,6 +39,8 @@ public:
     ~Quirks();
 
     bool shouldIgnoreInvalidSignal() const;
+    WEBCORE_EXPORT bool shouldIgnoreShrinkToFitContent() const;
+    WEBCORE_EXPORT Optional<LayoutUnit> overriddenViewLayoutWidth(LayoutUnit currentViewLayoutWidth) const;
     bool needsFormControlToBeMouseFocusable() const;
     bool needsAutoplayPlayPauseEvents() const;
     bool needsSeekingSupportDisabled() const;
@@ -47,10 +50,14 @@ public:
     bool hasWebSQLSupportQuirk() const;
     bool shouldDispatchSimulatedMouseEvents() const;
     bool shouldDisablePointerEventsQuirk() const;
+    bool needsInputModeNoneImplicitly(const HTMLElement&) const;
 
     WEBCORE_EXPORT bool shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() const;
     WEBCORE_EXPORT bool isTouchBarUpdateSupressedForHiddenContentEditable() const;
     WEBCORE_EXPORT bool isNeverRichlyEditableForTouchBar() const;
+
+    bool needsGMailOverflowScrollQuirk() const;
+    bool needsYouTubeOverflowScrollQuirk() const;
 
 private:
     bool needsQuirks() const;
@@ -59,6 +66,10 @@ private:
 
     mutable Optional<bool> m_hasBrokenEncryptedMediaAPISupportQuirk;
     mutable Optional<bool> m_hasWebSQLSupportQuirk;
+#if PLATFORM(IOS_FAMILY)
+    mutable Optional<bool> m_needsGMailOverflowScrollQuirk;
+    mutable Optional<bool> m_needsYouTubeOverflowScrollQuirk;
+#endif
 };
 
 }

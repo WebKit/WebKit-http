@@ -424,6 +424,9 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #if PLATFORM(WPE)
     , m_hostFileDescriptor(WTFMove(parameters.hostFileDescriptor))
 #endif
+#if ENABLE(VIEWPORT_RESIZING)
+    , m_shrinkToFitContentTimer(*this, &WebPage::shrinkToFitContentTimerFired, 0_s)
+#endif
 {
     ASSERT(m_pageID);
 
@@ -763,15 +766,6 @@ void WebPage::updateThrottleState()
     bool isVisuallyIdle = m_activityState.contains(ActivityState::IsVisuallyIdle);
     bool pageSuppressed = m_processSuppressionEnabled && !isActive && isVisuallyIdle;
 
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-    if (!pageSuppressed) {
-        // App nap must be manually enabled when not running the NSApplication run loop.
-        static std::once_flag onceKey;
-        std::call_once(onceKey, [] {
-            __CFRunLoopSetOptionsReason(__CFRunLoopOptionsEnableAppNap, CFSTR("Finished checkin as application - enable app nap"));
-        });
-    }
-#endif
     // The UserActivity keeps the processes runnable. So if the page should be suppressed, stop the activity.
     // If the page should not be supressed, start it.
     if (pageSuppressed)
@@ -1357,6 +1351,10 @@ void WebPage::close()
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     m_determinePrimarySnapshottedPlugInTimer.stop();
+#endif
+
+#if ENABLE(VIEWPORT_RESIZING)
+    m_shrinkToFitContentTimer.stop();
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
@@ -5714,6 +5712,10 @@ void WebPage::didCommitLoad(WebFrame* frame)
         viewportConfigurationChanged();
 #endif
 
+#if ENABLE(VIEWPORT_RESIZING)
+    m_shrinkToFitContentTimer.stop();
+#endif
+
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     resetPrimarySnapshottedPlugIn();
 #endif
@@ -5727,12 +5729,22 @@ void WebPage::didCommitLoad(WebFrame* frame)
     updateMainFrameScrollOffsetPinning();
 }
 
-void WebPage::didFinishLoad(WebFrame* frame)
+void WebPage::didFinishDocumentLoad(WebFrame& frame)
 {
-    if (!frame->isMainFrame())
+    if (!frame.isMainFrame())
         return;
 
-    WebProcess::singleton().sendPrewarmInformation(frame->url());
+#if ENABLE(VIEWPORT_RESIZING)
+    scheduleShrinkToFitContent();
+#endif
+}
+
+void WebPage::didFinishLoad(WebFrame& frame)
+{
+    if (!frame.isMainFrame())
+        return;
+
+    WebProcess::singleton().sendPrewarmInformation(frame.url());
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     m_readyToFindPrimarySnapshottedPlugin = true;
@@ -5740,6 +5752,10 @@ void WebPage::didFinishLoad(WebFrame* frame)
     m_determinePrimarySnapshottedPlugInTimer.startOneShot(0_s);
 #else
     UNUSED_PARAM(frame);
+#endif
+
+#if ENABLE(VIEWPORT_RESIZING)
+    scheduleShrinkToFitContent();
 #endif
 }
 

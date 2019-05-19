@@ -321,9 +321,12 @@ struct WKAutoCorrectionData {
     BOOL _didAccessoryTabInitiateFocus;
     BOOL _isExpectingFastSingleTapCommit;
     BOOL _showDebugTapHighlightsForFastClicking;
-    BOOL _isZoomingToRevealFocusedElement;
 
     BOOL _keyboardDidRequestDismissal;
+
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    BOOL _candidateViewNeedsUpdate;
+#endif
 
     BOOL _becomingFirstResponder;
     BOOL _resigningFirstResponder;

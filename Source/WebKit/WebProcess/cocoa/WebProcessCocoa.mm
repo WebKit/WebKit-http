@@ -49,7 +49,7 @@
 #import "WebsiteDataStoreParameters.h"
 #import <JavaScriptCore/ConfigFile.h>
 #import <JavaScriptCore/Options.h>
-#import <WebCore/AVFoundationMIMETypeCache.h>
+#import <WebCore/AVAssetMIMETypeCache.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/CPUMonitor.h>
 #import <WebCore/DisplayRefreshMonitorManager.h>
@@ -67,6 +67,7 @@
 #import <algorithm>
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
+#import <pal/spi/cf/CFUtilitiesSPI.h>
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/LaunchServicesSPI.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
@@ -121,6 +122,7 @@ using namespace WebCore;
 
 #if PLATFORM(MAC)
 static const Seconds cpuMonitoringInterval { 8_min };
+static const double serviceWorkerCPULimit { 0.5 }; // 50% average CPU usage over 8 minutes.
 #endif
 
 void WebProcess::platformSetCacheModel(CacheModel)
@@ -198,6 +200,11 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
     [NSApplication _accessibilityInitialize];
 #endif
 
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    // App nap must be manually enabled when not running the NSApplication run loop.
+    __CFRunLoopSetOptionsReason(__CFRunLoopOptionsEnableAppNap, CFSTR("Finished checkin as application - enable app nap"));
+#endif
+
 #if TARGET_OS_IPHONE
     // Priority decay on iOS 9 is impacting page load time so we fix the priority of the WebProcess' main thread (rdar://problem/22003112).
     pthread_set_fixedpriority_self();
@@ -206,7 +213,7 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
     if (!parameters.mediaMIMETypes.isEmpty())
         setMediaMIMETypes(parameters.mediaMIMETypes);
     else {
-        AVFoundationMIMETypeCache::singleton().setCacheMIMETypesCallback([this](const Vector<String>& types) {
+        AVAssetMIMETypeCache::singleton().setCacheMIMETypesCallback([this](const Vector<String>& types) {
             parentProcessConnection()->send(Messages::WebProcessProxy::CacheMediaMIMETypes(types), 0);
         });
     }
@@ -469,7 +476,7 @@ void WebProcess::stopRunLoop()
 
 void WebProcess::platformTerminate()
 {
-    AVFoundationMIMETypeCache::singleton().setCacheMIMETypesCallback(nullptr);
+    AVAssetMIMETypeCache::singleton().setCacheMIMETypesCallback(nullptr);
 }
 
 RetainPtr<CFDataRef> WebProcess::sourceApplicationAuditData() const
@@ -577,16 +584,19 @@ void WebProcess::updateCPULimit()
 {
 #if PLATFORM(MAC)
     Optional<double> cpuLimit;
-
-    // Use the largest limit among all pages in this process.
-    for (auto& page : m_pageMap.values()) {
-        auto pageCPULimit = page->cpuLimit();
-        if (!pageCPULimit) {
-            cpuLimit = WTF::nullopt;
-            break;
+    if (m_processType == ProcessType::ServiceWorker)
+        cpuLimit = serviceWorkerCPULimit;
+    else {
+        // Use the largest limit among all pages in this process.
+        for (auto& page : m_pageMap.values()) {
+            auto pageCPULimit = page->cpuLimit();
+            if (!pageCPULimit) {
+                cpuLimit = WTF::nullopt;
+                break;
+            }
+            if (!cpuLimit || pageCPULimit > cpuLimit.value())
+                cpuLimit = pageCPULimit;
         }
-        if (!cpuLimit || pageCPULimit > cpuLimit.value())
-            cpuLimit = pageCPULimit;
     }
 
     if (m_cpuLimit == cpuLimit)
@@ -608,7 +618,10 @@ void WebProcess::updateCPUMonitorState(CPUMonitorUpdateReason reason)
 
     if (!m_cpuMonitor) {
         m_cpuMonitor = std::make_unique<CPUMonitor>(cpuMonitoringInterval, [this](double cpuUsage) {
-            RELEASE_LOG(PerformanceLogging, "%p - WebProcess exceeded CPU limit of %.1f%% (was using %.1f%%) hasVisiblePages? %d", this, m_cpuLimit.value() * 100, cpuUsage * 100, hasVisibleWebPage());
+            if (m_processType == ProcessType::ServiceWorker)
+                RELEASE_LOG_ERROR(PerformanceLogging, "%p - Service worker process exceeded CPU limit of %.1f%% (was using %.1f%%)", this, m_cpuLimit.value() * 100, cpuUsage * 100);
+            else
+                RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcess exceeded CPU limit of %.1f%% (was using %.1f%%) hasVisiblePages? %d", this, m_cpuLimit.value() * 100, cpuUsage * 100, hasVisibleWebPage());
             parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedCPULimit(), 0);
         });
     } else if (reason == CPUMonitorUpdateReason::VisibilityHasChanged) {
@@ -799,7 +812,7 @@ void WebProcess::backlightLevelDidChange(float backlightLevel)
 
 void WebProcess::setMediaMIMETypes(const Vector<String> types)
 {
-    AVFoundationMIMETypeCache::singleton().setSupportedTypes(types);
+    AVAssetMIMETypeCache::singleton().setSupportedTypes(types);
 }
 
 } // namespace WebKit

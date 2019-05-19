@@ -28,8 +28,8 @@
 
 #if ENABLE(VIDEO) && USE(AVFOUNDATION)
 
+#import "AVAssetMIMETypeCache.h"
 #import "AVAssetTrackUtilities.h"
-#import "AVFoundationMIMETypeCache.h"
 #import "AVTrackPrivateAVFObjCImpl.h"
 #import "AudioSourceProviderAVFObjC.h"
 #import "AudioTrackPrivateAVFObjC.h"
@@ -240,7 +240,7 @@ void MediaPlayerPrivateAVFoundationObjC::registerMediaEngine(MediaEngineRegistra
 
     registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateAVFoundationObjC>(player); },
             getSupportedTypes, supportsType, originsInMediaCache, clearMediaCache, clearMediaCacheForOrigins, supportsKeySystem);
-    ASSERT(AVFoundationMIMETypeCache::singleton().isAvailable());
+    ASSERT(AVAssetMIMETypeCache::singleton().isAvailable());
 }
 
 static AVAssetCache *assetCacheForPath(const String& path)
@@ -1511,8 +1511,8 @@ RetainPtr<CGImageRef> MediaPlayerPrivateAVFoundationObjC::createImageForTimeInRe
 
 void MediaPlayerPrivateAVFoundationObjC::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& supportedTypes)
 {
-    supportedTypes = AVFoundationMIMETypeCache::singleton().types();
-} 
+    supportedTypes = AVAssetMIMETypeCache::singleton().types();
+}
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 static bool keySystemIsSupported(const String& keySystem)
@@ -1538,7 +1538,7 @@ MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsType(const
     if (isUnsupportedMIMEType(containerType))
         return MediaPlayer::IsNotSupported;
 
-    if (!staticMIMETypeList().contains(containerType) && !AVFoundationMIMETypeCache::singleton().canDecodeType(containerType))
+    if (!staticMIMETypeList().contains(containerType) && !AVAssetMIMETypeCache::singleton().canDecodeType(containerType))
         return MediaPlayer::IsNotSupported;
 
     // The spec says:
@@ -1567,7 +1567,7 @@ bool MediaPlayerPrivateAVFoundationObjC::supportsKeySystem(const String& keySyst
         if (!mimeType.isEmpty() && isUnsupportedMIMEType(mimeType))
             return false;
 
-        if (!mimeType.isEmpty() && !staticMIMETypeList().contains(mimeType) && !AVFoundationMIMETypeCache::singleton().canDecodeType(mimeType))
+        if (!mimeType.isEmpty() && !staticMIMETypeList().contains(mimeType) && !AVAssetMIMETypeCache::singleton().canDecodeType(mimeType))
             return false;
 
         return true;
@@ -1696,7 +1696,7 @@ void MediaPlayerPrivateAVFoundationObjC::didStopLoadingRequest(AVAssetResourceLo
 
 bool MediaPlayerPrivateAVFoundationObjC::isAvailable()
 {
-    return PAL::AVFoundationLibrary() && isCoreMediaFrameworkAvailable();
+    return PAL::isAVFoundationFrameworkAvailable() && isCoreMediaFrameworkAvailable();
 }
 
 MediaTime MediaPlayerPrivateAVFoundationObjC::mediaTimeForTimeValue(const MediaTime& timeValue) const
@@ -2576,7 +2576,7 @@ MediaPlayer::WirelessPlaybackTargetType MediaPlayerPrivateAVFoundationObjC::wire
         return MediaPlayer::TargetTypeNone;
 
 #if PLATFORM(IOS_FAMILY)
-    if (!PAL::AVFoundationLibrary())
+    if (!PAL::isAVFoundationFrameworkAvailable())
         return MediaPlayer::TargetTypeNone;
 
     switch ([m_avPlayer externalPlaybackType]) {
@@ -2600,7 +2600,7 @@ MediaPlayer::WirelessPlaybackTargetType MediaPlayerPrivateAVFoundationObjC::wire
 static NSString *exernalDeviceDisplayNameForPlayer(AVPlayer *player)
 {
 #if HAVE(CELESTIAL)
-    if (!PAL::AVFoundationLibrary())
+    if (!PAL::isAVFoundationFrameworkAvailable())
         return nil;
 
     if ([PAL::getAVOutputContextClass() respondsToSelector:@selector(sharedAudioPresentationOutputContext)]) {

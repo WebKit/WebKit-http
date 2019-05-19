@@ -414,9 +414,9 @@ bool WebPage::allowsUserScaling() const
     return m_viewportConfiguration.allowsUserScaling();
 }
 
-bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* event)
+bool WebPage::handleEditingKeyboardEvent(KeyboardEvent& event)
 {
-    auto* platformEvent = event->underlyingPlatformEvent();
+    auto* platformEvent = event.underlyingPlatformEvent();
     if (!platformEvent)
         return false;
 
@@ -2786,12 +2786,20 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     return WTF::areEssentiallyEqual(a, b);
 }
 
+FloatSize WebPage::viewLayoutSizeAdjustedForQuirks(const FloatSize& size)
+{
+    if (auto* document = m_page->mainFrame().document())
+        return { document->quirks().overriddenViewLayoutWidth(size.width()).valueOr(size.width()), size.height() };
+    return size;
+}
+
 void WebPage::setViewportConfigurationViewLayoutSize(const FloatSize& size, double scaleFactor, double minimumEffectiveDeviceWidth)
 {
     LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " setViewportConfigurationViewLayoutSize " << size << " scaleFactor " << scaleFactor << " minimumEffectiveDeviceWidth " << minimumEffectiveDeviceWidth);
 
     auto previousLayoutSizeScaleFactor = m_viewportConfiguration.layoutSizeScaleFactor();
-    if (!m_viewportConfiguration.setViewLayoutSize(size, scaleFactor, minimumEffectiveDeviceWidth))
+    auto clampedMinimumEffectiveDevice = m_viewportConfiguration.isKnownToLayOutWiderThanViewport() ? WTF::nullopt : Optional<double>(minimumEffectiveDeviceWidth);
+    if (!m_viewportConfiguration.setViewLayoutSize(viewLayoutSizeAdjustedForQuirks(size), scaleFactor, WTFMove(clampedMinimumEffectiveDevice)))
         return;
 
     auto zoomToInitialScale = ZoomToInitialScale::No;
@@ -2821,8 +2829,7 @@ void WebPage::setDeviceOrientation(int32_t deviceOrientation)
 
 void WebPage::setOverrideViewportArguments(const Optional<WebCore::ViewportArguments>& arguments)
 {
-    if (auto* document = m_page->mainFrame().document())
-        document->setOverrideViewportArguments(arguments);
+    m_page->setOverrideViewportArguments(arguments);
 }
 
 void WebPage::resetTextAutosizing()
@@ -2873,8 +2880,16 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const W
     }
 
     LOG_WITH_STREAM(VisibleRects, stream << "WebPage::dynamicViewportSizeUpdate setting view layout size to " << viewLayoutSize);
-    if (m_viewportConfiguration.setViewLayoutSize(viewLayoutSize))
+    bool viewportChanged = m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(false);
+    viewportChanged |= m_viewportConfiguration.setViewLayoutSize(viewLayoutSizeAdjustedForQuirks(viewLayoutSize));
+    if (viewportChanged)
         viewportConfigurationChanged();
+
+#if ENABLE(VIEWPORT_RESIZING)
+    if (immediatelyShrinkToFitContent())
+        viewportConfigurationChanged();
+#endif
+
     IntSize newLayoutSize = m_viewportConfiguration.layoutSize();
 
     if (setFixedLayoutSize(newLayoutSize))
@@ -3020,16 +3035,9 @@ void WebPage::resetViewportDefaultConfiguration(WebFrame* frame, bool hasMobileD
     }
 
     auto parametersForStandardFrame = [&] {
-        bool shouldIgnoreMetaViewport = false;
-        if (auto* mainDocument = m_page->mainFrame().document()) {
-            auto* loader = mainDocument->loader();
-            shouldIgnoreMetaViewport = loader && loader->metaViewportPolicy() == WebCore::MetaViewportPolicy::Ignore;
-        }
-
-        if (m_page->settings().shouldIgnoreMetaViewport())
-            shouldIgnoreMetaViewport = true;
-
-        return shouldIgnoreMetaViewport ? m_viewportConfiguration.nativeWebpageParameters() : ViewportConfiguration::webpageParameters();
+        if (shouldIgnoreMetaViewport())
+            return m_viewportConfiguration.nativeWebpageParameters();
+        return ViewportConfiguration::webpageParameters();
     };
 
     if (!frame) {
@@ -3042,13 +3050,96 @@ void WebPage::resetViewportDefaultConfiguration(WebFrame* frame, bool hasMobileD
         return;
     }
 
-    Document* document = frame->coreFrame()->document();
+    auto* document = frame->coreFrame()->document();
     if (document->isImageDocument())
         m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::imageDocumentParameters());
     else if (document->isTextDocument())
         m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::textDocumentParameters());
     else
         m_viewportConfiguration.setDefaultConfiguration(parametersForStandardFrame());
+    m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(false);
+
+    if (auto overriddenViewLayoutWidth = document->quirks().overriddenViewLayoutWidth(m_viewportConfiguration.layoutWidth()))
+        m_viewportConfiguration.setViewLayoutSize(FloatSize(*overriddenViewLayoutWidth, m_viewportConfiguration.layoutHeight()));
+}
+
+#if ENABLE(VIEWPORT_RESIZING)
+
+void WebPage::scheduleShrinkToFitContent()
+{
+    m_shrinkToFitContentTimer.restart();
+}
+
+void WebPage::shrinkToFitContentTimerFired()
+{
+    if (immediatelyShrinkToFitContent())
+        viewportConfigurationChanged(ZoomToInitialScale::Yes);
+}
+
+bool WebPage::immediatelyShrinkToFitContent()
+{
+    if (!shouldIgnoreMetaViewport())
+        return false;
+
+    if (!m_viewportConfiguration.viewportArguments().shrinkToFit)
+        return false;
+
+    if (m_viewportConfiguration.canIgnoreScalingConstraints())
+        return false;
+
+    auto mainFrame = makeRefPtr(m_mainFrame->coreFrame());
+    if (!mainFrame)
+        return false;
+
+    auto view = makeRefPtr(mainFrame->view());
+    auto mainDocument = makeRefPtr(mainFrame->document());
+    if (!view || !mainDocument)
+        return false;
+
+    if (mainDocument->quirks().shouldIgnoreShrinkToFitContent())
+        return false;
+
+    mainDocument->updateLayout();
+
+    static const int toleratedHorizontalScrollingDistance = 20;
+    static const int maximumExpandedLayoutWidth = 1280;
+    int originalContentWidth = view->contentsWidth();
+    int originalLayoutWidth = m_viewportConfiguration.layoutWidth();
+    int originalHorizontalOverflowAmount = originalContentWidth - originalLayoutWidth;
+    if (originalHorizontalOverflowAmount <= toleratedHorizontalScrollingDistance || originalLayoutWidth >= maximumExpandedLayoutWidth || originalContentWidth <= m_viewportConfiguration.viewLayoutSize().width())
+        return false;
+
+    auto changeMinimumEffectiveDeviceWidth = [this, mainDocument] (int targetLayoutWidth) -> bool {
+        if (m_viewportConfiguration.setMinimumEffectiveDeviceWidth(targetLayoutWidth)) {
+            viewportConfigurationChanged();
+            mainDocument->updateLayout();
+            return true;
+        }
+        return false;
+    };
+
+    m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(true);
+    double originalMinimumDeviceWidth = m_viewportConfiguration.minimumEffectiveDeviceWidth();
+    if (changeMinimumEffectiveDeviceWidth(std::min(maximumExpandedLayoutWidth, originalContentWidth)) && view->contentsWidth() - m_viewportConfiguration.layoutWidth() > originalHorizontalOverflowAmount) {
+        changeMinimumEffectiveDeviceWidth(originalMinimumDeviceWidth);
+        m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(false);
+    }
+
+    // FIXME (197429): Consider additionally logging an error message to the console if a responsive meta viewport tag was used.
+    RELEASE_LOG(ViewportSizing, "Shrink-to-fit: content width %d => %d; layout width %d => %d", originalContentWidth, view->contentsWidth(), originalLayoutWidth, m_viewportConfiguration.layoutWidth());
+    return true;
+}
+
+#endif // ENABLE(VIEWPORT_RESIZING)
+
+bool WebPage::shouldIgnoreMetaViewport() const
+{
+    if (auto* mainDocument = m_page->mainFrame().document()) {
+        auto* loader = mainDocument->loader();
+        if (loader && loader->metaViewportPolicy() == WebCore::MetaViewportPolicy::Ignore)
+            return true;
+    }
+    return m_page->settings().shouldIgnoreMetaViewport();
 }
 
 void WebPage::viewportConfigurationChanged(ZoomToInitialScale zoomToInitialScale)
@@ -3256,7 +3347,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     if (scrollPosition != frameView.scrollPosition())
         m_dynamicSizeUpdateHistory.clear();
 
-    if (m_viewportConfiguration.setCanIgnoreScalingConstraints(m_ignoreViewportScalingConstraints && visibleContentRectUpdateInfo.allowShrinkToFit()))
+    if (m_viewportConfiguration.setCanIgnoreScalingConstraints(m_ignoreViewportScalingConstraints || visibleContentRectUpdateInfo.allowShrinkToFit()))
         viewportConfigurationChanged();
 
     frameView.setUnobscuredContentSize(visibleContentRectUpdateInfo.unobscuredContentRect().size());

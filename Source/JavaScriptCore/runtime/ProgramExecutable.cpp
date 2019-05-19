@@ -83,10 +83,9 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
 
     ParserError error;
     JSParserStrictMode strictMode = isStrictMode() ? JSParserStrictMode::Strict : JSParserStrictMode::NotStrict;
-    DebuggerMode debuggerMode = globalObject->hasInteractiveDebugger() ? DebuggerOn : DebuggerOff;
-
+    OptionSet<CodeGenerationMode> codeGenerationMode = globalObject->defaultCodeGenerationMode();
     UnlinkedProgramCodeBlock* unlinkedCodeBlock = vm.codeCache()->getUnlinkedProgramCodeBlock(
-        vm, this, source(), strictMode, debuggerMode, error);
+        vm, this, source(), strictMode, codeGenerationMode, error);
 
     if (globalObject->hasDebugger())
         globalObject->debugger()->sourceParsed(callFrame, source().provider(), error.line(), error.message());
@@ -217,6 +216,11 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
     return nullptr;
 }
 
+auto ProgramExecutable::ensureTemplateObjectMap(VM&) -> TemplateObjectMap&
+{
+    return ensureTemplateObjectMapImpl(m_templateObjectMap);
+}
+
 void ProgramExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     ProgramExecutable* thisObject = jsCast<ProgramExecutable*>(cell);
@@ -224,6 +228,11 @@ void ProgramExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
     Base::visitChildren(thisObject, visitor);
     visitor.append(thisObject->m_unlinkedProgramCodeBlock);
     visitor.append(thisObject->m_programCodeBlock);
+    if (TemplateObjectMap* map = thisObject->m_templateObjectMap.get()) {
+        auto locker = holdLock(thisObject->cellLock());
+        for (auto& entry : *map)
+            visitor.append(entry.value);
+    }
 }
 
 } // namespace JSC

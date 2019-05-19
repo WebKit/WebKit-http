@@ -268,6 +268,19 @@ void makeMatrixRenderable(TransformationMatrix& matrix, bool has3DRendering)
 #endif
 }
 
+#if !LOG_DISABLED
+static TextStream& operator<<(TextStream& ts, const ClipRects& clipRects)
+{
+    TextStream::GroupScope scope(ts);
+    ts << indent << "ClipRects\n";
+    ts << indent << "  overflow  : " << clipRects.overflowClipRect() << "\n";
+    ts << indent << "  fixed     : " << clipRects.fixedClipRect() << "\n";
+    ts << indent << "  positioned: " << clipRects.posClipRect() << "\n";
+
+    return ts;
+}
+#endif
+
 RenderLayer::RenderLayer(RenderLayerModelObject& rendererLayerModelObject)
     : m_isRenderViewLayer(rendererLayerModelObject.isRenderView())
     , m_forcedStackingContext(rendererLayerModelObject.isMedia())
@@ -2586,18 +2599,27 @@ void RenderLayer::scrollRectToVisible(const LayoutRect& absoluteRect, bool insid
             if (options.revealMode == SelectionRevealMode::RevealUpToMainFrame && frameView.frame().isMainFrame())
                 return;
 
+            auto minScrollPosition = frameView.minimumScrollPosition();
+            auto maxScrollPosition = frameView.maximumScrollPosition();
+
 #if !PLATFORM(IOS_FAMILY)
             LayoutRect viewRect = frameView.visibleContentRect();
 #else
+            // FIXME: ContentInsets should be taken care of in UI process side.
+            // To do that, getRectToExpose needs to return the additional scrolling to do beyond content rect.
             LayoutRect viewRect = frameView.visualViewportRectExpandedByContentInsets();
+
+            auto contentInsets = page().contentInsets();
+            minScrollPosition.move(-contentInsets.left(), -contentInsets.top());
+            maxScrollPosition.move(contentInsets.right(), contentInsets.bottom());
 #endif
             // Move the target rect into "scrollView contents" coordinates.
             LayoutRect targetRect = absoluteRect;
             targetRect.move(0, frameView.headerHeight());
 
             LayoutRect revealRect = getRectToExpose(viewRect, targetRect, insideFixed, options.alignX, options.alignY);
-            
-            frameView.setScrollPosition(roundedIntPoint(revealRect.location()));
+            ScrollOffset clampedScrollPosition = roundedIntPoint(revealRect.location()).constrainedBetween(minScrollPosition, maxScrollPosition);
+            frameView.setScrollPosition(clampedScrollPosition);
 
             // This is the outermost view of a web page, so after scrolling this view we
             // scroll its container by calling Page::scrollRectIntoView.
@@ -5519,6 +5541,8 @@ void RenderLayer::calculateClipRects(const ClipRectsContext& clipRectsContext, C
             clipRects.setFixedClipRect(intersection(newPosClip, clipRects.fixedClipRect()));
         }
     }
+    
+    LOG_WITH_STREAM(ClipRects, stream << "RenderLayer " << this << " calculateClipRects " << clipRects);
 }
 
 Ref<ClipRects> RenderLayer::parentClipRects(const ClipRectsContext& clipRectsContext) const
@@ -5568,6 +5592,8 @@ ClipRect RenderLayer::backgroundClipRect(const ClipRectsContext& clipRectsContex
     // Note: infinite clipRects should not be scrolled here, otherwise they will accidentally no longer be considered infinite.
     if (parentRects->fixed() && &clipRectsContext.rootLayer->renderer() == &view && !backgroundClipRect.isInfinite())
         backgroundClipRect.moveBy(view.frameView().scrollPositionForFixedPosition());
+
+    LOG_WITH_STREAM(ClipRects, stream << "RenderLayer " << this << " backgroundClipRect with context " << clipRectsContext << " returning " << backgroundClipRect);
     return backgroundClipRect;
 }
 
@@ -6730,6 +6756,21 @@ void RenderLayer::invalidateEventRegion()
 #endif
 }
 
+TextStream& operator<<(WTF::TextStream& ts, ClipRectsType clipRectsType)
+{
+    switch (clipRectsType) {
+    case PaintingClipRects: ts << "painting"; break;
+    case RootRelativeClipRects: ts << "root-relative"; break;
+    case AbsoluteClipRects: ts << "absolute"; break;
+    case TemporaryClipRects: ts << "temporary"; break;
+    case NumCachedClipRectsTypes:
+    case AllClipRectTypes:
+        ts << "?";
+        break;
+    }
+    return ts;
+}
+
 TextStream& operator<<(TextStream& ts, const RenderLayer& layer)
 {
     ts << "RenderLayer " << &layer << " " << layer.size();
@@ -6745,6 +6786,15 @@ TextStream& operator<<(TextStream& ts, const RenderLayer& layer)
         ts << " isolates blending";
     if (layer.isComposited())
         ts << " " << *layer.backing();
+    return ts;
+}
+
+TextStream& operator<<(TextStream& ts, const RenderLayer::ClipRectsContext& context)
+{
+    ts.dumpProperty("root layer:", context.rootLayer);
+    ts.dumpProperty("type:", context.clipRectsType);
+    ts.dumpProperty("overflow-clip:", context.respectOverflowClip == IgnoreOverflowClip ? "ignore" : "respect");
+    
     return ts;
 }
 

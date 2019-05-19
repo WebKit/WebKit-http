@@ -27,7 +27,10 @@
 
 #if TARGET_OS_IPHONE
 
+#import <WebKit/WKBase.h>
 #import <WebKit/_WKActivatedElementInfo.h>
+
+@class UIImage;
 
 typedef void (^WKElementActionHandler)(_WKActivatedElementInfo *);
 typedef BOOL (^WKElementActionDismissalHandler)(void);
@@ -55,6 +58,8 @@ WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 + (instancetype)elementActionWithType:(_WKElementActionType)type title:(NSString *)title actionHandler:(WKElementActionHandler)actionHandler WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 + (instancetype)elementActionWithType:(_WKElementActionType)type customTitle:(NSString *)title;
 + (instancetype)elementActionWithTitle:(NSString *)title actionHandler:(WKElementActionHandler)handler;
+
++ (UIImage *)imageForElementActionType:(_WKElementActionType)actionType WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 - (void)runActionWithElementInfo:(_WKActivatedElementInfo *)info WK_API_AVAILABLE(ios(9_0));
 
