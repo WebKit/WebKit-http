@@ -26,9 +26,9 @@
  */
 
 #include "config.h"
-#include "GraphicsContext3D.h"
 
 #if ENABLE(GRAPHICS_CONTEXT_3D) && USE(TEXTURE_MAPPER)
+#include "GraphicsContext3D.h"
 
 #include "GraphicsContext3DPrivate.h"
 #include "TextureMapperGC3DPlatformLayer.h"

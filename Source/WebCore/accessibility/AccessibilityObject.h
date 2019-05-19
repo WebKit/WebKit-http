@@ -953,8 +953,6 @@ public:
 #if HAVE(ACCESSIBILITY)
     AccessibilityObjectWrapper* wrapper() const override { return m_wrapper.get(); }
     void setWrapper(AccessibilityObjectWrapper* wrapper) { m_wrapper = wrapper; }
-#else
-    AccessibilityObjectWrapper* wrapper() const override { return nullptr; }
 #endif
 
 #if PLATFORM(COCOA)

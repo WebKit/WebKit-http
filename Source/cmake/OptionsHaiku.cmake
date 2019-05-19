@@ -219,6 +219,8 @@ if (ENABLE_WEBGL)
     endif ()
 endif ()
 
+SET_AND_EXPOSE_TO_BUILD(ENABLE_GRAPHICS_CONTEXT_3D FALSE)
+
 if (ENABLE_SPELLCHECK)
     find_package(Enchant REQUIRED)
 endif ()
