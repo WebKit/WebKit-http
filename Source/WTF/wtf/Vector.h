@@ -85,7 +85,7 @@ struct VectorInitializer<true, true, T>
 {
     static void initialize(T* begin, T* end) 
     {
-        memset(begin, 0, reinterpret_cast<char*>(end) - reinterpret_cast<char*>(begin));
+        memset(static_cast<void*>(begin), 0, reinterpret_cast<char*>(end) - reinterpret_cast<char*>(begin));
     }
 };
 
@@ -125,11 +125,11 @@ struct VectorMover<true, T>
 {
     static void move(const T* src, const T* srcEnd, T* dst) 
     {
-        memcpy(dst, src, reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
+        memcpy(static_cast<void*>(dst), static_cast<void*>(const_cast<T*>(src)), reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
     }
     static void moveOverlapping(const T* src, const T* srcEnd, T* dst) 
     {
-        memmove(dst, src, reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
+        memmove(static_cast<void*>(dst), static_cast<void*>(const_cast<T*>(src)), reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
     }
 };
 
@@ -155,7 +155,7 @@ struct VectorCopier<true, T>
 {
     static void uninitializedCopy(const T* src, const T* srcEnd, T* dst)
     {
-        memcpy(dst, src, reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
+        memcpy(static_cast<void*>(dst), static_cast<void*>(const_cast<T*>(src)), reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
     }
     template<typename U>
     static void uninitializedCopy(const T* src, const T* srcEnd, U* dst)

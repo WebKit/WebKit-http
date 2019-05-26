@@ -170,12 +170,12 @@ inline Length::Length(const Length& other)
     if (other.isCalculated())
         other.ref();
 
-    memcpy(this, &other, sizeof(Length));
+    memcpy(static_cast<void*>(this), static_cast<void*>(const_cast<Length*>(&other)), sizeof(Length));
 }
 
 inline Length::Length(Length&& other)
 {
-    memcpy(this, &other, sizeof(Length));
+    memcpy(static_cast<void*>(this), static_cast<void*>(&other), sizeof(Length));
     other.m_type = Auto;
 }
 
@@ -189,7 +189,7 @@ inline Length& Length::operator=(const Length& other)
     if (isCalculated())
         deref();
 
-    memcpy(this, &other, sizeof(Length));
+    memcpy(static_cast<void*>(this), static_cast<void*>(const_cast<Length*>(&other)), sizeof(Length));
     return *this;
 }
 
@@ -201,7 +201,7 @@ inline Length& Length::operator=(Length&& other)
     if (isCalculated())
         deref();
 
-    memcpy(this, &other, sizeof(Length));
+    memcpy(static_cast<void*>(this), static_cast<void*>(&other), sizeof(Length));
     other.m_type = Auto;
     return *this;
 }
