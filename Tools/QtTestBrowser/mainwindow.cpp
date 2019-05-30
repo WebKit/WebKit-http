@@ -43,6 +43,7 @@
 #include <QFileDialog>
 #endif
 #include <QMenuBar>
+#include <QMessageBox>
 
 MainWindow::MainWindow()
     : m_page(new WebPage(this))
@@ -85,6 +86,7 @@ void MainWindow::buildUI()
     connect(page()->mainFrame(), SIGNAL(loadStarted()), this, SLOT(onLoadStarted()));
     connect(page()->mainFrame(), SIGNAL(iconChanged()), this, SLOT(onIconChanged()));
     connect(page()->mainFrame(), SIGNAL(titleChanged(QString)), this, SLOT(onTitleChanged(QString)));
+    connect(page()->networkAccessManager(), SIGNAL(sslErrors(QNetworkReply*, const QList<QSslError>&)), this, SLOT(onSSLErrors(QNetworkReply*, const QList<QSslError>&)));
     connect(page(), SIGNAL(windowCloseRequested()), this, SLOT(close()));
 
 #ifndef QT_NO_SHORTCUT

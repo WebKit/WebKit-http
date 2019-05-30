@@ -27,7 +27,13 @@ if (QT_STATIC_BUILD)
     )
 endif ()
 
-if (UNIX AND NOT APPLE)
+if (USE_MACH_PORTS)
+    list(APPEND WTF_SOURCES
+        cocoa/WorkQueueCocoa.cpp
+    )
+endif ()
+
+if (USE_UNIX_DOMAIN_SOCKETS)
     list(APPEND WTF_SOURCES
         UniStdExtras.cpp
 
@@ -66,8 +72,6 @@ endif ()
 
 if (APPLE)
     list(APPEND WTF_SOURCES
-        cocoa/WorkQueueCocoa.cpp
-
         text/cf/AtomicStringImplCF.cpp
         text/cf/StringCF.cpp
         text/cf/StringImplCF.cpp

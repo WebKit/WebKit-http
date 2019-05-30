@@ -130,7 +130,7 @@ RenderThemeQStyle::RenderThemeQStyle(Page* page)
 {
     int buttonPixelSize = 0;
     m_qStyle->getButtonMetrics(&m_buttonFontFamily, &buttonPixelSize);
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
     m_buttonFontPixelSize = buttonPixelSize;
 #endif
 }
@@ -288,7 +288,7 @@ void RenderThemeQStyle::adjustButtonStyle(StyleResolver& styleResolver, RenderSt
     // Ditch the border.
     style.resetBorder();
 
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
     if (style.appearance() == PushButtonPart) {
         // The Mac ports ignore the specified height for <input type="button"> elements
         // unless a border and/or background CSS property is also specified.
@@ -299,7 +299,7 @@ void RenderThemeQStyle::adjustButtonStyle(StyleResolver& styleResolver, RenderSt
     FontCascadeDescription fontDescription = style.fontDescription();
     fontDescription.setIsAbsoluteSize(true);
 
-#ifdef Q_OS_MAC // Use fixed font size and family on Mac (like Safari does)
+#ifdef Q_OS_MACOS // Use fixed font size and family on Mac (like Safari does)
     fontDescription.setSpecifiedSize(m_buttonFontPixelSize);
     fontDescription.setComputedSize(m_buttonFontPixelSize);
 #else
@@ -601,7 +601,7 @@ ControlPart RenderThemeQStyle::initializeCommonQStyleOptions(QStyleFacadeOption 
     option.state &= ~(QStyleFacade::State_HasFocus | QStyleFacade::State_MouseOver);
     option.state |= QStyleFacade::State_Enabled;
 
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
     // to render controls in correct positions we also should set the State_Active flag
     option.state |= QStyleFacade::State_Active;
 #endif

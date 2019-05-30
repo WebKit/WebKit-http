@@ -128,6 +128,9 @@ if (MSVC)
         /wd6255 /wd6387
     )
 
+    # Eliminate C2139 errors
+    add_compile_options(/D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+
     # Create pdb files for debugging purposes, also for Release builds
     add_compile_options(/Zi /GS)
 

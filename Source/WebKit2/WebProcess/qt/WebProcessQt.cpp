@@ -39,7 +39,7 @@
 #include <WebCore/RuntimeEnabledFeatures.h>
 #include <wtf/RAMSize.h>
 
-#if defined(Q_OS_MACX)
+#if defined(Q_OS_MACOS)
 #include <dispatch/dispatch.h>
 #include <mach/host_info.h>
 #include <mach/mach.h>
@@ -99,7 +99,7 @@ void WebProcess::platformClearResourceCaches(ResourceCachesToClear)
 {
 }
 
-#if defined(Q_OS_MACX)
+#if defined(Q_OS_MACOS)
 static void parentProcessDiedCallback(void*)
 {
     QCoreApplication::quit();
@@ -134,7 +134,7 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     }
 #endif
 
-#if defined(Q_OS_MACX)
+#if defined(Q_OS_MACOS)
     pid_t ppid = getppid();
     dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
     dispatch_source_t source = dispatch_source_create(DISPATCH_SOURCE_TYPE_PROC, ppid, DISPATCH_PROC_EXIT, queue);

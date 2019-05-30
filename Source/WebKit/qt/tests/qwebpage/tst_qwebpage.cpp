@@ -212,7 +212,7 @@ private Q_SLOTS:
     void cssMediaTypeGlobalSetting();
     void cssMediaTypePageSetting();
 
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
     void macCopyUnicodeToClipboard();
 #endif
 
@@ -3194,7 +3194,7 @@ void tst_QWebPage::thirdPartyCookiePolicy()
 }
 #endif
 
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
 void tst_QWebPage::macCopyUnicodeToClipboard()
 {
     QString unicodeText = QString::fromUtf8("αβγδεζηθικλμπ");

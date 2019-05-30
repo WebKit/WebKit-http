@@ -257,7 +257,7 @@ int writeToFile(PlatformFileHandle handle, const char* data, int length)
 
 bool unloadModule(PlatformModule module)
 {
-#if defined(Q_OS_MAC)
+#if defined(Q_OS_MACOS)
     CFRelease(module);
     return true;
 

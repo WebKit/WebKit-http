@@ -62,7 +62,7 @@
 #include <QCoreApplication>
 #endif
 
-#if OS(DARWIN)
+#if USE(MACH_PORTS)
 #include <mach/mach_init.h>
 #include <servers/bootstrap.h>
 
@@ -70,7 +70,7 @@ extern "C" kern_return_t bootstrap_register2(mach_port_t, name_t, mach_port_t, u
 #endif
 
 // for QNX we need SOCK_DGRAM, see https://bugs.webkit.org/show_bug.cgi?id=95553
-#if defined(SOCK_SEQPACKET) && !defined(Q_OS_MACX) && !OS(QNX)
+#if defined(SOCK_SEQPACKET) && !defined(Q_OS_MACOS) && !OS(QNX)
 #define SOCKET_TYPE SOCK_SEQPACKET
 #else
 #define SOCKET_TYPE SOCK_DGRAM
@@ -101,7 +101,7 @@ void QtWebProcess::setupChildProcess()
 #endif
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 #endif
-#if defined(Q_OS_MACX)
+#if defined(Q_OS_MACOS)
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", QByteArray("1"));
 #endif
 }
@@ -126,7 +126,7 @@ void ProcessLauncher::launchProcess()
 #if ENABLE(DATABASE_PROCESS)
     } else if (m_launchOptions.processType == ProcessType::Database) {
         commandLine = QLatin1String("%1 \"%2\" %3 %4");
-        QByteArray processPrefix = qgetenv("QT_WEBKIT2_DP_CMD_PREFIX");
+        QByteArray processPrefix = qgetenv("QT_WEBKIT2_SP_CMD_PREFIX");
         commandLine = commandLine.arg(QLatin1String(processPrefix.constData())).arg(QString(executablePathOfDatabaseProcess()));
 #endif
     } else {
@@ -134,7 +134,7 @@ void ProcessLauncher::launchProcess()
         ASSERT_NOT_REACHED();
     }
 
-#if OS(DARWIN)
+#if USE(MACH_PORTS)
     // Create the listening port.
     mach_port_t connector;
     mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &connector);
@@ -216,7 +216,7 @@ void ProcessLauncher::launchProcess()
     if (!webProcessOrSUIDHelper->waitForStarted()) {
         qDebug() << "Failed to start" << commandLine;
         ASSERT_NOT_REACHED();
-#if OS(DARWIN)
+#if USE(MACH_PORTS)
         mach_port_deallocate(mach_task_self(), connector);
         mach_port_mod_refs(mach_task_self(), connector, MACH_PORT_RIGHT_RECEIVE, -1);
 #endif

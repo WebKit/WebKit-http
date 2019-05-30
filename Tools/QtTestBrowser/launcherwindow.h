@@ -170,6 +170,8 @@ protected Q_SLOTS:
     void clearSelection();
     void showFPS(bool enable);
     void showUserAgentDialog();
+    void showSSLErrorConfirmation(QNetworkReply*, const QList<QSslError>&);
+
 
     void printURL(const QUrl&);
 #if !defined(QT_NO_FILEDIALOG) && !defined(QT_NO_MESSAGEBOX)
