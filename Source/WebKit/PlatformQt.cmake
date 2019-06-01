@@ -5,7 +5,7 @@ include(ECMGeneratePriFile)
 macro(generate_header _file _var _content)
     file(GENERATE OUTPUT ${_file} CONTENT ${_content})
     list(APPEND ${_var} ${_file})
-    set_source_files_properties(${_file} PROPERTIES GENERATED TRUE)
+    set_source_files_properties(${_file} PROPERTIES GENERATED TRUE SKIP_AUTOMOC TRUE)
 endmacro()
 
 macro(generate_version_header _file _var _prefix)
@@ -13,7 +13,7 @@ macro(generate_version_header _file _var _prefix)
     configure_file(VersionHeader.h.in ${_file} @ONLY)
     unset(HEADER_PREFIX)
     list(APPEND ${_var} ${_file})
-    set_source_files_properties(${_file} PROPERTIES GENERATED TRUE)
+    set_source_files_properties(${_file} PROPERTIES GENERATED TRUE SKIP_AUTOMOC TRUE)
 endmacro()
 
 macro(append_lib_names_to_list _lib_names_list)
@@ -353,6 +353,7 @@ if (NOT SHARED_CORE)
         list(APPEND WebKit_SOURCES
             "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/qrc_WebInspector.cpp"
         )
+        set_property(SOURCE "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/qrc_WebInspector.cpp" PROPERTY SKIP_AUTOMOC ON)
     endif ()
 endif ()
 
