@@ -346,7 +346,7 @@ void LauncherWindow::createChrome()
 
     QAction* toggleMediaSource = toolsMenu->addAction("Toggle MediaSource", this, SLOT(toggleMediaSource(bool)));
     toggleMediaSource->setCheckable(true);
-    toggleWebGL->setChecked(settings->testAttribute(QWebSettings::MediaSourceEnabled));
+    toggleMediaSource->setChecked(settings->testAttribute(QWebSettings::MediaSourceEnabled));
 #if !ENABLE(MEDIA_SOURCE)
     toggleMediaSource->setEnabled(false);
 #endif
