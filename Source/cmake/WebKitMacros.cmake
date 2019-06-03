@@ -373,6 +373,10 @@ macro(GENERATE_WEBKIT2_MESSAGE_SOURCES _output_source _input_files)
             WORKING_DIRECTORY ${WEBKIT2_DIR}
             VERBATIM)
 
+        if (${PORT} STREQUAL "Qt")
+            set_property(SOURCE ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}MessageReceiver.cpp PROPERTY SKIP_AUTOMOC ON)
+        endif ()
+
         list(APPEND ${_output_source} ${DERIVED_SOURCES_WEBKIT2_DIR}/${_name}MessageReceiver.cpp)
     endforeach ()
 endmacro()

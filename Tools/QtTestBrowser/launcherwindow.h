@@ -72,6 +72,7 @@ public:
     bool useCompositing { false };
     bool useTiledBackingStore { false };
     bool useWebGL { false };
+    bool useMedia { true };
     bool useWebAudio { false };
     bool useMediaSource { false };
     bool useFrameFlattening { false };
@@ -134,6 +135,7 @@ protected Q_SLOTS:
     void toggleTiledBackingStore(bool toggle);
     void toggleResizesToContents(bool toggle);
     void toggleWebGL(bool toggle);
+    void toggleMedia(bool toggle);
     void toggleWebAudio(bool toggle);
     void toggleMediaSource(bool toggle);
     void toggleSpatialNavigation(bool enable);

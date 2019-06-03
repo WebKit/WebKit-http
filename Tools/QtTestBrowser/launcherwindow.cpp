@@ -222,6 +222,7 @@ void LauncherWindow::applyPrefs()
     settings->setAttribute(QWebSettings::TiledBackingStoreEnabled, m_windowOptions.useTiledBackingStore);
     settings->setAttribute(QWebSettings::FrameFlatteningEnabled, m_windowOptions.useFrameFlattening);
     settings->setAttribute(QWebSettings::WebGLEnabled, m_windowOptions.useWebGL);
+    settings->setAttribute(QWebSettings::MediaEnabled, m_windowOptions.useMedia);
     m_windowOptions.useWebAudio = settings->testAttribute(QWebSettings::WebAudioEnabled);
     m_windowOptions.useMediaSource = settings->testAttribute(QWebSettings::MediaSourceEnabled);
 
@@ -326,6 +327,15 @@ void LauncherWindow::createChrome()
     toggleWebGL->setEnabled(false);
 #endif
 
+    QAction* toggleMedia = toolsMenu->addAction("Toggle Media", this, SLOT(toggleMedia(bool)));
+    toggleMedia->setCheckable(true);
+#if ENABLE(VIDEO)
+    toggleMedia->setChecked(settings->testAttribute(QWebSettings::MediaEnabled));
+#else
+    toggleMedia->setChecked(false);
+    toggleMedia->setEnabled(false);
+#endif
+
     QAction* toggleWebAudio = toolsMenu->addAction("Toggle WebAudio", this, SLOT(toggleWebAudio(bool)));
     toggleWebAudio->setCheckable(true);
 #if ENABLE(WEB_AUDIO)
@@ -336,7 +346,7 @@ void LauncherWindow::createChrome()
 
     QAction* toggleMediaSource = toolsMenu->addAction("Toggle MediaSource", this, SLOT(toggleMediaSource(bool)));
     toggleMediaSource->setCheckable(true);
-    toggleWebGL->setChecked(settings->testAttribute(QWebSettings::MediaSourceEnabled));
+    toggleMediaSource->setChecked(settings->testAttribute(QWebSettings::MediaSourceEnabled));
 #if !ENABLE(MEDIA_SOURCE)
     toggleMediaSource->setEnabled(false);
 #endif
@@ -946,6 +956,12 @@ void LauncherWindow::toggleWebGL(bool toggle)
 {
     m_windowOptions.useWebGL = toggle;
     page()->settings()->setAttribute(QWebSettings::WebGLEnabled, toggle);
+}
+
+void LauncherWindow::toggleMedia(bool toggle)
+{
+    m_windowOptions.useMedia = toggle;
+    page()->settings()->setAttribute(QWebSettings::MediaEnabled, toggle);
 }
 
 void LauncherWindow::toggleWebAudio(bool toggle)

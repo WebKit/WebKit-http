@@ -41,6 +41,9 @@ if (NOT HAS_RUN_WEBKIT_COMMON)
     # Helper macros and feature defines
     # -----------------------------------------------------------------------------
 
+    # To prevent multiple inclusion, most modules should be included once here.
+    include(CheckFunctionExists)
+
     include(WebKitMacros)
     include(WebKitFS)
     include(WebKitHelpers)
