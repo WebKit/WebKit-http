@@ -4419,24 +4419,15 @@ void RenderLayer::paintLayerByApplyingTransform(GraphicsContext& context, const 
     // Translate the graphics context to the snapping position to avoid off-device-pixel positing.
     transform.translateRight(devicePixelSnappedOffsetForThisLayer.width(), devicePixelSnappedOffsetForThisLayer.height());
     // Apply the transform.
-#if PLATFORM(QT) && ENABLE(3D_TRANSFORMS)
-    TransformationMatrix oldTransfrom = context.get3DTransform();
-    context.concat3DTransform(transform);
-#else
     AffineTransform oldTransfrom = context.getCTM();
     context.concatCTM(transform.toAffineTransform());
-#endif
 
     // Now do a paint with the root layer shifted to be us.
     LayoutSize adjustedSubpixelAccumulation = offsetForThisLayer - LayoutSize(devicePixelSnappedOffsetForThisLayer);
     LayerPaintingInfo transformedPaintingInfo(this, LayoutRect(encloseRectToDevicePixels(transform.inverse().valueOr(AffineTransform()).mapRect(paintingInfo.paintDirtyRect), deviceScaleFactor)),
         paintingInfo.paintBehavior, adjustedSubpixelAccumulation, paintingInfo.subtreePaintRoot, paintingInfo.overlapTestRequests);
     paintLayerContentsAndReflection(context, transformedPaintingInfo, paintFlags);
-#if PLATFORM(QT) && ENABLE(3D_TRANSFORMS)
-    context.set3DTransform(oldTransfrom);
-#else
     context.setCTM(oldTransfrom);
-#endif
 }
 
 void RenderLayer::paintList(Vector<RenderLayer*>* list, GraphicsContext& context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags)

@@ -46,8 +46,7 @@ public:
         SpatialNavigationEnabled,
         LinksIncludedInFocusChain,
         LogsPageMessagesToSystemConsoleEnabled,
-        WebSecurityEnabled,
-        AllowRunningInsecureContent
+        WebSecurityEnabled
     };
 
     enum FontFamily {
