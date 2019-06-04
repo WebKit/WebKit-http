@@ -385,8 +385,10 @@ void QQuickWebViewPrivate::initialize(WKPageConfigurationRef configurationRef)
         loadClient.didChangeProgress = didChangeProgress;
         loadClient.didFinishProgress = didFinishProgress;
         loadClient.didChangeBackForwardList = didChangeBackForwardList;
+        // FIXME: These three functions should not be part of this client.
         loadClient.processDidBecomeUnresponsive = processDidBecomeUnresponsive;
         loadClient.processDidBecomeResponsive = processDidBecomeResponsive;
+        loadClient.processDidCrash = processDidCrash;
         WKPageSetPageLoaderClient(webPage.get(), &loadClient.base);
     }
 
@@ -605,20 +607,21 @@ void QQuickWebViewPrivate::didRenderFrame()
     }
 }
 
-void QQuickWebViewPrivate::processDidCrash()
+void QQuickWebViewPrivate::processDidCrash(WKPageRef, const void* clientInfo)
 {
-    Q_Q(QQuickWebView);
+    QQuickWebViewPrivate* d = toQQuickWebViewPrivate(clientInfo);
+    QQuickWebView* q = d->q_ptr;
 
-    QUrl url(URL(WebCore::ParsedURLString, webPageProxy->urlAtProcessExit()));
+    QUrl url(URL(WebCore::ParsedURLString, d->webPageProxy->urlAtProcessExit()));
     qWarning("WARNING: The web process experienced a crash on '%s'.", qPrintable(url.toString(QUrl::RemoveUserInfo)));
 
-    pageEventHandler->resetGestureRecognizers();
+    d->pageEventHandler->resetGestureRecognizers();
 
     // Check if loading was ongoing, when process crashed.
-    if (m_loadProgress > 0 && m_loadProgress < 100) {
+    if (d->m_loadProgress > 0 && d->m_loadProgress < 100) {
         QWebLoadRequest loadRequest(url, QQuickWebView::LoadFailedStatus, QStringLiteral("The web process crashed."), QQuickWebView::InternalErrorDomain, 0);
 
-        loadProgressDidChange(100);
+        d->loadProgressDidChange(100);
         emit q->loadingChanged(&loadRequest);
     }
 
