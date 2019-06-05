@@ -82,7 +82,7 @@ defineTest(isPlatformSupported) {
                 }
             }
         } else {
-            isGCCVersionSupported()
+            skipBuild("MinGW build skipped.")
         }
     } else: macos {
         # We require macOS 10.10 (darwin version 14.0.0) or newer
