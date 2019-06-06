@@ -259,6 +259,7 @@ option(USE_STATIC_RUNTIME "Use static runtime (MSVC only)" OFF)
 # Private options specific to the Qt port. Changing these options is
 # completely unsupported. They are intended for use only by WebKit developers.
 WEBKIT_OPTION_DEFINE(ENABLE_TOUCH_ADJUSTMENT "Whether to use touch adjustment" PRIVATE ON)
+WEBKIT_OPTION_DEFINE(USE_LIBJPEG "Support JPEG format directly. If it is disabled, QImageReader will be used with possible degradation of user experience" PUBLIC ON)
 
 
 # Public options shared with other WebKit ports. There must be strong reason
@@ -439,23 +440,13 @@ endif ()
 
 find_package(Threads REQUIRED)
 
-if (NOT QT_BUNDLED_JPEG)
-    find_package(JPEG REQUIRED)
+if (USE_LIBJPEG)
+    find_package(JPEG)
+    if (NOT JPEG_FOUND)
+        message(FATAL_ERROR "libjpeg not found. Please make sure that CMake can find its header files and libraries, or build with -DUSE_LIBJPEG=OFF with possible degradation of user experience")
+    endif ()
 else ()
-    set(JPEG_FOUND 1)
-    # As of Qt 5.10, libjpeg-turbo shipped as a part of Qt requires using a few macro definitions
-    # WARNING: Keep in sync with libjpeg.pri
-    # FIXME: Change Qt so we can avoid this
-    include(CheckTypeSize)
-    check_type_size(size_t _SIZEOF_SIZE_T)
-    set(JPEG_DEFINITIONS
-        -DC_ARITH_CODING_SUPPORTED=1
-        -DD_ARITH_CODING_SUPPORTED=1
-        -DBITS_IN_JSAMPLE=8
-        -DJPEG_LIB_VERSION=80
-        -DSIZEOF_SIZE_T=${_SIZEOF_SIZE_T}
-    )
-    unset(_SIZEOF_SIZE_T)
+    message(WARNING "USE_LIBJPEG is disabled, will attempt using QImageReader to decode JPEG with possible degradation of user experience")
 endif ()
 
 if (NOT QT_BUNDLED_PNG)
