@@ -28,10 +28,6 @@
 #include <wtf/SchedulePair.h>
 #endif
 
-#if PLATFORM(QT)
-#include <qglobal.h>
-#endif
-
 #if PLATFORM(COCOA)
 OBJC_CLASS NSOperationQueue;
 #endif
