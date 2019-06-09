@@ -650,10 +650,7 @@ void QNetworkReplyHandler::redirect(ResourceResponse& response, const QUrl& redi
 {
     ASSERT(!m_queue.deferSignals());
 
-    QUrl currentUrl = m_replyWrapper->reply()->url();
-    QUrl newUrl = currentUrl.resolved(redirection);
-    if (currentUrl.hasFragment())
-        newUrl.setFragment(currentUrl.fragment());
+    QUrl newUrl = m_replyWrapper->reply()->url().resolved(redirection);
 
     ResourceHandleClient* client = m_resourceHandle->client();
     ASSERT(client);
