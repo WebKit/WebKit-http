@@ -6,7 +6,18 @@ The Qt port of WebKit currently compiles and runs on Linux, *BSD, Windows and ma
 
 # Building
 
-See instructions at https://github.com/annulen/webkit/wiki
+You can build and install QtWebKit with these commands:
+
+mkdir build
+cd build
+cmake -G Ninja -DPORT=Qt -DCMAKE_BUILD_TYPE=Release ..
+ninja
+sudo ninja install
+
+See https://github.com/annulen/webkit/wiki for more detailed instuctions
+
+After QtWebKit is installed, you can use it as described in
+https://github.com/annulen/webkit/wiki/Using-QtWebKit-in-your-project
 
 # Contacts
 
