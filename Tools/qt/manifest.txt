@@ -99,8 +99,9 @@ file Source/WebKit/win/Plugins
 # Version
 file Source/WebKit/mac/Configurations/Version.xcconfig
 
-# Move LICENSE.LGPLv21 to the root
+# Move LICENSE.LGPLv21 and README to the root
 file Source/WebKit/qt/LICENSE.LGPLv21 LICENSE.LGPLv21
+file Source/WebKit/qt/README README
 
 directory Source/WebInspectorUI/UserInterface/Images
 exclude Source/WebInspectorUI/UserInterface/Images/.*

@@ -2,6 +2,12 @@ include(platform/ImageDecoders.cmake)
 include(platform/Linux.cmake)
 include(platform/TextureMapper.cmake)
 
+if (NOT USE_LIBJPEG)
+    list(REMOVE_ITEM WebCore_SOURCES
+        platform/image-decoders/jpeg/JPEGImageDecoder.cpp
+    )
+endif ()
+
 if (JPEG_DEFINITIONS)
     add_definitions(${JPEG_DEFINITIONS})
 endif ()
