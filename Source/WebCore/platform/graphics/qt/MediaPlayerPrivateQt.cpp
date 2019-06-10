@@ -80,7 +80,7 @@ MediaPlayer::SupportsType MediaPlayerPrivateQt::supportsType(const MediaEngineSu
     if (parameters.isMediaStream || parameters.isMediaSource)
         return MediaPlayer::IsNotSupported;
 
-    if (!parameters.type.startsWith("audio/") && !parameters.type.startsWith("video/"))
+    if (!parameters.type.startsWithIgnoringASCIICase("audio/") && !parameters.type.startsWithIgnoringASCIICase("video/"))
         return MediaPlayer::IsNotSupported;
 
     // Parse and trim codecs.
