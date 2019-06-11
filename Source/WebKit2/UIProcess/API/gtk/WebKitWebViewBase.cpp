@@ -237,12 +237,8 @@ static void webkitWebViewBaseScheduleUpdateViewState(WebKitWebViewBase* webViewB
     priv->updateViewStateTimer.startOneShot(0);
 }
 
-static gboolean toplevelWindowFocusInEvent(GtkWidget* widget, GdkEventFocus*, WebKitWebViewBase* webViewBase)
+static gboolean toplevelWindowFocusInEvent(GtkWidget*, GdkEventFocus*, WebKitWebViewBase* webViewBase)
 {
-    // Spurious focus in events can occur when the window is hidden.
-    if (!gtk_widget_get_visible(widget))
-        return FALSE;
-
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
     if (priv->viewState & ViewState::WindowIsActive)
         return FALSE;
@@ -304,22 +300,12 @@ static void webkitWebViewBaseSetToplevelOnScreenWindow(WebKitWebViewBase* webVie
     }
 
     priv->toplevelOnScreenWindow = window;
-
-    if (!priv->toplevelOnScreenWindow) {
-        ViewState::Flags flagsToUpdate = 0;
-        if (priv->viewState & ViewState::IsInWindow) {
-            priv->viewState &= ~ViewState::IsInWindow;
-            flagsToUpdate |= ViewState::IsInWindow;
-        }
-        if (priv->viewState & ViewState::WindowIsActive) {
-            priv->viewState &= ~ViewState::WindowIsActive;
-            flagsToUpdate |= ViewState::IsInWindow;
-        }
-        if (flagsToUpdate)
-            webkitWebViewBaseScheduleUpdateViewState(webViewBase, flagsToUpdate);
-
-        return;
+    if (!(priv->viewState & ViewState::IsInWindow)) {
+        priv->viewState |= ViewState::IsInWindow;
+        webkitWebViewBaseScheduleUpdateViewState(webViewBase, ViewState::IsInWindow);
     }
+    if (!priv->toplevelOnScreenWindow)
+        return;
 
     priv->toplevelFocusInEventID =
         g_signal_connect(priv->toplevelOnScreenWindow, "focus-in-event",
@@ -329,7 +315,6 @@ static void webkitWebViewBaseSetToplevelOnScreenWindow(WebKitWebViewBase* webVie
                          G_CALLBACK(toplevelWindowFocusOutEvent), webViewBase);
     priv->toplevelWindowStateEventID =
         g_signal_connect(priv->toplevelOnScreenWindow, "window-state-event", G_CALLBACK(toplevelWindowStateEvent), webViewBase);
-    gtk_widget_realize(GTK_WIDGET(webViewBase));
 }
 
 static void webkitWebViewBaseRealize(GtkWidget* widget)
@@ -398,6 +383,10 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
     gtk_style_context_set_background(gtk_widget_get_style_context(widget), window);
 
     gtk_im_context_set_client_window(priv->inputMethodFilter.context(), window);
+
+    GtkWidget* toplevel = gtk_widget_get_toplevel(widget);
+    if (widgetIsOnscreenToplevelWindow(toplevel))
+        webkitWebViewBaseSetToplevelOnScreenWindow(webView, GTK_WINDOW(toplevel));
 }
 
 static void webkitWebViewBaseUnrealize(GtkWidget* widget)
@@ -681,20 +670,11 @@ static void webkitWebViewBaseMap(GtkWidget* widget)
 
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
-    ViewState::Flags flagsToUpdate = 0;
-    if (!(priv->viewState & ViewState::IsVisible))
-        flagsToUpdate |= ViewState::IsVisible;
-    if (priv->toplevelOnScreenWindow) {
-        if (!(priv->viewState & ViewState::IsInWindow))
-            flagsToUpdate |= ViewState::IsInWindow;
-        if (gtk_window_is_active(GTK_WINDOW(priv->toplevelOnScreenWindow)) && !(priv->viewState & ViewState::WindowIsActive))
-            flagsToUpdate |= ViewState::WindowIsActive;
-    }
-    if (!flagsToUpdate)
+    if (priv->viewState & ViewState::IsVisible)
         return;
 
-    priv->viewState |= flagsToUpdate;
-    webkitWebViewBaseScheduleUpdateViewState(webViewBase, flagsToUpdate);
+    priv->viewState |= ViewState::IsVisible;
+    webkitWebViewBaseScheduleUpdateViewState(webViewBase, ViewState::IsVisible);
 }
 
 static void webkitWebViewBaseUnmap(GtkWidget* widget)
@@ -1092,19 +1072,10 @@ static gboolean webkitWebViewBaseDragDrop(GtkWidget* widget, GdkDragContext* con
 }
 #endif // ENABLE(DRAG_SUPPORT)
 
-static void webkitWebViewBaseHierarchyChanged(GtkWidget* widget, GtkWidget* oldToplevel)
+static void webkitWebViewBaseParentSet(GtkWidget* widget, GtkWidget* /* oldParent */)
 {
-    WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(widget)->priv;
-    if (widgetIsOnscreenToplevelWindow(oldToplevel) && GTK_WINDOW(oldToplevel) == priv->toplevelOnScreenWindow) {
-        webkitWebViewBaseSetToplevelOnScreenWindow(WEBKIT_WEB_VIEW_BASE(widget), nullptr);
-        return;
-    }
-
-    if (!oldToplevel) {
-        GtkWidget* toplevel = gtk_widget_get_toplevel(widget);
-        if (widgetIsOnscreenToplevelWindow(toplevel))
-            webkitWebViewBaseSetToplevelOnScreenWindow(WEBKIT_WEB_VIEW_BASE(widget), GTK_WINDOW(toplevel));
-    }
+    if (!gtk_widget_get_parent(widget))
+        webkitWebViewBaseSetToplevelOnScreenWindow(WEBKIT_WEB_VIEW_BASE(widget), 0);
 }
 
 static gboolean webkitWebViewBaseFocus(GtkWidget* widget, GtkDirectionType direction)
@@ -1163,7 +1134,7 @@ static void webkit_web_view_base_class_init(WebKitWebViewBaseClass* webkitWebVie
     widgetClass->drag_data_received = webkitWebViewBaseDragDataReceived;
 #endif // ENABLE(DRAG_SUPPORT)
     widgetClass->get_accessible = webkitWebViewBaseGetAccessible;
-    widgetClass->hierarchy_changed = webkitWebViewBaseHierarchyChanged;
+    widgetClass->parent_set = webkitWebViewBaseParentSet;
     widgetClass->destroy = webkitWebViewBaseDestroy;
 
     GObjectClass* gobjectClass = G_OBJECT_CLASS(webkitWebViewBaseClass);
