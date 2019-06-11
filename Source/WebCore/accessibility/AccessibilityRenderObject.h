@@ -283,8 +283,6 @@ private:
 
     virtual bool inheritsPresentationalRole() const override;
 
-    bool shouldGetTextFromNode(AccessibilityTextUnderElementMode) const;
-
 #if ENABLE(MATHML)
     // All math elements return true for isMathElement().
     virtual bool isMathElement() const override;
