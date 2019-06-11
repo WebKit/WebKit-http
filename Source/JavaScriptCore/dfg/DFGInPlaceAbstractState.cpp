@@ -62,8 +62,10 @@ void InPlaceAbstractState::beginBasicBlock(BasicBlock* basicBlock)
     m_variables = basicBlock->valuesAtHead;
     
     if (m_graph.m_form == SSA) {
-        for (auto& entry : basicBlock->ssa->valuesAtHead)
-            forNode(entry.key) = entry.value;
+        HashMap<Node*, AbstractValue>::iterator iter = basicBlock->ssa->valuesAtHead.begin();
+        HashMap<Node*, AbstractValue>::iterator end = basicBlock->ssa->valuesAtHead.end();
+        for (; iter != end; ++iter)
+            forNode(iter->key) = iter->value;
     }
     basicBlock->cfaShouldRevisit = false;
     basicBlock->cfaHasVisited = true;
@@ -298,16 +300,17 @@ bool InPlaceAbstractState::merge(BasicBlock* from, BasicBlock* to)
     case SSA: {
         for (size_t i = from->valuesAtTail.size(); i--;)
             changed |= to->valuesAtHead[i].merge(from->valuesAtTail[i]);
-
-        for (auto& entry : to->ssa->valuesAtHead) {
-            Node* node = entry.key;
+        
+        HashSet<Node*>::iterator iter = to->ssa->liveAtHead.begin();
+        HashSet<Node*>::iterator end = to->ssa->liveAtHead.end();
+        for (; iter != end; ++iter) {
+            Node* node = *iter;
             if (verbose)
-                dataLog("      Merging for ", node, ": from ", from->ssa->valuesAtTail.find(node)->value, " to ", entry.value, "\n");
-            changed |= entry.value.merge(
+                dataLog("      Merging for ", node, ": from ", from->ssa->valuesAtTail.find(node)->value, " to ", to->ssa->valuesAtHead.find(node)->value, "\n");
+            changed |= to->ssa->valuesAtHead.find(node)->value.merge(
                 from->ssa->valuesAtTail.find(node)->value);
-
             if (verbose)
-                dataLog("         Result: ", entry.value, "\n");
+                dataLog("         Result: ", to->ssa->valuesAtHead.find(node)->value, "\n");
         }
         break;
     }
