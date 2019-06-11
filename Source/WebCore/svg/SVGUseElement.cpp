@@ -310,15 +310,6 @@ RenderElement* SVGUseElement::rendererClipChild() const
     return targetClone->renderer();
 }
 
-static inline void disassociateAndRemoveClones(const Vector<Element*>& clones)
-{
-    for (auto& clone : clones) {
-        for (auto& descendant : descendantsOfType<SVGElement>(*clone))
-            descendant.setCorrespondingElement(nullptr);
-        clone->parentNode()->removeChild(*clone);
-    }
-}
-
 static void removeDisallowedElementsFromSubtree(SVGElement& subtree)
 {
     // Remove disallowed elements after the fact rather than not cloning them in the first place.
@@ -339,20 +330,11 @@ static void removeDisallowedElementsFromSubtree(SVGElement& subtree)
         }
         ++it;
     }
-
-    disassociateAndRemoveClones(disallowedElements);
-}
-
-static void removeSymbolElementsFromSubtree(SVGElement& subtree)
-{
-    // Symbol elements inside the subtree should not be cloned for two reasons: 1) They are invisible and
-    // don't need to be cloned to get correct rendering. 2) expandSymbolElementsInShadowTree will turn them
-    // into <svg> elements, which is correct for symbol elements directly referenced by use elements,
-    // but incorrect for ones that just happen to be in a subtree.
-    Vector<Element*> symbolElements;
-    for (auto& descendant : descendantsOfType<SVGSymbolElement>(subtree))
-        symbolElements.append(&descendant);
-    disassociateAndRemoveClones(symbolElements);
+    for (auto* element : disallowedElements) {
+        for (auto& descendant : descendantsOfType<SVGElement>(*element))
+            descendant.setCorrespondingElement(nullptr);
+        element->parentNode()->removeChild(*element);
+    }
 }
 
 static void associateClonesWithOriginals(SVGElement& clone, SVGElement& original)
@@ -427,7 +409,6 @@ void SVGUseElement::cloneTarget(ContainerNode& container, SVGElement& target) co
     Ref<SVGElement> targetClone = static_cast<SVGElement&>(target.cloneElementWithChildren(document()).get());
     associateClonesWithOriginals(targetClone.get(), target);
     removeDisallowedElementsFromSubtree(targetClone.get());
-    removeSymbolElementsFromSubtree(targetClone.get());
     transferSizeAttributesToTargetClone(targetClone.get());
     container.appendChild(WTFMove(targetClone));
 }
