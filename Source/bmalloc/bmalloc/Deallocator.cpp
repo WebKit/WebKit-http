@@ -28,7 +28,6 @@
 #include "Deallocator.h"
 #include "Heap.h"
 #include "Inline.h"
-#include "Object.h"
 #include "PerProcess.h"
 #include "SmallChunk.h"
 #include <algorithm>
@@ -76,9 +75,11 @@ void Deallocator::processObjectLog(std::lock_guard<StaticMutex>& lock)
 {
     Heap* heap = PerProcess<Heap>::getFastCase();
     
-    for (Object object : m_objectLog)
-        heap->derefSmallLine(lock, object);
-
+    for (auto* object : m_objectLog) {
+        SmallLine* line = SmallLine::get(object);
+        heap->derefSmallLine(lock, line);
+    }
+    
     m_objectLog.clear();
 }
 

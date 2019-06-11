@@ -35,7 +35,9 @@ namespace bmalloc {
 
 class SmallLine {
 public:
-    void ref(std::lock_guard<StaticMutex>&, unsigned char = 1);
+    static SmallLine* get(void*);
+
+    void ref(std::lock_guard<StaticMutex>&, unsigned char);
     bool deref(std::lock_guard<StaticMutex>&);
     unsigned refCount(std::lock_guard<StaticMutex>&) { return m_refCount; }
     

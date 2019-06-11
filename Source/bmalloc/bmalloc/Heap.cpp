@@ -193,10 +193,10 @@ SmallPage* Heap::allocateSmallPage(std::lock_guard<StaticMutex>& lock, size_t si
     return page;
 }
 
-void Heap::deallocateSmallLine(std::lock_guard<StaticMutex>& lock, Object object)
+void Heap::deallocateSmallLine(std::lock_guard<StaticMutex>& lock, SmallLine* line)
 {
-    BASSERT(!object.line()->refCount(lock));
-    SmallPage* page = object.page();
+    BASSERT(!line->refCount(lock));
+    SmallPage* page = SmallPage::get(line);
     page->deref(lock);
 
     if (!page->hasFreeLines(lock)) {

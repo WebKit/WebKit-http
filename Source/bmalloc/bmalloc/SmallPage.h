@@ -36,6 +36,8 @@ namespace bmalloc {
 
 class SmallPage : public ListNode<SmallPage> {
 public:
+    static SmallPage* get(SmallLine*);
+
     SmallPage()
         : m_hasFreeLines(true)
     {
