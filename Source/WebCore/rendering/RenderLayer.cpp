@@ -1056,7 +1056,8 @@ bool RenderLayer::hasCompositedLayerInEnclosingPaginationChain() const
     
     // Otherwise we have to go up the containing block chain. Find the first enclosing
     // containing block layer ancestor, and check that.
-    for (const auto* containingBlock = renderer().containingBlock(); containingBlock && !is<RenderView>(*containingBlock); containingBlock = containingBlock->containingBlock()) {
+    RenderView* renderView = &renderer().view();
+    for (RenderBlock* containingBlock = renderer().containingBlock(); containingBlock && containingBlock != renderView; containingBlock = containingBlock->containingBlock()) {
         if (containingBlock->hasLayer())
             return containingBlock->layer()->hasCompositedLayerInEnclosingPaginationChain();
     }
@@ -1092,7 +1093,9 @@ void RenderLayer::updatePagination()
 
     // For the new columns code, we want to walk up our containing block chain looking for an enclosing layer. Once
     // we find one, then we just check its pagination status.
-    for (const auto* containingBlock = renderer().containingBlock(); containingBlock && !is<RenderView>(*containingBlock); containingBlock = containingBlock->containingBlock()) {
+    RenderView* renderView = &renderer().view();
+    RenderBlock* containingBlock;
+    for (containingBlock = renderer().containingBlock(); containingBlock && containingBlock != renderView; containingBlock = containingBlock->containingBlock()) {
         if (containingBlock->hasLayer()) {
             // Content inside a transform is not considered to be paginated, since we simply
             // paint the transform multiple times in each column, so we don't have to use
@@ -3801,7 +3804,9 @@ static bool inContainingBlockChain(RenderLayer* startLayer, RenderLayer* endLaye
 {
     if (startLayer == endLayer)
         return true;
-    for (const auto* currentBlock = startLayer->renderer().containingBlock(); currentBlock && !is<RenderView>(*currentBlock); currentBlock = currentBlock->containingBlock()) {
+    
+    RenderView* view = &startLayer->renderer().view();
+    for (RenderBlock* currentBlock = startLayer->renderer().containingBlock(); currentBlock && currentBlock != view; currentBlock = currentBlock->containingBlock()) {
         if (currentBlock->layer() == endLayer)
             return true;
     }
