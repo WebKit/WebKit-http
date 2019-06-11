@@ -35,6 +35,9 @@ namespace bmalloc {
 
 class SmallLine {
 public:
+    static const unsigned char maxRefCount = std::numeric_limits<unsigned char>::max();
+    static_assert(smallLineSize / alignment < maxRefCount, "maximum object count must fit in Line");
+
     static SmallLine* get(void*);
 
     void ref(std::lock_guard<StaticMutex>&, unsigned char);
@@ -46,11 +49,6 @@ public:
 
 private:
     unsigned char m_refCount;
-
-static_assert(
-    smallLineSize / alignment <= std::numeric_limits<decltype(m_refCount)>::max(),
-    "maximum object count must fit in SmallLine::m_refCount");
-
 };
 
 inline void SmallLine::ref(std::lock_guard<StaticMutex>&, unsigned char refCount)

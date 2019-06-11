@@ -52,15 +52,14 @@ private:
     bool allocateFastCase(size_t, void*&);
     void* allocateSlowCase(size_t);
     
-    void* allocateLogSizeClass(size_t);
     void* allocateLarge(size_t);
     void* allocateXLarge(size_t);
     
     void refillAllocator(BumpAllocator&, size_t sizeClass);
     void refillAllocatorSlowCase(BumpAllocator&, size_t sizeClass);
     
-    std::array<BumpAllocator, sizeClassCount> m_bumpAllocators;
-    std::array<BumpRangeCache, sizeClassCount> m_bumpRangeCaches;
+    std::array<BumpAllocator, smallMax / alignment> m_bumpAllocators;
+    std::array<BumpRangeCache, smallMax / alignment> m_bumpRangeCaches;
 
     bool m_isBmallocEnabled;
     Deallocator& m_deallocator;
@@ -68,10 +67,10 @@ private:
 
 inline bool Allocator::allocateFastCase(size_t size, void*& object)
 {
-    if (size > maskSizeClassMax)
+    if (size > smallMax)
         return false;
 
-    BumpAllocator& allocator = m_bumpAllocators[maskSizeClass(size)];
+    BumpAllocator& allocator = m_bumpAllocators[sizeClass(size)];
     if (!allocator.canAllocate())
         return false;
 
