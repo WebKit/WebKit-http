@@ -1264,33 +1264,34 @@ bool RenderBlock::simplifiedLayout()
     return true;
 }
 
-void RenderBlock::markFixedPositionObjectForLayoutIfNeeded(RenderBox& positionedChild)
+void RenderBlock::markFixedPositionObjectForLayoutIfNeeded(RenderObject& child)
 {
-    if (positionedChild.style().position() != FixedPosition)
+    if (child.style().position() != FixedPosition)
         return;
 
-    bool hasStaticBlockPosition = positionedChild.style().hasStaticBlockPosition(isHorizontalWritingMode());
-    bool hasStaticInlinePosition = positionedChild.style().hasStaticInlinePosition(isHorizontalWritingMode());
+    bool hasStaticBlockPosition = child.style().hasStaticBlockPosition(isHorizontalWritingMode());
+    bool hasStaticInlinePosition = child.style().hasStaticInlinePosition(isHorizontalWritingMode());
     if (!hasStaticBlockPosition && !hasStaticInlinePosition)
         return;
 
-    auto* parent = positionedChild.parent();
-    while (parent && !is<RenderView>(*parent) && parent->style().position() != AbsolutePosition)
-        parent = parent->parent();
-    if (!parent || parent->style().position() != AbsolutePosition)
+    auto o = child.parent();
+    while (o && !is<RenderView>(*o) && o->style().position() != AbsolutePosition)
+        o = o->parent();
+    if (o->style().position() != AbsolutePosition)
         return;
 
+    auto& box = downcast<RenderBox>(child);
     if (hasStaticInlinePosition) {
         LogicalExtentComputedValues computedValues;
-        positionedChild.computeLogicalWidthInRegion(computedValues);
+        box.computeLogicalWidthInRegion(computedValues);
         LayoutUnit newLeft = computedValues.m_position;
-        if (newLeft != positionedChild.logicalLeft())
-            positionedChild.setChildNeedsLayout(MarkOnlyThis);
+        if (newLeft != box.logicalLeft())
+            box.setChildNeedsLayout(MarkOnlyThis);
     } else if (hasStaticBlockPosition) {
-        LayoutUnit oldTop = positionedChild.logicalTop();
-        positionedChild.updateLogicalHeight();
-        if (positionedChild.logicalTop() != oldTop)
-            positionedChild.setChildNeedsLayout(MarkOnlyThis);
+        LayoutUnit oldTop = box.logicalTop();
+        box.updateLogicalHeight();
+        if (box.logicalTop() != oldTop)
+            box.setChildNeedsLayout(MarkOnlyThis);
     }
 }
 
