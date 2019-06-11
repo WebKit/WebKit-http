@@ -31,6 +31,7 @@
 #include "Dictionary.h"
 #include "IDBKey.h"
 #include "ScriptWrappable.h"
+#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -48,38 +49,38 @@ public:
         UpperBoundClosed
     };
 
-    static Ref<IDBKeyRange> create(RefPtr<IDBKey>&& lower, RefPtr<IDBKey>&& upper, LowerBoundType lowerType, UpperBoundType upperType)
+    static Ref<IDBKeyRange> create(PassRefPtr<IDBKey> lower, PassRefPtr<IDBKey> upper, LowerBoundType lowerType, UpperBoundType upperType)
     {
-        return adoptRef(*new IDBKeyRange(WTFMove(lower), WTFMove(upper), lowerType, upperType));
+        return adoptRef(*new IDBKeyRange(lower, upper, lowerType, upperType));
     }
-    static Ref<IDBKeyRange> create(RefPtr<IDBKey>&&);
+    static Ref<IDBKeyRange> create(PassRefPtr<IDBKey> prpKey);
     ~IDBKeyRange() { }
 
-    IDBKey* lower() const { return m_lower.get(); }
-    IDBKey* upper() const { return m_upper.get(); }
+    PassRefPtr<IDBKey> lower() const { return m_lower; }
+    PassRefPtr<IDBKey> upper() const { return m_upper; }
 
     Deprecated::ScriptValue lowerValue(ScriptExecutionContext*) const;
     Deprecated::ScriptValue upperValue(ScriptExecutionContext*) const;
     bool lowerOpen() const { return m_lowerType == LowerBoundOpen; }
     bool upperOpen() const { return m_upperType == UpperBoundOpen; }
 
-    static RefPtr<IDBKeyRange> only(RefPtr<IDBKey>&& value, ExceptionCode&);
-    static RefPtr<IDBKeyRange> only(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&);
+    static PassRefPtr<IDBKeyRange> only(PassRefPtr<IDBKey> value, ExceptionCode&);
+    static PassRefPtr<IDBKeyRange> only(ScriptExecutionContext*, const Deprecated::ScriptValue& key, ExceptionCode&);
 
-    static RefPtr<IDBKeyRange> lowerBound(ScriptExecutionContext* context, const Deprecated::ScriptValue& bound, ExceptionCode& ec) { return lowerBound(context, bound, false, ec); }
-    static RefPtr<IDBKeyRange> lowerBound(ScriptExecutionContext*, const Deprecated::ScriptValue& bound, bool open, ExceptionCode&);
+    static PassRefPtr<IDBKeyRange> lowerBound(ScriptExecutionContext* context, const Deprecated::ScriptValue& bound, ExceptionCode& ec) { return lowerBound(context, bound, false, ec); }
+    static PassRefPtr<IDBKeyRange> lowerBound(ScriptExecutionContext*, const Deprecated::ScriptValue& bound, bool open, ExceptionCode&);
 
-    static RefPtr<IDBKeyRange> upperBound(ScriptExecutionContext* context, const Deprecated::ScriptValue& bound, ExceptionCode& ec) { return upperBound(context, bound, false, ec); }
-    static RefPtr<IDBKeyRange> upperBound(ScriptExecutionContext*, const Deprecated::ScriptValue& bound, bool open, ExceptionCode&);
+    static PassRefPtr<IDBKeyRange> upperBound(ScriptExecutionContext* context, const Deprecated::ScriptValue& bound, ExceptionCode& ec) { return upperBound(context, bound, false, ec); }
+    static PassRefPtr<IDBKeyRange> upperBound(ScriptExecutionContext*, const Deprecated::ScriptValue& bound, bool open, ExceptionCode&);
 
-    static RefPtr<IDBKeyRange> bound(ScriptExecutionContext* context, const Deprecated::ScriptValue& lower, const Deprecated::ScriptValue& upper, ExceptionCode& ec) { return bound(context, lower, upper, false, false, ec); }
-    static RefPtr<IDBKeyRange> bound(ScriptExecutionContext* context, const Deprecated::ScriptValue& lower, const Deprecated::ScriptValue& upper, bool lowerOpen, ExceptionCode& ec) { return bound(context, lower, upper, lowerOpen, false, ec); }
-    static RefPtr<IDBKeyRange> bound(ScriptExecutionContext*, const Deprecated::ScriptValue& lower, const Deprecated::ScriptValue& upper, bool lowerOpen, bool upperOpen, ExceptionCode&);
+    static PassRefPtr<IDBKeyRange> bound(ScriptExecutionContext* context, const Deprecated::ScriptValue& lower, const Deprecated::ScriptValue& upper, ExceptionCode& ec) { return bound(context, lower, upper, false, false, ec); }
+    static PassRefPtr<IDBKeyRange> bound(ScriptExecutionContext* context, const Deprecated::ScriptValue& lower, const Deprecated::ScriptValue& upper, bool lowerOpen, ExceptionCode& ec) { return bound(context, lower, upper, lowerOpen, false, ec); }
+    static PassRefPtr<IDBKeyRange> bound(ScriptExecutionContext*, const Deprecated::ScriptValue& lower, const Deprecated::ScriptValue& upper, bool lowerOpen, bool upperOpen, ExceptionCode&);
 
     WEBCORE_EXPORT bool isOnlyKey() const;
 
 private:
-    IDBKeyRange(RefPtr<IDBKey>&& lower, RefPtr<IDBKey>&& upper, LowerBoundType lowerType, UpperBoundType upperType);
+    IDBKeyRange(PassRefPtr<IDBKey> lower, PassRefPtr<IDBKey> upper, LowerBoundType lowerType, UpperBoundType upperType);
 
     RefPtr<IDBKey> m_lower;
     RefPtr<IDBKey> m_upper;

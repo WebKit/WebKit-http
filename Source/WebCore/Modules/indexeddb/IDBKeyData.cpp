@@ -65,7 +65,7 @@ IDBKeyData::IDBKeyData(const IDBKey* key)
     }
 }
 
-RefPtr<IDBKey> IDBKeyData::maybeCreateIDBKey() const
+PassRefPtr<IDBKey> IDBKeyData::maybeCreateIDBKey() const
 {
     if (m_isNull)
         return nullptr;
