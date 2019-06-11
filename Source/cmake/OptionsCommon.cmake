@@ -41,7 +41,6 @@ endif ()
 
 if (WIN32 AND COMPILER_IS_GCC_OR_CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields -Wno-unknown-pragmas")
-    add_definitions(-D__USE_MINGW_ANSI_STDIO=1)
 endif ()
 
 # Detect Cortex-A53 core if CPU is ARM64 and OS is Linux.
