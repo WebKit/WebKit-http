@@ -9,16 +9,6 @@
         * fast/text/woff2.html: Ditto.
         * platform/gtk/TestExpectations: Update test expectation of woff2 test for GTK.
 
-2016-03-31  Zalan Bujtas  <zalan@apple.com>
-
-        Add a -mismatch test case for r198785.
-        see webkit.org/b/155973
-
-        Unreviewed.
-
-        * plugins/missing-plugin-placeholder-expected-mismatch.html: Added.
-        * plugins/missing-plugin-placeholder.html: Added.
-
 2016-03-29  Eric Carlson  <eric.carlson@apple.com>
 
         media/track/track-remove-track.html is flaky, crashing and failing
