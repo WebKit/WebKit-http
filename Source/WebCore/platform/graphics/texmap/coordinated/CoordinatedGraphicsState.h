@@ -131,7 +131,9 @@ struct CoordinatedGraphicsLayerState {
         , replica(InvalidCoordinatedLayerID)
         , mask(InvalidCoordinatedLayerID)
         , imageID(InvalidCoordinatedImageBackingID)
-        , repaintCount(0)
+#if USE(GRAPHICS_SURFACE)
+        , platformLayerFrontBuffer(0)
+#endif
 #if USE(COORDINATED_GRAPHICS_THREADED)
         , platformLayerProxy(0)
 #endif
@@ -165,7 +167,7 @@ struct CoordinatedGraphicsLayerState {
 #if USE(GRAPHICS_SURFACE)
     IntSize platformLayerSize;
     GraphicsSurfaceToken platformLayerToken;
-    uint32_t platformLayerFrontBuffer { 0 };
+    uint32_t platformLayerFrontBuffer;
     GraphicsSurface::Flags platformLayerSurfaceFlags;
 #endif
 

@@ -10,23 +10,6 @@
         (WebCore::URLParser::isSpecialScheme):
         * platform/URLParser.h:
 
-2017-03-15  Zan Dobersek  <zdobersek@igalia.com>
-
-        [TexMap] Add missing class member initializations
-        https://bugs.webkit.org/show_bug.cgi?id=169665
-
-        Reviewed by Michael Catanzaro.
-
-        Zero-initialize the members in various TextureMapper classes
-        that are missing the proper initialization, as reported by
-        the Coverity tool.
-
-        * platform/graphics/texmap/BitmapTexturePool.h:
-        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
-        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
-        (WebCore::CoordinatedGraphicsLayerState::CoordinatedGraphicsLayerState):
-        * platform/graphics/texmap/coordinated/SurfaceUpdateInfo.h:
-
 2016-09-15  Keith Miller  <keith_miller@apple.com>
 
         Pragma out undefined-var-template warnings in JSC for JSObjects that are templatized
