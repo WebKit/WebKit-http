@@ -91,6 +91,6 @@ if (${PORT} STREQUAL "Qt")
 endif ()
 
 add_dependencies(WebKit WebCore)
-if (TARGET WebKitGUID)
+if (WIN32)
     add_dependencies(WebKit WebKitGUID)
 endif ()
