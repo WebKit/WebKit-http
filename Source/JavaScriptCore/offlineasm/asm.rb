@@ -29,7 +29,6 @@ require "config"
 require "backends"
 require "digest/sha1"
 require "offsets"
-require 'optparse'
 require "parser"
 require "self_hash"
 require "settings"
@@ -302,15 +301,6 @@ asmFile = ARGV.shift
 offsetsFile = ARGV.shift
 outputFlnm = ARGV.shift
 
-$options = {}
-OptionParser.new do |opts|
-    opts.banner = "Usage: asm.rb asmFile offsetsFile outputFileName [--assembler=<ASM>]"
-    # This option is currently only used to specify the masm assembler
-    opts.on("--assembler=[ASM]", "Specify an assembler to use.") do |assembler|
-        $options[:assembler] = assembler
-    end
-end.parse!
-
 begin
     configurationList = offsetsAndConfigurationIndex(offsetsFile)
 rescue MissingMagicValuesException
@@ -329,8 +319,7 @@ $commentPrefix = $emitWinAsm ? ";" : "//"
 inputHash =
     $commentPrefix + " offlineasm input hash: " + parseHash(asmFile) +
     " " + Digest::SHA1.hexdigest(configurationList.map{|v| (v[0] + [v[1]]).join(' ')}.join(' ')) +
-    " " + selfHash +
-    " " + Digest::SHA1.hexdigest($options.has_key?(:assembler) ? $options[:assembler] : "")
+    " " + selfHash
 
 if FileTest.exist? outputFlnm
     File.open(outputFlnm, "r") {
