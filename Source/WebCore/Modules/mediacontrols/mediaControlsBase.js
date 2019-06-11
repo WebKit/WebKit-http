@@ -390,7 +390,7 @@ Controller.prototype = {
         volume.min = 0;
         volume.max = 1;
         volume.step = .01;
-        this.listenFor(volume, 'input', this.handleVolumeSliderInput);
+        this.listenFor(volume, 'change', this.handleVolumeSliderChange);
 
         var captionButton = this.controls.captionButton = document.createElement('button');
         captionButton.setAttribute('pseudo', '-webkit-media-controls-toggle-closed-captions-button');
@@ -820,7 +820,7 @@ Controller.prototype = {
         this.video.volume = 1;
     },
 
-    handleVolumeSliderInput: function(event)
+    handleVolumeSliderChange: function(event)
     {
         if (this.video.muted) {
             this.video.muted = false;
