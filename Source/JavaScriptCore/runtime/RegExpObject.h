@@ -41,25 +41,20 @@ public:
     void setRegExp(VM& vm, RegExp* r) { m_regExp.set(vm, this, r); }
     RegExp* regExp() const { return m_regExp.get(); }
 
-    bool setLastIndex(ExecState* exec, size_t lastIndex)
+    void setLastIndex(ExecState* exec, size_t lastIndex)
     {
-        if (LIKELY(m_lastIndexIsWritable)) {
+        m_lastIndex.setWithoutWriteBarrier(jsNumber(lastIndex));
+        if (LIKELY(m_lastIndexIsWritable))
             m_lastIndex.setWithoutWriteBarrier(jsNumber(lastIndex));
-            return true;
-        }
-        throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-        return false;
-    }
-    bool setLastIndex(ExecState* exec, JSValue lastIndex, bool shouldThrow)
-    {
-        if (LIKELY(m_lastIndexIsWritable)) {
-            m_lastIndex.set(exec->vm(), this, lastIndex);
-            return true;
-        }
-
-        if (shouldThrow)
+        else
             throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-        return false;
+    }
+    void setLastIndex(ExecState* exec, JSValue lastIndex, bool shouldThrow)
+    {
+        if (LIKELY(m_lastIndexIsWritable))
+            m_lastIndex.set(exec->vm(), this, lastIndex);
+        else if (shouldThrow)
+            throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
     }
     JSValue getLastIndex() const
     {
