@@ -740,7 +740,7 @@ protected:
     LayoutUnit m_maxPreferredLogicalWidth;
 
     // For inline replaced elements, the inline box that owns us.
-    InlineElementBox* m_inlineBoxWrapper { nullptr };
+    InlineElementBox* m_inlineBoxWrapper;
 
     // Our overflow information.
     RefPtr<RenderOverflow> m_overflow;
