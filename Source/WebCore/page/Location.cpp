@@ -60,15 +60,7 @@ String Location::href() const
     if (!m_frame)
         return String();
 
-    auto& url = this->url();
-
-    if (!url.hasUsername() && !url.hasPassword())
-        return url.string();
-
-    URL urlWithoutCredentials(url);
-    urlWithoutCredentials.setUser(WTF::emptyString());
-    urlWithoutCredentials.setPass(WTF::emptyString());
-    return urlWithoutCredentials.string();
+    return url().string();
 }
 
 String Location::protocol() const
