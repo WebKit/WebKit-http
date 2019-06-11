@@ -1134,7 +1134,26 @@ private:
             break;
         }
 
-        case OverridesHasInstance:
+        case OverridesHasInstance: {
+            if (node->child2().node()->isCellConstant()) {
+                if (node->child2().node()->asCell() != m_graph.globalObjectFor(node->origin.semantic)->functionProtoHasInstanceSymbolFunction()) {
+
+                    m_graph.convertToConstant(node, jsBoolean(true));
+                    break;
+                }
+
+                if (!m_graph.hasExitSite(node->origin.semantic, BadTypeInfoFlags)) {
+                    // Here we optimistically assume that we will not see an bound/C-API function here.
+                    m_insertionSet.insertNode(m_indexInBlock, SpecNone, CheckTypeInfoFlags, node->origin, OpInfo(ImplementsDefaultHasInstance), Edge(node->child1().node(), CellUse));
+                    m_graph.convertToConstant(node, jsBoolean(false));
+                    break;
+                }
+            }
+
+            fixEdge<CellUse>(node->child1());
+            break;
+        }
+            
         case CheckStructure:
         case CheckCell:
         case CreateThis:
