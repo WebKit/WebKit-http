@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 
 #if ENABLE(FTL_JIT)
 
-#include "B3Value.h"
 #include "DFGArrayMode.h"
 #include "FTLAbstractHeap.h"
 #include "IndexingType.h"
@@ -130,11 +129,11 @@ public:
     FOR_EACH_ABSTRACT_HEAP(ABSTRACT_HEAP_DECLARATION)
 #undef ABSTRACT_HEAP_DECLARATION
 
-#define ABSTRACT_FIELD_DECLARATION(name, offset) AbstractHeap name;
+#define ABSTRACT_FIELD_DECLARATION(name, offset) AbstractField name;
     FOR_EACH_ABSTRACT_FIELD(ABSTRACT_FIELD_DECLARATION)
 #undef ABSTRACT_FIELD_DECLARATION
     
-    AbstractHeap& JSCell_freeListNext;
+    AbstractField& JSCell_freeListNext;
     
 #define INDEXED_ABSTRACT_HEAP_DECLARATION(name, offset, size) IndexedAbstractHeap name;
     FOR_EACH_INDEXED_ABSTRACT_HEAP(INDEXED_ABSTRACT_HEAP_DECLARATION)
@@ -189,36 +188,8 @@ public:
         }
     }
 
-    void decorateMemory(const AbstractHeap*, B3::Value*);
-    void decorateCCallRead(const AbstractHeap*, B3::Value*);
-    void decorateCCallWrite(const AbstractHeap*, B3::Value*);
-    void decoratePatchpointRead(const AbstractHeap*, B3::Value*);
-    void decoratePatchpointWrite(const AbstractHeap*, B3::Value*);
-
-    void computeRangesAndDecorateInstructions();
-
 private:
-
-    struct HeapForValue {
-        HeapForValue()
-        {
-        }
-
-        HeapForValue(const AbstractHeap* heap, B3::Value* value)
-            : heap(heap)
-            , value(value)
-        {
-        }
-        
-        const AbstractHeap* heap { nullptr };
-        B3::Value* value { nullptr };
-    };
-
-    Vector<HeapForValue> m_heapForMemory;
-    Vector<HeapForValue> m_heapForCCallRead;
-    Vector<HeapForValue> m_heapForCCallWrite;
-    Vector<HeapForValue> m_heapForPatchpointRead;
-    Vector<HeapForValue> m_heapForPatchpointWrite;
+    friend class AbstractHeap;
 };
 
 } } // namespace JSC::FTL
