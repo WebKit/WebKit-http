@@ -1252,14 +1252,14 @@ bool FrameSelection::modify(EAlteration alter, SelectionDirection direction, Tex
 
     willBeModified(alter, direction);
 
-    bool reachedBoundary = false;
+    bool shouldNotify = false;
     bool wasRange = m_selection.isRange();
     Position originalStartPosition = m_selection.start();
     VisiblePosition position;
     switch (direction) {
     case DirectionRight:
         if (alter == AlterationMove)
-            position = modifyMovingRight(granularity, &reachedBoundary);
+            position = modifyMovingRight(granularity, &shouldNotify);
         else
             position = modifyExtendingRight(granularity);
         break;
@@ -1267,11 +1267,11 @@ bool FrameSelection::modify(EAlteration alter, SelectionDirection direction, Tex
         if (alter == AlterationExtend)
             position = modifyExtendingForward(granularity);
         else
-            position = modifyMovingForward(granularity, &reachedBoundary);
+            position = modifyMovingForward(granularity, &shouldNotify);
         break;
     case DirectionLeft:
         if (alter == AlterationMove)
-            position = modifyMovingLeft(granularity, &reachedBoundary);
+            position = modifyMovingLeft(granularity, &shouldNotify);
         else
             position = modifyExtendingLeft(granularity);
         break;
@@ -1279,11 +1279,11 @@ bool FrameSelection::modify(EAlteration alter, SelectionDirection direction, Tex
         if (alter == AlterationExtend)
             position = modifyExtendingBackward(granularity);
         else
-            position = modifyMovingBackward(granularity, &reachedBoundary);
+            position = modifyMovingBackward(granularity, &shouldNotify);
         break;
     }
-
-    if (reachedBoundary && !isRange() && userTriggered == UserTriggered && m_frame && AXObjectCache::accessibilityEnabled()) {
+    
+    if (shouldNotify && userTriggered == UserTriggered && m_frame && AXObjectCache::accessibilityEnabled()) {
         notifyAccessibilityForSelectionChange({ AXTextStateChangeTypeSelectionBoundary, textSelectionWithDirectionAndGranularity(direction, granularity) });
         return true;
     }
