@@ -8,16 +8,6 @@
         * Source/CMakeLists.txt: Build brotli and woff2 third-party libraries if WOFF2 is enabled.
         * Source/cmake/OptionsGTK.cmake: Always enable WOFF2 on GTK.
 
-2016-03-09  Konstantin Tokarev  <annulen@yandex.ru>
-
-        [cmake] Fixed All-in-One build.
-        https://bugs.webkit.org/show_bug.cgi?id=155241
-
-        Reviewed by Csaba Osztrogonác.
-
-        * Source/cmake/WebKitMacros.cmake: Last item of WebCore_SOURCES was
-        not removed in PROCESS_ALLINONE_FILE.
-
 2016-05-25  Konstantin Tokarev  <annulen@yandex.ru>
 
         [cmake] Deduplicate make-js-file-arrays usage and make it work on Windows.
