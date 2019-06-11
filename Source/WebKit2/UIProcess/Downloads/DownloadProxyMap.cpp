@@ -68,14 +68,13 @@ void DownloadProxyMap::downloadFinished(DownloadProxy* downloadProxy)
 void DownloadProxyMap::processDidClose()
 {
     // Invalidate all outstanding downloads.
-    for (const auto& download : m_downloads.values()) {
-        download->processDidClose();
-        download->invalidate();
-        m_process->removeMessageReceiver(Messages::DownloadProxy::messageReceiverName(), download->downloadID().downloadID());
+    for (auto it = m_downloads.begin().values(), end = m_downloads.end().values(); it != end; ++it) {
+        (*it)->processDidClose();
+        (*it)->invalidate();
     }
 
     m_downloads.clear();
-    m_process = nullptr;
+    m_process = 0;
 }
 
 } // namespace WebKit
