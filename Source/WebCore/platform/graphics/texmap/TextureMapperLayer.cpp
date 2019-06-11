@@ -368,7 +368,7 @@ void TextureMapperLayer::applyMask(const TextureMapperPaintOptions& options)
 
 PassRefPtr<BitmapTexture> TextureMapperLayer::paintIntoSurface(const TextureMapperPaintOptions& options, const IntSize& size)
 {
-    RefPtr<BitmapTexture> surface = options.textureMapper.acquireTextureFromPool(size, BitmapTexture::SupportsAlpha | BitmapTexture::FBOAttachment);
+    RefPtr<BitmapTexture> surface = options.textureMapper.acquireTextureFromPool(size);
     TextureMapperPaintOptions paintOptions(options);
     paintOptions.surface = surface;
     options.textureMapper.bindSurface(surface.get());

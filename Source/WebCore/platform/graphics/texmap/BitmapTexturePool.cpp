@@ -56,16 +56,14 @@ BitmapTexturePool::BitmapTexturePool(RefPtr<GraphicsContext3D>&& context3D)
 }
 #endif
 
-RefPtr<BitmapTexture> BitmapTexturePool::acquireTexture(const IntSize& size, const BitmapTexture::Flags flags)
+RefPtr<BitmapTexture> BitmapTexturePool::acquireTexture(const IntSize& size)
 {
-    Vector<Entry>& list = flags & BitmapTexture::FBOAttachment ? m_attachmentTextures : m_textures;
-
-    Entry* selectedEntry = std::find_if(list.begin(), list.end(),
+    Entry* selectedEntry = std::find_if(m_textures.begin(), m_textures.end(),
         [&size](Entry& entry) { return entry.m_texture->refCount() == 1 && entry.m_texture->size() == size; });
 
-    if (selectedEntry == list.end()) {
-        list.append(Entry(createTexture(flags)));
-        selectedEntry = &list.last();
+    if (selectedEntry == m_textures.end()) {
+        m_textures.append(Entry(createTexture()));
+        selectedEntry = &m_textures.last();
     }
 
     scheduleReleaseUnusedTextures();
@@ -83,45 +81,33 @@ void BitmapTexturePool::scheduleReleaseUnusedTextures()
 
 void BitmapTexturePool::releaseUnusedTexturesTimerFired()
 {
+    if (m_textures.isEmpty())
+        return;
+
     // Delete entries, which have been unused in s_releaseUnusedSecondsTolerance.
+    std::sort(m_textures.begin(), m_textures.end(),
+        [](const Entry& a, const Entry& b) { return a.m_lastUsedTime > b.m_lastUsedTime; });
+
     double minUsedTime = monotonicallyIncreasingTime() - s_releaseUnusedSecondsTolerance;
-
-    if (!m_textures.isEmpty()) {
-        std::sort(m_textures.begin(), m_textures.end(),
-            [](const Entry& a, const Entry& b) { return a.m_lastUsedTime > b.m_lastUsedTime; });
-
-        for (size_t i = 0; i < m_textures.size(); ++i) {
-            if (m_textures[i].m_lastUsedTime < minUsedTime) {
-                m_textures.remove(i, m_textures.size() - i);
-                break;
-            }
+    for (size_t i = 0; i < m_textures.size(); ++i) {
+        if (m_textures[i].m_lastUsedTime < minUsedTime) {
+            m_textures.remove(i, m_textures.size() - i);
+            break;
         }
     }
 
-    if (!m_attachmentTextures.isEmpty()) {
-        std::sort(m_attachmentTextures.begin(), m_attachmentTextures.end(),
-            [](const Entry& a, const Entry& b) { return a.m_lastUsedTime > b.m_lastUsedTime; });
-
-        for (size_t i = 0; i < m_attachmentTextures.size(); ++i) {
-            if (m_attachmentTextures[i].m_lastUsedTime < minUsedTime) {
-                m_attachmentTextures.remove(i, m_textures.size() - i);
-                break;
-            }
-        }
-    }
-
-    if (!m_textures.isEmpty() || !m_attachmentTextures.isEmpty())
+    if (!m_textures.isEmpty())
         scheduleReleaseUnusedTextures();
 }
 
-RefPtr<BitmapTexture> BitmapTexturePool::createTexture(const BitmapTexture::Flags flags)
+RefPtr<BitmapTexture> BitmapTexturePool::createTexture()
 {
 #if PLATFORM(QT) && USE(TEXTURE_MAPPER_GL)
     if (!m_context3D)
         return BitmapTextureImageBuffer::create();
 #endif
 #if USE(TEXTURE_MAPPER_GL)
-    return adoptRef(new BitmapTextureGL(m_context3D, flags));
+    return adoptRef(new BitmapTextureGL(m_context3D));
 #else
     return BitmapTextureImageBuffer::create();
 #endif

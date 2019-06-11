@@ -51,7 +51,7 @@ public:
     explicit BitmapTexturePool(RefPtr<GraphicsContext3D>&&);
 #endif
 
-    RefPtr<BitmapTexture> acquireTexture(const IntSize&, const BitmapTexture::Flags);
+    RefPtr<BitmapTexture> acquireTexture(const IntSize&);
 
 private:
     struct Entry {
@@ -67,14 +67,13 @@ private:
 
     void scheduleReleaseUnusedTextures();
     void releaseUnusedTexturesTimerFired();
-    RefPtr<BitmapTexture> createTexture(const BitmapTexture::Flags);
+    RefPtr<BitmapTexture> createTexture();
 
 #if USE(TEXTURE_MAPPER_GL)
     RefPtr<GraphicsContext3D> m_context3D;
 #endif
 
     Vector<Entry> m_textures;
-    Vector<Entry> m_attachmentTextures;
     Timer m_releaseUnusedTexturesTimer;
 };
 
