@@ -4,7 +4,6 @@ use CGI;
 
 my $cgi = new CGI;
 
-print "HTTP/1.1 200 OK\n";
 print "Content-Type: text/html; charset=UTF-8\n";
 my $experimental = $cgi->param('experimental') || "";
 if ($experimental eq 'true') {
