@@ -512,14 +512,10 @@ TEST(WTF_HashMap, Ensure)
 {
     HashMap<unsigned, unsigned> map;
     {
-        auto addResult = map.ensure(1, [] { return 1; });
-        EXPECT_EQ(1u, addResult.iterator->value);
-        EXPECT_EQ(1u, addResult.iterator->key);
-        EXPECT_TRUE(addResult.isNewEntry);
-        auto addResult2 = map.ensure(1, [] { return 2; });
-        EXPECT_EQ(1u, addResult2.iterator->value);
-        EXPECT_EQ(1u, addResult2.iterator->key);
-        EXPECT_FALSE(addResult2.isNewEntry);
+        auto value = map.ensure(1, [] { return 1; });
+        EXPECT_EQ(1u, value);
+        value = map.ensure(1, [] { return 2; });
+        EXPECT_EQ(1u, value);
     }
 }
 
@@ -527,14 +523,10 @@ TEST(WTF_HashMap, Ensure_MoveOnlyValues)
 {
     HashMap<unsigned, MoveOnly> moveOnlyValues;
     {
-        auto addResult = moveOnlyValues.ensure(1, [] { return MoveOnly(1); });
-        EXPECT_EQ(1u, addResult.iterator->value.value());
-        EXPECT_EQ(1u, addResult.iterator->key);
-        EXPECT_TRUE(addResult.isNewEntry);
-        auto addResult2 = moveOnlyValues.ensure(1, [] { return MoveOnly(2); });
-        EXPECT_EQ(1u, addResult2.iterator->value.value());
-        EXPECT_EQ(1u, addResult2.iterator->key);
-        EXPECT_FALSE(addResult2.isNewEntry);
+        auto& value = moveOnlyValues.ensure(1, [] { return MoveOnly(1); });
+        EXPECT_EQ(1u, value.value());
+        auto& value2 = moveOnlyValues.ensure(1, [] { return MoveOnly(2); });
+        EXPECT_EQ(1u, value2.value());
     }
 }
 
@@ -542,16 +534,12 @@ TEST(WTF_HashMap, Ensure_UniquePointer)
 {
     HashMap<unsigned, std::unique_ptr<unsigned>> map;
     {
-        auto addResult = map.ensure(1, [] { return std::make_unique<unsigned>(1); });
+        auto& value = map.ensure(1, [] { return std::make_unique<unsigned>(1); });
         EXPECT_EQ(1u, *map.get(1));
-        EXPECT_EQ(1u, *addResult.iterator->value.get());
-        EXPECT_EQ(1u, addResult.iterator->key);
-        EXPECT_TRUE(addResult.isNewEntry);
-        auto addResult2 = map.ensure(1, [] { return std::make_unique<unsigned>(2); });
+        EXPECT_EQ(1u, *value.get());
+        auto& value2 = map.ensure(1, [] { return std::make_unique<unsigned>(2); });
         EXPECT_EQ(1u, *map.get(1));
-        EXPECT_EQ(1u, *addResult2.iterator->value.get());
-        EXPECT_EQ(1u, addResult2.iterator->key);
-        EXPECT_FALSE(addResult2.isNewEntry);
+        EXPECT_EQ(1u, *value2.get());
     }
 }
 
