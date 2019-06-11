@@ -51,8 +51,8 @@ public:
 
 private:
     char* m_ptr;
-    unsigned m_size;
-    unsigned m_remaining;
+    unsigned short m_size;
+    unsigned short m_remaining;
 };
 
 inline BumpAllocator::BumpAllocator()
