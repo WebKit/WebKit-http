@@ -3258,19 +3258,19 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
         break;
 
     case HTTPHeaderName::ContentSecurityPolicy:
-        contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::Enforce);
+        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::Enforce);
         break;
 
     case HTTPHeaderName::ContentSecurityPolicyReportOnly:
-        contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::Report);
+        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::Report);
         break;
 
     case HTTPHeaderName::XWebKitCSP:
-        contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::PrefixedEnforce);
+        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::PrefixedEnforce);
         break;
 
     case HTTPHeaderName::XWebKitCSPReportOnly:
-        contentSecurityPolicy()->processHTTPEquiv(content, ContentSecurityPolicyHeaderType::PrefixedReport);
+        contentSecurityPolicy()->didReceiveHeader(content, ContentSecurityPolicyHeaderType::PrefixedReport);
         break;
 
     default:
