@@ -37,13 +37,13 @@ struct SVGPropertyTraits<ChannelSelectorType> {
         case CHANNEL_UNKNOWN:
             return emptyString();
         case CHANNEL_R:
-            return ASCIILiteral("R");
+            return "R";
         case CHANNEL_G:
-            return ASCIILiteral("G");
+            return "G";
         case CHANNEL_B:
-            return ASCIILiteral("B");
+            return "B";
         case CHANNEL_A:
-            return ASCIILiteral("A");
+            return "A";
         }
 
         ASSERT_NOT_REACHED();

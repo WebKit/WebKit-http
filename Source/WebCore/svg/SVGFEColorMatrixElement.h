@@ -38,13 +38,13 @@ struct SVGPropertyTraits<ColorMatrixType> {
         case FECOLORMATRIX_TYPE_UNKNOWN:
             return emptyString();
         case FECOLORMATRIX_TYPE_MATRIX:
-            return ASCIILiteral("matrix");
+            return "matrix";
         case FECOLORMATRIX_TYPE_SATURATE:
-            return ASCIILiteral("saturate");
+            return "saturate";
         case FECOLORMATRIX_TYPE_HUEROTATE:
-            return ASCIILiteral("hueRotate");
+            return "hueRotate";
         case FECOLORMATRIX_TYPE_LUMINANCETOALPHA:
-            return ASCIILiteral("luminanceToAlpha");
+            return "luminanceToAlpha";
         }
 
         ASSERT_NOT_REACHED();

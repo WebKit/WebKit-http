@@ -47,9 +47,9 @@ struct SVGPropertyTraits<SVGUnitTypes::SVGUnitType> {
         case SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN:
             return emptyString();
         case SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE:
-            return ASCIILiteral("userSpaceOnUse");
+            return "userSpaceOnUse";
         case SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX:
-            return ASCIILiteral("objectBoundingBox");
+            return "objectBoundingBox";
         }
 
         ASSERT_NOT_REACHED();

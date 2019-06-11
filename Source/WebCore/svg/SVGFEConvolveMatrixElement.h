@@ -40,11 +40,11 @@ struct SVGPropertyTraits<EdgeModeType> {
         case EDGEMODE_UNKNOWN:
             return emptyString();
         case EDGEMODE_DUPLICATE:
-            return ASCIILiteral("duplicate");
+            return "duplicate";
         case EDGEMODE_WRAP:
-            return ASCIILiteral("wrap");
+            return "wrap";
         case EDGEMODE_NONE:
-            return ASCIILiteral("none");
+            return "none";
         }
 
         ASSERT_NOT_REACHED();
