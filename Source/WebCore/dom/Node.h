@@ -715,9 +715,9 @@ private:
     Node* m_next { nullptr };
     // When a node has rare data we move the renderer into the rare data.
     union DataUnion {
-        RenderObject* m_renderer;
+        RenderObject* m_renderer { nullptr };
         NodeRareDataBase* m_rareData;
-    } m_data { nullptr };
+    } m_data;
 
 protected:
     bool isParsingChildrenFinished() const { return getFlag(IsParsingChildrenFinishedFlag); }
