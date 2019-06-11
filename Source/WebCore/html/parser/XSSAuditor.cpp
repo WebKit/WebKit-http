@@ -695,7 +695,7 @@ String XSSAuditor::canonicalizedSnippetForJavaScript(const FilterTokenRequest& r
                 break;
 
             if (lastNonSpacePosition != notFound && startsOpeningScriptTagAt(string, foundPosition)) {
-                foundPosition = lastNonSpacePosition + 1;
+                foundPosition = lastNonSpacePosition;
                 break;
             }
             if (foundPosition > startPosition + kMaximumFragmentLengthTarget) {
