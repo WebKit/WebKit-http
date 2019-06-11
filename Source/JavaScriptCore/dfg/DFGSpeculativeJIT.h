@@ -2335,6 +2335,8 @@ public:
     void compilePutAccessorById(Node*);
     void compilePutGetterSetterById(Node*);
     void compilePutAccessorByVal(Node*);
+    void compileGetRegExpObjectLastIndex(Node*);
+    void compileSetRegExpObjectLastIndex(Node*);
     
     void moveTrueTo(GPRReg);
     void moveFalseTo(GPRReg);

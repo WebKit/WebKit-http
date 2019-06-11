@@ -1,3 +1,17 @@
+2016-03-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG/FTL should inline accesses to RegExpObject::m_lastIndex
+        https://bugs.webkit.org/show_bug.cgi?id=155003
+
+        Reviewed by Benjamin Poulain.
+
+        * js/regress/regexp-last-index-expected.txt: Added.
+        * js/regress/regexp-last-index.html: Added.
+        * js/regress/regexp-set-last-index-expected.txt: Added.
+        * js/regress/regexp-set-last-index.html: Added.
+        * js/regress/script-tests/regexp-last-index.js: Added.
+        * js/regress/script-tests/regexp-set-last-index.js: Added.
+
 2016-03-10  Frederic Wang  <fwang@igalia.com>
 
         [GTK] Add support for WOFF2
