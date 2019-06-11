@@ -4310,7 +4310,7 @@ bool WebPage::canHandleRequest(const WebCore::ResourceRequest& request)
     if (SchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(request.url().protocol()))
         return true;
 
-    if (request.url().protocolIsBlob())
+    if (request.url().protocolIs("blob"))
         return true;
 
     return platformCanHandleRequest(request);
