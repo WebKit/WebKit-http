@@ -181,30 +181,6 @@ static const char* boolString(bool val)
 {
     return val ? "true" : "false";
 }
-
-static String actionName(HTMLMediaElementEnums::DelayedActionType action)
-{
-    StringBuilder actionBuilder;
-
-#define CASE(_actionType) \
-    if (action & (HTMLMediaElementEnums::_actionType)) { \
-        if (!actionBuilder.isEmpty()) \
-        actionBuilder.append(", "); \
-        actionBuilder.append(#_actionType); \
-    } \
-
-    CASE(LoadMediaResource);
-    CASE(ConfigureTextTracks);
-    CASE(TextTrackChangesNotification);
-    CASE(ConfigureTextTrackDisplay);
-    CASE(CheckPlaybackTargetCompatablity);
-    CASE(CheckMediaState);
-
-    return actionBuilder.toString();
-
-#undef CASE
-}
-
 #endif
 
 #ifndef LOG_MEDIA_EVENTS
@@ -402,10 +378,8 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_havePreparedToPlay(false)
     , m_parsingInProgress(createdByParser)
     , m_elementIsHidden(document.hidden())
-    , m_creatingControls(false)
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     , m_mediaControlsDependOnPageScaleFactor(false)
-    , m_haveSetUpCaptionContainer(false)
 #endif
 #if ENABLE(VIDEO_TRACK)
     , m_tracksAreReady(true)
@@ -841,7 +815,7 @@ void HTMLMediaElement::didRecalcStyle(Style::Change)
 
 void HTMLMediaElement::scheduleDelayedAction(DelayedActionType actionType)
 {
-    LOG(Media, "HTMLMediaElement::scheduleDelayedAction(%p) - setting %s flag", this, actionName(actionType).utf8().data());
+    LOG(Media, "HTMLMediaElement::scheduleLoad(%p)", this);
 
     if ((actionType & LoadMediaResource) && !(m_pendingActionFlags & LoadMediaResource)) {
         prepareForLoad();
@@ -867,7 +841,6 @@ void HTMLMediaElement::scheduleDelayedAction(DelayedActionType actionType)
 void HTMLMediaElement::scheduleNextSourceChild()
 {
     // Schedule the timer to try the next <source> element WITHOUT resetting state ala prepareForLoad.
-    LOG(Media, "HTMLMediaElement::scheduleNextSourceChild(%p) - setting %s flag", this, actionName(LoadMediaResource).utf8().data());
     setFlags(m_pendingActionFlags, LoadMediaResource);
     m_pendingActionTimer.startOneShot(0);
 }
@@ -1424,7 +1397,7 @@ void HTMLMediaElement::updateActiveTextTrackCues(const MediaTime& movieTime)
     if (ignoreTrackDisplayUpdateRequests())
         return;
 
-    LOG(Media, "HTMLMediaElement::updateActiveTextTrackCues(%p)", this);
+    LOG(Media, "HTMLMediaElement::updateActiveTextTracks(%p)", this);
 
     // 1 - Let current cues be a list of cues, initialized to contain all the
     // cues of all the hidden, showing, or showing by default text tracks of the
@@ -3887,6 +3860,8 @@ void HTMLMediaElement::configureTextTrackGroup(const TrackGroup& group)
             m_webkitLegacyClosedCaptionOverride = true;
     }
 
+    updateCaptionContainer();
+
     m_processingPreferenceChange = false;
 }
 
@@ -3915,22 +3890,11 @@ static JSC::JSValue controllerJSValue(JSC::ExecState& exec, JSDOMGlobalObject& g
 
     return controllerJSWrapper;
 }
-
-void HTMLMediaElement::ensureMediaControlsShadowRoot()
-{
-    ASSERT(!m_creatingControls);
-    m_creatingControls = true;
-    ensureUserAgentShadowRoot();
-    m_creatingControls = false;
-}
-
+    
 void HTMLMediaElement::updateCaptionContainer()
 {
     LOG(Media, "HTMLMediaElement::updateCaptionContainer(%p)", this);
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (m_haveSetUpCaptionContainer)
-        return;
-
     Page* page = document().page();
     if (!page)
         return;
@@ -3940,7 +3904,7 @@ void HTMLMediaElement::updateCaptionContainer()
     if (!ensureMediaControlsInjectedScript())
         return;
 
-    ensureMediaControlsShadowRoot();
+    ensureUserAgentShadowRoot();
 
     if (!m_mediaControlsHost)
         m_mediaControlsHost = MediaControlsHost::create(this);
@@ -3974,8 +3938,6 @@ void HTMLMediaElement::updateCaptionContainer()
     JSC::MarkedArgumentBuffer noArguments;
     JSC::call(exec, methodObject, callType, callData, controllerObject, noArguments);
     exec->clearException();
-
-    m_haveSetUpCaptionContainer = true;
 #endif
 }
 
@@ -4095,7 +4057,6 @@ void HTMLMediaElement::configureTextTracks()
     if (otherTracks.tracks.size())
         configureTextTrackGroup(otherTracks);
 
-    updateCaptionContainer();
     configureTextTrackDisplay();
     if (hasMediaControls())
         mediaControls()->closedCaptionTracksChanged();
@@ -4962,9 +4923,9 @@ void HTMLMediaElement::userCancelledLoad()
 #endif
 }
 
-void HTMLMediaElement::clearMediaPlayer(DelayedActionType flags)
+void HTMLMediaElement::clearMediaPlayer(int flags)
 {
-    LOG(Media, "HTMLMediaElement::clearMediaPlayer(%p) - flags = %s", this, actionName(flags).utf8().data());
+    LOG(Media, "HTMLMediaElement::clearMediaPlayer(%p) - flags = %x", this, (unsigned)flags);
 
 #if ENABLE(VIDEO_TRACK)
     forgetResourceSpecificTracks();
@@ -5113,7 +5074,7 @@ void HTMLMediaElement::resume()
 
 bool HTMLMediaElement::hasPendingActivity() const
 {
-    return (hasAudio() && isPlaying()) || m_asyncEventQueue.hasPendingEvents() || m_creatingControls;
+    return (hasAudio() && isPlaying()) || m_asyncEventQueue.hasPendingEvents();
 }
 
 void HTMLMediaElement::mediaVolumeDidChange()
@@ -5450,7 +5411,7 @@ bool HTMLMediaElement::closedCaptionsVisible() const
 void HTMLMediaElement::updateTextTrackDisplay()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    ensureMediaControlsShadowRoot();
+    ensureUserAgentShadowRoot();
     ASSERT(m_mediaControlsHost);
     m_mediaControlsHost->updateTextTrackContainer();
 #else
@@ -5610,7 +5571,7 @@ bool HTMLMediaElement::hasMediaControls() const
 bool HTMLMediaElement::createMediaControls()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    ensureMediaControlsShadowRoot();
+    ensureUserAgentShadowRoot();
     return false;
 #else
     if (hasMediaControls())
@@ -5655,7 +5616,7 @@ void HTMLMediaElement::configureMediaControls()
     if (!requireControls || !inDocument() || !inActiveDocument())
         return;
 
-    ensureMediaControlsShadowRoot();
+    ensureUserAgentShadowRoot();
 #else
     if (!requireControls || !inDocument() || !inActiveDocument()) {
         if (hasMediaControls())
@@ -5701,7 +5662,7 @@ void HTMLMediaElement::configureTextTrackDisplay(TextTrackVisibilityCheckType ch
     if (!m_haveVisibleTextTrack)
         return;
 
-    ensureMediaControlsShadowRoot();
+    ensureUserAgentShadowRoot();
 #else
     if (!m_haveVisibleTextTrack && !hasMediaControls())
         return;
