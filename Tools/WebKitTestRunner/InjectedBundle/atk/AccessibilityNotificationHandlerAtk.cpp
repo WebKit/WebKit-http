@@ -91,8 +91,7 @@ gboolean axObjectEventListener(GSignalInvocationHint* signalHint, unsigned numPa
         GUniquePtr<char> signalValue(g_strdup_printf("%d", g_value_get_int(&paramValues[1])));
         JSRetainPtr<JSStringRef> jsSignalValue(Adopt, JSStringCreateWithUTF8CString(signalValue.get()));
         extraArgs.append(JSValueMakeString(jsContext, jsSignalValue.get()));
-    } else if (!g_strcmp0(signalQuery.signal_name, "text-insert") || !g_strcmp0(signalQuery.signal_name, "text-remove"))
-        notificationName = "AXTextChanged";
+    }
 
     if (!jsContext)
         return true;
@@ -219,8 +218,6 @@ void AccessibilityNotificationHandler::connectAccessibilityCallbacks()
         "ATK:AtkDocument:load-complete",
         "ATK:AtkSelection:selection-changed",
         "ATK:AtkText:text-caret-moved",
-        "ATK:AtkText:text-insert",
-        "ATK:AtkText:text-remove",
         0
     };
 

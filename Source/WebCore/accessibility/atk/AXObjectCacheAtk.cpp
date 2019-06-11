@@ -249,7 +249,7 @@ void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObject* obje
     if (!object || text.isEmpty())
         return;
 
-    AccessibilityObject* parentObject = object->isNonNativeTextControl() ? object : object->parentObjectUnignored();
+    AccessibilityObject* parentObject = object->parentObjectUnignored();
     if (!parentObject)
         return;
 
