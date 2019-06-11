@@ -138,18 +138,11 @@ const double ForceAtForceClick = 2;
 #endif
     };
 
-#if COMPILER(MSVC)
-    // These functions are necessary to work around the fact that MSVC will not find a most-specific
+#if PLATFORM(WIN)
+    // These methods are necessary to work around the fact that MSVC will not find a most-specific
     // operator== to use after implicitly converting MouseButton to an unsigned short.
-    inline bool operator==(unsigned short a, MouseButton b)
-    {
-        return a == static_cast<unsigned short>(b);
-    }
-
-    inline bool operator!=(unsigned short a, MouseButton b)
-    {
-        return a != static_cast<unsigned short>(b);
-    }
+    bool operator==(unsigned short a, MouseButton b);
+    bool operator!=(unsigned short a, MouseButton b);
 #endif
 
 } // namespace WebCore
