@@ -39,9 +39,6 @@ class IDBDatabaseInfo {
 public:
     IDBDatabaseInfo(const String& name, uint64_t version);
 
-    enum IsolatedCopyTag { IsolatedCopy };
-    IDBDatabaseInfo(const IDBDatabaseInfo&, IsolatedCopyTag);
-
     IDBDatabaseInfo isolatedCopy() const;
 
     const String& name() const { return m_name; }
