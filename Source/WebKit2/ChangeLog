@@ -134,15 +134,6 @@
         * WebKit2.xcodeproj/project.pbxproj:
         * CMakeLists.txt:
 
-2016-02-20  Olivier Blin  <olivier.blin@softathome.com>
-
-        [cmake] Use ICU include dirs in WebKit2 and WebKitTestRunner
-        https://bugs.webkit.org/show_bug.cgi?id=154479
-
-        Reviewed by Michael Catanzaro.
-
-        * CMakeLists.txt:
-
 2016-09-05  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Update OptionsGTK.cmake and NEWS for 2.12.5 release.
