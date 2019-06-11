@@ -798,7 +798,7 @@ void RenderBlockFlow::adjustPositionedBlock(RenderBox& child, const MarginInfo& 
     bool hasStaticBlockPosition = child.style().hasStaticBlockPosition(isHorizontal);
     
     LayoutUnit logicalTop = logicalHeight();
-    updateStaticInlinePositionForChild(child, logicalTop, DoNotIndentText);
+    updateStaticInlinePositionForChild(child, logicalTop);
 
     if (!marginInfo.canCollapseWithMarginBefore()) {
         // Positioned blocks don't collapse margins, so add the margin provided by
@@ -865,10 +865,10 @@ void RenderBlockFlow::adjustFloatingBlock(const MarginInfo& marginInfo)
     setLogicalHeight(logicalHeight() - marginOffset);
 }
 
-void RenderBlockFlow::updateStaticInlinePositionForChild(RenderBox& child, LayoutUnit logicalTop, IndentTextOrNot shouldIndentText)
+void RenderBlockFlow::updateStaticInlinePositionForChild(RenderBox& child, LayoutUnit logicalTop)
 {
     if (child.style().isOriginalDisplayInlineType())
-        setStaticInlinePositionForChild(child, logicalTop, startAlignedOffsetForLine(logicalTop, shouldIndentText));
+        setStaticInlinePositionForChild(child, logicalTop, startAlignedOffsetForLine(logicalTop, false));
     else
         setStaticInlinePositionForChild(child, logicalTop, startOffsetForContent(logicalTop));
 }
