@@ -68,6 +68,16 @@ DrawingAreaImpl::DrawingAreaImpl(WebPage& webPage, const WebPageCreationParamete
     , m_displayTimer(RunLoop::main(), this, &DrawingAreaImpl::displayTimerFired)
     , m_exitCompositingTimer(RunLoop::main(), this, &DrawingAreaImpl::exitAcceleratedCompositingMode)
 {
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    webPage.corePage()->settings().setForceCompositingMode(true);
+#endif
+
+    if (webPage.corePage()->settings().acceleratedDrawingEnabled() || webPage.corePage()->settings().forceCompositingMode())
+        m_alwaysUseCompositing = true;
+
+    if (m_alwaysUseCompositing)
+        enterAcceleratedCompositingMode(0);
 }
 
 void DrawingAreaImpl::setNeedsDisplay()
@@ -247,10 +257,6 @@ void DrawingAreaImpl::updatePreferences(const WebPreferencesStore& store)
     settings.setAcceleratedCompositingForFixedPositionEnabled(true);
     settings.setFixedPositionCreatesStackingContext(true);
 #endif
-
-    m_alwaysUseCompositing = settings.acceleratedDrawingEnabled() && settings.forceCompositingMode();
-    if (m_alwaysUseCompositing && !m_layerTreeHost)
-        enterAcceleratedCompositingMode(nullptr);
 }
 
 void DrawingAreaImpl::layerHostDidFlushLayers()
