@@ -443,7 +443,7 @@ String WebSocket::binaryType() const
     return String();
 }
 
-void WebSocket::setBinaryType(const String& binaryType, ExceptionCode& ec)
+void WebSocket::setBinaryType(const String& binaryType)
 {
     if (binaryType == "blob") {
         m_binaryType = BinaryTypeBlob;
@@ -453,7 +453,6 @@ void WebSocket::setBinaryType(const String& binaryType, ExceptionCode& ec)
         m_binaryType = BinaryTypeArrayBuffer;
         return;
     }
-    ec = SYNTAX_ERR;
     scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, "'" + binaryType + "' is not a valid value for binaryType; binaryType remains unchanged.");
 }
 

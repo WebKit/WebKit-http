@@ -88,7 +88,7 @@ public:
     String extensions() const;
 
     String binaryType() const;
-    void setBinaryType(const String&, ExceptionCode&);
+    void setBinaryType(const String&);
 
     // EventTarget functions.
     virtual EventTargetInterface eventTargetInterface() const override;
