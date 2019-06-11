@@ -141,11 +141,6 @@ public:
     }
 #endif
 
-    size_t size() const
-    {
-        return m_ref8.size() + m_ref16.size() + m_matchOnly8.size() + m_matchOnly16.size();
-    }
-
     void clear()
     {
         m_ref8 = MacroAssemblerCodeRef();

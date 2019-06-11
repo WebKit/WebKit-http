@@ -278,8 +278,7 @@ protected:
     static bool deletePropertyByIndex(JSCell*, ExecState*, unsigned propertyName);
     
     static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
-
-    static size_t estimatedSize(JSCell*);
+    
     static void visitChildren(JSCell*, SlotVisitor&);
     static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
 

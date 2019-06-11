@@ -102,11 +102,6 @@ UnlinkedInstructionStream::UnlinkedInstructionStream(const Vector<UnlinkedInstru
     m_data = RefCountedArray<unsigned char>(buffer);
 }
 
-size_t UnlinkedInstructionStream::sizeInBytes() const
-{
-    return m_data.size() * sizeof(unsigned char);
-}
-
 #ifndef NDEBUG
 const RefCountedArray<UnlinkedInstruction>& UnlinkedInstructionStream::unpackForDebugging() const
 {

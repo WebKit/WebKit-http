@@ -55,8 +55,7 @@ public:
     
     // Creates an arguments object by copying the argumnets from the stack.
     static DirectArguments* createByCopying(ExecState*);
-
-    static size_t estimatedSize(JSCell*);
+    
     static void visitChildren(JSCell*, SlotVisitor&);
     static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
     

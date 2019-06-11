@@ -446,7 +446,6 @@ private:
 
 protected:
     static void visitChildren(JSCell*, SlotVisitor&);
-    static size_t estimatedSize(JSCell*);
 
 public:
     DECLARE_INFO;

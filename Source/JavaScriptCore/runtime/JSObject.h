@@ -94,8 +94,7 @@ class JSObject : public JSCell {
 
 public:
     typedef JSCell Base;
-
-    JS_EXPORT_PRIVATE static size_t estimatedSize(JSCell*);
+        
     JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
     JS_EXPORT_PRIVATE static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
 

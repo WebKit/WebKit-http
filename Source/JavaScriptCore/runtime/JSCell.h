@@ -134,10 +134,6 @@ public:
 
     void dump(PrintStream&) const;
     JS_EXPORT_PRIVATE static void dumpToStream(const JSCell*, PrintStream&);
-
-    size_t estimatedSizeInBytes() const;
-    JS_EXPORT_PRIVATE static size_t estimatedSize(JSCell*);
-
     static void visitChildren(JSCell*, SlotVisitor&);
     JS_EXPORT_PRIVATE static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
 
