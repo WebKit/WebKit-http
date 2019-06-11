@@ -46,7 +46,7 @@ private:
     const bool m_isEnabled;
     Element& m_element;
 
-    const RuleSet* m_descendantInvalidationRuleSet { nullptr };
+    RuleSet* m_descendantInvalidationRuleSet { nullptr };
 };
 
 inline AttributeChangeInvalidation::AttributeChangeInvalidation(Element& element, const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)

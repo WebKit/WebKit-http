@@ -34,9 +34,7 @@
 namespace WebCore {
 namespace Style {
 
-using ClassChangeVector = Vector<AtomicStringImpl*, 4>;
-
-static ClassChangeVector collectClasses(const SpaceSplitString& classes)
+auto ClassChangeInvalidation::collectClasses(const SpaceSplitString& classes) -> ClassChangeVector
 {
     ClassChangeVector result;
     result.reserveCapacity(classes.size());
@@ -45,17 +43,19 @@ static ClassChangeVector collectClasses(const SpaceSplitString& classes)
     return result;
 }
 
-static ClassChangeVector computeClassChange(const SpaceSplitString& oldClasses, const SpaceSplitString& newClasses)
+void ClassChangeInvalidation::computeClassChange(const SpaceSplitString& oldClasses, const SpaceSplitString& newClasses)
 {
     unsigned oldSize = oldClasses.size();
     unsigned newSize = newClasses.size();
 
-    if (!oldSize)
-        return collectClasses(newClasses);
-    if (!newSize)
-        return collectClasses(oldClasses);
-
-    ClassChangeVector changedClasses;
+    if (!oldSize) {
+        m_addedClasses = collectClasses(newClasses);
+        return;
+    }
+    if (!newSize) {
+        m_removedClasses = collectClasses(oldClasses);
+        return;
+    }
 
     BitVector remainingClassBits;
     remainingClassBits.ensureSize(oldSize);
@@ -70,25 +70,21 @@ static ClassChangeVector computeClassChange(const SpaceSplitString& oldClasses, 
         }
         if (foundFromBoth)
             continue;
-        changedClasses.append(newClasses[i].impl());
+        m_addedClasses.append(newClasses[i].impl());
     }
     for (unsigned i = 0; i < oldSize; ++i) {
         // If the bit is not set the the corresponding class has been removed.
         if (remainingClassBits.quickGet(i))
             continue;
-        changedClasses.append(oldClasses[i].impl());
+        m_removedClasses.append(oldClasses[i].impl());
     }
-
-    return changedClasses;
 }
 
-void ClassChangeInvalidation::invalidateStyle(const SpaceSplitString& oldClasses, const SpaceSplitString& newClasses)
+void ClassChangeInvalidation::invalidateStyle(const ClassChangeVector& changedClasses)
 {
-    auto changedClasses = computeClassChange(oldClasses, newClasses);
-
     auto& ruleSets = m_element.styleResolver().ruleSets();
 
-    ClassChangeVector changedClassesAffectingStyle;
+    Vector<AtomicStringImpl*, 4> changedClassesAffectingStyle;
     for (auto* changedClass : changedClasses) {
         if (ruleSets.features().classesInRules.contains(changedClass))
             changedClassesAffectingStyle.append(changedClass);
@@ -111,13 +107,6 @@ void ClassChangeInvalidation::invalidateStyle(const SpaceSplitString& oldClasses
         auto* ancestorClassRules = ruleSets.ancestorClassRules(changedClass);
         if (!ancestorClassRules)
             continue;
-        m_descendantInvalidationRuleSets.append(ancestorClassRules);
-    }
-}
-
-void ClassChangeInvalidation::invalidateDescendantStyle()
-{
-    for (auto* ancestorClassRules : m_descendantInvalidationRuleSets) {
         StyleInvalidationAnalysis invalidationAnalysis(*ancestorClassRules);
         invalidationAnalysis.invalidateStyle(m_element);
     }
