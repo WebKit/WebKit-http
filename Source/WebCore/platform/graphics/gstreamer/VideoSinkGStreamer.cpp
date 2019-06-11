@@ -200,8 +200,10 @@ static GRefPtr<GstSample> webkitVideoSinkRequestRender(WebKitVideoSink* sink, Gs
         GstBuffer* newBuffer = WebCore::createGstBuffer(buffer);
 
         // Check if allocation failed.
-        if (UNLIKELY(!newBuffer))
+        if (UNLIKELY(!newBuffer)) {
+            gst_buffer_unref(buffer);
             return nullptr;
+        }
 
         // We don't use Color::premultipliedARGBFromColor() here because
         // one function call per video pixel is just too expensive:
@@ -246,7 +248,6 @@ static GRefPtr<GstSample> webkitVideoSinkRequestRender(WebKitVideoSink* sink, Gs
         gst_video_frame_unmap(&sourceFrame);
         gst_video_frame_unmap(&destinationFrame);
         sample = adoptGRef(gst_sample_new(newBuffer, priv->currentCaps, nullptr, nullptr));
-        gst_buffer_unref(newBuffer);
     }
 #endif
 
