@@ -206,7 +206,6 @@ Page::Page(PageConfiguration& pageConfiguration)
     , m_viewMode(ViewModeWindowed)
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
     , m_timerThrottlingEnabled(false)
-    , m_timerAlignmentInterval(DOMTimer::defaultAlignmentInterval())
     , m_isEditable(false)
     , m_isPrerender(false)
     , m_viewState(PageInitialViewState)
@@ -1173,12 +1172,7 @@ void Page::setTimerThrottlingEnabled(bool enabled)
         return;
 
     m_timerThrottlingEnabled = enabled;
-    setDOMTimerAlignmentInterval(enabled ? DOMTimer::hiddenPageAlignmentInterval() : DOMTimer::defaultAlignmentInterval());
-}
-
-void Page::setDOMTimerAlignmentInterval(double alignmentInterval)
-{
-    m_timerAlignmentInterval = alignmentInterval;
+    m_settings->setDOMTimerAlignmentInterval(enabled ? DOMTimer::hiddenPageAlignmentInterval() : DOMTimer::defaultAlignmentInterval());
     
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (frame->document())

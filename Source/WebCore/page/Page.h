@@ -219,8 +219,6 @@ public:
     ProgressTracker& progress() const { return *m_progress; }
     BackForwardController& backForward() const { return *m_backForwardController; }
 
-    double domTimerAlignmentInterval() const { return m_timerAlignmentInterval; }
-
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
     enum ViewMode {
         ViewModeInvalid,
@@ -530,8 +528,6 @@ private:
 
     void hiddenPageDOMTimerThrottlingStateChanged();
     void setTimerThrottlingEnabled(bool);
-    void setDOMTimerAlignmentInterval(double);
-    void timerAlignmentIntervalTimerFired();
     bool canTabSuspend();
     void updateTabSuspensionState();
     void tabSuspensionTimerFired();
@@ -621,7 +617,6 @@ private:
 #endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
     bool m_timerThrottlingEnabled;
-    double m_timerAlignmentInterval;
 
     bool m_isEditable;
     bool m_isPrerender;
