@@ -1648,15 +1648,7 @@ static inline bool needsAppleMailPaginationQuirk(RootInlineBox& lineBox)
 
     return false;
 }
-
-static void clearShouldBreakAtLineToAvoidWidowIfNeeded(RenderBlockFlow& blockFlow)
-{
-    if (!blockFlow.shouldBreakAtLineToAvoidWidow())
-        return;
-    blockFlow.clearShouldBreakAtLineToAvoidWidow();
-    blockFlow.setDidBreakAtLineToAvoidWidow();
-}
-
+    
 void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, LayoutUnit& delta, bool& overflowsRegion, RenderFlowThread* flowThread)
 {
     // FIXME: Ignore anonymous inline blocks. Handle the delta already having been set because of
@@ -1710,11 +1702,8 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
         logicalBottom = intMinForLayoutUnit;
         lineBox->computeReplacedAndTextLineTopAndBottom(logicalOffset, logicalBottom);
         lineHeight = logicalBottom - logicalOffset;
-        if (logicalOffset == intMaxForLayoutUnit || lineHeight > pageLogicalHeight) {
-            // Give up. We're genuinely too big even after excluding blank space and overflow.
-            clearShouldBreakAtLineToAvoidWidowIfNeeded(*this);
-            return;
-        }
+        if (logicalOffset == intMaxForLayoutUnit || lineHeight > pageLogicalHeight)
+            return; // Give up. We're genuinely too big even after excluding blank space and overflow.
         pageLogicalHeight = pageLogicalHeightForOffset(logicalOffset);
     }
     
@@ -1723,8 +1712,10 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
 
     int lineIndex = lineCount(lineBox);
     if (remainingLogicalHeight < lineHeight || (shouldBreakAtLineToAvoidWidow() && lineBreakToAvoidWidow() == lineIndex)) {
-        if (lineBreakToAvoidWidow() == lineIndex)
-            clearShouldBreakAtLineToAvoidWidowIfNeeded(*this);
+        if (shouldBreakAtLineToAvoidWidow() && lineBreakToAvoidWidow() == lineIndex) {
+            clearShouldBreakAtLineToAvoidWidow();
+            setDidBreakAtLineToAvoidWidow();
+        }
         // If we have a non-uniform page height, then we have to shift further possibly.
         if (!hasUniformPageLogicalHeight && !pushToNextPageWithMinimumLogicalHeight(remainingLogicalHeight, logicalOffset, lineHeight))
             return;
