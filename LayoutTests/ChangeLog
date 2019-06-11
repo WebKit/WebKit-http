@@ -23,19 +23,6 @@
         * fast/text/woff2.html: Ditto.
         * platform/gtk/TestExpectations: Update test expectation of woff2 test for GTK.
 
-2016-03-04  Chris Dumez  <cdumez@apple.com>
-
-        Location.reload should not be writable
-        https://bugs.webkit.org/show_bug.cgi?id=154989
-
-        Reviewed by Gavin Barraclough.
-
-        Add a layout test to verify that operations marked as [Unforgeable] in
-        IDL are indeed not writable.
-
-        * fast/html/unforgeable-operations-readonly-expected.txt: Added.
-        * fast/html/unforgeable-operations-readonly.html: Added.
-
 2016-03-03  Filip Pizlo  <fpizlo@apple.com>
 
         Unreviewed, remove test with flaky timeout that doesn't test anything anymore. This test
