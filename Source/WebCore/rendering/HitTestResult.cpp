@@ -246,7 +246,7 @@ String HitTestResult::title(TextDirection& dir) const
     dir = LTR;
     // Find the title in the nearest enclosing DOM node.
     // For <area> tags in image maps, walk the tree for the <area>, not the <img> using it.
-    for (Node* titleNode = m_innerNode.get(); titleNode; titleNode = titleNode->parentInComposedTree()) {
+    for (Node* titleNode = m_innerNode.get(); titleNode; titleNode = titleNode->parentNode()) {
         if (is<Element>(*titleNode)) {
             Element& titleElement = downcast<Element>(*titleNode);
             String title = titleElement.title();
@@ -262,7 +262,7 @@ String HitTestResult::title(TextDirection& dir) const
 
 String HitTestResult::innerTextIfTruncated(TextDirection& dir) const
 {
-    for (Node* truncatedNode = m_innerNode.get(); truncatedNode; truncatedNode = truncatedNode->parentInComposedTree()) {
+    for (Node* truncatedNode = m_innerNode.get(); truncatedNode; truncatedNode = truncatedNode->parentNode()) {
         if (!is<Element>(*truncatedNode))
             continue;
 

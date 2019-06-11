@@ -299,7 +299,6 @@ public:
 
     // Node's parent or shadow tree host.
     ContainerNode* parentOrShadowHostNode() const;
-    ContainerNode* parentInComposedTree() const;
     Element* parentOrShadowHostElement() const;
     void setParentNode(ContainerNode*);
     Node* highestAncestor() const;
