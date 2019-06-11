@@ -355,8 +355,7 @@ void MediaPlayerPrivateMediaFoundation::setSize(const IntSize& size)
 {
     m_size = size;
 
-    auto videoDisplay = this->videoDisplay();
-    if (!videoDisplay)
+    if (!m_videoDisplay)
         return;
 
     IntPoint positionInWindow(m_lastPaintRect.location());
@@ -385,7 +384,7 @@ void MediaPlayerPrivateMediaFoundation::setSize(const IntSize& size)
         ::MoveWindow(m_hwndVideo, x, y, w, h, FALSE);
 
     RECT rc = { 0, 0, w, h };
-    videoDisplay->SetVideoPosition(nullptr, &rc);
+    m_videoDisplay->SetVideoPosition(nullptr, &rc);
 }
 
 void MediaPlayerPrivateMediaFoundation::paint(GraphicsContext& context, const FloatRect& rect)
@@ -778,19 +777,6 @@ bool MediaPlayerPrivateMediaFoundation::createSourceStreamNode(COMPtr<IMFStreamD
     return true;
 }
 
-COMPtr<IMFVideoDisplayControl> MediaPlayerPrivateMediaFoundation::videoDisplay()
-{
-    if (m_videoDisplay)
-        return m_videoDisplay;
-
-    if (!MFGetServicePtr())
-        return nullptr;
-
-    MFGetServicePtr()(m_mediaSession.get(), MR_VIDEO_RENDER_SERVICE, IID_PPV_ARGS(&m_videoDisplay));
-
-    return m_videoDisplay;
-}
-
 void MediaPlayerPrivateMediaFoundation::onCreatedMediaSource()
 {
     if (!createTopologyFromSource())
@@ -803,9 +789,13 @@ void MediaPlayerPrivateMediaFoundation::onCreatedMediaSource()
 
 void MediaPlayerPrivateMediaFoundation::onTopologySet()
 {
-    if (auto videoDisplay = this->videoDisplay()) {
+    if (!MFGetServicePtr())
+        return;
+
+    if (SUCCEEDED(MFGetServicePtr()(m_mediaSession.get(), MR_VIDEO_RENDER_SERVICE, IID_PPV_ARGS(&m_videoDisplay)))) {
+        ASSERT(m_videoDisplay);
         RECT rc = { 0, 0, m_size.width(), m_size.height() };
-        videoDisplay->SetVideoPosition(nullptr, &rc);
+        m_videoDisplay->SetVideoPosition(nullptr, &rc);
     }
 
     m_readyState = MediaPlayer::HaveFutureData;
