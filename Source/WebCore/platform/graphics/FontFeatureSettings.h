@@ -60,7 +60,6 @@ public:
     FontFeature(FontFeatureTag&&, int value);
 
     bool operator==(const FontFeature& other) const;
-    bool operator!=(const FontFeature& other) const { return !(*this == other); }
     bool operator<(const FontFeature& other) const;
 
     const FontFeatureTag& tag() const { return m_tag; }
@@ -76,7 +75,6 @@ class FontFeatureSettings {
 public:
     void insert(FontFeature&&);
     bool operator==(const FontFeatureSettings& other) const { return m_list == other.m_list; }
-    bool operator!=(const FontFeatureSettings& other) const { return !(*this == other); }
 
     size_t size() const { return m_list.size(); }
     const FontFeature& operator[](int index) const { return m_list[index]; }

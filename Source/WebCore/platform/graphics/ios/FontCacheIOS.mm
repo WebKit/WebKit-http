@@ -120,7 +120,7 @@ RetainPtr<CTFontRef> platformLookupFallbackFont(CTFontRef font, FontWeight fontW
 
 Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
 {
-    return *fontForFamily(fontDescription, AtomicString(".PhoneFallback", AtomicString::ConstructFromLiteral));
+    return *fontForFamily(fontDescription, AtomicString(".PhoneFallback", AtomicString::ConstructFromLiteral), false);
 }
 
 float FontCache::weightOfCTFont(CTFontRef font)
