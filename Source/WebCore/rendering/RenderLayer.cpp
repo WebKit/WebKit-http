@@ -1805,15 +1805,15 @@ void RenderLayer::beginTransparencyLayers(GraphicsContext& context, const LayerP
         context.clip(pixelSnappedClipRect);
 
 #if ENABLE(CSS_COMPOSITING)
-        bool usesCompositeOperation = hasBlendMode() && !(renderer().isSVGRoot() && parent() && parent()->isRootLayer());
-        if (usesCompositeOperation)
+        // RenderSVGRoot takes care of its blend mode.
+        if (!renderer().isSVGRoot() && hasBlendMode())
             context.setCompositeOperation(context.compositeOperation(), blendMode());
 #endif
 
         context.beginTransparencyLayer(renderer().opacity());
 
 #if ENABLE(CSS_COMPOSITING)
-        if (usesCompositeOperation)
+        if (!renderer().isSVGRoot() && hasBlendMode())
             context.setCompositeOperation(context.compositeOperation(), BlendModeNormal);
 #endif
 
