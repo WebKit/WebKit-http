@@ -389,10 +389,6 @@ void JIT_OPERATION operationProcessTypeProfilerLog(ExecState*) WTF_INTERNAL;
 
 } // namespace JSC
 
-#else // ENABLE(JIT)
-
-#define JIT_OPERATION
-
 #endif // ENABLE(JIT)
 
 #endif // JITOperations_h
