@@ -30,9 +30,6 @@
 #include "ImageDecoder.h"
 #include <stdio.h> // Needed by jpeglib.h for FILE.
 
-// ICU defines TRUE and FALSE macros, breaking libjpeg v9 headers
-#undef TRUE
-#undef FALSE
 extern "C" {
 #include "jpeglib.h"
 }
