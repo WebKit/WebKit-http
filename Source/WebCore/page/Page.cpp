@@ -146,11 +146,8 @@ static void networkStateChanged(bool isOnLine)
     }
 
     AtomicString eventName = isOnLine ? eventNames().onlineEvent : eventNames().offlineEvent;
-    for (auto& frame : frames) {
-        if (!frame->document())
-            continue;
+    for (auto& frame : frames)
         frame->document()->dispatchWindowEvent(Event::create(eventName, false, false));
-    }
 }
 
 static const ViewState::Flags PageInitialViewState = ViewState::IsVisible | ViewState::IsInWindow;
@@ -487,8 +484,6 @@ void Page::updateStyleForAllPagesAfterGlobalChangeInEnvironment()
             // If a change in the global environment has occurred, we need to
             // make sure all the properties a recomputed, therefore we invalidate
             // the properties cache.
-            if (!frame->document())
-                continue;
             if (StyleResolver* styleResolver = frame->document()->styleResolverIfExists())
                 styleResolver->invalidateMatchedPropertiesCache();
             frame->document()->scheduleForcedStyleRecalc();
@@ -552,8 +547,6 @@ bool Page::showAllPlugins() const
 inline MediaCanStartListener* Page::takeAnyMediaCanStartListener()
 {
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
         if (MediaCanStartListener* listener = frame->document()->takeAnyMediaCanStartListener())
             return listener;
     }
@@ -776,8 +769,6 @@ void Page::setMediaVolume(float volume)
 
     m_mediaVolume = volume;
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
         frame->document()->mediaVolumeDidChange();
     }
 }
@@ -810,11 +801,8 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
         }
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
         if (inStableState) {
-            for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-                if (!frame->document())
-                    continue;
+            for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
                 frame->document()->pageScaleFactorChangedAndStable();
-            }
         }
 #endif
         return;
@@ -851,11 +839,8 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin, bool inStable
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (inStableState) {
-        for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-            if (!frame->document())
-                continue;
+        for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
             frame->document()->pageScaleFactorChangedAndStable();
-        }
     }
 #else
     UNUSED_PARAM(inStableState);
@@ -1114,20 +1099,14 @@ const String& Page::userStyleSheet() const
 
 void Page::invalidateStylesForAllLinks()
 {
-    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
+    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree().traverseNext())
         frame->document()->visitedLinkState().invalidateStyleForAllLinks();
-    }
 }
 
 void Page::invalidateStylesForLink(LinkHash linkHash)
 {
-    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
+    for (Frame* frame = m_mainFrame.get(); frame; frame = frame->tree().traverseNext())
         frame->document()->visitedLinkState().invalidateStyleForLink(linkHash);
-    }
 }
 
 void Page::setDebugger(JSC::Debugger* debugger)
@@ -1209,11 +1188,8 @@ void Page::setDOMTimerAlignmentInterval(double alignmentInterval)
 
 void Page::dnsPrefetchingStateChanged()
 {
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
         frame->document()->initDNSPrefetch();
-    }
 }
 
 Vector<Ref<PluginViewBase>> Page::pluginViews()
@@ -1236,11 +1212,8 @@ Vector<Ref<PluginViewBase>> Page::pluginViews()
 
 void Page::storageBlockingStateChanged()
 {
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
         frame->document()->storageBlockingStateDidChange();
-    }
 
     // Collect the PluginViews in to a vector to ensure that action the plug-in takes
     // from below storageBlockingStateChanged does not affect their lifetime.
@@ -1279,11 +1252,8 @@ void Page::setMuted(bool muted)
 
     m_muted = muted;
 
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
         frame->document()->pageMutedStateDidChange();
-    }
 }
 
 #if ENABLE(MEDIA_SESSION)
@@ -1723,11 +1693,8 @@ void Page::hiddenPageCSSAnimationSuspensionStateChanged()
 #if ENABLE(VIDEO_TRACK)
 void Page::captionPreferencesChanged()
 {
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
         frame->document()->captionPreferencesChanged();
-    }
 }
 #endif
 
@@ -1809,11 +1776,8 @@ void Page::setSessionID(SessionID sessionID)
     if (!privateBrowsingStateChanged)
         return;
 
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
         frame->document()->privateBrowsingStateDidChange();
-    }
 
     // Collect the PluginViews in to a vector to ensure that action the plug-in takes
     // from below privateBrowsingStateChanged does not affect their lifetime.
@@ -1862,29 +1826,20 @@ void Page::setMockMediaPlaybackTargetPickerState(const String& name, MediaPlayba
 
 void Page::setPlaybackTarget(uint64_t contextId, Ref<MediaPlaybackTarget>&& target)
 {
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
         frame->document()->setPlaybackTarget(contextId, target.copyRef());
-    }
 }
 
 void Page::playbackTargetAvailabilityDidChange(uint64_t contextId, bool available)
 {
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
         frame->document()->playbackTargetAvailabilityDidChange(contextId, available);
-    }
 }
 
 void Page::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
 {
-    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (!frame->document())
-            continue;
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext())
         frame->document()->setShouldPlayToPlaybackTarget(clientId, shouldPlay);
-    }
 }
 #endif
 
