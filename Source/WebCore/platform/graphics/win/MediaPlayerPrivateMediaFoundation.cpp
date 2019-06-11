@@ -93,12 +93,10 @@ MediaPlayerPrivateMediaFoundation::MediaPlayerPrivateMediaFoundation(MediaPlayer
     : m_player(player)
     , m_visible(false)
     , m_loadingProgress(false)
-    , m_paused(true)
+    , m_paused(false)
     , m_hasAudio(false)
     , m_hasVideo(false)
-    , m_preparingToPlay(false)
     , m_hwndVideo(nullptr)
-    , m_networkState(MediaPlayer::Empty)
     , m_readyState(MediaPlayer::HaveNothing)
     , m_weakPtrFactory(this)
 {
@@ -174,11 +172,6 @@ MediaPlayer::SupportsType MediaPlayerPrivateMediaFoundation::supportsType(const 
 void MediaPlayerPrivateMediaFoundation::load(const String& url)
 {
     startCreateMediaSource(url);
-
-    m_networkState = MediaPlayer::Loading;
-    m_player->networkStateChanged();
-    m_readyState = MediaPlayer::HaveNothing;
-    m_player->readyStateChanged();
 }
 
 void MediaPlayerPrivateMediaFoundation::cancelLoad()
@@ -186,20 +179,21 @@ void MediaPlayerPrivateMediaFoundation::cancelLoad()
     notImplemented();
 }
 
-void MediaPlayerPrivateMediaFoundation::prepareToPlay()
-{
-    // We call startSession() to start buffering video data.
-    // When we have received enough data, we pause, so that we don't actually start the playback.
-    ASSERT(m_paused);
-    ASSERT(!m_preparingToPlay);
-    m_preparingToPlay = startSession();
-}
-
 void MediaPlayerPrivateMediaFoundation::play()
 {
-    m_paused = !startSession();
+    if (!m_mediaSession)
+        return;
 
-    m_preparingToPlay = false;
+    PROPVARIANT varStart;
+    PropVariantInit(&varStart);
+    varStart.vt = VT_EMPTY;
+
+    HRESULT hr = m_mediaSession->Start(nullptr, &varStart);
+    ASSERT(SUCCEEDED(hr));
+
+    PropVariantClear(&varStart);
+
+    m_paused = !SUCCEEDED(hr);
 }
 
 void MediaPlayerPrivateMediaFoundation::pause()
@@ -330,7 +324,8 @@ void MediaPlayerPrivateMediaFoundation::setMuted(bool muted)
 
 MediaPlayer::NetworkState MediaPlayerPrivateMediaFoundation::networkState() const
 { 
-    return m_networkState;
+    notImplemented();
+    return MediaPlayer::Empty;
 }
 
 MediaPlayer::ReadyState MediaPlayerPrivateMediaFoundation::readyState() const
@@ -423,23 +418,6 @@ bool MediaPlayerPrivateMediaFoundation::createSession()
     return true;
 }
 
-bool MediaPlayerPrivateMediaFoundation::startSession()
-{
-    if (!m_mediaSession)
-        return false;
-
-    PROPVARIANT varStart;
-    PropVariantInit(&varStart);
-    varStart.vt = VT_EMPTY;
-
-    HRESULT hr = m_mediaSession->Start(nullptr, &varStart);
-    ASSERT(SUCCEEDED(hr));
-
-    PropVariantClear(&varStart);
-
-    return SUCCEEDED(hr);
-}
-
 bool MediaPlayerPrivateMediaFoundation::endSession()
 {
     if (m_mediaSession) {
@@ -530,44 +508,11 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
         break;
     }
 
-    case MEBufferingStarted: {
-        auto weakPtr = m_weakPtrFactory.createWeakPtr();
-        callOnMainThread([weakPtr] {
-            if (!weakPtr)
-                return;
-            weakPtr->onBufferingStarted();
-        });
+    case MESessionClosed:
         break;
-    }
-
-    case MEBufferingStopped: {
-        auto weakPtr = m_weakPtrFactory.createWeakPtr();
-        callOnMainThread([weakPtr] {
-            if (!weakPtr)
-                return;
-            weakPtr->onBufferingStopped();
-        });
-        break;
-    }
-
-    case MESessionEnded: {
-        auto weakPtr = m_weakPtrFactory.createWeakPtr();
-        callOnMainThread([weakPtr] {
-            if (!weakPtr)
-                return;
-            weakPtr->onSessionEnded();
-        });
-        break;
-    }
 
     case MEMediaSample:
         break;
-
-    case MEError: {
-        HRESULT status = S_OK;
-        event->GetStatus(&status);
-        break;
-    }
     }
 
     if (mediaEventType != MESessionClosed) {
@@ -833,49 +778,6 @@ bool MediaPlayerPrivateMediaFoundation::createSourceStreamNode(COMPtr<IMFStreamD
     return true;
 }
 
-void MediaPlayerPrivateMediaFoundation::updateReadyState()
-{
-    if (!MFGetServicePtr())
-        return;
-
-    COMPtr<IPropertyStore> prop;
-
-    // Get the property store from the media session.
-    HRESULT hr = MFGetServicePtr()(m_mediaSession.get(), MFNETSOURCE_STATISTICS_SERVICE, IID_PPV_ARGS(&prop));
-
-    if (FAILED(hr))
-        return;
-
-    PROPERTYKEY key;
-    key.fmtid = MFNETSOURCE_STATISTICS;
-    key.pid = MFNETSOURCE_BUFFERPROGRESS_ID;
-
-    PROPVARIANT var;
-    hr = prop->GetValue(key, &var);
-
-    const LONG percentageOfPlaybackBufferFilled = var.lVal;
-
-    PropVariantClear(&var);
-
-    if (FAILED(hr))
-        return;
-
-    MediaPlayer::ReadyState oldReadyState = m_readyState;
-    if (percentageOfPlaybackBufferFilled >= 100) {
-        m_readyState = MediaPlayer::HaveEnoughData;
-        if (m_preparingToPlay) {
-            pause();
-            m_preparingToPlay = false;
-        }
-    } else if (percentageOfPlaybackBufferFilled > 0)
-        m_readyState = MediaPlayer::HaveFutureData;
-    else
-        m_readyState = MediaPlayer::HaveCurrentData;
-
-    if (m_readyState != oldReadyState)
-        m_player->readyStateChanged();
-}
-
 COMPtr<IMFVideoDisplayControl> MediaPlayerPrivateMediaFoundation::videoDisplay()
 {
     if (m_videoDisplay)
@@ -901,33 +803,17 @@ void MediaPlayerPrivateMediaFoundation::onCreatedMediaSource()
 
 void MediaPlayerPrivateMediaFoundation::onTopologySet()
 {
-    // This method is called on the main thread as a result of load() being called.
-
     if (auto videoDisplay = this->videoDisplay()) {
         RECT rc = { 0, 0, m_size.width(), m_size.height() };
         videoDisplay->SetVideoPosition(nullptr, &rc);
     }
 
-    // It is expected that we start buffering data from the network now.
-    prepareToPlay();
-}
+    m_readyState = MediaPlayer::HaveFutureData;
 
-void MediaPlayerPrivateMediaFoundation::onBufferingStarted()
-{
-    updateReadyState();
-}
+    ASSERT(m_player);
+    m_player->readyStateChanged();
 
-void MediaPlayerPrivateMediaFoundation::onBufferingStopped()
-{
-    updateReadyState();
-}
-
-void MediaPlayerPrivateMediaFoundation::onSessionEnded()
-{
-    m_networkState = MediaPlayer::Loaded;
-    m_player->networkStateChanged();
-
-    m_paused = true;
+    play();
     m_player->playbackStateChanged();
 }
 
@@ -3126,8 +3012,7 @@ HRESULT MediaPlayerPrivateMediaFoundation::Direct3DPresenter::updateDestRect()
         return S_FALSE;
 
     RECT rcView;
-    if (!GetClientRect(m_hwnd, &rcView))
-        return E_FAIL;
+    GetClientRect(m_hwnd, &rcView);
 
     // Clip to the client area of the window.
     if (m_destRect.right > rcView.right)
