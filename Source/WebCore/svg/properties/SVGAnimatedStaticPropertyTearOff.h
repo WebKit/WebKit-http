@@ -1,6 +1,5 @@
 /*
  * Copyright (C) Research In Motion Limited 2010-2012. All rights reserved.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -49,8 +48,6 @@ public:
         commitChange();
     }
 
-    bool isAnimating() const override { return m_animatedProperty; }
-
     static Ref<SVGAnimatedStaticPropertyTearOff<PropertyType>> create(SVGElement* contextElement, const QualifiedName& attributeName, AnimatedPropertyType animatedPropertyType, PropertyType& property)
     {
         ASSERT(contextElement);
@@ -59,7 +56,8 @@ public:
 
     PropertyType& currentAnimatedValue()
     {
-        ASSERT(isAnimating());
+        ASSERT(m_isAnimating);
+        ASSERT(m_animatedProperty);
         return *m_animatedProperty;
     }
 
@@ -70,27 +68,33 @@ public:
 
     void animationStarted(PropertyType* newAnimVal)
     {
-        ASSERT(!isAnimating());
+        ASSERT(!m_isAnimating);
+        ASSERT(!m_animatedProperty);
         ASSERT(newAnimVal);
         m_animatedProperty = newAnimVal;
+        m_isAnimating = true;
     }
 
     void animationEnded()
     {
-        ASSERT(isAnimating());
+        ASSERT(m_isAnimating);
+        ASSERT(m_animatedProperty);
         m_animatedProperty = nullptr;
+        m_isAnimating = false;
     }
 
     void animValWillChange()
     {
         // no-op for non list types.
-        ASSERT(isAnimating());
+        ASSERT(m_isAnimating);
+        ASSERT(m_animatedProperty);
     }
 
     void animValDidChange()
     {
         // no-op for non list types.
-        ASSERT(isAnimating());
+        ASSERT(m_isAnimating);
+        ASSERT(m_animatedProperty);
     }
 
 protected:

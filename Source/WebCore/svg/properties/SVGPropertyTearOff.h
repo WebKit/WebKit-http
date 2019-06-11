@@ -1,6 +1,5 @@
 /*
  * Copyright (C) Research In Motion Limited 2010. All rights reserved.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -58,7 +57,7 @@ public:
     }
 
     virtual PropertyType& propertyReference() { return *m_value; }
-    SVGAnimatedProperty* animatedProperty() const { return m_animatedProperty.get(); }
+    SVGAnimatedProperty* animatedProperty() const { return m_animatedProperty; }
 
     virtual void setValue(PropertyType& value)
     {
@@ -73,13 +72,16 @@ public:
     void setAnimatedProperty(SVGAnimatedProperty* animatedProperty)
     {
         m_animatedProperty = animatedProperty;
+
+        if (m_animatedProperty)
+            m_contextElement = m_animatedProperty->contextElement();
     }
 
     SVGElement* contextElement() const
     {
         if (!m_animatedProperty || m_valueIsCopy)
-            return nullptr;
-        return m_animatedProperty->contextElement();
+            return 0;
+        return m_contextElement.get();
     }
 
     void addChild(WeakPtr<SVGPropertyTearOffBase> child)
@@ -129,6 +131,11 @@ protected:
         , m_value(&value)
         , m_valueIsCopy(false)
     {
+        // Using operator & is completely fine, as SVGAnimatedProperty owns this reference,
+        // and we're guaranteed to live as long as SVGAnimatedProperty does.
+
+        if (m_animatedProperty)
+            m_contextElement = m_animatedProperty->contextElement();
     }
 
     SVGPropertyTearOff(const PropertyType& initialValue)
@@ -150,9 +157,6 @@ protected:
             detachChildren();
             delete m_value;
         }
-
-        if (m_animatedProperty)
-            m_animatedProperty->propertyWillBeDeleted(*this);
     }
 
     void detachChildren()
@@ -164,7 +168,8 @@ protected:
         m_childTearOffs.clear();
     }
 
-    RefPtr<SVGAnimatedProperty> m_animatedProperty;
+    RefPtr<SVGElement> m_contextElement;
+    SVGAnimatedProperty* m_animatedProperty;
     SVGPropertyRole m_role;
     PropertyType* m_value;
     Vector<WeakPtr<SVGPropertyTearOffBase>> m_childTearOffs;

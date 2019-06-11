@@ -1,6 +1,5 @@
 /*
  * Copyright (C) Research In Motion Limited 2010. All rights reserved.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -32,34 +31,30 @@ public:
     typedef SVGPropertyTearOff<PropertyType> PropertyTearOff;
     typedef PropertyType ContentType;
 
-    RefPtr<PropertyTearOff> baseVal()
+    virtual ~SVGAnimatedPropertyTearOff()
     {
-        if (m_baseVal)
-            return m_baseVal;
-
-        auto property = PropertyTearOff::create(this, BaseValRole, m_property);
-        m_baseVal = property.ptr();
-        return WTFMove(property);
+        if (m_baseVal) {
+            ASSERT(m_baseVal->animatedProperty() == this);
+            m_baseVal->setAnimatedProperty(nullptr);
+        }
+        if (m_animVal) {
+            ASSERT(m_animVal->animatedProperty() == this);
+            m_animVal->setAnimatedProperty(nullptr);
+        }
     }
 
-    RefPtr<PropertyTearOff> animVal()
+    PropertyTearOff* baseVal()
     {
-        if (m_animVal)
-            return m_animVal;
-
-        auto property = PropertyTearOff::create(this, AnimValRole, m_property);
-        m_animVal = property.ptr();
-        return WTFMove(property);
+        if (!m_baseVal)
+            m_baseVal = PropertyTearOff::create(this, BaseValRole, m_property);
+        return m_baseVal.get();
     }
 
-    bool isAnimating() const override { return m_animatedProperty; }
-
-    void propertyWillBeDeleted(const SVGProperty& property) override
+    PropertyTearOff* animVal()
     {
-        if (&property == m_baseVal)
-            m_baseVal = nullptr;
-        else if (&property == m_animVal)
-            m_animVal = nullptr;
+        if (!m_animVal)
+            m_animVal = PropertyTearOff::create(this, AnimValRole, m_property);
+        return m_animVal.get();
     }
 
     static Ref<SVGAnimatedPropertyTearOff<PropertyType>> create(SVGElement* contextElement, const QualifiedName& attributeName, AnimatedPropertyType animatedPropertyType, PropertyType& property)
@@ -70,8 +65,9 @@ public:
 
     PropertyType& currentAnimatedValue()
     {
-        ASSERT(isAnimating());
-        return m_animatedProperty->propertyReference();
+        ASSERT(m_isAnimating);
+        ASSERT(m_animVal);
+        return m_animVal->propertyReference();
     }
 
     const PropertyType& currentBaseValue() const
@@ -81,29 +77,32 @@ public:
 
     void animationStarted(PropertyType* newAnimVal)
     {
-        ASSERT(!isAnimating());
+        ASSERT(!m_isAnimating);
         ASSERT(newAnimVal);
-        m_animatedProperty = animVal();
-        m_animatedProperty->setValue(*newAnimVal);
+        animVal()->setValue(*newAnimVal);
+        m_isAnimating = true;
     }
 
     void animationEnded()
     {
-        ASSERT(isAnimating());
-        m_animatedProperty->setValue(m_property);
-        m_animatedProperty = nullptr;
+        ASSERT(m_isAnimating);
+        ASSERT(m_animVal);
+        m_animVal->setValue(m_property);
+        m_isAnimating = false;
     }
 
     void animValWillChange()
     {
         // no-op for non list types.
-        ASSERT(isAnimating());
+        ASSERT(m_isAnimating);
+        ASSERT(m_animVal);
     }
 
     void animValDidChange()
     {
         // no-op for non list types.
-        ASSERT(isAnimating());
+        ASSERT(m_isAnimating);
+        ASSERT(m_animVal);
     }
 
 private:
@@ -114,10 +113,8 @@ private:
     }
 
     PropertyType& m_property;
-    PropertyTearOff* m_baseVal { nullptr };
-    PropertyTearOff* m_animVal { nullptr };
-
-    RefPtr<PropertyTearOff> m_animatedProperty;
+    RefPtr<PropertyTearOff> m_baseVal;
+    RefPtr<PropertyTearOff> m_animVal;
 };
 
 }

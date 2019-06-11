@@ -1,7 +1,6 @@
 /*
  * Copyright (C) Research In Motion Limited 2010. All rights reserved.
  * Copyright (C) 2013 Samsung Electronics. All rights reserved.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -30,6 +29,7 @@ SVGAnimatedProperty::SVGAnimatedProperty(SVGElement* contextElement, const Quali
     : m_contextElement(contextElement)
     , m_attributeName(attributeName)
     , m_animatedPropertyType(animatedPropertyType)
+    , m_isAnimating(false)
     , m_isReadOnly(false)
 {
 }
@@ -45,7 +45,7 @@ SVGAnimatedProperty::~SVGAnimatedProperty()
     }
 
     // Assure that animationEnded() was called, if animationStarted() was called before.
-    ASSERT(!isAnimating());
+    ASSERT(!m_isAnimating);
 }
 
 void SVGAnimatedProperty::commitChange()
