@@ -1807,7 +1807,8 @@ void RenderInline::addAnnotatedRegions(Vector<AnnotatedRegionValue>& regions)
         if (!container)
             container = this;
 
-        region.clip = container->computeAbsoluteRepaintRect(region.bounds);
+        region.clip = region.bounds;
+        container->computeAbsoluteRepaintRect(region.clip);
         if (region.clip.height() < 0) {
             region.clip.setHeight(0);
             region.clip.setWidth(0);

@@ -1924,7 +1924,8 @@ void RenderObject::addAnnotatedRegions(Vector<AnnotatedRegionValue>& regions)
                                    h - styleRegion.offset.top().value() - styleRegion.offset.bottom().value());
         region.type = styleRegion.type;
 
-        region.clip = computeAbsoluteRepaintRect(region.bounds);
+        region.clip = region.bounds;
+        computeAbsoluteRepaintRect(region.clip);
         if (region.clip.height() < 0) {
             region.clip.setHeight(0);
             region.clip.setWidth(0);
