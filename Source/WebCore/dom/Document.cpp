@@ -5066,20 +5066,6 @@ RefPtr<XPathResult> Document::evaluate(const String& expression, Node* contextNo
     return m_xpathEvaluator->evaluate(expression, contextNode, resolver, type, result, ec);
 }
 
-static bool shouldInheritSecurityOriginFromOwner(const URL& url)
-{
-    // Paraphrased from <https://html.spec.whatwg.org/multipage/browsers.html#origin> (8 July 2016)
-    //
-    // If a Document has the address "about:blank"
-    //      The origin of the document is the origin it was assigned when its browsing context was created.
-    // If a Document has the address "about:srcdoc"
-    //      The origin of the document is the origin of its parent document.
-    //
-    // Note: We generalize this to invalid URLs because we treat such URLs as about:blank.
-    //
-    return url.isEmpty() || equalIgnoringASCIICase(url.string(), blankURL()) || equalLettersIgnoringASCIICase(url.string(), "about:srcdoc");
-}
-
 void Document::initSecurityContext()
 {
     if (haveInitializedSecurityOrigin()) {
@@ -5132,7 +5118,7 @@ void Document::initSecurityContext()
         setBaseURLOverride(parentDocument->baseURL());
     }
 
-    if (!shouldInheritSecurityOriginFromOwner(m_url))
+    if (!m_url.shouldInheritSecurityOriginFromOwner())
         return;
 
     // If we do not obtain a meaningful origin from the URL, then we try to
@@ -5165,7 +5151,7 @@ void Document::initSecurityContext()
 
 void Document::initContentSecurityPolicy()
 {
-    if (!m_frame->tree().parent() || (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument()))
+    if (!m_frame->tree().parent() || (!m_url.shouldInheritSecurityOriginFromOwner() && !isPluginDocument()))
         return;
 
     contentSecurityPolicy()->copyStateFrom(m_frame->tree().parent()->document()->contentSecurityPolicy());
