@@ -1,16 +1,3 @@
-2016-10-14  Michael Catanzaro  <mcatanzaro@igalia.com>
-
-        [CMake] Private/unsupported build options should be marked as advanced
-        https://bugs.webkit.org/show_bug.cgi?id=163451
-
-        Reviewed by Carlos Garcia Campos.
-
-        When checking to decide whether to mark an option as advanced, the conditional checks
-        whether _WEBKIT_AVAILABLE_OPTIONS_IS_PUBLIC_${_name} is defined. It is always defined. We
-        need to check its value instead.
-
-        * Source/cmake/WebKitFeatures.cmake:
-
 2016-11-05  Konstantin Tokarev  <annulen@yandex.ru>
 
         [MinGW] Fixed C99/C++11 format attributes in printf-like functions
