@@ -23,16 +23,29 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SmallPage_h
-#define SmallPage_h
+#ifndef SmallTraits_h
+#define SmallTraits_h
 
-#include "SmallTraits.h"
-#include "Page.h"
+#include "Sizes.h"
 
 namespace bmalloc {
 
-typedef Page<SmallTraits> SmallPage;
+template<class Traits> class Chunk;
+template<class Traits> class Line;
+template<class Traits> class Page;
+
+struct SmallTraits {
+    typedef Chunk<SmallTraits> ChunkType;
+    typedef Line<SmallTraits> LineType;
+    typedef Page<SmallTraits> PageType;
+
+    static const size_t lineSize = smallLineSize;
+    static const size_t minimumObjectSize = alignment;
+    static const size_t chunkSize = smallChunkSize;
+    static const size_t chunkOffset = smallChunkOffset;
+    static const uintptr_t chunkMask = smallChunkMask;
+};
 
 } // namespace bmalloc
 
-#endif // SmallPage_h
+#endif // SmallTraits_h
