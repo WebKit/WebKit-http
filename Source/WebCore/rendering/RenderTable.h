@@ -239,7 +239,7 @@ public:
  
     typedef Vector<CollapsedBorderValue> CollapsedBorderValues;
     bool collapsedBordersAreValid() const { return m_collapsedBordersValid; }
-    void invalidateCollapsedBorders(RenderTableCell* cellWithStyleChange = nullptr);
+    void invalidateCollapsedBorders();
     void collapsedEmptyBorderIsPresent() { m_collapsedEmptyBorderIsPresent = true; }
     const CollapsedBorderValue* currentBorderValue() const { return m_currentBorder; }
     
