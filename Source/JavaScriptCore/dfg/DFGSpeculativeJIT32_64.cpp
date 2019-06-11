@@ -2836,34 +2836,15 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case RegExpExec: {
-        if (node->child1().useKind() == CellUse
-            && node->child2().useKind() == CellUse) {
-            SpeculateCellOperand base(this, node->child1());
-            SpeculateCellOperand argument(this, node->child2());
-            GPRReg baseGPR = base.gpr();
-            GPRReg argumentGPR = argument.gpr();
-        
-            flushRegisters();
-            GPRFlushedCallResult2 resultTag(this);
-            GPRFlushedCallResult resultPayload(this);
-            callOperation(operationRegExpExec, resultTag.gpr(), resultPayload.gpr(), baseGPR, argumentGPR);
-            m_jit.exceptionCheck();
-        
-            jsValueResult(resultTag.gpr(), resultPayload.gpr(), node);
-            break;
-        }
-        
-        JSValueOperand base(this, node->child1());
-        JSValueOperand argument(this, node->child2());
-        GPRReg baseTagGPR = base.tagGPR();
-        GPRReg basePayloadGPR = base.payloadGPR();
-        GPRReg argumentTagGPR = argument.tagGPR();
-        GPRReg argumentPayloadGPR = argument.payloadGPR();
+        SpeculateCellOperand base(this, node->child1());
+        SpeculateCellOperand argument(this, node->child2());
+        GPRReg baseGPR = base.gpr();
+        GPRReg argumentGPR = argument.gpr();
         
         flushRegisters();
         GPRFlushedCallResult2 resultTag(this);
         GPRFlushedCallResult resultPayload(this);
-        callOperation(operationRegExpExecGeneric, resultTag.gpr(), resultPayload.gpr(), baseTagGPR, basePayloadGPR, argumentTagGPR, argumentPayloadGPR);
+        callOperation(operationRegExpExec, resultTag.gpr(), resultPayload.gpr(), baseGPR, argumentGPR);
         m_jit.exceptionCheck();
         
         jsValueResult(resultTag.gpr(), resultPayload.gpr(), node);
@@ -2871,34 +2852,17 @@ void SpeculativeJIT::compile(Node* node)
     }
         
     case RegExpTest: {
-        if (node->child1().useKind() == CellUse
-            && node->child2().useKind() == CellUse) {
-            SpeculateCellOperand base(this, node->child1());
-            SpeculateCellOperand argument(this, node->child2());
-            GPRReg baseGPR = base.gpr();
-            GPRReg argumentGPR = argument.gpr();
-        
-            flushRegisters();
-            GPRFlushedCallResult result(this);
-            callOperation(operationRegExpTest, result.gpr(), baseGPR, argumentGPR);
-            m_jit.exceptionCheck();
-        
-            booleanResult(result.gpr(), node);
-            break;
-        }
-        
-        JSValueOperand base(this, node->child1());
-        JSValueOperand argument(this, node->child2());
-        GPRReg baseTagGPR = base.tagGPR();
-        GPRReg basePayloadGPR = base.payloadGPR();
-        GPRReg argumentTagGPR = argument.tagGPR();
-        GPRReg argumentPayloadGPR = argument.payloadGPR();
+        SpeculateCellOperand base(this, node->child1());
+        SpeculateCellOperand argument(this, node->child2());
+        GPRReg baseGPR = base.gpr();
+        GPRReg argumentGPR = argument.gpr();
         
         flushRegisters();
         GPRFlushedCallResult result(this);
-        callOperation(operationRegExpTestGeneric, result.gpr(), baseTagGPR, basePayloadGPR, argumentTagGPR, argumentPayloadGPR);
+        callOperation(operationRegExpTest, result.gpr(), baseGPR, argumentGPR);
         m_jit.exceptionCheck();
         
+        // If we add a DataFormatBool, we should use it here.
         booleanResult(result.gpr(), node);
         break;
     }
