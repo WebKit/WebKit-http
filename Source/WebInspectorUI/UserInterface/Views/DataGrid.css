@@ -295,5 +295,4 @@
 
 .data-grid .resizer {
     z-index: var(--z-index-resizer);
-    transform: translateX(-2.5px);
 }
