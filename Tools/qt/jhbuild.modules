@@ -106,21 +106,20 @@
     </branch>
   </autotools>
 
-  <autotools id="fontconfig" 
-             autogen-sh="configure"
-             autogenargs="--enable-libxml2">
+  <autotools id="fontconfig"
+             autogenargs="--enable-libxml2 --disable-docs"
+             supports-non-srcdir-builds="no">
+    <if condition-set="macos">
+      <autogenargs value="--with-add-fonts=/System/Library/Fonts,/Library/Fonts,~/Library/Fonts"/>
+    </if>
     <dependencies>
       <dep package="freetype6"/>
       <dep package="libxml2"/>
     </dependencies>
-    <branch module="software/fontconfig/release/fontconfig-2.11.1.tar.gz" version="2.11.1"
+    <branch module="software/fontconfig/release/fontconfig-2.12.4.tar.bz2" version="2.12.4"
             repo="freedesktop.org"
-            hash="sha256:b6b066c7dce3f436fdc0dfbae9d36122b38094f4f53bd8dffd45e195b0540d8d"
-            md5sum="e75e303b4f7756c2b16203a57ac87eba">
-      <patch file="fontconfig-2.11.1-no-bitmaps.patch" strip="0"/>
-    </branch>
+            hash="sha256:668293fcc4b3c59765cdee5cee05941091c0879edcc24dfec5455ef83912e45c"/>
   </autotools>
-
 
   <autotools id="libxml2" supports-non-srcdir-builds="no"
              autogen-sh="./autogen.sh; ./configure --without-python --without-valid --without-xinclude --without-xptr --without-c14n --without-catalog --without-regexps --without-zlib --without-lzma --without-schemas --without-schematron --without-threads --without-legacy --without-http --without-iconv --with-icu">
