@@ -379,8 +379,6 @@ const gchar* roleToString(AtkObject* object)
         return "AXInvalid";
     case ATK_ROLE_LABEL:
         return "AXLabel";
-    case ATK_ROLE_LEVEL_BAR:
-        return "AXProgressIndicator";
     case ATK_ROLE_LINK:
         return "AXLink";
     case ATK_ROLE_LIST:
@@ -1402,9 +1400,8 @@ double AccessibilityUIElement::maxValue()
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::valueDescription()
 {
-    String valueText = getAttributeSetValueForId(ATK_OBJECT(m_element.get()), ObjectAttributeType, "valuetext");
-    GUniquePtr<gchar> valueDescription(g_strdup_printf("AXValueDescription: %s", valueText.utf8().data()));
-    return JSStringCreateWithUTF8CString(valueDescription.get());
+    // FIXME: implement
+    return JSStringCreateWithCharacters(0, 0);
 }
 
 int AccessibilityUIElement::insertionPointLineNumber()

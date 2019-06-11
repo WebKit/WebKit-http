@@ -123,7 +123,6 @@ public:
 
     virtual unsigned hierarchicalLevel() const override;
     virtual String textUnderElement(AccessibilityTextUnderElementMode = AccessibilityTextUnderElementMode()) const override;
-    virtual String accessibilityDescriptionForChildren() const;
     virtual String accessibilityDescription() const override;
     virtual String helpText() const override;
     virtual String title() const override;
