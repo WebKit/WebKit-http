@@ -38,7 +38,7 @@ AnimationEvent::AnimationEvent(const AtomicString& type, const AnimationEventIni
 }
 
 AnimationEvent::AnimationEvent(const AtomicString& type, const String& animationName, double elapsedTime)
-    : Event(type, true, false)
+    : Event(type, true, true)
     , m_animationName(animationName)
     , m_elapsedTime(elapsedTime)
 {
