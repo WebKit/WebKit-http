@@ -18,7 +18,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#pragma once
+#ifndef CSSParserValues_h
+#define CSSParserValues_h
 
 #include "CSSSelector.h"
 #include "CSSValueKeywords.h"
@@ -139,6 +140,7 @@ public:
 
     void addValue(const CSSParserValue&);
     void insertValueAt(unsigned, const CSSParserValue&);
+    void deleteValueAt(unsigned);
     void extend(CSSParserValueList&);
 
     unsigned size() const { return m_values.size(); }
@@ -272,3 +274,5 @@ template<unsigned length> inline bool equalLettersIgnoringASCIICase(const CSSPar
 }
 
 }
+
+#endif

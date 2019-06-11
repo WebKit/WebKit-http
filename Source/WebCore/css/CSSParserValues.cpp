@@ -46,26 +46,29 @@ void destroy(const CSSParserValue& value)
 
 CSSParserValueList::~CSSParserValueList()
 {
-    for (auto& value : m_values)
-        destroy(value);
+    for (size_t i = 0, size = m_values.size(); i < size; i++)
+        destroy(m_values[i]);
 }
 
-void CSSParserValueList::addValue(const CSSParserValue& value)
+void CSSParserValueList::addValue(const CSSParserValue& v)
 {
-    m_values.append(value);
+    m_values.append(v);
 }
 
-void CSSParserValueList::insertValueAt(unsigned i, const CSSParserValue& value)
+void CSSParserValueList::insertValueAt(unsigned i, const CSSParserValue& v)
 {
-    m_values.insert(i, value);
+    m_values.insert(i, v);
 }
 
-void CSSParserValueList::extend(CSSParserValueList& other)
+void CSSParserValueList::deleteValueAt(unsigned i)
 {
-    for (auto& value : other.m_values) {
-        m_values.append(value);
-        value.unit = 0; // We moved the CSSParserValue from the other list; this acts like std::move.
-    }
+    m_values.remove(i);
+}
+
+void CSSParserValueList::extend(CSSParserValueList& valueList)
+{
+    for (unsigned int i = 0; i < valueList.size(); ++i)
+        m_values.append(*(valueList.valueAt(i)));
 }
 
 bool CSSParserValueList::containsVariables() const
