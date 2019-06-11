@@ -418,8 +418,6 @@ private:
                 fixEdge<DoubleRepUse>(node->child1());
             else if (node->child1()->shouldSpeculateString())
                 fixEdge<StringUse>(node->child1());
-            else if (node->child1()->shouldSpeculateStringOrOther())
-                fixEdge<StringOrOtherUse>(node->child1());
             break;
         }
 
@@ -925,8 +923,6 @@ private:
                 fixEdge<DoubleRepUse>(node->child1());
             else if (node->child1()->shouldSpeculateString())
                 fixEdge<StringUse>(node->child1());
-            else if (node->child1()->shouldSpeculateStringOrOther())
-                fixEdge<StringOrOtherUse>(node->child1());
             break;
         }
             

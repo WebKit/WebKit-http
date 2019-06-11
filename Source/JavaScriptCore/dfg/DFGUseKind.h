@@ -59,7 +59,6 @@ enum UseKind {
     ObjectOrOtherUse,
     StringIdentUse,
     StringUse,
-    StringOrOtherUse,
     KnownStringUse,
     KnownPrimitiveUse, // This bizarre type arises for op_strcat, which has a bytecode guarantee that it will only see primitives (i.e. not objects).
     SymbolUse,
@@ -128,8 +127,6 @@ inline SpeculatedType typeFilterFor(UseKind useKind)
     case StringUse:
     case KnownStringUse:
         return SpecString;
-    case StringOrOtherUse:
-        return SpecString | SpecOther;
     case KnownPrimitiveUse:
         return SpecHeapTop & ~SpecObject;
     case SymbolUse:

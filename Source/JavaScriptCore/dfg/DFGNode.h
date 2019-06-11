@@ -1957,11 +1957,6 @@ struct Node {
         return isStringSpeculation(prediction());
     }
  
-    bool shouldSpeculateStringOrOther()
-    {
-        return isStringOrOtherSpeculation(prediction());
-    }
- 
     bool shouldSpeculateStringObject()
     {
         return isStringObjectSpeculation(prediction());

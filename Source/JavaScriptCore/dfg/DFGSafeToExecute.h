@@ -61,7 +61,6 @@ public:
         case ObjectOrOtherUse:
         case StringIdentUse:
         case StringUse:
-        case StringOrOtherUse:
         case SymbolUse:
         case StringObjectUse:
         case StringOrStringObjectUse:

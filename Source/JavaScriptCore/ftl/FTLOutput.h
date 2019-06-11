@@ -82,7 +82,7 @@ public:
         m_frequency = value;
     }
 
-    LBasicBlock newBlock();
+    LBasicBlock newBlock(const char* name = "");
 
     LBasicBlock insertNewBlocksBefore(LBasicBlock nextBlock)
     {
@@ -523,6 +523,11 @@ inline LValue Output::fround(LValue doubleValue)
 #if COMPILER(GCC_OR_CLANG)
 #pragma GCC diagnostic pop
 #endif // COMPILER(GCC_OR_CLANG)
+
+#define FTL_NEW_BLOCK(output, nameArguments) \
+    (LIKELY(!verboseCompilationEnabled()) \
+    ? (output).newBlock() \
+    : (output).newBlock((toCString nameArguments).data()))
 
 } } // namespace JSC::FTL
 
