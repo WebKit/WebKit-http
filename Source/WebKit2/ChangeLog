@@ -175,12 +175,6 @@
         There is no real need to separate derived sources from others.
         * PlatformGTK.cmake: Ditto.
 
-2016-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
-
-        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.12.0 release.
-
-        * gtk/NEWS: Add release notes for 2.12.0.
-
 2016-03-16  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Update OptionsGTK.cmake and NEWS for 2.11.92 release.
