@@ -201,8 +201,7 @@ private:
                 break;
             case StopAnimationAction:
                 ASSERT(!type);
-                if (property->isAnimating())
-                    property->animationEnded();
+                property->animationEnded();
                 break;
             case AnimValWillChangeAction:
                 ASSERT(!type);
