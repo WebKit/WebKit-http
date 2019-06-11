@@ -92,7 +92,7 @@ AccessibilityObjectInclusion AccessibilityObject::accessibilityPlatformIncludesO
     if (roleValue() == UnknownRole && !isAttachment())
         return IgnoreObject;
     
-    if (roleValue() == InlineRole && !isStyleFormatGroup())
+    if (roleValue() == InlineRole)
         return IgnoreObject;
 
     if (RenderObject* renderer = this->renderer()) {
