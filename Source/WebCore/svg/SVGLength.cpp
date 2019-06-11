@@ -281,7 +281,7 @@ void SVGLength::convertToSpecifiedUnits(unsigned short type, const SVGLengthCont
     m_unit = originalUnitAndType;
 }
 
-SVGLength SVGLength::fromCSSPrimitiveValue(const CSSPrimitiveValue& value)
+SVGLength SVGLength::fromCSSPrimitiveValue(CSSPrimitiveValue& value)
 {
     SVGLengthType svgType;
     switch (value.primitiveType()) {

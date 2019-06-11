@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-FontVariantLigaturesValues extractFontVariantLigatures(const CSSValue& value)
+FontVariantLigaturesValues extractFontVariantLigatures(CSSValue& value)
 {
     FontVariantLigatures common = FontVariantLigatures::Normal;
     FontVariantLigatures discretionary = FontVariantLigatures::Normal;
@@ -91,7 +91,7 @@ FontVariantLigaturesValues extractFontVariantLigatures(const CSSValue& value)
     return FontVariantLigaturesValues(common, discretionary, historical, contextualAlternates);
 }
 
-FontVariantNumericValues extractFontVariantNumeric(const CSSValue& value)
+FontVariantNumericValues extractFontVariantNumeric(CSSValue& value)
 {
     FontVariantNumericFigure figure = FontVariantNumericFigure::Normal;
     FontVariantNumericSpacing spacing = FontVariantNumericSpacing::Normal;
@@ -137,7 +137,7 @@ FontVariantNumericValues extractFontVariantNumeric(const CSSValue& value)
     return FontVariantNumericValues(figure, spacing, fraction, ordinal, slashedZero);
 }
 
-FontVariantEastAsianValues extractFontVariantEastAsian(const CSSValue& value)
+FontVariantEastAsianValues extractFontVariantEastAsian(CSSValue& value)
 {
     FontVariantEastAsianVariant variant = FontVariantEastAsianVariant::Normal;
     FontVariantEastAsianWidth width = FontVariantEastAsianWidth::Normal;

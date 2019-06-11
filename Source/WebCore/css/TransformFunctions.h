@@ -42,7 +42,7 @@ class WebKitCSSTransformValue;
 
 struct Length;
 
-bool transformsForValue(const CSSValue&, const CSSToLengthConversionData&, TransformOperations&);
+bool transformsForValue(CSSValue&, const CSSToLengthConversionData&, TransformOperations&);
 Length convertToFloatLength(const CSSPrimitiveValue*, const CSSToLengthConversionData&);
 
 }
