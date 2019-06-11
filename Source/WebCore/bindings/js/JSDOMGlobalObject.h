@@ -30,7 +30,6 @@
 #include "PlatformExportMacros.h"
 #include "WebCoreJSBuiltinInternals.h"
 #include <runtime/JSGlobalObject.h>
-#include <runtime/StructureInlines.h>
 
 namespace WebCore {
 
