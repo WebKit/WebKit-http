@@ -36,7 +36,7 @@
 
 .sidebar > .panel.navigation > .overflow-shadow {
     position: absolute;
-    bottom: calc(var(--console-prompt-min-height) - 1px);
+    bottom: 28px;
     left: 0;
     right: 0;
     height: 1px;
