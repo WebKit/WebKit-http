@@ -116,7 +116,7 @@ FloatPoint RenderGeometryMap::mapToContainer(const FloatPoint& p, const RenderLa
         TransformState transformState(TransformState::ApplyTransformDirection, p);
         mapToContainer(transformState, container);
         result = transformState.lastPlanarPoint();
-        ASSERT(areEssentiallyEqual(rendererMappedResult, result));
+        ASSERT(rendererMappedResult == result);
     }
 
     return result;
