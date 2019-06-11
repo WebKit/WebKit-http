@@ -2029,8 +2029,8 @@ bool URL::isBlankURL() const
 bool URL::shouldInheritSecurityOriginFromOwner() const
 {
     return isEmpty()
-        || equalIgnoringASCIICase(m_string, blankURL().string())
-        || equalLettersIgnoringASCIICase(m_string, "about:srcdoc");
+        || m_string == blankURL().string()
+        || m_string == "about:srcdoc";
 }
 
 typedef HashMap<String, unsigned short, ASCIICaseInsensitiveHash> DefaultPortsMap;

@@ -1,3 +1,0 @@
-CONSOLE MESSAGE: line 1: Injected script running.
-PASS newWindow.document is defined.
-
