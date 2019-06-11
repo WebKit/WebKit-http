@@ -456,7 +456,7 @@ namespace WTF {
         ValueType* reinsert(ValueType&&);
 
         static void initializeBucket(ValueType& bucket);
-        static void deleteBucket(ValueType& bucket) { hashTraitsDeleteBucket<Traits>(bucket); }
+        static void deleteBucket(ValueType& bucket) { bucket.~ValueType(); Traits::constructDeletedValue(bucket); }
 
         FullLookupType makeLookupResult(ValueType* position, bool found, unsigned hash)
             { return FullLookupType(LookupType(position, found), hash); }
@@ -1108,26 +1108,18 @@ namespace WTF {
     template<typename Functor>
     inline void HashTable<Key, Value, Extractor, HashFunctions, Traits, KeyTraits>::removeIf(const Functor& functor)
     {
-        // We must use local copies in case "functor" or "deleteBucket"
-        // make a function call, which prevents the compiler from keeping
-        // the values in register.
-        unsigned removedBucketCount = 0;
-        ValueType* table = m_table;
-
         for (unsigned i = m_tableSize; i--;) {
-            ValueType& bucket = table[i];
-            if (isEmptyOrDeletedBucket(bucket))
+            if (isEmptyOrDeletedBucket(m_table[i]))
                 continue;
             
-            if (!functor(bucket))
+            if (!functor(m_table[i]))
                 continue;
             
-            deleteBucket(bucket);
-            ++removedBucketCount;
+            deleteBucket(m_table[i]);
+            ++m_deletedCount;
+            --m_keyCount;
         }
-        m_deletedCount += removedBucketCount;
-        m_keyCount -= removedBucketCount;
-
+        
         if (shouldShrink())
             shrink();
         
