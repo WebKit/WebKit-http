@@ -2431,9 +2431,6 @@ Ref<TextMetrics> CanvasRenderingContext2D::measureText(const String& text)
 
 void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, float y, bool fill, float maxWidth, bool useMaxWidth)
 {
-    const auto& fontProxy = this->fontProxy();
-    const FontMetrics& fontMetrics = fontProxy.fontMetrics();
-
     GraphicsContext* c = drawingContext();
     if (!c)
         return;
@@ -2453,12 +2450,16 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
     if (fill && gradient && gradient->isZeroSize())
         return;
 
+    const auto& fontProxy = this->fontProxy();
+    const FontMetrics& fontMetrics = fontProxy.fontMetrics();
+
     String normalizedText = text;
     normalizeSpaces(normalizedText);
 
     // FIXME: Need to turn off font smoothing.
 
     RenderStyle* computedStyle;
+    canvas()->document().updateStyleIfNeeded();
     TextDirection direction = toTextDirection(state().direction, &computedStyle);
     bool isRTL = direction == RTL;
     bool override = computedStyle ? isOverride(computedStyle->unicodeBidi()) : false;
