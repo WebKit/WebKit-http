@@ -198,7 +198,7 @@ public:
     void add32(TrustedImm32 imm, RegisterID src, RegisterID dest)
     {
         if (!imm.m_value) {
-            zeroExtend32ToPtr(src, dest);
+            move(src, dest);
             return;
         }
 
