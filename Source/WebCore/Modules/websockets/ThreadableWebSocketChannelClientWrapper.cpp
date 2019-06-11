@@ -180,10 +180,10 @@ void ThreadableWebSocketChannelClientWrapper::didReceiveMessage(const String& me
         processPendingTasks();
 }
 
-void ThreadableWebSocketChannelClientWrapper::didReceiveBinaryData(Vector<uint8_t>&& binaryData)
+void ThreadableWebSocketChannelClientWrapper::didReceiveBinaryData(Vector<char>&& binaryData)
 {
     ref();
-    Vector<uint8_t>* capturedData = new Vector<uint8_t>(WTFMove(binaryData));
+    Vector<char>* capturedData = new Vector<char>(WTFMove(binaryData));
     m_pendingTasks.append(std::make_unique<ScriptExecutionContext::Task>([this, capturedData] (ScriptExecutionContext&) {
         if (m_client)
             m_client->didReceiveBinaryData(WTFMove(*capturedData));

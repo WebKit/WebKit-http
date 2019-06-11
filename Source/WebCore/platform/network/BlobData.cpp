@@ -39,12 +39,6 @@
 
 namespace WebCore {
 
-BlobData::BlobData(const String& contentType)
-    : m_contentType(contentType)
-{
-    ASSERT(Blob::isNormalizedContentType(contentType));
-}
-
 const long long BlobDataItem::toEndOfFile = -1;
 
 long long BlobDataItem::length() const
@@ -52,25 +46,31 @@ long long BlobDataItem::length() const
     if (m_length != toEndOfFile)
         return m_length;
 
-    switch (m_type) {
-    case Type::Data:
+    switch (type) {
+    case Data:
         ASSERT_NOT_REACHED();
         return m_length;
-    case Type::File:
-        return m_file->size();
+    case File:
+        return file->size();
     }
 
     ASSERT_NOT_REACHED();
     return m_length;
 }
 
-void BlobData::appendData(const ThreadSafeDataBuffer& data)
+void BlobData::setContentType(const String& contentType)
 {
-    size_t dataSize = data.data() ? data.data()->size() : 0;
+    ASSERT(Blob::isNormalizedContentType(contentType));
+    m_contentType = contentType;
+}
+
+void BlobData::appendData(PassRefPtr<RawData> data)
+{
+    size_t dataSize = data->length();
     appendData(data, 0, dataSize);
 }
 
-void BlobData::appendData(const ThreadSafeDataBuffer& data, long long offset, long long length)
+void BlobData::appendData(PassRefPtr<RawData> data, long long offset, long long length)
 {
     m_items.append(BlobDataItem(data, offset, length));
 }

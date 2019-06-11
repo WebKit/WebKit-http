@@ -79,7 +79,7 @@ public:
 
     void didConnect();
     void didReceiveMessage(const String& message);
-    void didReceiveBinaryData(Vector<uint8_t>&&);
+    void didReceiveBinaryData(Vector<char>&&);
     void didUpdateBufferedAmount(unsigned long bufferedAmount);
     void didStartClosingHandshake();
     void didClose(unsigned long unhandledBufferedAmount, WebSocketChannelClient::ClosingHandshakeCompletionStatus, unsigned short code, const String& reason);

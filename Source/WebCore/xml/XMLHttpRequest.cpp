@@ -238,7 +238,7 @@ Blob* XMLHttpRequest::responseBlob()
     if (!m_responseBlob) {
         if (m_binaryResponseBuilder) {
             // FIXME: We just received the data from NetworkProcess, and are sending it back. This is inefficient.
-            Vector<uint8_t> data;
+            Vector<char> data;
             data.append(m_binaryResponseBuilder->data(), m_binaryResponseBuilder->size());
             String normalizedContentType = Blob::normalizedContentType(responseMIMEType()); // responseMIMEType defaults to text/xml which may be incorrect.
             m_responseBlob = Blob::create(WTFMove(data), normalizedContentType);

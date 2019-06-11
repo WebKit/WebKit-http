@@ -55,7 +55,7 @@ public:
 
 private:
     Vector<BlobPart> m_items;
-    Vector<uint8_t> m_appendableData;
+    Vector<char> m_appendableData;
 };
 
 } // namespace WebCore

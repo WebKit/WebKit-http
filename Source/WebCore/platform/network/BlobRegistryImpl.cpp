@@ -98,11 +98,11 @@ void BlobRegistryImpl::appendStorageItems(BlobData* blobData, const BlobDataItem
     for (; iter != items.end() && length > 0; ++iter) {
         long long currentLength = iter->length() - offset;
         long long newLength = currentLength > length ? length : currentLength;
-        if (iter->type() == BlobDataItem::Type::Data)
-            blobData->appendData(iter->data(), iter->offset() + offset, newLength);
+        if (iter->type == BlobDataItem::Data)
+            blobData->appendData(iter->data, iter->offset() + offset, newLength);
         else {
-            ASSERT(iter->type() == BlobDataItem::Type::File);
-            blobData->appendFile(iter->file(), iter->offset() + offset, newLength);
+            ASSERT(iter->type == BlobDataItem::File);
+            blobData->appendFile(iter->file.get(), iter->offset() + offset, newLength);
         }
         length -= newLength;
         offset = 0;
@@ -115,7 +115,8 @@ void BlobRegistryImpl::registerFileBlobURL(const URL& url, RefPtr<BlobDataFileRe
     ASSERT(isMainThread());
     registerBlobResourceHandleConstructor();
 
-    RefPtr<BlobData> blobData = BlobData::create(contentType);
+    RefPtr<BlobData> blobData = BlobData::create();
+    blobData->setContentType(contentType);
 
     blobData->appendFile(file);
     m_blobs.set(url.string(), blobData.release());
@@ -126,7 +127,8 @@ void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart> blobPart
     ASSERT(isMainThread());
     registerBlobResourceHandleConstructor();
 
-    RefPtr<BlobData> blobData = BlobData::create(contentType);
+    RefPtr<BlobData> blobData = BlobData::create();
+    blobData->setContentType(contentType);
 
     // The blob data is stored in the "canonical" way. That is, it only contains a list of Data and File items.
     // 1) The Data item is denoted by the raw data and the range.
@@ -137,9 +139,8 @@ void BlobRegistryImpl::registerBlobURL(const URL& url, Vector<BlobPart> blobPart
     for (BlobPart& part : blobParts) {
         switch (part.type()) {
         case BlobPart::Data: {
-            auto movedData = part.moveData();
-            auto data = ThreadSafeDataBuffer::adoptVector(movedData);
-            blobData->appendData(data);
+            RefPtr<RawData> rawData = RawData::create(part.moveData());
+            blobData->appendData(rawData.release());
             break;
         }
         case BlobPart::Blob: {
@@ -195,7 +196,8 @@ void BlobRegistryImpl::registerBlobURLForSlice(const URL& url, const URL& srcURL
         end = originalSize;
 
     unsigned long long newLength = end - start;
-    RefPtr<BlobData> newData = BlobData::create(originalData->contentType());
+    RefPtr<BlobData> newData = BlobData::create();
+    newData->setContentType(originalData->contentType());
 
     appendStorageItems(newData.get(), originalData->items(), start, newLength);
 

@@ -39,7 +39,7 @@ namespace {
 
 class OutputBuffer {
 public:
-    virtual uint8_t* allocate(size_t size) = 0;
+    virtual char* allocate(size_t size) = 0;
     virtual void copy(const CString&) = 0;
     virtual ~OutputBuffer() { }
 };
@@ -52,11 +52,11 @@ public:
     }
     virtual ~CStringBuffer() { }
 
-    uint8_t* allocate(size_t size) override
+    virtual char* allocate(size_t size)
     {
         char* ptr;
         m_buffer = CString::newUninitialized(size, ptr);
-        return reinterpret_cast<uint8_t*>(ptr);
+        return ptr;
     }
 
     void copy(const CString& source) override
@@ -70,16 +70,15 @@ private:
     CString m_buffer;
 };
 
-#if OS(WINDOWS)
 class VectorCharAppendBuffer : public OutputBuffer {
 public:
-    VectorCharAppendBuffer(Vector<uint8_t>& buffer)
+    VectorCharAppendBuffer(Vector<char>& buffer)
         : m_buffer(buffer)
     {
     }
     virtual ~VectorCharAppendBuffer() { }
 
-    uint8_t* allocate(size_t size) override
+    virtual char* allocate(size_t size)
     {
         size_t oldSize = m_buffer.size();
         m_buffer.grow(oldSize + size);
@@ -92,9 +91,8 @@ public:
     }
 
 private:
-    Vector<uint8_t>& m_buffer;
+    Vector<char>& m_buffer;
 };
-#endif
 
 void internalNormalizeLineEndingsToCRLF(const CString& from, OutputBuffer& buffer)
 {
@@ -128,7 +126,7 @@ void internalNormalizeLineEndingsToCRLF(const CString& from, OutputBuffer& buffe
     }
 
     p = from.data();
-    uint8_t* q = buffer.allocate(newLen);
+    char* q = buffer.allocate(newLen);
 
     // Make a copy of the string.
     while (p < from.data() + from.length()) {
@@ -155,8 +153,10 @@ void internalNormalizeLineEndingsToCRLF(const CString& from, OutputBuffer& buffe
 
 namespace WebCore {
 
+void normalizeToCROrLF(const CString& from, Vector<char>& result, bool toCR);
+
 // Normalize all line-endings to CR or LF.
-static void normalizeToCROrLF(const CString& from, Vector<uint8_t>& result, bool toCR)
+void normalizeToCROrLF(const CString& from, Vector<char>& result, bool toCR)
 {
     // Compute the new length.
     size_t newLen = 0;
@@ -181,7 +181,7 @@ static void normalizeToCROrLF(const CString& from, Vector<uint8_t>& result, bool
     p = from.data();
     size_t oldResultSize = result.size();
     result.grow(oldResultSize + newLen);
-    uint8_t* q = result.data() + oldResultSize;
+    char* q = result.data() + oldResultSize;
 
     // If no need to fix the string, just copy the string over.
     if (!needFix) {
@@ -214,13 +214,23 @@ CString normalizeLineEndingsToCRLF(const CString& from)
     return buffer.buffer();
 }
 
-void normalizeLineEndingsToNative(const CString& from, Vector<uint8_t>& result)
+void normalizeLineEndingsToCR(const CString& from, Vector<char>& result)
+{
+    normalizeToCROrLF(from, result, true);
+}
+
+void normalizeLineEndingsToLF(const CString& from, Vector<char>& result)
+{
+    normalizeToCROrLF(from, result, false);
+}
+
+void normalizeLineEndingsToNative(const CString& from, Vector<char>& result)
 {
 #if OS(WINDOWS)
     VectorCharAppendBuffer buffer(result);
     internalNormalizeLineEndingsToCRLF(from, buffer);
 #else
-    normalizeToCROrLF(from, result, false);
+    normalizeLineEndingsToLF(from, result);
 #endif
 }
 

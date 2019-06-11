@@ -1860,7 +1860,7 @@ bool ArgumentCoder<BlobPart>::decode(ArgumentDecoder& decoder, BlobPart& blobPar
 
     switch (type) {
     case BlobPart::Data: {
-        Vector<uint8_t> data;
+        Vector<char> data;
         if (!decoder.decode(data))
             return false;
         blobPart = BlobPart(WTFMove(data));

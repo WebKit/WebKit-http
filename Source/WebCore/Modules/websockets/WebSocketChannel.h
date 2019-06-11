@@ -204,7 +204,7 @@ private:
     // Private members only for hybi-10 protocol.
     bool m_hasContinuousFrame;
     WebSocketFrame::OpCode m_continuousFrameOpCode;
-    Vector<uint8_t> m_continuousFrameData;
+    Vector<char> m_continuousFrameData;
     unsigned short m_closeEventCode;
     String m_closeEventReason;
 
