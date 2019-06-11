@@ -8,21 +8,6 @@
         * wtf/Compiler.h: Enable
         WTF_COMPILER_SUPPORTS_CXX_REFERENCE_QUALIFIED_FUNCTIONS for VS2015
 
-2017-01-08  Konstantin Tokarev  <annulen@yandex.ru>
-
-        Introduce CPU(X86_SSE2) instead of various SSE2 checks
-        https://bugs.webkit.org/show_bug.cgi?id=166808
-
-        Reviewed by Michael Catanzaro.
-
-        Now copyLCharsFromUCharSource can use SSE2 implementation on non-Darwin
-        OSes, and all SSE2 code paths are available for MSVC on x86 if /arch:SSE2
-        or higher is enabled, and for MSVC on x86_64.
-
-        * wtf/Platform.h:
-        * wtf/text/ASCIIFastPath.h:
-        (WTF::copyLCharsFromUCharSource):
-
 2016-11-05  Konstantin Tokarev  <annulen@yandex.ru>
 
         Fixed compilation of LLInt with MinGW
