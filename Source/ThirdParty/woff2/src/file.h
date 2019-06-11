@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// File IO helpers.
+// File IO helpers
 
 #ifndef WOFF2_FILE_H_
 #define WOFF2_FILE_H_
@@ -22,20 +22,18 @@
 
 namespace woff2 {
 
-using std::string;
-
-
-inline string GetFileContent(string filename) {
+inline std::string GetFileContent(std::string filename) {
   std::ifstream ifs(filename.c_str(), std::ios::binary);
-  return string(
+  return std::string(
     std::istreambuf_iterator<char>(ifs.rdbuf()),
     std::istreambuf_iterator<char>());
 }
 
-inline void SetFileContents(string filename, string::iterator start,
-    string::iterator end) {
+inline void SetFileContents(std::string filename, std::string content) {
   std::ofstream ofs(filename.c_str(), std::ios::binary);
-  std::copy(start, end, std::ostream_iterator<char>(ofs));
+  std::copy(content.begin(),
+            content.end(),
+            std::ostream_iterator<char>(ofs));
 }
 
 } // namespace woff2
