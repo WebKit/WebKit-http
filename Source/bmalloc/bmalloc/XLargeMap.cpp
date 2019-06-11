@@ -24,11 +24,10 @@
  */
 
 #include "XLargeMap.h"
-#include <utility>
 
 namespace bmalloc {
 
-XLargeRange XLargeMap::remove(size_t alignment, size_t size)
+XLargeRange XLargeMap::takeFree(size_t alignment, size_t size)
 {
     size_t alignmentMask = alignment - 1;
 
@@ -62,12 +61,14 @@ XLargeRange XLargeMap::remove(size_t alignment, size_t size)
     return m_free.pop(candidate);
 }
 
-void XLargeMap::add(const XLargeRange& range)
+void XLargeMap::addFree(const XLargeRange& range)
 {
     XLargeRange merged = range;
 
     for (size_t i = 0; i < m_free.size(); ++i) {
-        if (!canMerge(merged, m_free[i]))
+        auto& other = m_free[i];
+
+        if (!canMerge(merged, other))
             continue;
 
         merged = merge(merged, m_free.pop(i--));
@@ -76,16 +77,75 @@ void XLargeMap::add(const XLargeRange& range)
     m_free.push(merged);
 }
 
-XLargeRange XLargeMap::removePhysical()
+void XLargeMap::addAllocated(const XLargeRange& prev, const std::pair<XLargeRange, XLargeRange>& allocated, const XLargeRange& next)
 {
-    auto it = std::find_if(m_free.begin(), m_free.end(), [](const XLargeRange& range) {
-        return range.physicalSize();
-    });
+    if (prev)
+        m_free.push(prev);
+    
+    if (next)
+        m_free.push(next);
 
-    if (it == m_free.end())
-        return XLargeRange();
+    m_allocated.insert({ allocated.first, allocated.second });
+}
 
-    return m_free.pop(it);
+XLargeRange XLargeMap::getAllocated(void* object)
+{
+    return m_allocated.find(object)->object;
+}
+
+XLargeRange XLargeMap::takeAllocated(void* object)
+{
+    Allocation allocation = m_allocated.take(object);
+    return merge(allocation.object, allocation.unused);
+}
+
+void XLargeMap::shrinkToFit()
+{
+    m_free.shrinkToFit();
+    m_allocated.shrinkToFit();
+}
+
+XLargeRange XLargeMap::takePhysical() {
+    auto hasPhysical = [](const XLargeRange& range) {
+        return range.vmState().hasPhysical();
+    };
+
+    auto it = std::find_if(m_free.begin(), m_free.end(), hasPhysical);
+    if (it != m_free.end())
+        return m_free.pop(it);
+
+    auto hasUnused = [](const Allocation& allocation) {
+        return allocation.unused && allocation.unused.vmState().hasPhysical();
+    };
+    
+    XLargeRange swapped;
+    auto it2 = std::find_if(m_allocated.begin(), m_allocated.end(), hasUnused);
+    if (it2 != m_allocated.end())
+        std::swap(it2->unused, swapped);
+    
+    return swapped;
+}
+
+void XLargeMap::addVirtual(const XLargeRange& range)
+{
+    auto canMerge = [&range](const Allocation& other) {
+        return other.object.end() == range.begin();
+    };
+
+    if (range.size() < xLargeAlignment) {
+        // This is an unused fragment, so it might belong in the allocated list.
+        auto it = std::find_if(m_allocated.begin(), m_allocated.end(), canMerge);
+        if (it != m_allocated.end()) {
+            BASSERT(!it->unused);
+            it->unused = range;
+            return;
+        }
+
+        // If we didn't find a neighbor in the allocated list, our neighbor must
+        // have been freed. We'll merge with it below.
+    }
+
+    addFree(range);
 }
 
 } // namespace bmalloc

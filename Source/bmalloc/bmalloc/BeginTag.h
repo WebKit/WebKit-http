@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,59 +23,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Deallocator_h
-#define Deallocator_h
+#ifndef BeginTag_h
+#define BeginTag_h
 
-#include "FixedVector.h"
-#include <mutex>
+#include "BoundaryTag.h"
 
 namespace bmalloc {
 
-class Heap;
-class StaticMutex;
-
-// Per-cache object deallocator.
-
-class Deallocator {
-public:
-    Deallocator(Heap*);
-    ~Deallocator();
-
-    void deallocate(void*);
-    void scavenge();
-    
-    void processObjectLog();
-    void processObjectLog(std::lock_guard<StaticMutex>&);
-
-private:
-    bool deallocateFastCase(void*);
-    void deallocateSlowCase(void*);
-
-    void deallocateXLarge(void*);
-
-    FixedVector<void*, deallocatorLogCapacity> m_objectLog;
-    bool m_isBmallocEnabled;
+class BeginTag : public BoundaryTag {
 };
-
-inline bool Deallocator::deallocateFastCase(void* object)
-{
-    BASSERT(isXLarge(nullptr));
-    if (isXLarge(object))
-        return false;
-
-    if (m_objectLog.size() == m_objectLog.capacity())
-        return false;
-
-    m_objectLog.push(object);
-    return true;
-}
-
-inline void Deallocator::deallocate(void* object)
-{
-    if (!deallocateFastCase(object))
-        deallocateSlowCase(object);
-}
 
 } // namespace bmalloc
 
-#endif // Deallocator_h
+#endif // BeginTag_h

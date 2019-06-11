@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,59 +23,53 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Deallocator_h
-#define Deallocator_h
+#ifndef FreeList_h
+#define FreeList_h
 
-#include "FixedVector.h"
-#include <mutex>
+#include "LargeObject.h"
+#include "Vector.h"
 
 namespace bmalloc {
 
-class Heap;
-class StaticMutex;
+// Helper object for SegregatedFreeList.
 
-// Per-cache object deallocator.
-
-class Deallocator {
+class FreeList {
 public:
-    Deallocator(Heap*);
-    ~Deallocator();
+    FreeList();
 
-    void deallocate(void*);
-    void scavenge();
-    
-    void processObjectLog();
-    void processObjectLog(std::lock_guard<StaticMutex>&);
+    void push(VMState::HasPhysical, const LargeObject&);
+
+    LargeObject take(VMState::HasPhysical, size_t);
+    LargeObject take(VMState::HasPhysical, size_t alignment, size_t, size_t unalignedSize);
+
+    LargeObject takeGreedy(VMState::HasPhysical);
+
+    void removeInvalidAndDuplicateEntries(VMState::HasPhysical);
 
 private:
-    bool deallocateFastCase(void*);
-    void deallocateSlowCase(void*);
-
-    void deallocateXLarge(void*);
-
-    FixedVector<void*, deallocatorLogCapacity> m_objectLog;
-    bool m_isBmallocEnabled;
+    Vector<Range> m_vector;
+    size_t m_limit;
 };
 
-inline bool Deallocator::deallocateFastCase(void* object)
+inline FreeList::FreeList()
+    : m_vector()
+    , m_limit(freeListSearchDepth)
 {
-    BASSERT(isXLarge(nullptr));
-    if (isXLarge(object))
-        return false;
-
-    if (m_objectLog.size() == m_objectLog.capacity())
-        return false;
-
-    m_objectLog.push(object);
-    return true;
 }
 
-inline void Deallocator::deallocate(void* object)
+inline void FreeList::push(VMState::HasPhysical hasPhysical, const LargeObject& largeObject)
 {
-    if (!deallocateFastCase(object))
-        deallocateSlowCase(object);
+    BASSERT(largeObject.isFree());
+    BASSERT(largeObject.vmState().hasPhysical() == static_cast<bool>(hasPhysical));
+    BASSERT(!largeObject.prevCanMerge());
+    BASSERT(!largeObject.nextCanMerge());
+    if (m_vector.size() == m_limit) {
+        removeInvalidAndDuplicateEntries(hasPhysical);
+        m_limit = std::max(m_vector.size() * freeListGrowFactor, freeListSearchDepth);
+    }
+    m_vector.push(largeObject.range());
 }
 
 } // namespace bmalloc
 
-#endif // Deallocator_h
+#endif // FreeList_h

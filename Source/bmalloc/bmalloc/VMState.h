@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,59 +23,64 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Deallocator_h
-#define Deallocator_h
-
-#include "FixedVector.h"
-#include <mutex>
+#ifndef VMState_h
+#define VMState_h
 
 namespace bmalloc {
 
-class Heap;
-class StaticMutex;
-
-// Per-cache object deallocator.
-
-class Deallocator {
+class VMState {
 public:
-    Deallocator(Heap*);
-    ~Deallocator();
+    enum class HasPhysical : bool {
+        False = false,
+        True = true
+    };
 
-    void deallocate(void*);
-    void scavenge();
-    
-    void processObjectLog();
-    void processObjectLog(std::lock_guard<StaticMutex>&);
+    enum State : unsigned {
+        Invalid = 0x0,
+        Physical = 0x1,
+        Virtual = 0x2,
+        Mixed = 0x3
+    };
+
+    VMState(State vmState)
+        : m_state(vmState)
+    {
+    }
+
+    explicit VMState(unsigned vmState)
+        : m_state(static_cast<State>(vmState))
+    {
+    }
+
+    inline bool hasPhysical()
+    {
+        return !!(m_state & VMState::Physical);
+    }
+
+    inline bool hasVirtual()
+    {
+        return !!(m_state & VMState::Virtual);
+    }
+
+    inline void merge(VMState otherVMState)
+    {
+        m_state = static_cast<State>(m_state | otherVMState.m_state);
+    }
+
+    bool operator==(VMState other) const { return m_state == other.m_state; }
+    explicit operator unsigned() const { return m_state; }
 
 private:
-    bool deallocateFastCase(void*);
-    void deallocateSlowCase(void*);
-
-    void deallocateXLarge(void*);
-
-    FixedVector<void*, deallocatorLogCapacity> m_objectLog;
-    bool m_isBmallocEnabled;
+    State m_state;
 };
 
-inline bool Deallocator::deallocateFastCase(void* object)
+inline VMState merge(VMState a, VMState b)
 {
-    BASSERT(isXLarge(nullptr));
-    if (isXLarge(object))
-        return false;
-
-    if (m_objectLog.size() == m_objectLog.capacity())
-        return false;
-
-    m_objectLog.push(object);
-    return true;
-}
-
-inline void Deallocator::deallocate(void* object)
-{
-    if (!deallocateFastCase(object))
-        deallocateSlowCase(object);
+    VMState result(a);
+    result.merge(b);
+    return result;
 }
 
 } // namespace bmalloc
 
-#endif // Deallocator_h
+#endif // VMState_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,59 +23,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Deallocator_h
-#define Deallocator_h
+#ifndef EndTag_h
+#define EndTag_h
 
-#include "FixedVector.h"
-#include <mutex>
+#include "BoundaryTag.h"
 
 namespace bmalloc {
 
-class Heap;
-class StaticMutex;
-
-// Per-cache object deallocator.
-
-class Deallocator {
+class EndTag : public BoundaryTag {
 public:
-    Deallocator(Heap*);
-    ~Deallocator();
-
-    void deallocate(void*);
-    void scavenge();
-    
-    void processObjectLog();
-    void processObjectLog(std::lock_guard<StaticMutex>&);
-
-private:
-    bool deallocateFastCase(void*);
-    void deallocateSlowCase(void*);
-
-    void deallocateXLarge(void*);
-
-    FixedVector<void*, deallocatorLogCapacity> m_objectLog;
-    bool m_isBmallocEnabled;
+    void init(BeginTag*);
 };
 
-inline bool Deallocator::deallocateFastCase(void* object)
+inline void EndTag::init(BeginTag* other)
 {
-    BASSERT(isXLarge(nullptr));
-    if (isXLarge(object))
-        return false;
+    // To save space, an object can have only one tag, representing both
+    // its begin and its end. In that case, we must avoid initializing the
+    // end tag, since there is no end tag.
+    if (static_cast<BoundaryTag*>(this) == static_cast<BoundaryTag*>(other))
+        return;
 
-    if (m_objectLog.size() == m_objectLog.capacity())
-        return false;
-
-    m_objectLog.push(object);
-    return true;
-}
-
-inline void Deallocator::deallocate(void* object)
-{
-    if (!deallocateFastCase(object))
-        deallocateSlowCase(object);
+    std::memcpy(this, other, sizeof(BoundaryTag));
+    setEnd(true);
 }
 
 } // namespace bmalloc
 
-#endif // Deallocator_h
+#endif // EndTag_h
