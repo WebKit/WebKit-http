@@ -145,16 +145,18 @@ String PropertySetCSSStyleDeclaration::cssText() const
 {
     return m_propertySet->asText();
 }
-
-void PropertySetCSSStyleDeclaration::setCssText(const String& text, ExceptionCode&)
+    
+void PropertySetCSSStyleDeclaration::setCssText(const String& text, ExceptionCode& ec)
 {
     StyleAttributeMutationScope mutationScope(this);
     if (!willMutate())
         return;
 
-    bool changed = m_propertySet->parseDeclaration(text, contextStyleSheet());
+    ec = 0;
+    // FIXME: Detect syntax errors and set ec.
+    m_propertySet->parseDeclaration(text, contextStyleSheet());
 
-    didMutate(changed ? PropertyChanged : NoChanges);
+    didMutate(PropertyChanged);
 
     mutationScope.enqueueMutationRecord();    
 }

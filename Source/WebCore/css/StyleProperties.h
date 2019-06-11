@@ -223,7 +223,7 @@ public:
     void mergeAndOverrideOnConflict(const StyleProperties&);
 
     void clear();
-    bool parseDeclaration(const String& styleDeclaration, StyleSheetContents* contextStyleSheet);
+    void parseDeclaration(const String& styleDeclaration, StyleSheetContents* contextStyleSheet);
 
     WEBCORE_EXPORT CSSStyleDeclaration* ensureCSSStyleDeclaration();
     CSSStyleDeclaration* ensureInlineCSSStyleDeclaration(StyledElement* parentElement);
