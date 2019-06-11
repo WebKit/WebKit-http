@@ -48,7 +48,6 @@ public:
 
     const AtomicString& name();
     DOMWrapperWorld& world();
-    const UserMessageHandlerDescriptor& descriptor() const { return m_descriptor.get(); }
 
 private:
     UserMessageHandler(Frame&, UserMessageHandlerDescriptor&);
