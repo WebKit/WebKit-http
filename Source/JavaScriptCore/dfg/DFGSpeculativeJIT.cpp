@@ -2013,7 +2013,8 @@ void SpeculativeJIT::compileValueToInt32(Node* node)
             }
 
             // First, if we get here we have a double encoded as a JSValue
-            unboxDouble(gpr, resultGpr, fpr);
+            m_jit.move(gpr, resultGpr);
+            unboxDouble(resultGpr, fpr);
 
             silentSpillAllRegisters(resultGpr);
             callOperation(toInt32, resultGpr, fpr);
@@ -2170,7 +2171,8 @@ void SpeculativeJIT::compileDoubleRep(Node* node)
 #if USE(JSVALUE64)
         GPRTemporary temp(this);
         GPRReg tempGPR = temp.gpr();
-        m_jit.unboxDoubleWithoutAssertions(op1Regs.gpr(), tempGPR, resultFPR);
+        m_jit.move(op1Regs.gpr(), tempGPR);
+        m_jit.unboxDoubleWithoutAssertions(tempGPR, resultFPR);
 #else
         FPRTemporary temp(this);
         FPRReg tempFPR = temp.fpr();
@@ -2247,8 +2249,9 @@ void SpeculativeJIT::compileDoubleRep(Node* node)
                 JSValueRegs(op1GPR), node->child1(), SpecBytecodeNumber,
                 m_jit.branchTest64(MacroAssembler::Zero, op1GPR, GPRInfo::tagTypeNumberRegister));
         }
-
-        unboxDouble(op1GPR, tempGPR, resultFPR);
+    
+        m_jit.move(op1GPR, tempGPR);
+        unboxDouble(tempGPR, resultFPR);
         done.append(m_jit.jump());
     
         isInteger.link(&m_jit);
@@ -6567,7 +6570,8 @@ void SpeculativeJIT::speculateRealNumber(Edge edge)
 #if USE(JSVALUE64)
     GPRTemporary temp(this);
     GPRReg tempGPR = temp.gpr();
-    m_jit.unboxDoubleWithoutAssertions(op1Regs.gpr(), tempGPR, resultFPR);
+    m_jit.move(op1Regs.gpr(), tempGPR);
+    m_jit.unboxDoubleWithoutAssertions(tempGPR, resultFPR);
 #else
     FPRTemporary temp(this);
     FPRReg tempFPR = temp.fpr();

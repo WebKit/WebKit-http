@@ -452,9 +452,9 @@ public:
     {
         return m_jit.boxDouble(fpr, gpr);
     }
-    FPRReg unboxDouble(GPRReg gpr, GPRReg resultGPR, FPRReg fpr)
+    FPRReg unboxDouble(GPRReg gpr, FPRReg fpr)
     {
-        return m_jit.unboxDouble(gpr, resultGPR, fpr);
+        return m_jit.unboxDouble(gpr, fpr);
     }
     GPRReg boxDouble(FPRReg fpr)
     {
