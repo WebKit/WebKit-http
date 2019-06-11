@@ -8,21 +8,6 @@
         * wtf/Compiler.h: Enable
         WTF_COMPILER_SUPPORTS_CXX_REFERENCE_QUALIFIED_FUNCTIONS for VS2015
 
-2016-07-13  Carlos Garcia Campos  <cgarcia@igalia.com>
-
-        [GTK] WebKitGtk+ uses too many file descriptors
-        https://bugs.webkit.org/show_bug.cgi?id=152316
-
-        Reviewed by Michael Catanzaro.
-
-        Add helper functions to duplicate a file descriptor setting close on exec flag, and also to set close on exec
-        flag to an existing file descriptor.
-
-        * wtf/UniStdExtras.h:
-        * wtf/UniStdExtras.cpp
-        (WTF::setCloseOnExec):
-        (WTF::dupCloseOnExec):
-
 2016-03-10  Frederic Wang  <fwang@igalia.com>
 
         [GTK] Add support for WOFF2

@@ -1,6 +1,4 @@
 list(APPEND WTF_SOURCES
-    UniStdExtras.cpp
-
     efl/DispatchQueueEfl.cpp
     efl/MainThreadEfl.cpp
     efl/RunLoopEfl.cpp

@@ -340,9 +340,11 @@ static ssize_t readBytesFromSocket(int socketDescriptor, Vector<uint8_t>& buffer
                 memcpy(fileDescriptors.data() + previousFileDescriptorsSize, CMSG_DATA(controlMessage), sizeof(int) * fileDescriptorsCount);
 
                 for (size_t i = 0; i < fileDescriptorsCount; ++i) {
-                    if (!setCloseOnExec(fileDescriptors[previousFileDescriptorsSize + i])) {
-                        ASSERT_NOT_REACHED();
-                        break;
+                    while (fcntl(fileDescriptors[previousFileDescriptorsSize + i], F_SETFD, FD_CLOEXEC) == -1) {
+                        if (errno != EINTR) {
+                            ASSERT_NOT_REACHED();
+                            break;
+                        }
                     }
                 }
                 break;
@@ -579,14 +581,14 @@ Connection::SocketPair Connection::createPlatformConnection(unsigned options)
 
     if (options & SetCloexecOnServer) {
         // Don't expose the child socket to the parent process.
-        if (!setCloseOnExec(sockets[1]))
-            RELEASE_ASSERT_NOT_REACHED();
+        while (fcntl(sockets[1], F_SETFD, FD_CLOEXEC)  == -1)
+            RELEASE_ASSERT(errno != EINTR);
     }
 
     if (options & SetCloexecOnClient) {
         // Don't expose the parent socket to potential future children.
-        if (!setCloseOnExec(sockets[0]))
-            RELEASE_ASSERT_NOT_REACHED();
+        while (fcntl(sockets[0], F_SETFD, FD_CLOEXEC) == -1)
+            RELEASE_ASSERT(errno != EINTR);
     }
 
     SocketPair socketPair = { sockets[0], sockets[1] };
