@@ -59,7 +59,7 @@ private:
 
     virtual void intrinsicSizeChanged() override;
     LayoutSize calculateIntrinsicSize();
-    bool updateIntrinsicSize();
+    void updateIntrinsicSize();
 
     virtual void imageChanged(WrappedImagePtr, const IntRect*) override;
 

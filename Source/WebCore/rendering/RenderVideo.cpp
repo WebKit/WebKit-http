@@ -76,22 +76,21 @@ void RenderVideo::intrinsicSizeChanged()
     updateIntrinsicSize(); 
 }
 
-bool RenderVideo::updateIntrinsicSize()
+void RenderVideo::updateIntrinsicSize()
 {
     LayoutSize size = calculateIntrinsicSize();
     size.scale(style().effectiveZoom());
 
     // Never set the element size to zero when in a media document.
     if (size.isEmpty() && document().isMediaDocument())
-        return false;
+        return;
 
     if (size == intrinsicSize())
-        return false;
+        return;
 
     setIntrinsicSize(size);
     setPreferredLogicalWidthsDirty(true);
     setNeedsLayout();
-    return true;
 }
     
 LayoutSize RenderVideo::calculateIntrinsicSize()
@@ -200,7 +199,6 @@ void RenderVideo::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
 void RenderVideo::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
-    updateIntrinsicSize();
     RenderMedia::layout();
     updatePlayer();
 }
@@ -221,9 +219,7 @@ void RenderVideo::updatePlayer()
     if (documentBeingDestroyed())
         return;
 
-    bool intrinsicSizeChanged;
-    intrinsicSizeChanged = updateIntrinsicSize();
-    ASSERT_UNUSED(intrinsicSizeChanged, !intrinsicSizeChanged || !view().frameView().isInRenderTreeLayout());
+    updateIntrinsicSize();
 
     MediaPlayer* mediaPlayer = videoElement().player();
     if (!mediaPlayer)
