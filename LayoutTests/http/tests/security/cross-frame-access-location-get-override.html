@@ -40,10 +40,12 @@
             // We should test overriding using window.location.__proto__ once the Location object has a proper prototype.
 
             // Overriden using window.location.assign = function() { return "new assign" }
-            shouldBeFalse("canGet('targetWindow.location.assign')");
+            shouldBeTrue("canGet('targetWindow.location.assign')");
+            shouldBe("toString('targetWindow.location.assign')", "toString('window.location.assign')");
 
             // Overriden using window.location.reload = "new reload"
-            shouldBeFalse("canGet('targetWindow.location.reload')");
+            shouldBeTrue("canGet('targetWindow.location.reload')");
+            shouldBe("toString('targetWindow.location.reload')", "toString('window.location.reload')");
 
             // Overriden using window.location.reload = "new replace"
             shouldBeTrue("canGet('targetWindow.location.replace')");
