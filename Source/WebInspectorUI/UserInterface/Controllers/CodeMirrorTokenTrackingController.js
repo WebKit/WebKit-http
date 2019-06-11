@@ -276,6 +276,8 @@ WebInspector.CodeMirrorTokenTrackingController = class CodeMirrorTokenTrackingCo
             const forceHidePopover = true;
             this._delegate.tokenTrackingControllerHighlightedRangeReleased(this, forceHidePopover);
         }
+
+        this._candidate = null;
     }
 
     _mouseEntered(event)
