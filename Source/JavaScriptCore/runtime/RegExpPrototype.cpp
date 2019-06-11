@@ -97,10 +97,7 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncTest(ExecState* exec)
     JSValue thisValue = exec->thisValue();
     if (!thisValue.inherits(RegExpObject::info()))
         return throwVMTypeError(exec);
-    JSString* string = exec->argument(0).toStringOrNull(exec);
-    if (!string)
-        return JSValue::encode(jsUndefined());
-    return JSValue::encode(jsBoolean(asRegExpObject(thisValue)->test(exec, string)));
+    return JSValue::encode(jsBoolean(asRegExpObject(thisValue)->test(exec, exec->argument(0).toString(exec))));
 }
 
 EncodedJSValue JSC_HOST_CALL regExpProtoFuncExec(ExecState* exec)
@@ -108,10 +105,7 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncExec(ExecState* exec)
     JSValue thisValue = exec->thisValue();
     if (!thisValue.inherits(RegExpObject::info()))
         return throwVMTypeError(exec);
-    JSString* string = exec->argument(0).toStringOrNull(exec);
-    if (!string)
-        return JSValue::encode(jsUndefined());
-    return JSValue::encode(asRegExpObject(thisValue)->exec(exec, string));
+    return JSValue::encode(asRegExpObject(thisValue)->exec(exec, exec->argument(0).toString(exec)));
 }
 
 EncodedJSValue JSC_HOST_CALL regExpProtoFuncCompile(ExecState* exec)

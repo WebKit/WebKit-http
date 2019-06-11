@@ -733,16 +733,7 @@ inline JSString* JSValue::toString(ExecState* exec) const
 {
     if (isString())
         return jsCast<JSString*>(asCell());
-    bool returnEmptyStringOnError = true;
-    return toStringSlowCase(exec, returnEmptyStringOnError);
-}
-
-inline JSString* JSValue::toStringOrNull(ExecState* exec) const
-{
-    if (isString())
-        return jsCast<JSString*>(asCell());
-    bool returnEmptyStringOnError = false;
-    return toStringSlowCase(exec, returnEmptyStringOnError);
+    return toStringSlowCase(exec);
 }
 
 inline String JSValue::toWTFString(ExecState* exec) const
