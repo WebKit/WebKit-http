@@ -1626,7 +1626,8 @@ class YarrGenerator : private MacroAssembler {
                     if (term->quantityType == QuantifierFixedCount)
                         inputOffset -= term->parentheses.disjunction->m_minimumSize;
                     if (inputOffset) {
-                        add32(Imm32(inputOffset), index, indexTemporary);
+                        move(index, indexTemporary);
+                        add32(Imm32(inputOffset), indexTemporary);
                         setSubpatternStart(indexTemporary, term->parentheses.subpatternId);
                     } else
                         setSubpatternStart(index, term->parentheses.subpatternId);
@@ -1656,7 +1657,8 @@ class YarrGenerator : private MacroAssembler {
                 if (term->capture() && compileMode == IncludeSubpatterns) {
                     int inputOffset = term->inputPosition - m_checked;
                     if (inputOffset) {
-                        add32(Imm32(inputOffset), index, indexTemporary);
+                        move(index, indexTemporary);
+                        add32(Imm32(inputOffset), indexTemporary);
                         setSubpatternEnd(indexTemporary, term->parentheses.subpatternId);
                     } else
                         setSubpatternEnd(index, term->parentheses.subpatternId);

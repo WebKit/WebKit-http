@@ -521,11 +521,6 @@ public:
         add32(src, dest);
     }
 
-    void addPtr(RegisterID left, RegisterID right, RegisterID dest)
-    {
-        add32(left, right, dest);
-    }
-
     void addPtr(TrustedImm32 imm, RegisterID srcDest)
     {
         add32(imm, srcDest);
@@ -797,11 +792,6 @@ public:
     void addPtr(RegisterID src, RegisterID dest)
     {
         add64(src, dest);
-    }
-
-    void addPtr(RegisterID left, RegisterID right, RegisterID dest)
-    {
-        add64(left, right, dest);
     }
     
     void addPtr(Address src, RegisterID dest)
@@ -1466,16 +1456,6 @@ public:
             add32(key.value2, dest);
         } else
             add32(imm.asTrustedImm32(), dest);
-    }
-
-    void add32(Imm32 imm, RegisterID src, RegisterID dest)
-    {
-        if (shouldBlind(imm)) {
-            BlindedImm32 key = additionBlindedConstant(imm);
-            add32(key.value1, src, dest);
-            add32(key.value2, dest);
-        } else
-            add32(imm.asTrustedImm32(), src, dest);
     }
     
     void addPtr(Imm32 imm, RegisterID dest)

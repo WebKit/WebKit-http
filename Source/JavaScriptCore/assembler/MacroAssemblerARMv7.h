@@ -155,11 +155,6 @@ public:
         m_assembler.add(dest, dest, src);
     }
 
-    void add32(RegisterID left, RegisterID right, RegisterID dest)
-    {
-        m_assembler.add(dest, left, right);
-    }
-
     void add32(TrustedImm32 imm, RegisterID dest)
     {
         add32(imm, dest, dest);
