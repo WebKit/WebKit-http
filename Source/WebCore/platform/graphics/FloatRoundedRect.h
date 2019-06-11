@@ -131,8 +131,6 @@ public:
     bool isRenderable() const;
     bool xInterceptsAtY(float y, float& minXIntercept, float& maxXIntercept) const;
 
-    bool intersectionIsRectangular(const FloatRect&) const;
-
 private:
     FloatRect m_rect;
     Radii m_radii;
