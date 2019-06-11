@@ -56,7 +56,7 @@ private:
 
 inline bool Deallocator::deallocateFastCase(void* object)
 {
-    if (!isSmall(object))
+    if (!isSmallOrMedium(object))
         return false;
 
     BASSERT(object);

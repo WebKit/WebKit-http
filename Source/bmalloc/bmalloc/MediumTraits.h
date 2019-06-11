@@ -23,39 +23,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ObjectType_h
-#define ObjectType_h
+#ifndef MediumTraits_h
+#define MediumTraits_h
 
-#include "BAssert.h"
 #include "Sizes.h"
+#include "VMAllocate.h"
 
 namespace bmalloc {
 
-enum ObjectType { Small, Medium, Large, XLarge };
+template<class Traits> class Chunk;
+template<class Traits> class Line;
+template<class Traits> class Page;
 
-ObjectType objectType(void*);
+struct MediumTraits {
+    typedef Chunk<MediumTraits> ChunkType;
+    typedef Line<MediumTraits> LineType;
+    typedef Page<MediumTraits> PageType;
 
-inline bool isSmallOrMedium(void* object)
-{
-    return test(object, smallOrMediumTypeMask);
-}
-
-inline bool isSmall(void* smallOrMedium)
-{
-    BASSERT(isSmallOrMedium(smallOrMedium));
-    return test(smallOrMedium, smallOrMediumSmallTypeMask);
-}
-
-inline bool isMedium(void* smallOrMedium)
-{
-    return !isSmall(smallOrMedium);
-}
-
-inline bool isXLarge(void* object)
-{
-    return !test(object, superChunkSize - 1);
-}
+    static const size_t lineSize = mediumLineSize;
+    static const size_t minimumObjectSize = smallMax + alignment;
+    static const size_t chunkSize = mediumChunkSize;
+    static const size_t chunkOffset = mediumChunkOffset;
+    static const uintptr_t chunkMask = mediumChunkMask;
+};
 
 } // namespace bmalloc
 
-#endif // ObjectType_h
+#endif // MediumTraits_h

@@ -32,7 +32,7 @@
 
 namespace bmalloc {
 
-// Helper object for allocating small objects.
+// Helper object for allocating small and medium objects.
 
 class BumpAllocator {
 public:
@@ -79,8 +79,8 @@ inline void BumpAllocator::validate(void* ptr)
         return;
     }
     
-    BASSERT(m_size <= smallMax);
-    BASSERT(isSmall(ptr));
+    BASSERT(m_size <= mediumMax);
+    BASSERT(isMedium(ptr));
 }
 
 inline void* BumpAllocator::allocate()

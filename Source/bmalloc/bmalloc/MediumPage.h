@@ -23,39 +23,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ObjectType_h
-#define ObjectType_h
+#ifndef MediumPage_h
+#define MediumPage_h
 
-#include "BAssert.h"
-#include "Sizes.h"
+#include "MediumTraits.h"
+#include "Page.h"
 
 namespace bmalloc {
 
-enum ObjectType { Small, Medium, Large, XLarge };
-
-ObjectType objectType(void*);
-
-inline bool isSmallOrMedium(void* object)
-{
-    return test(object, smallOrMediumTypeMask);
-}
-
-inline bool isSmall(void* smallOrMedium)
-{
-    BASSERT(isSmallOrMedium(smallOrMedium));
-    return test(smallOrMedium, smallOrMediumSmallTypeMask);
-}
-
-inline bool isMedium(void* smallOrMedium)
-{
-    return !isSmall(smallOrMedium);
-}
-
-inline bool isXLarge(void* object)
-{
-    return !test(object, superChunkSize - 1);
-}
+typedef Page<MediumTraits> MediumPage;
 
 } // namespace bmalloc
 
-#endif // ObjectType_h
+#endif // MediumPage_h

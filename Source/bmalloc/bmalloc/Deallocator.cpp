@@ -77,8 +77,14 @@ void Deallocator::processObjectLog()
     Heap* heap = PerProcess<Heap>::getFastCase();
     
     for (auto* object : m_objectLog) {
-        SmallLine* line = SmallLine::get(object);
-        heap->derefSmallLine(lock, line);
+        if (isSmall(object)) {
+            SmallLine* line = SmallLine::get(object);
+            heap->derefSmallLine(lock, line);
+        } else {
+            BASSERT(isMedium(object));
+            MediumLine* line = MediumLine::get(object);
+            heap->derefMediumLine(lock, line);
+        }
     }
     
     m_objectLog.clear();
@@ -97,7 +103,7 @@ void Deallocator::deallocateSlowCase(void* object)
     if (!object)
         return;
 
-    if (isSmall(object)) {
+    if (isSmallOrMedium(object)) {
         processObjectLog();
         m_objectLog.push(object);
         return;

@@ -52,14 +52,15 @@ private:
     bool allocateFastCase(size_t, void*&);
     void* allocateSlowCase(size_t);
     
+    void* allocateMedium(size_t);
     void* allocateLarge(size_t);
     void* allocateXLarge(size_t);
     
     void refillAllocator(BumpAllocator&, size_t sizeClass);
     void refillAllocatorSlowCase(BumpAllocator&, size_t sizeClass);
     
-    std::array<BumpAllocator, smallMax / alignment> m_bumpAllocators;
-    std::array<BumpRangeCache, smallMax / alignment> m_bumpRangeCaches;
+    std::array<BumpAllocator, mediumMax / alignment> m_bumpAllocators;
+    std::array<BumpRangeCache, mediumMax / alignment> m_bumpRangeCaches;
 
     bool m_isBmallocEnabled;
     Deallocator& m_deallocator;
@@ -67,7 +68,7 @@ private:
 
 inline bool Allocator::allocateFastCase(size_t size, void*& object)
 {
-    if (size > smallMax)
+    if (size > mediumMax)
         return false;
 
     BumpAllocator& allocator = m_bumpAllocators[sizeClass(size)];

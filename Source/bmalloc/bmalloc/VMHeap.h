@@ -30,6 +30,7 @@
 #include "FixedVector.h"
 #include "LargeChunk.h"
 #include "LargeObject.h"
+#include "MediumChunk.h"
 #include "Range.h"
 #include "SegregatedFreeList.h"
 #include "SmallChunk.h"
@@ -50,30 +51,42 @@ class VMHeap {
 public:
     VMHeap();
 
-    SmallPage* allocateSmallPage(std::lock_guard<StaticMutex>&);
+    SmallPage* allocateSmallPage();
+    MediumPage* allocateMediumPage();
     LargeObject allocateLargeObject(size_t);
     LargeObject allocateLargeObject(size_t, size_t, size_t);
 
     void deallocateSmallPage(std::unique_lock<StaticMutex>&, SmallPage*);
+    void deallocateMediumPage(std::unique_lock<StaticMutex>&, MediumPage*);
     void deallocateLargeObject(std::unique_lock<StaticMutex>&, LargeObject);
 
 private:
     void grow();
 
     Vector<SmallPage*> m_smallPages;
+    Vector<MediumPage*> m_mediumPages;
     SegregatedFreeList m_largeObjects;
 #if BOS(DARWIN)
     Zone m_zone;
 #endif
 };
 
-inline SmallPage* VMHeap::allocateSmallPage(std::lock_guard<StaticMutex>& lock)
+inline SmallPage* VMHeap::allocateSmallPage()
 {
     if (!m_smallPages.size())
         grow();
 
     SmallPage* page = m_smallPages.pop();
-    page->setHasFreeLines(lock, true);
+    vmAllocatePhysicalPages(page->begin()->begin(), vmPageSize);
+    return page;
+}
+
+inline MediumPage* VMHeap::allocateMediumPage()
+{
+    if (!m_mediumPages.size())
+        grow();
+
+    MediumPage* page = m_mediumPages.pop();
     vmAllocatePhysicalPages(page->begin()->begin(), vmPageSize);
     return page;
 }
@@ -109,6 +122,15 @@ inline void VMHeap::deallocateSmallPage(std::unique_lock<StaticMutex>& lock, Sma
     lock.lock();
     
     m_smallPages.push(page);
+}
+
+inline void VMHeap::deallocateMediumPage(std::unique_lock<StaticMutex>& lock, MediumPage* page)
+{
+    lock.unlock();
+    vmDeallocatePhysicalPages(page->begin()->begin(), vmPageSize);
+    lock.lock();
+    
+    m_mediumPages.push(page);
 }
 
 inline void VMHeap::deallocateLargeObject(std::unique_lock<StaticMutex>& lock, LargeObject largeObject)

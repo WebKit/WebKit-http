@@ -30,8 +30,11 @@ namespace bmalloc {
 
 ObjectType objectType(void* object)
 {
-    if (isSmall(object))
-        return Small;
+    if (isSmallOrMedium(object)) {
+        if (isSmall(object))
+            return Small;
+        return Medium;
+    }
     
     if (!isXLarge(object))
         return Large;
