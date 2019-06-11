@@ -85,7 +85,6 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         this._mouseWheelDelta = 0;
         this._cachedScrollContainerWidth = NaN;
         this._timelineRulerSelectionChanged = false;
-        this._viewMode = WebInspector.TimelineOverview.ViewMode.Timelines;
 
         for (let instrument of this._recording.instruments)
             this._instrumentAdded(instrument);
@@ -93,7 +92,7 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         if (!WebInspector.timelineManager.isCapturingPageReload())
             this._resetSelection();
 
-        this._viewModeDidChange();
+        this.viewMode = WebInspector.TimelineOverview.ViewMode.Timelines;
     }
 
     // Public
