@@ -112,13 +112,6 @@ private:
         : SVGAnimatedListPropertyTearOff<SVGPathSegList>(contextElement, attributeName, animatedPropertyType, values)
         , m_animatedPathByteStream(nullptr)
     {
-        ASSERT(contextElement);
-        ASSERT(is<SVGPathElement>(contextElement));
-    }
-
-    virtual ~SVGAnimatedPathSegListPropertyTearOff()
-    {
-        downcast<SVGPathElement>(contextElement())->animatedPropertyWillBeDeleted();
     }
 
     SVGPathByteStream* m_animatedPathByteStream;

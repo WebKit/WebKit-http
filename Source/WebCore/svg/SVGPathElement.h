@@ -99,8 +99,6 @@ public:
 
     WeakPtr<SVGPathElement> createWeakPtr() const { return m_weakPtrFactory.createWeakPtr(); }
 
-    void animatedPropertyWillBeDeleted();
-
 private:
     SVGPathElement(const QualifiedName&, Document&);
 
