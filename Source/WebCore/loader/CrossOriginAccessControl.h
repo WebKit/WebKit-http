@@ -41,7 +41,6 @@ enum class HTTPHeaderName;
 class ResourceRequest;
 class ResourceResponse;
 class SecurityOrigin;
-class URL;
 
 bool isSimpleCrossOriginAccessRequest(const String& method, const HTTPHeaderMap&);
 bool isOnAccessControlSimpleRequestMethodWhitelist(const String&);
@@ -50,9 +49,6 @@ bool isOnAccessControlResponseHeaderWhitelist(const String&);
 
 void updateRequestForAccessControl(ResourceRequest&, SecurityOrigin*, StoredCredentials);
 ResourceRequest createAccessControlPreflightRequest(const ResourceRequest&, SecurityOrigin*);
-
-bool isValidCrossOriginRedirectionURL(const URL&);
-void cleanRedirectedRequestForAccessControl(ResourceRequest&);
 
 bool passesAccessControlCheck(const ResourceResponse&, StoredCredentials, SecurityOrigin*, String& errorDescription);
 void parseAccessControlExposeHeadersAllowList(const String& headerValue, HTTPHeaderSet&);

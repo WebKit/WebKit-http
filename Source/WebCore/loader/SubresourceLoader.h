@@ -40,7 +40,6 @@ class CachedResource;
 class CachedResourceLoader;
 class Document;
 class ResourceRequest;
-class SecurityOrigin;
 
 class SubresourceLoader final : public ResourceLoader {
 public:
@@ -92,7 +91,6 @@ private:
 #endif
 
     bool checkForHTTPStatusCodeError();
-    bool checkCrossOriginAccessControl(const ResourceRequest&, const ResourceResponse&, ResourceRequest& newRequest);
 
     void didReceiveDataOrBuffer(const char*, int, PassRefPtr<SharedBuffer>, long long encodedDataLength, DataPayloadType);
 
@@ -126,7 +124,6 @@ private:
     bool m_loadingMultipartContent;
     SubresourceLoaderState m_state;
     std::unique_ptr<RequestCountTracker> m_requestCountTracker;
-    RefPtr<SecurityOrigin> m_origin;
 };
 
 }
