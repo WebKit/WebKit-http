@@ -488,7 +488,7 @@ long AccessibleBase::state() const
     if (!m_object->isEnabled())
         state |= STATE_SYSTEM_UNAVAILABLE;
 
-    if (!m_object->canSetValueAttribute())
+    if (m_object->isReadOnly())
         state |= STATE_SYSTEM_READONLY;
 
     if (m_object->isOffScreen())
