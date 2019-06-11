@@ -54,8 +54,6 @@ public:
 
     unsigned depth() const;
 
-    void dropAssertions();
-
 private:
     void initializeContextStack(ContainerNode& root, Node& current);
     void traverseNextInShadowTree();
@@ -83,7 +81,6 @@ private:
     const Context& context() const { return m_contextStack.last(); }
     Node& current() { return *context().iterator; }
 
-    bool m_didDropAssertions { false };
     Vector<Context, 4> m_contextStack;
 };
 

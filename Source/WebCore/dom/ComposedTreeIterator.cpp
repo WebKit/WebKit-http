@@ -106,13 +106,6 @@ void ComposedTreeIterator::initializeContextStack(ContainerNode& root, Node& cur
     m_contextStack.reverse();
 }
 
-void ComposedTreeIterator::dropAssertions()
-{
-    for (auto& context : m_contextStack)
-        context.iterator.dropAssertions();
-    m_didDropAssertions = true;
-}
-
 void ComposedTreeIterator::traverseShadowRoot(ShadowRoot& shadowRoot)
 {
     Context shadowContext(shadowRoot);
@@ -121,9 +114,6 @@ void ComposedTreeIterator::traverseShadowRoot(ShadowRoot& shadowRoot)
         traverseNextSkippingChildren();
         return;
     }
-
-    if (m_didDropAssertions)
-        shadowContext.iterator.dropAssertions();
 
     m_contextStack.append(WTFMove(shadowContext));
 }

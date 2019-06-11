@@ -27,7 +27,6 @@
 #define StyleTreeResolver_h
 
 #include "RenderStyleConstants.h"
-#include "RenderTreePosition.h"
 #include "SelectorFilter.h"
 #include "StyleChange.h"
 #include "StyleSharingResolver.h"
@@ -42,6 +41,7 @@ class Element;
 class HTMLSlotElement;
 class Node;
 class RenderStyle;
+class RenderTreePosition;
 class Settings;
 class ShadowRoot;
 class StyleResolver;
@@ -56,10 +56,14 @@ public:
     void resolve(Change);
 
 private:
+    void resolveShadowTree(Change, RenderStyle& inheritedStyle);
+
     Ref<RenderStyle> styleForElement(Element&, RenderStyle& inheritedStyle);
 
-    void resolveComposedTree();
-    Change resolveElement(Element&);
+    void resolveRecursively(Element&, RenderStyle& inheritedStyle, RenderTreePosition&, Change);
+    Change resolveLocally(Element&, RenderStyle& inheritedStyle, RenderTreePosition&, Change inheritedChange);
+    void resolveChildren(Element&, RenderStyle&, Change, RenderTreePosition&);
+    void resolveChildAtShadowBoundary(Node&, RenderStyle& inheritedStyle, RenderTreePosition&, Change);
     void resolveBeforeOrAfterPseudoElement(Element&, Change, PseudoId, RenderTreePosition&);
 
     void createRenderTreeRecursively(Element&, RenderStyle&, RenderTreePosition&, RefPtr<RenderStyle>&& resolvedStyle);
@@ -69,6 +73,7 @@ private:
     void createRenderTreeForShadowRoot(ShadowRoot&);
 
 #if ENABLE(SHADOW_DOM) || ENABLE(DETAILS_ELEMENT)
+    void resolveSlotAssignees(HTMLSlotElement&, RenderStyle& inheritedStyle, RenderTreePosition&, Change);
     void createRenderTreeForSlotAssignees(HTMLSlotElement&, RenderStyle& inheritedStyle, RenderTreePosition&);
 #endif
 
@@ -82,33 +87,13 @@ private:
         Scope(Document&);
         Scope(ShadowRoot&, Scope& enclosingScope);
     };
-
-    struct Parent {
-        Element* element;
-        Ref<RenderStyle> style;
-        RenderTreePosition renderTreePosition;
-        Change change;
-        bool didPushScope { false };
-        bool elementNeedingStyleRecalcAffectsNextSiblingElementStyle { false };
-
-        Parent(Document&, Change);
-        Parent(Element&, RenderStyle&, RenderTreePosition, Change);
-    };
-
     Scope& scope() { return m_scopeStack.last(); }
-    Parent& parent() { return m_parentStack.last(); }
-
     void pushScope(ShadowRoot&);
     void pushEnclosingScope();
     void popScope();
 
-    void pushParent(Element&, RenderStyle&, RenderTreePosition, Change);
-    void popParent();
-    void popParentsToDepth(unsigned depth);
-
     Document& m_document;
     Vector<Ref<Scope>, 4> m_scopeStack;
-    Vector<Parent, 32> m_parentStack;
 };
 
 void detachRenderTree(Element&);
