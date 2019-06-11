@@ -32,6 +32,7 @@
 #include "WorkerGlobalScopeIndexedDatabase.h"
 
 #include "IDBFactory.h"
+#include "IDBFactoryBackendInterface.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
 
@@ -68,7 +69,11 @@ IDBFactory* WorkerGlobalScopeIndexedDatabase::indexedDB(ScriptExecutionContext* 
 
 IDBFactory* WorkerGlobalScopeIndexedDatabase::indexedDB()
 {
-    return nullptr;
+    if (!m_factoryBackend)
+        m_factoryBackend = IDBFactoryBackendInterface::create();
+    if (!m_idbFactory)
+        m_idbFactory = IDBFactory::create(m_factoryBackend.get());
+    return m_idbFactory.get();
 }
 
 } // namespace WebCore

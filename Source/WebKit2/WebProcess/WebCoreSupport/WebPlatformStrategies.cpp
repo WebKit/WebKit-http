@@ -40,6 +40,7 @@
 #include "WebErrors.h"
 #include "WebFrame.h"
 #include "WebFrameLoaderClient.h"
+#include "WebIDBFactoryBackend.h"
 #include "WebLoaderStrategy.h"
 #include "WebPage.h"
 #include "WebPasteboardOverrides.h"
@@ -49,6 +50,7 @@
 #include <WebCore/Color.h>
 #include <WebCore/Document.h>
 #include <WebCore/DocumentLoader.h>
+#include <WebCore/IDBFactoryBackendInterface.h>
 #include <WebCore/LoaderStrategy.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/NetworkStorageSession.h>

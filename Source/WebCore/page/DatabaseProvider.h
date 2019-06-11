@@ -32,6 +32,7 @@
 namespace WebCore {
 
 class IDBConnectionManager;
+class IDBFactoryBackendInterface;
 class SessionID;
 
 namespace IDBClient {
@@ -43,7 +44,18 @@ public:
     virtual ~DatabaseProvider();
 
 #if ENABLE(INDEXED_DATABASE)
+    IDBFactoryBackendInterface* idbFactoryBackend();
+
+    virtual bool supportsModernIDB() const = 0;
     virtual IDBClient::IDBConnectionToServer& idbConnectionToServerForSession(const SessionID&) = 0;
+#endif
+
+private:
+#if ENABLE(INDEXED_DATABASE)
+    virtual RefPtr<IDBFactoryBackendInterface> createIDBFactoryBackend() = 0;
+
+    bool m_didCreateIDBFactoryBackendInterface { false };
+    RefPtr<IDBFactoryBackendInterface> m_backendInterface;
 #endif
 };
 

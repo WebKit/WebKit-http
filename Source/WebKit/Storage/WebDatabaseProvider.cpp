@@ -25,6 +25,7 @@
 
 #include "WebDatabaseProvider.h"
 
+#include <WebCore/IDBFactoryBackendInterface.h>
 #include <WebCore/SessionID.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -44,6 +45,11 @@ WebDatabaseProvider::~WebDatabaseProvider()
 }
 
 #if ENABLE(INDEXED_DATABASE)
+RefPtr<WebCore::IDBFactoryBackendInterface> WebDatabaseProvider::createIDBFactoryBackend()
+{
+    return nullptr;
+}
+
 WebCore::IDBClient::IDBConnectionToServer& WebDatabaseProvider::idbConnectionToServerForSession(const WebCore::SessionID& sessionID)
 {
     auto result = m_idbServerMap.add(sessionID.sessionID(), nullptr);

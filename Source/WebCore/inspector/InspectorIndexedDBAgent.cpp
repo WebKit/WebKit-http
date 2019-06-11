@@ -47,6 +47,8 @@
 #include "IDBCursor.h"
 #include "IDBCursorWithValue.h"
 #include "IDBDatabase.h"
+#include "IDBDatabaseCallbacks.h"
+#include "IDBDatabaseMetadata.h"
 #include "IDBFactory.h"
 #include "IDBIndex.h"
 #include "IDBKey.h"
@@ -54,10 +56,12 @@
 #include "IDBKeyRange.h"
 #include "IDBObjectStore.h"
 #include "IDBOpenDBRequest.h"
+#include "IDBPendingTransactionMonitor.h"
 #include "IDBRequest.h"
 #include "IDBTransaction.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
+#include "LegacyDatabase.h"
 #include "SecurityOrigin.h"
 #include <inspector/InjectedScript.h>
 #include <inspector/InjectedScriptManager.h>
@@ -146,7 +150,7 @@ public:
         : m_context(context) { }
     virtual ~ExecutableWithDatabase() { };
     void start(IDBFactory*, SecurityOrigin*, const String& databaseName);
-    virtual void execute() = 0;
+    virtual void execute(RefPtr<LegacyDatabase>&&) = 0;
     virtual RequestCallback& requestCallback() = 0;
     ScriptExecutionContext* context() { return m_context; };
 private:
@@ -190,8 +194,10 @@ public:
             return;
         }
 
-        // FIXME (webkit.org/b/154686) - Reimplement this.
-        m_executableWithDatabase->execute();
+        RefPtr<LegacyDatabase> idbDatabase = adoptRef(static_cast<LegacyDatabase*>(requestResult->idbDatabase().leakRef()));
+        m_executableWithDatabase->execute(WTFMove(idbDatabase));
+        IDBPendingTransactionMonitor::deactivateNewTransactions();
+        idbDatabase->close();
     }
 
 private:
@@ -213,6 +219,66 @@ void ExecutableWithDatabase::start(IDBFactory* idbFactory, SecurityOrigin*, cons
     idbOpenDBRequest->addEventListener(eventNames().successEvent, WTFMove(callback), false);
 }
 
+static RefPtr<IDBTransaction> transactionForDatabase(ScriptExecutionContext* scriptExecutionContext, IDBDatabase* idbDatabase, const String& objectStoreName, const String& mode = IDBTransaction::modeReadOnly())
+{
+    ExceptionCodeWithMessage ec;
+    RefPtr<IDBTransaction> idbTransaction = idbDatabase->transaction(scriptExecutionContext, objectStoreName, mode, ec);
+    if (ec.code)
+        return nullptr;
+    return idbTransaction;
+}
+
+static RefPtr<IDBObjectStore> objectStoreForTransaction(IDBTransaction* idbTransaction, const String& objectStoreName)
+{
+    ExceptionCodeWithMessage ec;
+    RefPtr<IDBObjectStore> idbObjectStore = idbTransaction->objectStore(objectStoreName, ec);
+    if (ec.code)
+        return nullptr;
+    return idbObjectStore;
+}
+
+static RefPtr<IDBIndex> indexForObjectStore(IDBObjectStore* idbObjectStore, const String& indexName)
+{
+    ExceptionCodeWithMessage ec;
+    RefPtr<IDBIndex> idbIndex = idbObjectStore->index(indexName, ec);
+    if (ec.code)
+        return nullptr;
+    return idbIndex;
+}
+
+static RefPtr<KeyPath> keyPathFromIDBKeyPath(const IDBKeyPath& idbKeyPath)
+{
+    RefPtr<KeyPath> keyPath;
+    switch (idbKeyPath.type()) {
+    case IndexedDB::KeyPathType::Null:
+        keyPath = KeyPath::create()
+            .setType(KeyPath::Type::Null)
+            .release();
+        break;
+    case IndexedDB::KeyPathType::String:
+        keyPath = KeyPath::create()
+            .setType(KeyPath::Type::String)
+            .release();
+        keyPath->setString(idbKeyPath.string());
+
+        break;
+    case IndexedDB::KeyPathType::Array: {
+        auto array = Inspector::Protocol::Array<String>::create();
+        for (auto& string : idbKeyPath.array())
+            array->addItem(string);
+        keyPath = KeyPath::create()
+            .setType(KeyPath::Type::Array)
+            .release();
+        keyPath->setArray(WTFMove(array));
+        break;
+    }
+    default:
+        ASSERT_NOT_REACHED();
+    }
+
+    return keyPath;
+}
+
 class DatabaseLoader : public ExecutableWithDatabase {
 public:
     static Ref<DatabaseLoader> create(ScriptExecutionContext* context, Ref<RequestDatabaseCallback>&& requestCallback)
@@ -222,12 +288,45 @@ public:
 
     virtual ~DatabaseLoader() { }
 
-    virtual void execute() override
+    virtual void execute(RefPtr<LegacyDatabase>&& database) override
     {
         if (!requestCallback().isActive())
             return;
 
-        // FIXME (webkit.org/b/154686) - Reimplement this.
+        const IDBDatabaseMetadata databaseMetadata = database->metadata();
+
+        auto objectStores = Inspector::Protocol::Array<Inspector::Protocol::IndexedDB::ObjectStore>::create();
+
+        for (const IDBObjectStoreMetadata& objectStoreMetadata : databaseMetadata.objectStores.values()) {
+            auto indexes = Inspector::Protocol::Array<Inspector::Protocol::IndexedDB::ObjectStoreIndex>::create();
+
+            for (const IDBIndexMetadata& indexMetadata : objectStoreMetadata.indexes.values()) {
+                Ref<ObjectStoreIndex> objectStoreIndex = ObjectStoreIndex::create()
+                    .setName(indexMetadata.name)
+                    .setKeyPath(keyPathFromIDBKeyPath(indexMetadata.keyPath))
+                    .setUnique(indexMetadata.unique)
+                    .setMultiEntry(indexMetadata.multiEntry)
+                    .release();
+                indexes->addItem(WTFMove(objectStoreIndex));
+            }
+
+            Ref<ObjectStore> objectStore = ObjectStore::create()
+                .setName(objectStoreMetadata.name)
+                .setKeyPath(keyPathFromIDBKeyPath(objectStoreMetadata.keyPath))
+                .setAutoIncrement(objectStoreMetadata.autoIncrement)
+                .setIndexes(WTFMove(indexes))
+                .release();
+
+            objectStores->addItem(WTFMove(objectStore));
+        }
+
+        Ref<DatabaseWithObjectStores> result = DatabaseWithObjectStores::create()
+            .setName(databaseMetadata.name)
+            .setVersion(databaseMetadata.version)
+            .setObjectStores(WTFMove(objectStores))
+            .release();
+
+        m_requestCallback->sendSuccess(WTFMove(result));
     }
 
     virtual RequestCallback& requestCallback() override { return m_requestCallback.get(); }
@@ -419,12 +518,36 @@ public:
 
     virtual ~DataLoader() { }
 
-    virtual void execute() override
+    virtual void execute(RefPtr<LegacyDatabase>&& database) override
     {
         if (!requestCallback().isActive())
             return;
+        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(context(), database.get(), m_objectStoreName);
+        if (!idbTransaction) {
+            m_requestCallback->sendFailure("Could not get transaction");
+            return;
+        }
+        RefPtr<IDBObjectStore> idbObjectStore = objectStoreForTransaction(idbTransaction.get(), m_objectStoreName);
+        if (!idbObjectStore) {
+            m_requestCallback->sendFailure("Could not get object store");
+            return;
+        }
 
-        // FIXME (webkit.org/b/154686) - Reimplement this.
+        Ref<OpenCursorCallback> openCursorCallback = OpenCursorCallback::create(m_injectedScript, m_requestCallback.copyRef(), m_skipCount, m_pageSize);
+
+        ExceptionCodeWithMessage ec;
+        RefPtr<IDBRequest> idbRequest;
+        if (!m_indexName.isEmpty()) {
+            RefPtr<IDBIndex> idbIndex = indexForObjectStore(idbObjectStore.get(), m_indexName);
+            if (!idbIndex) {
+                m_requestCallback->sendFailure("Could not get index");
+                return;
+            }
+
+            idbRequest = idbIndex->openCursor(context(), m_idbKeyRange.get(), ec);
+        } else
+            idbRequest = idbObjectStore->openCursor(context(), m_idbKeyRange.get(), ec);
+        idbRequest->addEventListener(eventNames().successEvent, WTFMove(openCursorCallback), false);
     }
 
     virtual RequestCallback& requestCallback() override { return m_requestCallback.get(); }
@@ -611,12 +734,29 @@ public:
     {
     }
 
-    virtual void execute() override
+    virtual void execute(RefPtr<LegacyDatabase>&& database) override
     {
         if (!requestCallback().isActive())
             return;
+        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(context(), database.get(), m_objectStoreName, IDBTransaction::modeReadWrite());
+        if (!idbTransaction) {
+            m_requestCallback->sendFailure("Could not get transaction");
+            return;
+        }
+        RefPtr<IDBObjectStore> idbObjectStore = objectStoreForTransaction(idbTransaction.get(), m_objectStoreName);
+        if (!idbObjectStore) {
+            m_requestCallback->sendFailure("Could not get object store");
+            return;
+        }
 
-        // FIXME (webkit.org/b/154686) - Reimplement this.
+        ExceptionCodeWithMessage ec;
+        RefPtr<IDBRequest> idbRequest = idbObjectStore->clear(context(), ec);
+        ASSERT(!ec.code);
+        if (ec.code) {
+            m_requestCallback->sendFailure(String::format("Could not clear object store '%s': %d", m_objectStoreName.utf8().data(), ec.code));
+            return;
+        }
+        idbTransaction->addEventListener(eventNames().completeEvent, ClearObjectStoreListener::create(m_requestCallback.copyRef()), false);
     }
 
     virtual RequestCallback& requestCallback() override { return m_requestCallback.get(); }

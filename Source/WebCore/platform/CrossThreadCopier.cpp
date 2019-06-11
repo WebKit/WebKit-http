@@ -46,6 +46,7 @@
 #include "IDBCursorInfo.h"
 #include "IDBDatabaseIdentifier.h"
 #include "IDBDatabaseInfo.h"
+#include "IDBDatabaseMetadata.h"
 #include "IDBError.h"
 #include "IDBGetResult.h"
 #include "IDBIndexInfo.h"
@@ -110,9 +111,19 @@ IndexedDB::CursorType CrossThreadCopierBase<false, false, IndexedDB::CursorType>
     return type;
 }
 
+CrossThreadCopierBase<false, false, IDBDatabaseMetadata>::Type CrossThreadCopierBase<false, false, IDBDatabaseMetadata>::copy(const IDBDatabaseMetadata& metadata)
+{
+    return metadata.isolatedCopy();
+}
+
 CrossThreadCopierBase<false, false, IDBGetResult>::Type CrossThreadCopierBase<false, false, IDBGetResult>::copy(const IDBGetResult& result)
 {
     return result.isolatedCopy();
+}
+
+CrossThreadCopierBase<false, false, IDBIndexMetadata>::Type CrossThreadCopierBase<false, false, IDBIndexMetadata>::copy(const IDBIndexMetadata& metadata)
+{
+    return metadata.isolatedCopy();
 }
 
 CrossThreadCopierBase<false, false, IDBKeyData>::Type CrossThreadCopierBase<false, false, IDBKeyData>::copy(const IDBKeyData& keyData)
@@ -123,6 +134,11 @@ CrossThreadCopierBase<false, false, IDBKeyData>::Type CrossThreadCopierBase<fals
 CrossThreadCopierBase<false, false, IDBKeyRangeData>::Type CrossThreadCopierBase<false, false, IDBKeyRangeData>::copy(const IDBKeyRangeData& keyRangeData)
 {
     return keyRangeData.isolatedCopy();
+}
+
+CrossThreadCopierBase<false, false, IDBObjectStoreMetadata>::Type CrossThreadCopierBase<false, false, IDBObjectStoreMetadata>::copy(const IDBObjectStoreMetadata& metadata)
+{
+    return metadata.isolatedCopy();
 }
 
 CrossThreadCopierBase<false, false, IDBDatabaseInfo>::Type CrossThreadCopierBase<false, false, IDBDatabaseInfo>::copy(const IDBDatabaseInfo& info)

@@ -35,12 +35,10 @@
 namespace WebCore {
 class IDBCursorInfo;
 class IDBIndexInfo;
-class IDBKeyData;
 class IDBObjectStoreInfo;
 class IDBRequestData;
 class IDBTransactionInfo;
 class SerializedScriptValue;
-struct IDBKeyRangeData;
 }
 
 namespace WebKit {

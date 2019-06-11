@@ -3,6 +3,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}"
     "${WEBKIT2_DIR}/DatabaseProcess"
     "${WEBKIT2_DIR}/DatabaseProcess/IndexedDB"
+    "${WEBKIT2_DIR}/DatabaseProcess/IndexedDB/sqlite"
     "${WEBKIT2_DIR}/NetworkProcess"
     "${WEBKIT2_DIR}/NetworkProcess/CustomProtocols"
     "${WEBKIT2_DIR}/NetworkProcess/Downloads"
@@ -70,6 +71,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/battery"
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/indexeddb/client"
+    "${WEBCORE_DIR}/Modules/indexeddb/legacy"
     "${WEBCORE_DIR}/Modules/indexeddb/server"
     "${WEBCORE_DIR}/Modules/indexeddb/shared"
     "${WEBCORE_DIR}/Modules/mediastream"
@@ -192,7 +194,15 @@ set(WebKit2_SOURCES
     DatabaseProcess/DatabaseProcess.cpp
     DatabaseProcess/DatabaseToWebProcessConnection.cpp
 
+    DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.cpp
+    DatabaseProcess/IndexedDB/IDBSerialization.cpp
+    DatabaseProcess/IndexedDB/LegacyUniqueIDBDatabase.cpp
+    DatabaseProcess/IndexedDB/LegacyUniqueIDBDatabaseIdentifier.cpp
     DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp
+
+    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBCursor.cpp
+    DatabaseProcess/IndexedDB/sqlite/SQLiteIDBTransaction.cpp
+    DatabaseProcess/IndexedDB/sqlite/UniqueIDBDatabaseBackingStoreSQLite.cpp
 
     NetworkProcess/NetworkProcessCreationParameters.cpp
     NetworkProcess/NetworkResourceLoadParameters.cpp
@@ -504,6 +514,8 @@ set(WebKit2_SOURCES
     WebProcess/Databases/WebToDatabaseProcessConnection.cpp
 
     WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp
+    WebProcess/Databases/IndexedDB/WebIDBFactoryBackend.cpp
+    WebProcess/Databases/IndexedDB/WebIDBServerConnection.cpp
 
     WebProcess/FileAPI/BlobRegistryProxy.cpp
 
@@ -634,6 +646,7 @@ set(WebKit2_MESSAGES_IN_FILES
     DatabaseProcess/DatabaseProcess.messages.in
     DatabaseProcess/DatabaseToWebProcessConnection.messages.in
 
+    DatabaseProcess/IndexedDB/DatabaseProcessIDBConnection.messages.in
     DatabaseProcess/IndexedDB/WebIDBConnectionToClient.messages.in
 
     NetworkProcess/CustomProtocols/CustomProtocolManager.messages.in
@@ -688,6 +701,7 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/Cookies/WebCookieManager.messages.in
 
     WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.messages.in
+    WebProcess/Databases/IndexedDB/WebIDBServerConnection.messages.in
 
     WebProcess/FullScreen/WebFullScreenManager.messages.in
 

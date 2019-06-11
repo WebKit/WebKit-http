@@ -35,6 +35,7 @@
 namespace WebCore {
 
 class IDBFactory;
+class IDBFactoryBackendInterface;
 class ScriptExecutionContext;
 
 class WorkerGlobalScopeIndexedDatabase : public Supplement<ScriptExecutionContext> {
@@ -49,6 +50,7 @@ private:
     IDBFactory* indexedDB();
     static const char* supplementName();
 
+    RefPtr<IDBFactoryBackendInterface> m_factoryBackend;
     RefPtr<IDBFactory> m_idbFactory;
 };
 

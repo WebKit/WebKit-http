@@ -40,6 +40,9 @@ class SessionID;
 
 namespace WebKit {
 
+class WebIDBServerConnection;
+class WebProcessIDBDatabaseBackend;
+
 class WebToDatabaseProcessConnection : public RefCounted<WebToDatabaseProcessConnection>, public IPC::Connection::Client, public IPC::MessageSender {
 public:
     static Ref<WebToDatabaseProcessConnection> create(IPC::Connection::Identifier connectionIdentifier)
@@ -51,6 +54,9 @@ public:
     IPC::Connection* connection() const { return m_connection.get(); }
 
 #if ENABLE(INDEXED_DATABASE)
+    void registerWebIDBServerConnection(WebIDBServerConnection&);
+    void removeWebIDBServerConnection(WebIDBServerConnection&);
+
     WebIDBConnectionToServer& idbConnectionToServerForSession(const WebCore::SessionID&);
 #endif
 
@@ -71,6 +77,8 @@ private:
     RefPtr<IPC::Connection> m_connection;
 
 #if ENABLE(INDEXED_DATABASE)
+    HashMap<uint64_t, WebIDBServerConnection*> m_webIDBServerConnections;
+
     HashMap<uint64_t, RefPtr<WebIDBConnectionToServer>> m_webIDBConnections;
 #endif
 };
