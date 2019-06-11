@@ -244,20 +244,14 @@ void RenderBlock::removePositionedObjectsIfNeeded(const RenderStyle& oldStyle, c
     if (oldStyle.position() == newStyle.position() && hadTransform == willHaveTransform)
         return;
 
-    // We are no longer the containing block for fixed descendants.
-    if (hadTransform && !willHaveTransform) {
-        // Our positioned descendants will be inserted into a new containing block's positioned objects list during the next layout.
-        removePositionedObjects(nullptr, NewContainingBlock);
-        return;
-    }
-
-    // We are no longer the containing block for absolute positioned descendants.
+    // We are no longer a containing block.
     if (newStyle.position() == StaticPosition && !willHaveTransform) {
-        // Our positioned descendants will be inserted into a new containing block's positioned objects list during the next layout.
+        // Clear our positioned objects list. Our absolutely positioned descendants will be
+        // inserted into our containing block's positioned objects list during layout.
         removePositionedObjects(nullptr, NewContainingBlock);
         return;
     }
-
+    
     // We are a new containing block.
     if (oldStyle.position() == StaticPosition && !hadTransform) {
         // Remove our absolutely positioned descendants from their current containing block.
