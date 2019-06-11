@@ -27,7 +27,6 @@
 #include "ComposedTreeIterator.h"
 
 #include "HTMLSlotElement.h"
-#include "TextStream.h"
 
 namespace WebCore {
 
@@ -106,16 +105,13 @@ void ComposedTreeIterator::initializeContextStack(ContainerNode& root, Node& cur
     m_contextStack.reverse();
 }
 
-void ComposedTreeIterator::traverseShadowRoot(ShadowRoot& shadowRoot)
+bool ComposedTreeIterator::pushContext(ShadowRoot& shadowRoot)
 {
     Context shadowContext(shadowRoot);
-    if (!shadowContext.iterator) {
-        // Empty shadow root.
-        traverseNextSkippingChildren();
-        return;
-    }
-
+    if (!shadowContext.iterator)
+        return false;
     m_contextStack.append(WTFMove(shadowContext));
+    return true;
 }
 
 void ComposedTreeIterator::traverseNextInShadowTree()
@@ -183,25 +179,5 @@ void ComposedTreeIterator::traverseSiblingInSlot(int direction)
         *this = { };
 }
 #endif
-
-String composedTreeAsText(ContainerNode& root)
-{
-    TextStream stream;
-    auto descendants = composedTreeDescendants(root);
-    for (auto it = descendants.begin(), end = descendants.end(); it != end; ++it) {
-        writeIndent(stream, it.depth());
-
-        if (is<Text>(*it)) {
-            stream << "#text\n";
-            continue;
-        }
-        auto& element = downcast<Element>(*it);
-        stream << element.localName();
-        if (element.shadowRoot())
-            stream << " (shadow root)";
-        stream << "\n";
-    }
-    return stream.release();
-}
 
 }
