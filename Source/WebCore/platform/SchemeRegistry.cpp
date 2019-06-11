@@ -69,9 +69,6 @@ static URLSchemesMap& secureSchemes()
 #if USE(QUICK_LOOK)
         secureSchemes.get().add(QLPreviewProtocol());
 #endif
-#if PLATFORM(GTK)
-        secureSchemes.get().add("resource");
-#endif
     }
 
     return secureSchemes;
