@@ -54,14 +54,12 @@ class ImageBufferData
 #endif
 {
 public:
-    ImageBufferData(const IntSize&, RenderingMode);
-    virtual ~ImageBufferData();
+    ImageBufferData(const IntSize&);
 
     RefPtr<cairo_surface_t> m_surface;
     PlatformContextCairo m_platformContext;
     std::unique_ptr<GraphicsContext> m_context;
     IntSize m_size;
-    RenderingMode m_renderingMode;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
     void createCairoGLSurface();
