@@ -72,16 +72,6 @@ void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection& connecti
     ASSERT_NOT_REACHED();
 }
 
-void DatabaseToWebProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
-{
-    if (decoder.messageReceiverName() == Messages::DatabaseToWebProcessConnection::messageReceiverName()) {
-        didReceiveSyncDatabaseToWebProcessConnectionMessage(connection, decoder, replyEncoder);
-        return;
-    }
-
-    ASSERT_NOT_REACHED();
-}
-
 void DatabaseToWebProcessConnection::didClose(IPC::Connection&)
 {
 #if ENABLE(INDEXED_DATABASE)
@@ -95,17 +85,8 @@ void DatabaseToWebProcessConnection::didReceiveInvalidMessage(IPC::Connection&, 
 }
 
 #if ENABLE(INDEXED_DATABASE)
-
-static uint64_t generateConnectionToServerIdentifier()
+void DatabaseToWebProcessConnection::establishIDBConnectionToServer(uint64_t serverConnectionIdentifier)
 {
-    ASSERT(RunLoop::isMain());
-    static uint64_t identifier = 0;
-    return ++identifier;
-}
-
-void DatabaseToWebProcessConnection::establishIDBConnectionToServer(uint64_t& serverConnectionIdentifier)
-{
-    serverConnectionIdentifier = generateConnectionToServerIdentifier();
     LOG(IndexedDB, "DatabaseToWebProcessConnection::establishIDBConnectionToServer - %" PRIu64, serverConnectionIdentifier);
     ASSERT(!m_webIDBConnections.contains(serverConnectionIdentifier));
 
