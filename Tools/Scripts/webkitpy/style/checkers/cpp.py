@@ -529,13 +529,10 @@ class _FunctionState(object):
         self.is_declaration = clean_lines.elided[body_start_position.row][body_start_position.column] == ';'
         self.parameter_start_position = parameter_start_position
         self.parameter_end_position = parameter_end_position
-        self.is_final = False
-        self.is_override = False
         self.is_pure = False
-        characters_after_parameters = SingleLineView(clean_lines.elided, parameter_end_position, body_start_position).single_line
-        self.is_final = bool(search(r'\bfinal\b', characters_after_parameters))
-        self.is_override = bool(search(r'\boverride\b', characters_after_parameters))
-        self.is_pure = bool(match(r'\s*=\s*0\s*', characters_after_parameters))
+        if self.is_declaration:
+            characters_after_parameters = SingleLineView(clean_lines.elided, parameter_end_position, body_start_position).single_line
+            self.is_pure = bool(match(r'\s*=\s*0\s*', characters_after_parameters))
         self._clean_lines = clean_lines
         self._parameter_list = None
 
@@ -546,9 +543,6 @@ class _FunctionState(object):
          elided = self._clean_lines.elided
          start_modifiers = _rfind_in_lines(r';|\{|\}|((private|public|protected):)|(#.*)', elided, self.parameter_start_position, Position(0, 0))
          return SingleLineView(elided, start_modifiers, self.function_name_start_position).single_line.strip()
-
-    def is_virtual(self):
-        return bool(search(r'\bvirtual\b', self.modifiers_and_return_type()))
 
     def parameter_list(self):
         if not self._parameter_list:
@@ -1649,13 +1643,6 @@ def _check_parameter_name_against_text(parameter, text, error):
         return False
     return True
 
-
-def _error_redundant_specifier(line_number, redundant_specifier, good_specifier, error):
-    error(line_number, 'readability/inheritance', 4,
-          '"%s" is redundant since function is already declared as "%s"'
-          % (redundant_specifier, good_specifier))
-
-
 def check_function_definition(filename, file_extension, clean_lines, line_number, function_state, error):
     """Check that function definitions for style issues.
 
@@ -1687,16 +1674,6 @@ def check_function_definition(filename, file_extension, clean_lines, line_number
         # Check the parameter name against the type.
         if not _check_parameter_name_against_text(parameter, parameter.type, error):
             continue  # Since an error was noted for this name, move to the next parameter.
-
-    if function_state.is_virtual():
-        if function_state.is_override:
-            _error_redundant_specifier(line_number, 'virtual', 'override', error)
-
-        if function_state.is_final:
-            _error_redundant_specifier(line_number, 'virtual', 'final', error)
-
-    if function_state.is_override and function_state.is_final:
-        _error_redundant_specifier(line_number, 'override', 'final', error)
 
 
 def check_for_leaky_patterns(clean_lines, line_number, function_state, error):
@@ -3847,7 +3824,6 @@ class CppChecker(object):
         'readability/enum_casing',
         'readability/fn_size',
         'readability/function',
-        'readability/inheritance',
         'readability/multiline_comment',
         'readability/multiline_string',
         'readability/parameter_name',
