@@ -993,7 +993,7 @@ public:
     {
         switch (nearCall.callMode()) {
         case NearCallMode::Tail:
-            AssemblerType::relinkJump(nearCall.dataLocation(), destination.dataLocation());
+            AssemblerType::relinkJump(nearCall.dataLocation(), destination.executableAddress());
             return;
         case NearCallMode::Regular:
             AssemblerType::relinkCall(nearCall.dataLocation(), destination.executableAddress());
