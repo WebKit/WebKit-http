@@ -735,6 +735,7 @@ inline std::unique_ptr<ScrollSnapPoints> StyleBuilderConverter::convertScrollSna
         return points;
     }
 
+    points->hasRepeat = false;
     for (auto& currentValue : downcast<CSSValueList>(value)) {
         auto& itemValue = downcast<CSSPrimitiveValue>(currentValue.get());
         if (auto* lengthRepeat = itemValue.getLengthRepeatValue()) {
