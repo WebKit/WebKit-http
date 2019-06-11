@@ -1116,11 +1116,8 @@ RefPtr<API::Navigation> WebPageProxy::reload(bool reloadFromOrigin, bool content
 {
     SandboxExtension::Handle sandboxExtensionHandle;
 
-    String url = m_pageLoadState.activeURL();
-    if (url.isEmpty() && m_backForwardList->currentItem())
-        url = m_backForwardList->currentItem()->url();
-
-    if (!url.isEmpty()) {
+    if (m_backForwardList->currentItem()) {
+        String url = m_backForwardList->currentItem()->url();
         auto transaction = m_pageLoadState.transaction();
         m_pageLoadState.setPendingAPIRequestURL(transaction, url);
 
