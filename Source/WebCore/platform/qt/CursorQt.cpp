@@ -49,17 +49,12 @@ Cursor::Cursor(const Cursor& other)
     , m_image(other.m_image)
     , m_hotSpot(other.m_hotSpot)
 #ifndef QT_NO_CURSOR
-    , m_platformCursor(other.m_platformCursor ? new QCursor(*other.m_platformCursor)  : 0)
+    , m_platformCursor(other.m_platformCursor ? std::make_unique<QCursor>(*other.m_platformCursor)  : nullptr)
 #endif
 {
 }
 
-Cursor::~Cursor()
-{
-#ifndef QT_NO_CURSOR
-    delete m_platformCursor;
-#endif
-}
+Cursor::~Cursor() = default;
 
 Cursor& Cursor::operator=(const Cursor& other)
 {
@@ -67,18 +62,18 @@ Cursor& Cursor::operator=(const Cursor& other)
     m_image = other.m_image;
     m_hotSpot = other.m_hotSpot;
 #ifndef QT_NO_CURSOR
-    m_platformCursor = other.m_platformCursor ? new QCursor(*other.m_platformCursor)  : 0;
+    m_platformCursor = other.m_platformCursor ? std::make_unique<QCursor>(*other.m_platformCursor) : nullptr;
 #endif
     return *this;
 }
 
 #ifndef QT_NO_CURSOR
-static QCursor* createCustomCursor(Image* image, const IntPoint& hotSpot)
+static std::unique_ptr<QCursor> createCustomCursor(Image* image, const IntPoint& hotSpot)
 {
     if (!image->nativeImageForCurrentFrame())
-        return 0;
+        return nullptr;
     IntPoint effectiveHotSpot = determineHotSpot(image, hotSpot);
-    return new QCursor(*(image->nativeImageForCurrentFrame()), effectiveHotSpot.x(), effectiveHotSpot.y());
+    return std::make_unique<QCursor>(*(image->nativeImageForCurrentFrame()), effectiveHotSpot.x(), effectiveHotSpot.y());
 }
 #endif
 
@@ -90,117 +85,117 @@ void Cursor::ensurePlatformCursor() const
 
     switch (m_type) {
     case Pointer:
-        m_platformCursor = new QCursor(Qt::ArrowCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::ArrowCursor);
         break;
     case Cross:
-        m_platformCursor = new QCursor(Qt::CrossCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::CrossCursor);
         break;
     case Hand:
-        m_platformCursor = new QCursor(Qt::PointingHandCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::PointingHandCursor);
         break;
     case IBeam:
-        m_platformCursor = new QCursor(Qt::IBeamCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::IBeamCursor);
         break;
     case Wait:
-        m_platformCursor = new QCursor(Qt::WaitCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::WaitCursor);
         break;
     case Help:
-        m_platformCursor = new QCursor(Qt::WhatsThisCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::WhatsThisCursor);
         break;
     case EastResize:
     case EastPanning:
-        m_platformCursor = new QCursor(Qt::SizeHorCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeHorCursor);
         break;
     case NorthResize:
     case NorthPanning:
-        m_platformCursor = new QCursor(Qt::SizeVerCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeVerCursor);
         break;
     case NorthEastResize:
     case NorthEastPanning:
-        m_platformCursor = new QCursor(Qt::SizeBDiagCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeBDiagCursor);
         break;
     case NorthWestResize:
     case NorthWestPanning:
-        m_platformCursor = new QCursor(Qt::SizeFDiagCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeFDiagCursor);
         break;
     case SouthResize:
     case SouthPanning:
-        m_platformCursor = new QCursor(Qt::SizeVerCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeVerCursor);
         break;
     case SouthEastResize:
     case SouthEastPanning:
-        m_platformCursor = new QCursor(Qt::SizeFDiagCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeFDiagCursor);
         break;
     case SouthWestResize:
     case SouthWestPanning:
-        m_platformCursor = new QCursor(Qt::SizeBDiagCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeBDiagCursor);
         break;
     case WestResize:
     case WestPanning:
-        m_platformCursor = new QCursor(Qt::SizeHorCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeHorCursor);
         break;
     case NorthSouthResize:
-        m_platformCursor = new QCursor(Qt::SizeVerCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeVerCursor);
         break;
     case EastWestResize:
-        m_platformCursor = new QCursor(Qt::SizeHorCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeHorCursor);
         break;
     case NorthEastSouthWestResize:
-        m_platformCursor = new QCursor(Qt::SizeBDiagCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeBDiagCursor);
         break;
     case NorthWestSouthEastResize:
-        m_platformCursor = new QCursor(Qt::SizeFDiagCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeFDiagCursor);
         break;
     case ColumnResize:
-        m_platformCursor = new QCursor(Qt::SplitHCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SplitHCursor);
         break;
     case RowResize:
-        m_platformCursor = new QCursor(Qt::SplitVCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SplitVCursor);
         break;
     case MiddlePanning:
     case Move:
-        m_platformCursor = new QCursor(Qt::SizeAllCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::SizeAllCursor);
         break;
     case None:
-        m_platformCursor = new QCursor(Qt::BlankCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::BlankCursor);
         break;
     case NoDrop:
     case NotAllowed:
-        m_platformCursor = new QCursor(Qt::ForbiddenCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::ForbiddenCursor);
         break;
     case Grab:
     case Grabbing:
         notImplemented();
-        m_platformCursor = new QCursor(Qt::ArrowCursor);
+        m_platformCursor = std::make_unique<QCursor>(Qt::ArrowCursor);
         break;
     case VerticalText:
-        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/verticalTextCursor.png")), 7, 7);
+        m_platformCursor = std::make_unique<QCursor>(QPixmap(QStringLiteral(":/webkit/resources/verticalTextCursor.png")), 7, 7);
         break;
     case Cell:
-        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/cellCursor.png")), 7, 7);
+        m_platformCursor = std::make_unique<QCursor>(QPixmap(QStringLiteral(":/webkit/resources/cellCursor.png")), 7, 7);
         break;
     case ContextMenu:
-        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/contextMenuCursor.png")), 3, 2);
+        m_platformCursor = std::make_unique<QCursor>(QPixmap(QStringLiteral(":/webkit/resources/contextMenuCursor.png")), 3, 2);
         break;
     case Alias:
-        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/aliasCursor.png")), 11, 3);
+        m_platformCursor = std::make_unique<QCursor>(QPixmap(QStringLiteral(":/webkit/resources/aliasCursor.png")), 11, 3);
         break;
     case Progress:
-        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/progressCursor.png")), 3, 2);
+        m_platformCursor = std::make_unique<QCursor>(QPixmap(QStringLiteral(":/webkit/resources/progressCursor.png")), 3, 2);
         break;
     case Copy:
-        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/copyCursor.png")), 3, 2);
+        m_platformCursor = std::make_unique<QCursor>(QPixmap(QStringLiteral(":/webkit/resources/copyCursor.png")), 3, 2);
         break;
     case ZoomIn:
-        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/zoomInCursor.png")), 7, 7);
+        m_platformCursor = std::make_unique<QCursor>(QPixmap(QStringLiteral(":/webkit/resources/zoomInCursor.png")), 7, 7);
         break;
     case ZoomOut:
-        m_platformCursor = new QCursor(QPixmap(QStringLiteral(":/webkit/resources/zoomOutCursor.png")), 7, 7);
+        m_platformCursor = std::make_unique<QCursor>(QPixmap(QStringLiteral(":/webkit/resources/zoomOutCursor.png")), 7, 7);
         break;
     case Custom:
         m_platformCursor = createCustomCursor(m_image.get(), m_hotSpot);
         if (!m_platformCursor)
-            m_platformCursor = new QCursor(Qt::ArrowCursor);
+            m_platformCursor = std::make_unique<QCursor>(Qt::ArrowCursor);
         break;
     default:
         ASSERT_NOT_REACHED();
