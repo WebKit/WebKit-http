@@ -731,29 +731,29 @@ String SamplingProfiler::stackTracesAsJSON()
     }
 
     StringBuilder json;
-    json.append('[');
+    json.appendLiteral("[");
 
     bool loopedOnce = false;
     auto comma = [&] {
         if (loopedOnce)
-            json.append(',');
+            json.appendLiteral(",");
     };
     for (StackTrace& stackTrace : m_stackTraces) {
         comma();
-        json.append('[');
+        json.appendLiteral("[");
         loopedOnce = false;
         for (StackFrame& stackFrame : stackTrace.frames) {
             comma();
-            json.append('"');
+            json.appendLiteral("\"");
             json.append(stackFrame.displayNameForJSONTests(m_vm));
-            json.append('"');
+            json.appendLiteral("\"");
             loopedOnce = true;
         }
-        json.append(']');
+        json.appendLiteral("]");
         loopedOnce = true;
     }
 
-    json.append(']');
+    json.appendLiteral("]");
 
     clearData(locker);
 

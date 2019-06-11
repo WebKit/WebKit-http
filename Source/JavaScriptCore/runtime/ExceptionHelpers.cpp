@@ -186,7 +186,7 @@ static String notAFunctionSourceAppender(const String& originalMessage, const St
     if (type == TypeObject)
         builder.appendLiteral("an instance of ");
     builder.append(displayValue);
-    builder.append(')');
+    builder.appendLiteral(")");
 
     return builder.toString();
 }
