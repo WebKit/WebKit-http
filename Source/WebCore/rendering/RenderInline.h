@@ -53,9 +53,10 @@ public:
 
     virtual LayoutSize offsetFromContainer(RenderElement&, const LayoutPoint&, bool* offsetDependsOnPoint = nullptr) const override final;
 
-    LayoutRect borderBoundingBox() const final
+    virtual IntRect borderBoundingBox() const override final
     {
-        return LayoutRect(LayoutPoint(), linesBoundingBox().size());
+        IntRect boundingBox = linesBoundingBox();
+        return IntRect(0, 0, boundingBox.width(), boundingBox.height());
     }
 
     WEBCORE_EXPORT IntRect linesBoundingBox() const;

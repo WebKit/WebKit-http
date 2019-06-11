@@ -153,7 +153,7 @@ public:
     }
     LayoutRect borderBoxRect() const { return LayoutRect(LayoutPoint(), size()); }
     LayoutRect paddingBoxRect() const { return LayoutRect(borderLeft(), borderTop(), contentWidth() + paddingLeft() + paddingRight(), contentHeight() + paddingTop() + paddingBottom()); }
-    LayoutRect borderBoundingBox() const final { return borderBoxRect(); }
+    virtual IntRect borderBoundingBox() const override final { return enclosingIntRect(borderBoxRect()); }
 
     WEBCORE_EXPORT RoundedRect::Radii borderRadii() const;
 
