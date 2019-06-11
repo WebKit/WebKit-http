@@ -10647,30 +10647,6 @@ void testURShiftSelf64()
     check(64);
 }
 
-void testPatchpointDoubleRegs()
-{
-    Procedure proc;
-    BasicBlock* root = proc.addBlock();
-
-    Value* arg = root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0);
-    
-    PatchpointValue* patchpoint = root->appendNew<PatchpointValue>(proc, Double, Origin());
-    patchpoint->append(arg, ValueRep(FPRInfo::fpRegT0));
-    patchpoint->resultConstraint = ValueRep(FPRInfo::fpRegT0);
-
-    unsigned numCalls = 0;
-    patchpoint->setGenerator(
-        [&] (CCallHelpers&, const StackmapGenerationParams&) {
-            numCalls++;
-        });
-
-    root->appendNew<ControlValue>(proc, Return, Origin(), patchpoint);
-
-    auto code = compile(proc);
-    CHECK(numCalls == 1);
-    CHECK(invoke<double>(*code, 42.5) == 42.5);
-}
-
 // Make sure the compiler does not try to optimize anything out.
 NEVER_INLINE double zero()
 {
@@ -12103,8 +12079,6 @@ void run(const char* filter)
     RUN(testRShiftSelf64());
     RUN(testURShiftSelf64());
     RUN(testLShiftSelf64());
-
-    RUN(testPatchpointDoubleRegs());
 
     if (tasks.isEmpty())
         usage();
