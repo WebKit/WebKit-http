@@ -28,7 +28,6 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include "DOMWrapperWorld.h"
 #include "IDBKey.h"
 #include "IDBTransaction.h"
 #include "IndexedDB.h"

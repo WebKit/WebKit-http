@@ -409,11 +409,6 @@ int readFromFile(PlatformFileHandle handle, char* data, int length)
     return static_cast<int>(bytesRead);
 }
 
-bool hardLinkOrCopyFile(const String& source, const String& destination)
-{
-    return !!::CopyFile(source.charactersWithNullTermination().data(), destination.charactersWithNullTermination().data(), TRUE);
-}
-
 bool unloadModule(PlatformModule module)
 {
     return ::FreeLibrary(module);
