@@ -113,7 +113,6 @@ protected:
 
 class Lock : public LockBase {
     WTF_MAKE_NONCOPYABLE(Lock);
-    WTF_MAKE_FAST_ALLOCATED;
 public:
     Lock()
     {
