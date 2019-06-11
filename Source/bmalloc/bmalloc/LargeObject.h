@@ -57,13 +57,13 @@ public:
     bool prevCanMerge() const;
     bool nextCanMerge() const;
 
-    VMState vmState() const;
-    void setVMState(VMState) const;
-
+    Owner owner() const;
+    void setOwner(Owner) const;
+    
     bool isMarked() const;
     void setMarked(bool) const;
-
-    bool isValidAndFree(VMState::HasPhysical, size_t) const;
+    
+    bool isValidAndFree(Owner, size_t) const;
 
     LargeObject merge() const;
     std::pair<LargeObject, LargeObject> split(size_t) const;
@@ -123,25 +123,29 @@ inline bool LargeObject::isFree() const
 
 inline bool LargeObject::prevCanMerge() const
 {
-    return m_beginTag->prev()->isFree();
+    EndTag* prev = m_beginTag->prev();
+
+    return prev->isFree() && prev->owner() == this->owner();
 }
 
 inline bool LargeObject::nextCanMerge() const
 {
-    return m_endTag->next()->isFree();
+    BeginTag* next = m_endTag->next();
+
+    return next->isFree() && next->owner() == this->owner();
 }
 
-inline VMState LargeObject::vmState() const
+inline Owner LargeObject::owner() const
 {
     validate();
-    return m_beginTag->vmState();
+    return m_beginTag->owner();
 }
 
-inline void LargeObject::setVMState(VMState vmState) const
+inline void LargeObject::setOwner(Owner owner) const
 {
     validate();
-    m_beginTag->setVMState(vmState);
-    m_endTag->setVMState(vmState);
+    m_beginTag->setOwner(owner);
+    m_endTag->setOwner(owner);
 }
 
 inline bool LargeObject::isMarked() const
@@ -157,7 +161,7 @@ inline void LargeObject::setMarked(bool isMarked) const
     m_endTag->setMarked(isMarked);
 }
 
-inline bool LargeObject::isValidAndFree(VMState::HasPhysical hasPhysical, size_t expectedSize) const
+inline bool LargeObject::isValidAndFree(Owner expectedOwner, size_t expectedSize) const
 {
     if (!m_beginTag->isFree())
         return false;
@@ -171,9 +175,9 @@ inline bool LargeObject::isValidAndFree(VMState::HasPhysical hasPhysical, size_t
     if (m_beginTag->compactBegin() != BoundaryTag::compactBegin(m_object))
         return false;
 
-    if (m_beginTag->vmState().hasPhysical() != static_cast<bool>(hasPhysical))
+    if (m_beginTag->owner() != expectedOwner)
         return false;
-
+    
     return true;
 }
 
@@ -185,11 +189,10 @@ inline LargeObject LargeObject::merge() const
     BeginTag* beginTag = m_beginTag;
     EndTag* endTag = m_endTag;
     Range range = this->range();
-    VMState vmState = this->vmState();
-
+    Owner owner = this->owner();
+    
     EndTag* prev = beginTag->prev();
-    if (prev->isFree()) {
-        vmState.merge(prev->vmState());
+    if (prev->isFree() && prev->owner() == owner) {
         Range left(range.begin() - prev->size(), prev->size());
         range = Range(left.begin(), left.size() + range.size());
 
@@ -200,8 +203,7 @@ inline LargeObject LargeObject::merge() const
     }
 
     BeginTag* next = endTag->next();
-    if (next->isFree()) {
-        vmState.merge(next->vmState());
+    if (next->isFree() && next->owner() == owner) {
         Range right(range.end(), next->size());
         range = Range(range.begin(), range.size() + right.size());
 
@@ -213,7 +215,7 @@ inline LargeObject LargeObject::merge() const
 
     beginTag->setRange(range);
     beginTag->setFree(true);
-    beginTag->setVMState(vmState);
+    beginTag->setOwner(owner);
     endTag->init(beginTag);
 
     return LargeObject(beginTag, endTag, range.begin());
@@ -252,7 +254,7 @@ inline void LargeObject::validateSelf() const
 
     BASSERT(m_beginTag->size() == m_endTag->size());
     BASSERT(m_beginTag->isFree() == m_endTag->isFree());
-    BASSERT(m_beginTag->vmState() == m_endTag->vmState());
+    BASSERT(m_beginTag->owner() == m_endTag->owner());
     BASSERT(m_beginTag->isMarked() == m_endTag->isMarked());
 }
 
@@ -278,7 +280,7 @@ inline Range LargeObject::init(LargeChunk* chunk)
     BeginTag* beginTag = LargeChunk::beginTag(range.begin());
     beginTag->setRange(range);
     beginTag->setFree(true);
-    beginTag->setVMState(VMState::Virtual);
+    beginTag->setOwner(Owner::VMHeap);
 
     EndTag* endTag = LargeChunk::endTag(range.begin(), range.size());
     endTag->init(beginTag);

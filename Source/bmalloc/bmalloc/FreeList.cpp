@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,11 +37,11 @@ namespace bmalloc {
 // invalid entries as we discover them during allocation, and we also garbage
 // collect the free list as it grows.
 
-LargeObject FreeList::takeGreedy(VMState::HasPhysical hasPhysical)
+LargeObject FreeList::takeGreedy(Owner owner)
 {
     for (size_t i = 0; i < m_vector.size(); ++i) {
         LargeObject largeObject(LargeObject::DoNotValidate, m_vector[i].begin());
-        if (!largeObject.isValidAndFree(hasPhysical, m_vector[i].size())) {
+        if (!largeObject.isValidAndFree(owner, m_vector[i].size())) {
             m_vector.pop(i--);
             continue;
         }
@@ -53,14 +53,14 @@ LargeObject FreeList::takeGreedy(VMState::HasPhysical hasPhysical)
     return LargeObject();
 }
 
-LargeObject FreeList::take(VMState::HasPhysical hasPhysical, size_t size)
+LargeObject FreeList::take(Owner owner, size_t size)
 {
     LargeObject candidate;
     size_t candidateIndex;
     size_t begin = m_vector.size() > freeListSearchDepth ? m_vector.size() - freeListSearchDepth : 0;
     for (size_t i = begin; i < m_vector.size(); ++i) {
         LargeObject largeObject(LargeObject::DoNotValidate, m_vector[i].begin());
-        if (!largeObject.isValidAndFree(hasPhysical, m_vector[i].size())) {
+        if (!largeObject.isValidAndFree(owner, m_vector[i].size())) {
             m_vector.pop(i--);
             continue;
         }
@@ -80,7 +80,7 @@ LargeObject FreeList::take(VMState::HasPhysical hasPhysical, size_t size)
     return candidate;
 }
 
-LargeObject FreeList::take(VMState::HasPhysical hasPhysical, size_t alignment, size_t size, size_t unalignedSize)
+LargeObject FreeList::take(Owner owner, size_t alignment, size_t size, size_t unalignedSize)
 {
     BASSERT(isPowerOfTwo(alignment));
     size_t alignmentMask = alignment - 1;
@@ -90,7 +90,7 @@ LargeObject FreeList::take(VMState::HasPhysical hasPhysical, size_t alignment, s
     size_t begin = m_vector.size() > freeListSearchDepth ? m_vector.size() - freeListSearchDepth : 0;
     for (size_t i = begin; i < m_vector.size(); ++i) {
         LargeObject largeObject(LargeObject::DoNotValidate, m_vector[i].begin());
-        if (!largeObject.isValidAndFree(hasPhysical, m_vector[i].size())) {
+        if (!largeObject.isValidAndFree(owner, m_vector[i].size())) {
             m_vector.pop(i--);
             continue;
         }
@@ -113,11 +113,11 @@ LargeObject FreeList::take(VMState::HasPhysical hasPhysical, size_t alignment, s
     return candidate;
 }
 
-void FreeList::removeInvalidAndDuplicateEntries(VMState::HasPhysical hasPhysical)
+void FreeList::removeInvalidAndDuplicateEntries(Owner owner)
 {
     for (size_t i = 0; i < m_vector.size(); ++i) {
         LargeObject largeObject(LargeObject::DoNotValidate, m_vector[i].begin());
-        if (!largeObject.isValidAndFree(hasPhysical, m_vector[i].size())) {
+        if (!largeObject.isValidAndFree(owner, m_vector[i].size())) {
             m_vector.pop(i--);
             continue;
         }

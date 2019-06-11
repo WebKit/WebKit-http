@@ -33,7 +33,7 @@
 namespace bmalloc {
 
 VMHeap::VMHeap()
-    : m_largeObjects(VMState::HasPhysical::False)
+    : m_largeObjects(Owner::VMHeap)
 {
 }
 

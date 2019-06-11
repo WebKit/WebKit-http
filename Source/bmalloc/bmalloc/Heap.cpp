@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,7 +37,7 @@
 namespace bmalloc {
 
 Heap::Heap(std::lock_guard<StaticMutex>&)
-    : m_largeObjects(VMState::HasPhysical::True)
+    : m_largeObjects(Owner::Heap)
     , m_isAllocatingPages(false)
     , m_scavenger(*this, &Heap::concurrentScavenge)
 {
@@ -346,83 +346,35 @@ void Heap::deallocateXLarge(std::unique_lock<StaticMutex>& lock, void* object)
     lock.lock();
 }
 
-inline LargeObject& Heap::splitAndAllocate(LargeObject& largeObject, size_t size)
-{
-    BASSERT(largeObject.isFree());
-
-    LargeObject nextLargeObject;
-
-    if (largeObject.size() - size > largeMin) {
-        std::pair<LargeObject, LargeObject> split = largeObject.split(size);
-        largeObject = split.first;
-        nextLargeObject = split.second;
-    }
-
-    largeObject.setFree(false);
-
-    if (nextLargeObject) {
-        BASSERT(!nextLargeObject.nextCanMerge());
-        m_largeObjects.insert(nextLargeObject);
-    }
-
-    return largeObject;
-}
-
-inline LargeObject& Heap::splitAndAllocate(LargeObject& largeObject, size_t alignment, size_t size)
-{
-    LargeObject prevLargeObject;
-    LargeObject nextLargeObject;
-
-    size_t alignmentMask = alignment - 1;
-    if (test(largeObject.begin(), alignmentMask)) {
-        size_t prefixSize = roundUpToMultipleOf(alignment, largeObject.begin() + largeMin) - largeObject.begin();
-        std::pair<LargeObject, LargeObject> pair = largeObject.split(prefixSize);
-        prevLargeObject = pair.first;
-        largeObject = pair.second;
-    }
-
-    BASSERT(largeObject.isFree());
-
-    if (largeObject.size() - size > largeMin) {
-        std::pair<LargeObject, LargeObject> split = largeObject.split(size);
-        largeObject = split.first;
-        nextLargeObject = split.second;
-    }
-
-    largeObject.setFree(false);
-
-    if (prevLargeObject) {
-        LargeObject merged = prevLargeObject.merge();
-        m_largeObjects.insert(merged);
-    }
-
-    if (nextLargeObject) {
-        LargeObject merged = nextLargeObject.merge();
-        m_largeObjects.insert(merged);
-    }
-
-    return largeObject;
-}
-
 void* Heap::allocateLarge(std::lock_guard<StaticMutex>&, size_t size)
 {
     BASSERT(size <= largeMax);
     BASSERT(size >= largeMin);
     BASSERT(size == roundUpToMultipleOf<largeAlignment>(size));
-
+    
     LargeObject largeObject = m_largeObjects.take(size);
-    if (!largeObject)
-        largeObject = m_vmHeap.allocateLargeObject(size);
-
-    if (largeObject.vmState().hasVirtual()) {
+    if (!largeObject) {
         m_isAllocatingPages = true;
-        // We commit before we split in order to avoid split/merge commit/decommit churn.
-        vmAllocatePhysicalPagesSloppy(largeObject.begin(), largeObject.size());
-        largeObject.setVMState(VMState::Physical);
+        largeObject = m_vmHeap.allocateLargeObject(size);
     }
 
-    largeObject = splitAndAllocate(largeObject, size);
+    BASSERT(largeObject.isFree());
 
+    LargeObject nextLargeObject;
+
+    if (largeObject.size() - size > largeMin) {
+        std::pair<LargeObject, LargeObject> split = largeObject.split(size);
+        largeObject = split.first;
+        nextLargeObject = split.second;
+    }
+    
+    largeObject.setFree(false);
+    
+    if (nextLargeObject) {
+        BASSERT(!nextLargeObject.nextCanMerge());
+        m_largeObjects.insert(nextLargeObject);
+    }
+    
     return largeObject.begin();
 }
 
@@ -439,17 +391,41 @@ void* Heap::allocateLarge(std::lock_guard<StaticMutex>&, size_t alignment, size_
     BASSERT(isPowerOfTwo(alignment));
 
     LargeObject largeObject = m_largeObjects.take(alignment, size, unalignedSize);
-    if (!largeObject)
-        largeObject = m_vmHeap.allocateLargeObject(alignment, size, unalignedSize);
-
-    if (largeObject.vmState().hasVirtual()) {
+    if (!largeObject) {
         m_isAllocatingPages = true;
-        // We commit before we split in order to avoid split/merge commit/decommit churn.
-        vmAllocatePhysicalPagesSloppy(largeObject.begin(), largeObject.size());
-        largeObject.setVMState(VMState::Physical);
+        largeObject = m_vmHeap.allocateLargeObject(alignment, size, unalignedSize);
     }
 
-    largeObject = splitAndAllocate(largeObject, alignment, size);
+    LargeObject prevLargeObject;
+    LargeObject nextLargeObject;
+
+    size_t alignmentMask = alignment - 1;
+    if (test(largeObject.begin(), alignmentMask)) {
+        size_t prefixSize = roundUpToMultipleOf(alignment, largeObject.begin() + largeMin) - largeObject.begin();
+        std::pair<LargeObject, LargeObject> pair = largeObject.split(prefixSize);
+        prevLargeObject = pair.first;
+        largeObject = pair.second;
+    }
+
+    BASSERT(largeObject.isFree());
+    
+    if (largeObject.size() - size > largeMin) {
+        std::pair<LargeObject, LargeObject> split = largeObject.split(size);
+        largeObject = split.first;
+        nextLargeObject = split.second;
+    }
+    
+    largeObject.setFree(false);
+
+    if (prevLargeObject) {
+        LargeObject merged = prevLargeObject.merge();
+        m_largeObjects.insert(merged);
+    }
+
+    if (nextLargeObject) {
+        LargeObject merged = nextLargeObject.merge();
+        m_largeObjects.insert(merged);
+    }
 
     return largeObject.begin();
 }
