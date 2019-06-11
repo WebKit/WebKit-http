@@ -163,12 +163,6 @@
         instead of pointers and sizes.
         (IPC::Connection::readyReadHandler): Call new readBytesFromSocket
 
-2016-05-24  Carlos Garcia Campos  <cgarcia@igalia.com>
-
-        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.12.3 release.
-
-        * gtk/NEWS: Add release notes for 2.12.3.
-
 2016-02-22  Konstantin Tokarev  <annulen@yandex.ru>
 
         [cmake] Moved library setup code to WEBKIT_FRAMEWORK macro.

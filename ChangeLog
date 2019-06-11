@@ -8,12 +8,6 @@
         * Source/CMakeLists.txt: Build brotli and woff2 third-party libraries if WOFF2 is enabled.
         * Source/cmake/OptionsGTK.cmake: Always enable WOFF2 on GTK.
 
-2016-05-24  Carlos Garcia Campos  <cgarcia@igalia.com>
-
-        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.12.3 release.
-
-        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
-
 2016-03-09  Konstantin Tokarev  <annulen@yandex.ru>
 
         [cmake] Fixed All-in-One build.
