@@ -76,7 +76,7 @@ public:
     void applyOverhang(RenderRubyRun*, RenderObject* startRenderer, RenderObject* endRenderer);
     void fitBelowFloats(bool isFirstLine = false);
     void setTrailingWhitespaceWidth(float collapsedWhitespace, float borderPaddingMargin = 0);
-    IndentTextOrNot shouldIndentText() const { return m_shouldIndentText; }
+    bool shouldIndentText() const { return m_shouldIndentText == IndentText; }
 
 private:
     void computeAvailableWidthFromLeftAndRight();
