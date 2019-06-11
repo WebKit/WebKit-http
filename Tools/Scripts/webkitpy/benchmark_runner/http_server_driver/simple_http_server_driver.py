@@ -19,7 +19,7 @@ class SimpleHTTPServerDriver(HTTPServerDriver):
     """This class depends on unix environment, need to be modified to achieve crossplatform compability
     """
 
-    platforms = ['osx', 'gtk']
+    platforms = ['osx']
 
     def __init__(self):
         self._server_process = None
@@ -85,8 +85,7 @@ class SimpleHTTPServerDriver(HTTPServerDriver):
 
     def kill_server(self):
         try:
-            if self._server_process.poll() is None:
-                self._server_process.terminate()
+            self._server_process.terminate()
         except OSError as error:
             _log.info('Error terminating server process: %s' % (error))
 
