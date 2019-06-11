@@ -843,14 +843,6 @@ Object.defineProperty(String.prototype, "levenshteinDistance",
     }
 });
 
-Object.defineProperty(String.prototype, "toCamelCase",
-{
-    value: function()
-    {
-        return this.toLowerCase().replace(/[^\w]+(\w)/g, (match, group) => group.toUpperCase());
-    }
-});
-
 Object.defineProperty(Math, "roundTo",
 {
     value: function(num, step)
