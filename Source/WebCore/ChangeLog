@@ -10,19 +10,6 @@
         (WebCore::URLParser::isSpecialScheme):
         * platform/URLParser.h:
 
-2016-09-16  Michael Catanzaro  <mcatanzaro@igalia.com>
-
-        ASSERTION FAILED: The string being removed is atomic in the string table of an other thread! iterator != atomicStringTable.end() at Source/WTF/wtf/text/AtomicStringImpl.cpp(453)
-        https://bugs.webkit.org/show_bug.cgi?id=161800
-
-        Reviewed by Žan Doberšek.
-
-        Speculative fix. These strings are created as static objects on a secondary thread, but all
-        static objects are destroyed in exit handlers on the main thread, and AtomicStrings must
-        always be destroyed on the same thread they are created.
-
-        * platform/graphics/texmap/TextureMapperShaderProgram.h:
-
 2017-01-12  Zan Dobersek  <zdobersek@igalia.com>
 
         [GTK] WebKitWebProcess at 100% CPU loading hyphenation dictionaries
