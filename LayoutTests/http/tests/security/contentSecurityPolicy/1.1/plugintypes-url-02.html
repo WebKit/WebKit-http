@@ -10,11 +10,9 @@ var tests = [
 ];
 </script>
 </head>
-<body onload='runTests()'>
+<body onload="testExperimentalPolicy()">
     <p>
         This tests our handling of non-`data:` URLs, given a `plugin-types` CSP
         directive. Consider this test passing if none of the following frames
         contains "FAIL" and four sets of console logs appear above.
     </p>
-</body>
-</html>

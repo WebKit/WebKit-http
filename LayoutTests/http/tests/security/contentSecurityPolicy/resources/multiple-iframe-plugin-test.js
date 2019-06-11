@@ -4,30 +4,51 @@ if (window.testRunner) {
     testRunner.dumpChildFramesAsText();
 }
 
-function runTests()
-{
-    runNextTest();
+function testExperimentalPolicy() {
+    testImpl(true);
 }
 
-function runNextTest()
-{
-    var currentTest = tests.shift();
-    if (!currentTest) {
-        if (window.testRunner)
-            setTimeout("testRunner.notifyDone()", 0);
-        return;
+function test() {
+    testImpl(false);
+}
+
+function testImpl(experimental) {
+    if (tests.length === 0)
+        return finishTesting();
+    var baseURL = "/security/contentSecurityPolicy/";
+    var current = tests.shift();
+    var iframe = document.createElement("iframe");
+    iframe.src = baseURL + "resources/echo-object-data.pl?" +
+                 "experimental=" + (experimental ? "true" : "false") +
+                 "&csp=" + escape(current[1]);
+
+    if (current[0])
+        iframe.src += "&log=PASS.";
+    else
+        iframe.src += "&log=FAIL.";
+
+    if (current[2])
+        iframe.src += "&plugin=" + escape(current[2]);
+    else {
+        iframe.src += "&plugin=data:application/x-webkit-test-netscape,logifloaded";
     }
 
-    var iframe = document.createElement("iframe");
+    if (current[3] !== undefined)
+        iframe.src += "&type=" + escape(current[3]);
+    else
+        iframe.src += "&type=application/x-webkit-test-netscape";
+
     iframe.onload = function() {
         if (window.internals)
             internals.updateLayoutIgnorePendingStylesheetsAndRunPostLayoutTasks(iframe);
-        runNextTest();
+        testImpl(experimental);
     };
-    var url = "/security/contentSecurityPolicy/resources/echo-object-data.pl?csp=" + encodeURIComponent(currentTest[1]);
-    url += "&log=" + (currentTest[0] ? "PASS." : "FAIL.");
-    url += "&plugin=" + (currentTest[2] ? encodeURIComponent(currentTest[2]) : "data:application/x-webkit-test-netscape,logifloaded");
-    url += "&type=" + (currentTest[3] !== undefined ? encodeURIComponent(currentTest[3]) : "application/x-webkit-test-netscape");
-    iframe.src = url;
     document.body.appendChild(iframe);
+}
+
+function finishTesting() {
+    if (window.testRunner) {
+        setTimeout("testRunner.notifyDone()", 0);
+    }
+    return true;
 }
