@@ -121,7 +121,7 @@ void InPlaceAbstractState::initialize()
             root->valuesAtHead.argument(i).setType(m_graph, SpecCell);
             break;
         case FlushedJSValue:
-            root->valuesAtHead.argument(i).makeBytecodeTop();
+            root->valuesAtHead.argument(i).makeHeapTop();
             break;
         default:
             DFG_CRASH(m_graph, nullptr, "Bad flush format for argument");
