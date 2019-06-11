@@ -39,23 +39,6 @@
 namespace bmalloc {
 
 class Chunk {
-    // Our metadata layout includes a left and right edge sentinel.
-    // Metadata takes up enough space to leave at least the first two
-    // boundary tag slots unused.
-    //
-    //      So, boundary tag space looks like this:
-    //
-    //          [OOXXXXX...]
-    //
-    //      And BoundaryTag::get subtracts one, producing:
-    //
-    //          [OXXXXX...O].
-    //
-    // We use the X's for boundary tags and the O's for edge sentinels.
-
-    static const size_t boundaryTagCount = chunkSize / largeMin;
-    static_assert(boundaryTagCount > 2, "Chunk must have space for two sentinel boundary tags");
-
 public:
     static Chunk* get(void*);
 
@@ -70,14 +53,33 @@ public:
     SmallPage* page(size_t offset);
     SmallLine* line(size_t offset);
 
-    char* bytes() { return reinterpret_cast<char*>(this); }
     SmallLine* lines() { return m_lines.begin(); }
     SmallPage* pages() { return m_pages.begin(); }
-    std::array<BoundaryTag, boundaryTagCount>& boundaryTags() { return m_boundaryTags; }
+
+    char* begin() { return roundUpToMultipleOf(vmPageSizePhysical(), m_memory); }
+    char* end() { return reinterpret_cast<char*>(this) + chunkSize; }
+    size_t size() { return end() - begin(); }
 
     ObjectType objectType() { return m_objectType; }
 
 private:
+    static const size_t boundaryTagCount = chunkSize / largeMin;
+    static_assert(boundaryTagCount > 2, "Chunk must have space for two sentinel boundary tags");
+
+    // Our metadata layout includes a left and right edge sentinel.
+    // Metadata takes up enough space to leave at least the first two
+    // boundary tag slots unused.
+    //
+    //      So, boundary tag space looks like this:
+    //
+    //          [OOXXXXX...]
+    //
+    //      And BoundaryTag::get subtracts one, producing:
+    //
+    //          [OXXXXX...O].
+    //
+    // We use the X's for boundary tags and the O's for edge sentinels.
+
     union {
         // The first few bytes of metadata cover the metadata region, so they're
         // not used. We can steal them to store m_objectType.
@@ -91,6 +93,7 @@ private:
         std::array<SmallPage, chunkSize / smallPageSize> m_pages;
         std::array<BoundaryTag, boundaryTagCount> m_boundaryTags;
     };
+    char m_memory[];
 };
 
 static_assert(sizeof(Chunk) + largeMax <= chunkSize, "largeMax is too big");
@@ -101,6 +104,33 @@ static_assert(sizeof(Chunk) / smallLineSize > sizeof(ObjectType),
 inline Chunk::Chunk(std::lock_guard<StaticMutex>&, ObjectType objectType)
     : m_objectType(objectType)
 {
+    if (objectType != ObjectType::Large)
+        return;
+
+    Range range(begin(), size());
+    BASSERT(range.size() <= largeObjectMax);
+
+    BeginTag* beginTag = Chunk::beginTag(range.begin());
+    beginTag->setRange(range);
+    beginTag->setFree(true);
+    beginTag->setVMState(VMState::Virtual);
+
+    EndTag* endTag = Chunk::endTag(range.begin(), range.size());
+    endTag->init(beginTag);
+
+    // Mark the left and right edges of our range as allocated. This naturally
+    // prevents merging logic from overflowing left (into metadata) or right
+    // (beyond our chunk), without requiring special-case checks.
+
+    EndTag* leftSentinel = beginTag->prev();
+    BASSERT(leftSentinel >= m_boundaryTags.begin());
+    BASSERT(leftSentinel < m_boundaryTags.end());
+    leftSentinel->initSentinel();
+
+    BeginTag* rightSentinel = endTag->next();
+    BASSERT(rightSentinel >= m_boundaryTags.begin());
+    BASSERT(rightSentinel < m_boundaryTags.end());
+    rightSentinel->initSentinel();
 }
 
 inline Chunk* Chunk::get(void* object)
@@ -131,13 +161,13 @@ inline EndTag* Chunk::endTag(void* object, size_t size)
 inline size_t Chunk::offset(void* object)
 {
     BASSERT(object >= this);
-    BASSERT(object < bytes() + chunkSize);
-    return static_cast<char*>(object) - bytes();
+    BASSERT(object < reinterpret_cast<char*>(this) + chunkSize);
+    return static_cast<char*>(object) - reinterpret_cast<char*>(this);
 }
 
 inline char* Chunk::object(size_t offset)
 {
-    return bytes() + offset;
+    return reinterpret_cast<char*>(this) + offset;
 }
 
 inline SmallPage* Chunk::page(size_t offset)
