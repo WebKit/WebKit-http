@@ -1272,8 +1272,12 @@ void WebGLRenderingContextBase::compressedTexImage2D(GC3Denum target, GC3Dint le
     WebGLTexture* tex = validateTextureBinding("compressedTexImage2D", target, true);
     if (!tex)
         return;
-    if (!validateNPOTTextureLevel(width, height, level, "compressedTexImage2D"))
-        return;
+    if (!isGLES2NPOTStrict()) {
+        if (level && WebGLTexture::isNPOT(width, height)) {
+            synthesizeGLError(GraphicsContext3D::INVALID_VALUE, "compressedTexImage2D", "level > 0 not power of 2");
+            return;
+        }
+    }
     m_context->moveErrorsToSyntheticErrorList();
     m_context->compressedTexImage2D(target, level, internalformat, width, height,
         border, data->byteLength(), data->baseAddress());
@@ -1604,16 +1608,6 @@ void WebGLRenderingContextBase::disableVertexAttribArray(GC3Duint index, Excepti
         m_context->disableVertexAttribArray(index);
 }
 
-bool WebGLRenderingContextBase::validateNPOTTextureLevel(GC3Dsizei width, GC3Dsizei height, GC3Dint level, const char* functionName)
-{
-    if (!isGLES2NPOTStrict() && level && WebGLTexture::isNPOT(width, height)) {
-        synthesizeGLError(GraphicsContext3D::INVALID_VALUE, functionName, "level > 0 not power of 2");
-        return false;
-    }
-
-    return true;
-}
-
 bool WebGLRenderingContextBase::validateElementArraySize(GC3Dsizei count, GC3Denum type, GC3Dintptr offset)
 {
     RefPtr<WebGLBuffer> elementArrayBuffer = m_boundVertexArrayObject->getElementArrayBuffer();
@@ -1925,15 +1919,14 @@ void WebGLRenderingContextBase::drawArrays(GC3Denum mode, GC3Dint first, GC3Dsiz
     bool vertexAttrib0Simulated = false;
     if (!isGLES2Compliant())
         vertexAttrib0Simulated = simulateVertexAttrib0(first + count - 1);
-    bool usesFallbackTexture = false;
     if (!isGLES2NPOTStrict())
-        usesFallbackTexture = checkTextureCompleteness("drawArrays", true);
+        checkTextureCompleteness("drawArrays", true);
 
     m_context->drawArrays(mode, first, count);
 
     if (!isGLES2Compliant() && vertexAttrib0Simulated)
         restoreStatesAfterVertexAttrib0Simulation();
-    if (usesFallbackTexture)
+    if (!isGLES2NPOTStrict())
         checkTextureCompleteness("drawArrays", false);
     markContextChanged();
 }
@@ -1952,16 +1945,14 @@ void WebGLRenderingContextBase::drawElements(GC3Denum mode, GC3Dsizei count, GC3
             validateIndexArrayPrecise(count, type, static_cast<GC3Dintptr>(offset), numElements);
         vertexAttrib0Simulated = simulateVertexAttrib0(numElements);
     }
-
-    bool usesFallbackTexture = false;
     if (!isGLES2NPOTStrict())
-        usesFallbackTexture = checkTextureCompleteness("drawElements", true);
+        checkTextureCompleteness("drawElements", true);
 
     m_context->drawElements(mode, count, type, static_cast<GC3Dintptr>(offset));
 
     if (!isGLES2Compliant() && vertexAttrib0Simulated)
         restoreStatesAfterVertexAttrib0Simulation();
-    if (usesFallbackTexture)
+    if (!isGLES2NPOTStrict())
         checkTextureCompleteness("drawElements", false);
     markContextChanged();
 }
@@ -3012,7 +3003,7 @@ void WebGLRenderingContextBase::texImage2DBase(GC3Denum target, GC3Dint level, G
     WebGLTexture* tex = validateTextureBinding("texImage2D", target, true);
     ASSERT(validateTexFuncParameters("texImage2D", TexImage, target, level, internalformat, width, height, border, format, type));
     ASSERT(tex);
-    ASSERT(validateNPOTTextureLevel(width, height, level, "texImage2D"));
+    ASSERT(!level || !WebGLTexture::isNPOT(width, height));
     if (!pixels) {
         // Note: Chromium's OpenGL implementation clears textures and isResourceSafe() is therefore true.
         // For other implementations, if they are using ANGLE_depth_texture, ANGLE depth textures
@@ -3080,8 +3071,10 @@ bool WebGLRenderingContextBase::validateTexFunc(const char* functionName, TexFun
         return false;
 
     if (functionType != TexSubImage) {
-        if (!validateNPOTTextureLevel(width, height, level, functionName))
+        if (level && WebGLTexture::isNPOT(width, height)) {
+            synthesizeGLError(GraphicsContext3D::INVALID_VALUE, functionName, "level > 0 not power of 2");
             return false;
+        }
         // For SourceArrayBufferView, function validateTexFuncData() would handle whether to validate the SettableTexFormat
         // by checking if the ArrayBufferView is null or not.
         if (sourceType != SourceArrayBufferView) {
@@ -3989,10 +3982,9 @@ WebGLGetInfo WebGLRenderingContextBase::getWebGLIntArrayParameter(GC3Denum pname
     return WebGLGetInfo(Int32Array::create(value, length).release());
 }
 
-bool WebGLRenderingContextBase::checkTextureCompleteness(const char* functionName, bool prepareToDraw)
+void WebGLRenderingContextBase::checkTextureCompleteness(const char* functionName, bool prepareToDraw)
 {
     bool resetActiveUnit = false;
-    bool usesAtLeastOneBlackTexture = false;
     WebGLTexture::TextureExtensionFlag extensions = textureExtensionFlags();
 
     Vector<unsigned> noLongerUnrenderable;
@@ -4006,8 +3998,6 @@ bool WebGLRenderingContextBase::checkTextureCompleteness(const char* functionNam
             noLongerUnrenderable.append(badTexture);
             continue;
         }
-
-        usesAtLeastOneBlackTexture = true;
 
         if (badTexture != m_activeTextureUnit) {
             m_context->activeTexture(badTexture + GraphicsContext3D::TEXTURE0);
@@ -4039,8 +4029,6 @@ bool WebGLRenderingContextBase::checkTextureCompleteness(const char* functionNam
 
     for (unsigned renderable : noLongerUnrenderable)
         m_unrenderableTextureUnits.remove(renderable);
-
-    return usesAtLeastOneBlackTexture;
 }
 
 void WebGLRenderingContextBase::createFallbackBlackTextures1x1()
