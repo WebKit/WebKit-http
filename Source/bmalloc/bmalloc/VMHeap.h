@@ -51,23 +51,17 @@ public:
     VMHeap();
 
     SmallPage* allocateSmallPage(std::lock_guard<StaticMutex>&);
-    LargeObject allocateLargeObject(std::lock_guard<StaticMutex>&, size_t);
-    LargeObject allocateLargeObject(std::lock_guard<StaticMutex>&, size_t, size_t, size_t);
+    LargeObject allocateLargeObject(size_t);
+    LargeObject allocateLargeObject(size_t, size_t, size_t);
 
     void deallocateSmallPage(std::unique_lock<StaticMutex>&, SmallPage*);
     void deallocateLargeObject(std::unique_lock<StaticMutex>&, LargeObject);
-    
+
 private:
-    void allocateSmallChunk(std::lock_guard<StaticMutex>&);
-    void allocateLargeChunk(std::lock_guard<StaticMutex>&);
-    void allocateSuperChunk(std::lock_guard<StaticMutex>&);
+    void grow();
 
     Vector<SmallPage*> m_smallPages;
     SegregatedFreeList m_largeObjects;
-
-    Vector<SuperChunk*> m_smallChunks;
-    Vector<SuperChunk*> m_largeChunks;
-
 #if BOS(DARWIN)
     Zone m_zone;
 #endif
@@ -76,18 +70,19 @@ private:
 inline SmallPage* VMHeap::allocateSmallPage(std::lock_guard<StaticMutex>& lock)
 {
     if (!m_smallPages.size())
-        allocateSmallChunk(lock);
+        grow();
 
     SmallPage* page = m_smallPages.pop();
+    page->setHasFreeLines(lock, true);
     vmAllocatePhysicalPages(page->begin()->begin(), vmPageSize);
     return page;
 }
 
-inline LargeObject VMHeap::allocateLargeObject(std::lock_guard<StaticMutex>& lock, size_t size)
+inline LargeObject VMHeap::allocateLargeObject(size_t size)
 {
     LargeObject largeObject = m_largeObjects.take(size);
     if (!largeObject) {
-        allocateLargeChunk(lock);
+        grow();
         largeObject = m_largeObjects.take(size);
         BASSERT(largeObject);
     }
@@ -95,11 +90,11 @@ inline LargeObject VMHeap::allocateLargeObject(std::lock_guard<StaticMutex>& loc
     return largeObject;
 }
 
-inline LargeObject VMHeap::allocateLargeObject(std::lock_guard<StaticMutex>& lock, size_t alignment, size_t size, size_t unalignedSize)
+inline LargeObject VMHeap::allocateLargeObject(size_t alignment, size_t size, size_t unalignedSize)
 {
     LargeObject largeObject = m_largeObjects.take(alignment, size, unalignedSize);
     if (!largeObject) {
-        allocateLargeChunk(lock);
+        grow();
         largeObject = m_largeObjects.take(alignment, size, unalignedSize);
         BASSERT(largeObject);
     }
