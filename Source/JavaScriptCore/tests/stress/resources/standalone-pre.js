@@ -7,11 +7,10 @@ self.testRunner = {
 };
 
 var silentMode = true;
-var throwOnFirstFail = true;
 var silentTestPass, didPassSomeTestsSilently, didFailSomeTests, successfullyParsed;
 silentTestPass = false;
 didPassSomeTestsSilenty = false;
-didFailSomeTests = false;
+didFaileSomeTests = false;
 
 function description(msg)
 {
@@ -47,10 +46,9 @@ function testPassed(msg)
 function testFailed(msg)
 {
     didFailSomeTests = true;
-    if (!silentMode)
-        print("FAIL", escapeString(msg));
-    if (throwOnFirstFail)
-        throw new Error(escapeString(msg));
+    if (silentMode)
+        return;
+    print("FAIL", escapeString(msg));
 }
 
 function areNumbersEqual(_actual, _expected)

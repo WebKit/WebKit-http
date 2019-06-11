@@ -1695,6 +1695,5 @@ shouldThrow(`InspectorFrontendAPI.dispatchMessageAsync({
             "type":"RenderingFrame"
         }
     }
-})`, `new ReferenceError("Can't find variable: InspectorFrontendAPI").toString()`);
+})`, `new ReferenceError("Can't find variable: InspectorFrontendAPI")`);
 
-finishJSTest();
