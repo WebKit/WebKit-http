@@ -138,6 +138,7 @@ function installDependenciesWithApt {
         curl \
         dbus-x11 \
         libapache2-mod-bw \
+        libapache2-mod-php5 \
         libgpg-error-dev \
         pulseaudio-utils \
         python-gi \
@@ -191,8 +192,6 @@ function installDependenciesWithApt {
         subversion"
 
     apt-get install $packages
-
-    installPHPWithApt
 }
 
 function installDependenciesWithPacman {
@@ -431,17 +430,6 @@ function installDependenciesWithDnf {
         subversion"
 
     dnf install $packages
-}
-
-function installPHPWithApt {
-    if [ -f "/etc/os-release" ]; then
-        ubuntu_version=`grep VERSION_ID /etc/os-release`
-        if [[ $ubuntu_version == *VERSION_ID=\"16.04* ]]; then
-            apt-get install libapache2-mod-php7.0
-        else
-            apt-get install libapache2-mod-php5
-        fi
-    fi
 }
 
 checkInstaller
