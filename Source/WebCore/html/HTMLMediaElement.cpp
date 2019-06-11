@@ -1123,8 +1123,6 @@ void HTMLMediaElement::prepareForLoad()
 
 void HTMLMediaElement::loadInternal()
 {
-    LOG(Media, "HTMLMediaElement::loadInternal(%p)", this);
-
     // Some of the code paths below this function dispatch the BeforeLoad event. This ASSERT helps
     // us catch those bugs more quickly without needing all the branches to align to actually
     // trigger the event.
@@ -1132,12 +1130,11 @@ void HTMLMediaElement::loadInternal()
 
     // If we can't start a load right away, start it later.
     if (!m_mediaSession->pageAllowsDataLoading(*this)) {
-        LOG(Media, "HTMLMediaElement::loadInternal(%p) - not allowed to load in background, waiting", this);
         setShouldDelayLoadEvent(false);
         if (m_isWaitingUntilMediaCanStart)
             return;
-        m_isWaitingUntilMediaCanStart = true;
         document().addMediaCanStartListener(this);
+        m_isWaitingUntilMediaCanStart = true;
         return;
     }
 
@@ -1172,10 +1169,6 @@ void HTMLMediaElement::loadInternal()
 void HTMLMediaElement::selectMediaResource()
 {
     LOG(Media, "HTMLMediaElement::selectMediaResource(%p)", this);
-
-    ASSERT(m_player);
-    if (!m_player)
-        return;
 
     enum Mode { attribute, children };
 
@@ -4992,11 +4985,6 @@ void HTMLMediaElement::clearMediaPlayer(DelayedActionType flags)
     }
 #endif
 
-    if (m_isWaitingUntilMediaCanStart) {
-        m_isWaitingUntilMediaCanStart = false;
-        document().removeMediaCanStartListener(this);
-    }
-
     m_player = nullptr;
 
     stopPeriodicTimers();
@@ -5136,8 +5124,8 @@ void HTMLMediaElement::mediaVolumeDidChange()
 
 void HTMLMediaElement::visibilityStateChanged()
 {
+    LOG(Media, "HTMLMediaElement::visibilityStateChanged(%p)", this);
     m_elementIsHidden = document().hidden();
-    LOG(Media, "HTMLMediaElement::visibilityStateChanged(%p) - visible = %s", this, boolString(!m_elementIsHidden));
     updateSleepDisabling();
     m_mediaSession->visibilityChanged();
 }
@@ -5533,8 +5521,7 @@ unsigned HTMLMediaElement::webkitVideoDecodedByteCount() const
 
 void HTMLMediaElement::mediaCanStart()
 {
-    LOG(Media, "HTMLMediaElement::mediaCanStart(%p) - m_isWaitingUntilMediaCanStart = %s, m_pausedInternal = %s",
-        this, boolString(m_isWaitingUntilMediaCanStart), boolString(m_pausedInternal) );
+    LOG(Media, "HTMLMediaElement::mediaCanStart(%p)", this);
 
     ASSERT(m_isWaitingUntilMediaCanStart || m_pausedInternal);
     if (m_isWaitingUntilMediaCanStart) {
