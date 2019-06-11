@@ -73,9 +73,7 @@ if ($suffix eq ".y.in") {
 }
 
 my $fileBase = File::Spec->join($outputDir, $filename);
-my @bisonCommand = ($bison, "-d", "-p", $symbolsPrefix, $grammarFilePath, "-o", "$fileBase.cpp");
-push @bisonCommand, "--no-lines" if $^O eq "MSWin32"; # Work around bug in bison >= 3.0 on Windows where it puts backslashes into #line directives.
-system(@bisonCommand) == 0 or die;
+system("\"$bison\" -d -p $symbolsPrefix $grammarFilePath -o $fileBase.cpp");
 
 open HEADER, ">$fileBase.h" or die;
 print HEADER << "EOF";
