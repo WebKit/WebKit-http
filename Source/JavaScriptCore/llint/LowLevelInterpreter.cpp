@@ -483,7 +483,7 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
 
 } // namespace JSC
 
-#elif !COMPILER(MSVC)
+#elif !OS(WINDOWS)
 
 //============================================================================
 // Define the opcode dispatch mechanism when using an ASM loop:
