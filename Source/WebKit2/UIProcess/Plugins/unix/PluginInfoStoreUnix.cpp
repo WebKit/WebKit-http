@@ -33,7 +33,6 @@
 
 #include "NetscapePluginModule.h"
 #include "PluginSearchPath.h"
-#include "ProcessExecutablePath.h"
 #include <WebCore/FileSystem.h>
 
 #if PLATFORM(GTK)
@@ -70,17 +69,8 @@ Vector<String> PluginInfoStore::individualPluginPaths()
 bool PluginInfoStore::getPluginInfo(const String& pluginPath, PluginModuleInfo& plugin)
 {
 #if PLATFORM(GTK)
-    if (PluginInfoCache::singleton().getPluginInfo(pluginPath, plugin)) {
-#if ENABLE(PLUGIN_PROCESS_GTK2)
-        if (plugin.requiresGtk2) {
-            String pluginProcessPath = executablePathOfPluginProcess();
-            pluginProcessPath.append('2');
-            if (!fileExists(pluginProcessPath))
-                return false;
-        }
-#endif
+    if (PluginInfoCache::singleton().getPluginInfo(pluginPath, plugin))
         return true;
-    }
 
     if (NetscapePluginModule::getPluginInfo(pluginPath, plugin)) {
         PluginInfoCache::singleton().updatePluginInfo(pluginPath, plugin);
