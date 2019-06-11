@@ -26,7 +26,6 @@
 #ifndef Heap_h
 #define Heap_h
 
-#include "AsyncTask.h"
 #include "BumpRange.h"
 #include "Environment.h"
 #include "LineMetadata.h"

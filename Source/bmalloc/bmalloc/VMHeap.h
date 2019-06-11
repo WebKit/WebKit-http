@@ -26,6 +26,7 @@
 #ifndef VMHeap_h
 #define VMHeap_h
 
+#include "AsyncTask.h"
 #include "Chunk.h"
 #include "FixedVector.h"
 #include "Map.h"
