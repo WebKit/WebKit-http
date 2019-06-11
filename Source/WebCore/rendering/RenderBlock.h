@@ -42,6 +42,8 @@ struct BidiRun;
 struct PaintInfo;
 
 typedef WTF::ListHashSet<RenderBox*> TrackedRendererListHashSet;
+typedef WTF::HashMap<const RenderBlock*, std::unique_ptr<TrackedRendererListHashSet>> TrackedDescendantsMap;
+typedef WTF::HashMap<const RenderBox*, std::unique_ptr<HashSet<RenderBlock*>>> TrackedContainerMap;
 
 enum CaretType { CursorCaret, DragCaret };
 enum ContainingBlockState { NewContainingBlock, SameContainingBlock };
@@ -417,6 +419,9 @@ private:
     
     // FIXME-BLOCKFLOW: Remove virtualizaion when all callers have moved to RenderBlockFlow
     virtual bool hasLines() const { return false; }
+
+    void insertIntoTrackedRendererMaps(RenderBox& descendant, TrackedDescendantsMap*&, TrackedContainerMap*&, bool forceNewEntry = false);
+    static void removeFromTrackedRendererMaps(RenderBox& descendant, TrackedDescendantsMap*&, TrackedContainerMap*&);
 
     void createFirstLetterRenderer(RenderElement* firstLetterBlock, RenderText* currentTextChild);
     void updateFirstLetterStyle(RenderElement* firstLetterBlock, RenderObject* firstLetterContainer);
