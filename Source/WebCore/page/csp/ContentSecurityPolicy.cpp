@@ -59,13 +59,16 @@ ContentSecurityPolicy::ContentSecurityPolicy(ScriptExecutionContext& scriptExecu
     , m_sandboxFlags(SandboxNone)
 {
     ASSERT(scriptExecutionContext.securityOrigin());
-    updateSourceSelf(*scriptExecutionContext.securityOrigin());
+    auto& securityOrigin = *scriptExecutionContext.securityOrigin();
+    m_selfSourceProtocol = securityOrigin.protocol();
+    m_selfSource = std::make_unique<ContentSecurityPolicySource>(*this, m_selfSourceProtocol, securityOrigin.host(), securityOrigin.port(), emptyString(), false, false);
 }
 
 ContentSecurityPolicy::ContentSecurityPolicy(const SecurityOrigin& securityOrigin)
     : m_sandboxFlags(SandboxNone)
 {
-    updateSourceSelf(securityOrigin);
+    m_selfSourceProtocol = securityOrigin.protocol();
+    m_selfSource = std::make_unique<ContentSecurityPolicySource>(*this, m_selfSourceProtocol, securityOrigin.host(), securityOrigin.port(), emptyString(), false, false);
 }
 
 ContentSecurityPolicy::~ContentSecurityPolicy()
@@ -124,22 +127,9 @@ void ContentSecurityPolicy::didReceiveHeader(const String& header, ContentSecuri
         applyPolicyToScriptExecutionContext();
 }
 
-void ContentSecurityPolicy::updateSourceSelf(const SecurityOrigin& securityOrigin)
-{
-    m_selfSourceProtocol = securityOrigin.protocol();
-    m_selfSource = std::make_unique<ContentSecurityPolicySource>(*this, m_selfSourceProtocol, securityOrigin.host(), securityOrigin.port(), emptyString(), false, false);
-}
-
 void ContentSecurityPolicy::applyPolicyToScriptExecutionContext()
 {
     ASSERT(m_scriptExecutionContext);
-
-    // Update source self as the security origin may have changed between the time we were created and now.
-    // For instance, we may have been initially created for an about:blank iframe that later inherited the
-    // security origin of its owner document.
-    ASSERT(m_scriptExecutionContext->securityOrigin());
-    updateSourceSelf(*m_scriptExecutionContext->securityOrigin());
-
     if (!m_lastPolicyEvalDisabledErrorMessage.isNull())
         m_scriptExecutionContext->disableEval(m_lastPolicyEvalDisabledErrorMessage);
     if (m_sandboxFlags != SandboxNone && is<Document>(m_scriptExecutionContext))
