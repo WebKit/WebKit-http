@@ -1217,15 +1217,15 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::helpText() const
 
     AtkRelationSet* relationSet = atk_object_ref_relation_set(ATK_OBJECT(m_element.get()));
     if (!relationSet)
-        return JSStringCreateWithCharacters(0, 0);
+        return nullptr;
 
     AtkRelation* relation = atk_relation_set_get_relation_by_type(relationSet, ATK_RELATION_DESCRIBED_BY);
     if (!relation)
-        return JSStringCreateWithCharacters(0, 0);
+        return nullptr;
 
     GPtrArray* targetList = atk_relation_get_target(relation);
     if (!targetList || !targetList->len)
-        return JSStringCreateWithCharacters(0, 0);
+        return nullptr;
 
     StringBuilder builder;
     builder.append("AXHelp: ");

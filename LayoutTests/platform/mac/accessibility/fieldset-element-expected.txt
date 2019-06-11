@@ -22,7 +22,7 @@ AXDescription: New High Score:
 AXDescription: 
 AXDescription: High Score:
 AXDescription: 
-
+AXValue: Other:
 PASS successfullyParsed is true
 
 TEST COMPLETE

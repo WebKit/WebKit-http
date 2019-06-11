@@ -2,7 +2,6 @@
 <html>
 <head>
 <script src="../resources/js-test-pre.js"></script>
-<script src="../resources/accessibility-helper.js"></script>
 </head>
 <body id="body">
 
@@ -13,11 +12,12 @@
      
     <script>
         if (window.accessibilityController) {
-            description("This test makes sure that an input image returns its alt tag as the accessible name");
+            description("This test makes sure that an input image returns its alt tag as the description");
 
             var image1 = document.getElementById("image1").focus();
             var img = accessibilityController.focusedElement;
-            shouldBeEqualToString("platformValueForW3CName(img)", "Submit");
+
+            debug("img.description is " + img.description);
         }
     </script>
 

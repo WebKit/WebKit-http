@@ -1,16 +1,3 @@
-2016-05-25  Joanmarie Diggs  <jdiggs@igalia.com>
-
-        AX: [ATK] Use WebCore Accessibility's AccessibilityText for AtkObject name and description
-        https://bugs.webkit.org/show_bug.cgi?id=157822
-
-        Reviewed by Chris Fleizach.
-
-        Fix AccessibilityUIElement::helpText() so that it returns an empty string rather than
-        nullptr upon failure.
-
-        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
-        (WTR::AccessibilityUIElement::helpText):
-
 2016-03-10  Frederic Wang  <fwang@igalia.com>
 
         [GTK] Add support for WOFF2

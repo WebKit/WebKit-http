@@ -29,10 +29,7 @@
           debug("firstChild.title is " + firstChild.title);
 
           debug("secondChild.role is " + secondChild.role);
-          if (accessibilityController.platformName == "atk")
-              debug("secondChild.title is " + secondChild.title);
-          else
-              debug("secondChild.description is " + secondChild.description);
+          debug("secondChild.description is " + secondChild.description);
 
           shouldBe("firstChild.childrenCount", "0");
           shouldBe("secondChild.childrenCount", "0");

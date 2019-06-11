@@ -2,7 +2,6 @@
 <html>
 <head>
 <script src="../resources/js-test-pre.js"></script>
-<script src="../resources/accessibility-helper.js"></script>
 <title>aria-labelledby Overrides aria-labeledby</title>
 </head>
 <body>
@@ -24,9 +23,10 @@
     description("This tests that aria-labelledby overrides aria-labeledby correctly.");
     
     if (window.accessibilityController) {
-        var axLink = accessibilityController.accessibleElementById("link");
-        shouldBeEqualToString("platformValueForW3CName(axLink)", "Y Z");
-
+        var linkDescription = accessibilityController.accessibleElementById("link").description;
+        
+        shouldBe("linkDescription", "'AXDescription: Y Z'");
+        
         // Hide superfluous text.
         document.getElementById("test").style.display = "none";
     }

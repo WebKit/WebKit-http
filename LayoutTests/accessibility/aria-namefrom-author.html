@@ -2,7 +2,6 @@
 <html>
 <head>
 <script src="../resources/js-test-pre.js"></script>
-<script src="../resources/accessibility-helper.js"></script>
 </head>
 <body id="body">
 
@@ -59,7 +58,7 @@
 
 <script>
 
-    description("This tests all the cases where nameFrom: author is used instead of nameFrom: contents. This means that if these elements are used in aria-labelledby they should not return their inner text. The button should retain its aria-label.");
+    description("This tests all the cases where nameFrom: author is used instead of nameFrom: contents. This means that if these elements are used in aria-labelledby they should not return their inner text. The button should retain its aria-label as the description.");
 
     var labelledby = "";
     for (var k = 1; k < 42; k++) {
@@ -68,11 +67,7 @@
     document.getElementById("button").setAttribute("aria-labelledby", labelledby);
 
     if (window.accessibilityController) {
-        var buttonAccName = platformValueForW3CName(accessibilityController.accessibleElementById("button"));
-        var button = document.getElementById("button");
-        shouldBeTrue("buttonAccName == button.getAttribute('aria-label')");
-        shouldBeTrue("buttonAccName != button.innerText");
-
+        debug("Button description: " + accessibilityController.accessibleElementById("button").description);
         document.getElementById("content").style.visibility = "hidden";
     }
 

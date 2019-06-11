@@ -2,7 +2,6 @@
 <html>
 <head>
 <script src="../resources/js-test-pre.js"></script>
-<script src="../resources/accessibility-helper.js"></script>
 </head>
 <body id="body">
 
@@ -24,7 +23,7 @@
         document.getElementById("images").focus();
         var imagesGroup = accessibilityController.focusedElement;
         shouldBe("imagesGroup.childrenCount", "1");
-        shouldBeEqualToString("platformValueForW3CName(imagesGroup.childAtIndex(0))", "   Image ");
+        console.log("Image description: " + imagesGroup.childAtIndex(0).description);
     }
 
 </script>
