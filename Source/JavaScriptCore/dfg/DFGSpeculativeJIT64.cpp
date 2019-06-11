@@ -2993,12 +2993,29 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case RegExpExec: {
-        if (node->child1().useKind() == CellUse
-            && node->child2().useKind() == CellUse) {
+        if (node->child1().useKind() == RegExpObjectUse) {
+            if (node->child2().useKind() == StringUse) {
+                SpeculateCellOperand base(this, node->child1());
+                SpeculateCellOperand argument(this, node->child2());
+                GPRReg baseGPR = base.gpr();
+                GPRReg argumentGPR = argument.gpr();
+                speculateRegExpObject(node->child1(), baseGPR);
+                speculateString(node->child2(), argumentGPR);
+                
+                flushRegisters();
+                GPRFlushedCallResult result(this);
+                callOperation(operationRegExpExecString, result.gpr(), baseGPR, argumentGPR);
+                m_jit.exceptionCheck();
+                
+                jsValueResult(result.gpr(), node);
+                break;
+            }
+            
             SpeculateCellOperand base(this, node->child1());
-            SpeculateCellOperand argument(this, node->child2());
+            JSValueOperand argument(this, node->child2());
             GPRReg baseGPR = base.gpr();
             GPRReg argumentGPR = argument.gpr();
+            speculateRegExpObject(node->child1(), baseGPR);
         
             flushRegisters();
             GPRFlushedCallResult result(this);
@@ -3024,21 +3041,38 @@ void SpeculativeJIT::compile(Node* node)
     }
 
     case RegExpTest: {
-        if (node->child1().useKind() == CellUse
-            && node->child2().useKind() == CellUse) {
+        if (node->child1().useKind() == RegExpObjectUse) {
+            if (node->child2().useKind() == StringUse) {
+                SpeculateCellOperand base(this, node->child1());
+                SpeculateCellOperand argument(this, node->child2());
+                GPRReg baseGPR = base.gpr();
+                GPRReg argumentGPR = argument.gpr();
+                speculateRegExpObject(node->child1(), baseGPR);
+                speculateString(node->child2(), argumentGPR);
+                
+                flushRegisters();
+                GPRFlushedCallResult result(this);
+                callOperation(operationRegExpTestString, result.gpr(), baseGPR, argumentGPR);
+                m_jit.exceptionCheck();
+                
+                m_jit.or32(TrustedImm32(ValueFalse), result.gpr());
+                jsValueResult(result.gpr(), node);
+                break;
+            }
+            
             SpeculateCellOperand base(this, node->child1());
-            SpeculateCellOperand argument(this, node->child2());
+            JSValueOperand argument(this, node->child2());
             GPRReg baseGPR = base.gpr();
             GPRReg argumentGPR = argument.gpr();
+            speculateRegExpObject(node->child1(), baseGPR);
         
             flushRegisters();
             GPRFlushedCallResult result(this);
             callOperation(operationRegExpTest, result.gpr(), baseGPR, argumentGPR);
             m_jit.exceptionCheck();
         
-            // If we add a DataFormatBool, we should use it here.
             m_jit.or32(TrustedImm32(ValueFalse), result.gpr());
-            jsValueResult(result.gpr(), node, DataFormatJSBoolean);
+            jsValueResult(result.gpr(), node);
             break;
         }
         
@@ -3052,7 +3086,6 @@ void SpeculativeJIT::compile(Node* node)
         callOperation(operationRegExpTestGeneric, result.gpr(), baseGPR, argumentGPR);
         m_jit.exceptionCheck();
         
-        // If we add a DataFormatBool, we should use it here.
         m_jit.or32(TrustedImm32(ValueFalse), result.gpr());
         jsValueResult(result.gpr(), node, DataFormatJSBoolean);
         break;
