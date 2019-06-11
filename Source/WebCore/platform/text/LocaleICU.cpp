@@ -263,7 +263,7 @@ String LocaleICU::dateFormat()
     return m_dateFormat;
 }
 
-static String getFormatForSkeleton(const char* locale, const UChar* skeleton, int32_t skeletonLength)
+static String getFormatForSkeleton(const char* locale, const String& skeleton)
 {
     String format = ASCIILiteral("yyyy-MM");
     UErrorCode status = U_ZERO_ERROR;
@@ -271,11 +271,11 @@ static String getFormatForSkeleton(const char* locale, const UChar* skeleton, in
     if (!patternGenerator)
         return format;
     status = U_ZERO_ERROR;
-    int32_t length = udatpg_getBestPattern(patternGenerator, skeleton, skeletonLength, 0, 0, &status);
+    int32_t length = udatpg_getBestPattern(patternGenerator, skeleton.characters(), skeleton.length(), 0, 0, &status);
     if (status == U_BUFFER_OVERFLOW_ERROR && length) {
         Vector<UChar> buffer(length);
         status = U_ZERO_ERROR;
-        udatpg_getBestPattern(patternGenerator, skeleton, skeletonLength, buffer.data(), length, &status);
+        udatpg_getBestPattern(patternGenerator, skeleton.characters(), skeleton.length(), buffer.data(), length, &status);
         if (U_SUCCESS(status))
             format = String::adopt(buffer);
     }
@@ -289,8 +289,7 @@ String LocaleICU::monthFormat()
         return m_monthFormat;
     // Gets a format for "MMMM" because Windows API always provides formats for
     // "MMMM" in some locales.
-    const UChar skeleton[] = { 'y', 'y', 'y', 'y', 'M', 'M', 'M', 'M' };
-    m_monthFormat = getFormatForSkeleton(m_locale.data(), skeleton, WTF_ARRAY_LENGTH(skeleton));
+    m_monthFormat = getFormatForSkeleton(m_locale.data(), ASCIILiteral("yyyyMMMM"));
     return m_monthFormat;
 }
 
@@ -298,8 +297,7 @@ String LocaleICU::shortMonthFormat()
 {
     if (!m_shortMonthFormat.isNull())
         return m_shortMonthFormat;
-    const UChar skeleton[] = { 'y', 'y', 'y', 'y', 'M', 'M', 'M' };
-    m_shortMonthFormat = getFormatForSkeleton(m_locale.data(), skeleton, WTF_ARRAY_LENGTH(skeleton));
+    m_shortMonthFormat = getFormatForSkeleton(m_locale.data(), ASCIILiteral("yyyyMMM"));
     return m_shortMonthFormat;
 }
 
