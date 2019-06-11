@@ -111,11 +111,9 @@ public:
     void scheduleRelayout();
     void scheduleRelayoutOfSubtree(RenderElement&);
     void unscheduleRelayout();
-    void queuePostLayoutCallback(std::function<void()>);
     bool layoutPending() const;
-    bool isInLayout() const { return m_layoutPhase != OutsideLayout; }
-    bool isInRenderTreeLayout() const { return m_layoutPhase == InRenderTreeLayout; }
-    WEBCORE_EXPORT bool inPaintableState() { return m_layoutPhase != InRenderTreeLayout && m_layoutPhase != InViewSizeAdjust && m_layoutPhase != InPostLayout; }
+    bool isInLayout() const { return m_layoutPhase == InLayout; }
+    WEBCORE_EXPORT bool inPaintableState() { return m_layoutPhase != InLayout && m_layoutPhase != InViewSizeAdjust && m_layoutPhase != InPostLayout; }
 
     RenderElement* layoutRoot() const { return m_layoutRoot; }
     void clearLayoutRoot() { m_layoutRoot = nullptr; }
@@ -574,7 +572,7 @@ private:
         OutsideLayout,
         InPreLayout,
         InPreLayoutStyleUpdate,
-        InRenderTreeLayout,
+        InLayout,
         InViewSizeAdjust,
         InPostLayout,
         InPostLayerPositionsUpdatedAfterLayout,
@@ -606,7 +604,6 @@ private:
     WEBCORE_EXPORT void paintControlTints();
 
     void forceLayoutParentViewIfNeeded();
-    void flushPostLayoutTasksQueue();
     void performPostLayoutTasks();
     void autoSizeIfEnabled();
 
@@ -820,7 +817,6 @@ private:
     ScrollPinningBehavior m_scrollPinningBehavior;
 
     IntRect* m_cachedWindowClipRect { nullptr };
-    Vector<std::function<void()>> m_postLayoutCallbackQueue;
 };
 
 inline void FrameView::incrementVisuallyNonEmptyCharacterCount(unsigned count)
