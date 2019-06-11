@@ -1044,19 +1044,6 @@ static inline LayoutUnit getSpace(LayoutUnit areaSize, LayoutUnit tileSize)
     return space;
 }
 
-static LayoutUnit resolveEdgeRelativeLength(const Length& length, Edge edge, LayoutUnit availableSpace, const LayoutSize& areaSize, const LayoutSize& tileSize)
-{
-    LayoutUnit result = minimumValueForLength(length, availableSpace, false);
-
-    if (edge == Edge::Right)
-        return areaSize.width() - tileSize.width() - result;
-    
-    if (edge == Edge::Bottom)
-        return areaSize.height() - tileSize.height() - result;
-
-    return result;
-}
-
 BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(const RenderLayerModelObject* paintContainer, const FillLayer& fillLayer, const LayoutPoint& paintOffset,
     const LayoutRect& borderBoxRect, RenderElement* backgroundObject) const
 {
@@ -1160,7 +1147,7 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
     LayoutSize spaceSize;
     LayoutSize phase;
     LayoutSize noRepeat;
-    LayoutUnit computedXPosition = resolveEdgeRelativeLength(fillLayer.xPosition(), fillLayer.backgroundXOrigin(), availableWidth, positioningAreaSize, tileSize);
+    LayoutUnit computedXPosition = minimumValueForLength(fillLayer.xPosition(), availableWidth, false);
     if (backgroundRepeatX == RoundFill && positioningAreaSize.width() > 0 && tileSize.width() > 0) {
         int numTiles = std::max(1, roundToInt(positioningAreaSize.width() / tileSize.width()));
         if (fillLayer.size().size.height().isAuto() && backgroundRepeatY != RoundFill)
@@ -1170,7 +1157,7 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
         phase.setWidth(tileSize.width() ? tileSize.width() - fmodf((computedXPosition + left), tileSize.width()) : 0);
     }
 
-    LayoutUnit computedYPosition = resolveEdgeRelativeLength(fillLayer.yPosition(), fillLayer.backgroundYOrigin(), availableHeight, positioningAreaSize, tileSize);
+    LayoutUnit computedYPosition = minimumValueForLength(fillLayer.yPosition(), availableHeight, false);
     if (backgroundRepeatY == RoundFill && positioningAreaSize.height() > 0 && tileSize.height() > 0) {
         int numTiles = std::max(1, roundToInt(positioningAreaSize.height() / tileSize.height()));
         if (fillLayer.size().size.width().isAuto() && backgroundRepeatX != RoundFill)
@@ -1194,9 +1181,8 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
         } else
             backgroundRepeatX = NoRepeatFill;
     }
-
     if (backgroundRepeatX == NoRepeatFill) {
-        LayoutUnit xOffset = left + computedXPosition;
+        LayoutUnit xOffset = left + (fillLayer.backgroundXOrigin() == RightEdge ? availableWidth - computedXPosition : computedXPosition);
         if (xOffset > 0)
             destinationRect.move(xOffset, 0);
         xOffset = std::min<LayoutUnit>(xOffset, 0);
@@ -1220,7 +1206,7 @@ BackgroundImageGeometry RenderBoxModelObject::calculateBackgroundImageGeometry(c
             backgroundRepeatY = NoRepeatFill;
     }
     if (backgroundRepeatY == NoRepeatFill) {
-        LayoutUnit yOffset = top + computedYPosition;
+        LayoutUnit yOffset = top + (fillLayer.backgroundYOrigin() == BottomEdge ? availableHeight - computedYPosition : computedYPosition);
         if (yOffset > 0)
             destinationRect.move(0, yOffset);
         yOffset = std::min<LayoutUnit>(yOffset, 0);
