@@ -3537,8 +3537,7 @@ bool RenderBlockFlow::relayoutForPagination(LayoutStateMaintainer& statePusher)
 
 bool RenderBlockFlow::hasLines() const
 {
-    if (!childrenInline())
-        return false;
+    ASSERT(childrenInline());
 
     if (auto simpleLineLayout = this->simpleLineLayout())
         return simpleLineLayout->lineCount();
