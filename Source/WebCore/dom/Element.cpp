@@ -2489,7 +2489,7 @@ bool Element::needsStyleInvalidation() const
         return false;
     if (styleChangeType() >= FullStyleChange)
         return false;
-    if (document().hasPendingForcedStyleRecalc())
+    if (!document().styleResolverIfExists())
         return false;
 
     return true;
