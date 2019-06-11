@@ -1153,11 +1153,24 @@ PassRefPtr<StructureShape> Structure::toStructureShape(JSValue value)
     Structure* curStructure = this;
     JSValue curValue = value;
     while (curStructure) {
-        curStructure->forEachPropertyConcurrently(
-            [&] (const PropertyMapEntry& entry) -> bool {
-                curShape->addProperty(*entry.key);
-                return true;
-            });
+        Vector<Structure*, 8> structures;
+        Structure* structure;
+        PropertyTable* table;
+
+        curStructure->findStructuresAndMapForMaterialization(structures, structure, table);
+        if (table) {
+            PropertyTable::iterator iter = table->begin();
+            PropertyTable::iterator end = table->end();
+            for (; iter != end; ++iter)
+                curShape->addProperty(*iter->key);
+            
+            structure->m_lock.unlock();
+        }
+        for (unsigned i = structures.size(); i--;) {
+            Structure* structure = structures[i];
+            if (structure->m_nameInPrevious)
+                curShape->addProperty(*structure->m_nameInPrevious);
+        }
 
         if (JSObject* curObject = curValue.getObject())
             curShape->setConstructorName(JSObject::calculatedClassName(curObject));
