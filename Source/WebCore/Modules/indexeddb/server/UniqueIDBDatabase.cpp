@@ -59,7 +59,6 @@ UniqueIDBDatabase::~UniqueIDBDatabase()
     ASSERT(m_inProgressTransactions.isEmpty());
     ASSERT(m_pendingTransactions.isEmpty());
     ASSERT(m_openDatabaseConnections.isEmpty());
-    ASSERT(m_closePendingDatabaseConnections.isEmpty());
 }
 
 const IDBDatabaseInfo& UniqueIDBDatabase::info() const
@@ -182,8 +181,12 @@ void UniqueIDBDatabase::performCurrentDeleteOperation()
         return;
     }
 
-    if (!m_inProgressTransactions.isEmpty())
+    // Even though we have no open database connections, we might have close-pending database connections
+    // that are waiting on transactions to complete.
+    if (!m_inProgressTransactions.isEmpty()) {
+        ASSERT(!m_closePendingDatabaseConnections.isEmpty());
         return;
+    }
 
     ASSERT(!hasAnyPendingCallbacks());
     ASSERT(m_pendingTransactions.isEmpty());
@@ -238,12 +241,10 @@ void UniqueIDBDatabase::didDeleteBackingStore()
     m_deletePending = false;
     m_deleteBackingStoreInProgress = false;
 
-    if (m_closePendingDatabaseConnections.isEmpty()) {
-        if (m_pendingOpenDBRequests.isEmpty())
-            m_server.deleteUniqueIDBDatabase(*this);
-        else
-            invokeOperationAndTransactionTimer();
-    }
+    if (m_pendingOpenDBRequests.isEmpty())
+        m_server.deleteUniqueIDBDatabase(*this);
+    else
+        invokeOperationAndTransactionTimer();
 }
 
 void UniqueIDBDatabase::handleDatabaseOperations()
@@ -977,9 +978,9 @@ void UniqueIDBDatabase::didPerformCommitTransaction(uint64_t callbackIdentifier,
     ASSERT(isMainThread());
     LOG(IndexedDB, "(main) UniqueIDBDatabase::didPerformCommitTransaction");
 
-    performErrorCallback(callbackIdentifier, error);
-
     inProgressTransactionCompleted(transactionIdentifier);
+
+    performErrorCallback(callbackIdentifier, error);
 }
 
 void UniqueIDBDatabase::abortTransaction(UniqueIDBDatabaseTransaction& transaction, ErrorCallback callback)
@@ -1027,9 +1028,9 @@ void UniqueIDBDatabase::didPerformAbortTransaction(uint64_t callbackIdentifier, 
         m_databaseInfo = std::make_unique<IDBDatabaseInfo>(*m_versionChangeTransaction->originalDatabaseInfo());
     }
 
-    performErrorCallback(callbackIdentifier, error);
-
     inProgressTransactionCompleted(transactionIdentifier);
+
+    performErrorCallback(callbackIdentifier, error);
 }
 
 void UniqueIDBDatabase::transactionDestroyed(UniqueIDBDatabaseTransaction& transaction)
@@ -1242,13 +1243,6 @@ void UniqueIDBDatabase::inProgressTransactionCompleted(const IDBResourceIdentifi
 
     if (!transaction->databaseConnection().hasNonFinishedTransactions())
         m_closePendingDatabaseConnections.remove(&transaction->databaseConnection());
-
-    // It's possible that this database had its backing store deleted but there were a few outstanding asynchronous operations.
-    // If this transaction completing was the last of those operations, we can finally delete this UniqueIDBDatabase.
-    if (m_closePendingDatabaseConnections.isEmpty() && m_pendingOpenDBRequests.isEmpty() && !m_databaseInfo) {
-        m_server.deleteUniqueIDBDatabase(*this);
-        return;
-    }
 
     // Previously blocked operations might be runnable.
     invokeOperationAndTransactionTimer();

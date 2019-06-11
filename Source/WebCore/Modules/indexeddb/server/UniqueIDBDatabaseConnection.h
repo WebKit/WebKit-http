@@ -73,8 +73,6 @@ public:
     void didDeleteIndex(const IDBResultData&);
     void didFireVersionChangeEvent(const IDBResourceIdentifier& requestIdentifier);
 
-    void abortTransactionWithoutCallback(UniqueIDBDatabaseTransaction&);
-
 private:
     UniqueIDBDatabaseConnection(UniqueIDBDatabase&, IDBConnectionToClient&);
 

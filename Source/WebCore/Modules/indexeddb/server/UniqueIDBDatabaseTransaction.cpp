@@ -79,7 +79,7 @@ void UniqueIDBDatabaseTransaction::abortWithoutCallback()
 {
     LOG(IndexedDB, "UniqueIDBDatabaseTransaction::abortWithoutCallback");
 
-    m_databaseConnection->abortTransactionWithoutCallback(*this);
+    m_databaseConnection->database().abortTransaction(*this, [](const IDBError&) { });
 }
 
 bool UniqueIDBDatabaseTransaction::isVersionChange() const
