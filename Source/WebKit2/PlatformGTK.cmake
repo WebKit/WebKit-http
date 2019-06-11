@@ -276,6 +276,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitWindowPropertiesPrivate.h
     UIProcess/API/gtk/webkit2.h
 
+    UIProcess/Databases/gtk/DatabaseProcessProxyGtk.cpp
+
     UIProcess/InspectorServer/gtk/WebInspectorServerGtk.cpp
 
     UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
@@ -285,6 +287,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Network/CustomProtocols/soup/CustomProtocolManagerProxySoup.cpp
     UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp
     UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp
+
+    UIProcess/Network/soup/NetworkProcessProxySoup.cpp
 
     UIProcess/Plugins/gtk/PluginInfoCache.cpp
 
@@ -316,6 +320,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/gtk/WebPopupMenuProxyGtk.cpp
     UIProcess/gtk/WebPreferencesGtk.cpp
     UIProcess/gtk/WebProcessPoolGtk.cpp
+    UIProcess/gtk/WebProcessProxyGtk.cpp
 
     UIProcess/soup/WebCookieManagerProxySoup.cpp
     UIProcess/soup/WebProcessPoolSoup.cpp
