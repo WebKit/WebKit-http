@@ -66,7 +66,6 @@ public:
     
     void insert(iterator, const T&);
 
-    void grow(size_t);
     void shrink(size_t);
 
     void shrinkToFit();
@@ -74,7 +73,7 @@ public:
 private:
     static const size_t growFactor = 2;
     static const size_t shrinkFactor = 4;
-    static size_t initialCapacity() { return vmPageSize() / sizeof(T); }
+    static const size_t initialCapacity = vmPageSize / sizeof(T);
 
     void growCapacity();
     void shrinkCapacity();
@@ -147,19 +146,11 @@ void Vector<T>::insert(iterator it, const T& value)
 }
 
 template<typename T>
-inline void Vector<T>::grow(size_t size)
-{
-    BASSERT(size >= m_size);
-    while (m_size < size)
-        push(T());
-}
-
-template<typename T>
 inline void Vector<T>::shrink(size_t size)
 {
     BASSERT(size <= m_size);
     m_size = size;
-    if (m_size < m_capacity / shrinkFactor && m_capacity > initialCapacity())
+    if (m_capacity > initialCapacity && m_size < m_capacity / shrinkFactor)
         shrinkCapacity();
 }
 
@@ -180,14 +171,14 @@ void Vector<T>::reallocateBuffer(size_t newCapacity)
 template<typename T>
 NO_INLINE void Vector<T>::shrinkCapacity()
 {
-    size_t newCapacity = max(initialCapacity(), m_capacity / shrinkFactor);
+    size_t newCapacity = max(initialCapacity, m_capacity / shrinkFactor);
     reallocateBuffer(newCapacity);
 }
 
 template<typename T>
 NO_INLINE void Vector<T>::growCapacity()
 {
-    size_t newCapacity = max(initialCapacity(), m_size * growFactor);
+    size_t newCapacity = max(initialCapacity, m_size * growFactor);
     reallocateBuffer(newCapacity);
 }
 

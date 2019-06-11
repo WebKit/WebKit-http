@@ -53,6 +53,9 @@ public:
     SmallPage* page(size_t offset);
     SmallLine* line(size_t offset);
 
+    SmallPage* pageBegin() { return Object(m_memory).page(); }
+    SmallPage* pageEnd() { return m_pages.end(); }
+    
     SmallLine* lines() { return m_lines.begin(); }
     SmallPage* pages() { return m_pages.begin(); }
 
@@ -78,12 +81,15 @@ private:
     // We use the X's for boundary tags and the O's for edge sentinels.
 
     std::array<SmallLine, chunkSize / smallLineSize> m_lines;
-    std::array<SmallPage, chunkSize / smallPageSize> m_pages;
+    std::array<SmallPage, chunkSize / vmPageSize> m_pages;
     std::array<BoundaryTag, boundaryTagCount> m_boundaryTags;
-    char m_memory[] __attribute__((aligned(largeAlignment + 0)));
+    char m_memory[] __attribute__((aligned(2 * smallMax + 0)));
 };
 
 static_assert(sizeof(Chunk) + largeMax <= chunkSize, "largeMax is too big");
+static_assert(
+    sizeof(Chunk) % vmPageSize + 2 * smallMax <= vmPageSize,
+    "the first page of object memory in a small chunk must be able to allocate smallMax");
 
 inline Chunk::Chunk(std::lock_guard<StaticMutex>& lock)
 {
@@ -159,9 +165,8 @@ inline void* Chunk::object(size_t offset)
 
 inline SmallPage* Chunk::page(size_t offset)
 {
-    size_t pageNumber = offset / smallPageSize;
-    SmallPage* page = &m_pages[pageNumber];
-    return page - page->slide();
+    size_t pageNumber = offset / vmPageSize;
+    return &m_pages[pageNumber];
 }
 
 inline SmallLine* Chunk::line(size_t offset)
@@ -185,17 +190,15 @@ inline char* SmallLine::end()
 
 inline SmallLine* SmallPage::begin()
 {
-    BASSERT(!m_slide);
     Chunk* chunk = Chunk::get(this);
     size_t pageNumber = this - chunk->pages();
-    size_t lineNumber = pageNumber * smallPageLineCount;
+    size_t lineNumber = pageNumber * smallLineCount;
     return &chunk->lines()[lineNumber];
 }
 
 inline SmallLine* SmallPage::end()
 {
-    BASSERT(!m_slide);
-    return begin() + m_smallPageCount * smallPageLineCount;
+    return begin() + smallLineCount;
 }
 
 inline Object::Object(void* object)
@@ -214,6 +217,11 @@ inline Object::Object(Chunk* chunk, void* object)
 inline void* Object::begin()
 {
     return m_chunk->object(m_offset);
+}
+
+inline void* Object::pageBegin()
+{
+    return m_chunk->object(roundDownToMultipleOf(vmPageSize, m_offset));
 }
 
 inline SmallLine* Object::line()
