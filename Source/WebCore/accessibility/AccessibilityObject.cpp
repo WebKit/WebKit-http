@@ -1566,7 +1566,7 @@ String AccessibilityObject::ariaReadOnlyValue() const
     if (!hasAttribute(aria_readonlyAttr))
         return ariaRoleAttribute() != UnknownRole && supportsARIAReadOnly() ? "false" : String();
 
-    return getAttribute(aria_readonlyAttr).string().convertToASCIILowercase();
+    return String(getAttribute(aria_readonlyAttr)).convertToASCIILowercase();
 }
 
 bool AccessibilityObject::contentEditableAttributeIsEnabled(Element* element)
