@@ -5339,8 +5339,8 @@ RenderLayer* RenderLayer::hitTestList(Vector<RenderLayer*>* list, RenderLayer* r
         return nullptr;
 
     RenderLayer* resultLayer = nullptr;
-    for (size_t i = list->size(); i > 0; --i) {
-        RenderLayer* childLayer = list->at(i - 1);
+    for (int i = list->size() - 1; i >= 0; --i) {
+        RenderLayer* childLayer = list->at(i);
         if (childLayer->isFlowThreadCollectingGraphicsLayersUnderRegions())
             continue;
         RenderLayer* hitLayer = nullptr;
