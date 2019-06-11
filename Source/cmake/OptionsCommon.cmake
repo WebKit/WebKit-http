@@ -39,10 +39,6 @@ if (COMPILER_IS_CLANG AND CMAKE_GENERATOR STREQUAL "Ninja")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics")
 endif ()
 
-if (WIN32 AND COMPILER_IS_GCC_OR_CLANG)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-ms-bitfields -Wno-unknown-pragmas")
-endif ()
-
 # Detect Cortex-A53 core if CPU is ARM64 and OS is Linux.
 # Query /proc/cpuinfo for each available core and check reported CPU part number: 0xd03 signals Cortex-A53.
 # (see Main ID Register in ARM Cortex-A53 MPCore Processor Technical Reference Manual)
