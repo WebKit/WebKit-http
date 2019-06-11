@@ -27,13 +27,17 @@
 #include "GRefPtrGStreamer.h"
 #include "MainThreadNotifier.h"
 #include "MediaPlayerPrivate.h"
-#include "PlatformLayer.h"
-#include "TextureMapperPlatformLayer.h"
-#include "TextureMapperPlatformLayerProxy.h"
 #include <glib.h>
 #include <wtf/Condition.h>
 #include <wtf/Forward.h>
 #include <wtf/RunLoop.h>
+
+#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
+#include "TextureMapperPlatformLayer.h"
+#endif
+#if USE(COORDINATED_GRAPHICS_THREADED)
+#include "TextureMapperPlatformLayerProxy.h"
+#endif
 
 typedef struct _GstMessage GstMessage;
 typedef struct _GstStreamVolume GstStreamVolume;
@@ -50,8 +54,10 @@ class IntSize;
 class IntRect;
 
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
-#if USE(COORDINATED_GRAPHICS_THREADED) || (USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS))
-    , public PlatformLayer
+#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
+    , public TextureMapperPlatformLayer
+#elif USE(COORDINATED_GRAPHICS_THREADED)
+    , public TextureMapperPlatformLayerProxyProvider
 #endif
 {
 
