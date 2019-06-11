@@ -429,6 +429,9 @@ void DOMSelection::deleteFromDocument()
     if (selection.isNone())
         return;
 
+    if (isCollapsed())
+        selection.modify(FrameSelection::AlterationExtend, DirectionBackward, CharacterGranularity);
+
     RefPtr<Range> selectedRange = selection.selection().toNormalizedRange();
     if (!selectedRange)
         return;
