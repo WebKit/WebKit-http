@@ -60,7 +60,6 @@ set(WTF_HEADERS
     NumberOfCores.h
     OSAllocator.h
     OSRandomSource.h
-    OptionSet.h
     OrderMaker.h
     PageAllocation.h
     PageBlock.h
