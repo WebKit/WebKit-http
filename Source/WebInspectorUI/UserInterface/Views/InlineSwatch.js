@@ -89,7 +89,7 @@ WebInspector.InlineSwatch = class InlineSwatch extends WebInspector.Object
         case WebInspector.InlineSwatch.Type.Gradient:
             return WebInspector.Gradient.fromString("linear-gradient(transparent, transparent)");
         case WebInspector.InlineSwatch.Type.Color:
-            return WebInspector.Color.fromString("white");
+            return WebInspector.Color.fromString("transparent");
         default:
             return null;
         }
@@ -161,9 +161,6 @@ WebInspector.InlineSwatch = class InlineSwatch extends WebInspector.Object
 
     _handleContextMenuEvent(event)
     {
-        if (!this._value)
-            return;
-
         let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
 
         if (this._value.isKeyword() && this._value.format !== WebInspector.Color.Format.Keyword) {
