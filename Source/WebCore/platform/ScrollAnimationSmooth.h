@@ -43,7 +43,7 @@ class ScrollableArea;
 
 class ScrollAnimationSmooth final: public ScrollAnimation {
 public:
-    ScrollAnimationSmooth(ScrollableArea&, const FloatPoint&, std::function<void (FloatPoint&&)>&& notifyPositionChangedFunction);
+    ScrollAnimationSmooth(ScrollableArea&, std::function<void (FloatPoint&&)>&& notifyPositionChangedFunction);
     virtual ~ScrollAnimationSmooth();
 
     enum class Curve {
@@ -64,15 +64,6 @@ private:
 #endif
 
     struct PerAxisData {
-        PerAxisData() = delete;
-
-        PerAxisData(float position, int length)
-            : currentPosition(position)
-            , desiredPosition(position)
-            , visibleLength(length)
-        {
-        }
-
         float currentPosition { 0 };
         double currentVelocity { 0 };
 
