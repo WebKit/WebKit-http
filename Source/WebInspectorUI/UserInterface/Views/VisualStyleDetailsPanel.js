@@ -118,14 +118,14 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
     {
         super.widthDidChange();
 
-        let sidebarWidth = this.element.realOffsetWidth;
+        let width = this.element.realOffsetWidth;
         for (let key in this._groups) {
             let group = this._groups[key];
             if (!group.specifiedWidthProperties)
                 continue;
 
             for (let editor of group.specifiedWidthProperties)
-                editor.recalculateWidth(sidebarWidth);
+                editor.specifiedWidth = width;
         }
     }
 
@@ -221,9 +221,9 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
         }
 
         if (group.specifiedWidthProperties) {
-            let sidebarWidth = this.element.realOffsetWidth;
+            let width = this.element.realOffsetWidth;
             for (let editor of group.specifiedWidthProperties)
-                editor.recalculateWidth(sidebarWidth);
+                editor.specifiedWidth = width;
         }
     }
 
@@ -349,8 +349,6 @@ WebInspector.VisualStyleDetailsPanel = class VisualStyleDetailsPanel extends Web
 
         overflowRow.element.appendChild(properties.opacity.element);
         overflowRow.element.appendChild(properties.overflow.element);
-
-        group.specifiedWidthProperties = [properties.opacity];
 
         let displayGroup = new WebInspector.DetailsSectionGroup([displayRow, sizingRow, overflowRow]);
         this._populateSection(group, [displayGroup]);

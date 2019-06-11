@@ -55,11 +55,6 @@ WebInspector.VisualStyleUnitSlider = class VisualStyleUnitSlider extends WebInsp
         return this.value;
     }
 
-    recalculateWidth(value)
-    {
-        this._slider.recalculateKnobX();
-    }
-
     sliderValueDidChange(slider, value)
     {
         this._valueDidChange();

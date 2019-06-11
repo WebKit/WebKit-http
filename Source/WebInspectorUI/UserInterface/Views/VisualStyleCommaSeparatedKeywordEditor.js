@@ -125,7 +125,7 @@ WebInspector.VisualStyleCommaSeparatedKeywordEditor = class VisualStyleCommaSepa
         return this.value || null;
     }
 
-    recalculateWidth(value)
+    set specifiedWidth(value)
     {
         if (this._titleElement) {
             // 55px width and 4px margin on left and right for title element,
