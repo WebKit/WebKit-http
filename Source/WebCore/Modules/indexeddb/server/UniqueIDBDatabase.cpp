@@ -193,38 +193,30 @@ void UniqueIDBDatabase::performCurrentDeleteOperation()
     // In that scenario only the first request will actually have to delete the database.
     // Subsequent requests can immediately notify their completion.
 
-    if (!m_deleteBackingStoreInProgress) {
-        if (!m_databaseInfo && m_mostRecentDeletedDatabaseInfo)
-            didDeleteBackingStore(0);
-        else {
-            m_deleteBackingStoreInProgress = true;
-            m_server.postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::deleteBackingStore, m_identifier));
-        }
+    if (m_databaseInfo) {
+        m_deleteBackingStoreInProgress = true;
+        m_server.postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::deleteBackingStore));
+    } else {
+        ASSERT(m_mostRecentDeletedDatabaseInfo);
+        didDeleteBackingStore();
     }
 }
 
-void UniqueIDBDatabase::deleteBackingStore(const IDBDatabaseIdentifier& identifier)
+void UniqueIDBDatabase::deleteBackingStore()
 {
     ASSERT(!isMainThread());
     LOG(IndexedDB, "(db) UniqueIDBDatabase::deleteBackingStore");
-
-    uint64_t deletedVersion = 0;
 
     if (m_backingStore) {
         m_backingStore->deleteBackingStore();
         m_backingStore = nullptr;
         m_backingStoreSupportsSimultaneousTransactions = false;
-    } else {
-        auto backingStore = m_server.createBackingStore(identifier);
-        auto databaseInfo = backingStore->getOrEstablishDatabaseInfo();
-        deletedVersion = databaseInfo.version();
-        backingStore->deleteBackingStore();
     }
 
-    m_server.postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didDeleteBackingStore, deletedVersion));
+    m_server.postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didDeleteBackingStore));
 }
 
-void UniqueIDBDatabase::didDeleteBackingStore(uint64_t deletedVersion)
+void UniqueIDBDatabase::didDeleteBackingStore()
 {
     ASSERT(isMainThread());
     LOG(IndexedDB, "(main) UniqueIDBDatabase::didDeleteBackingStore");
@@ -239,12 +231,7 @@ void UniqueIDBDatabase::didDeleteBackingStore(uint64_t deletedVersion)
     if (m_databaseInfo)
         m_mostRecentDeletedDatabaseInfo = WTFMove(m_databaseInfo);
 
-    // If this UniqueIDBDatabase was brought into existence for the purpose of deleting the file on disk,
-    // we won't have a m_mostRecentDeletedDatabaseInfo. In that case, we'll manufacture one using the
-    // passed in deletedVersion argument.
-    if (!m_mostRecentDeletedDatabaseInfo)
-        m_mostRecentDeletedDatabaseInfo = std::make_unique<IDBDatabaseInfo>(m_identifier.databaseName(), deletedVersion);
-
+    ASSERT(m_mostRecentDeletedDatabaseInfo);
     m_currentOpenDBRequest->notifyDidDeleteDatabase(*m_mostRecentDeletedDatabaseInfo);
     m_currentOpenDBRequest = nullptr;
 

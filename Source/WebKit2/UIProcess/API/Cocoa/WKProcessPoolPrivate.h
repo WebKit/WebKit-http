@@ -59,9 +59,6 @@
 - (void)_automationCapabilitiesDidChange WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
 - (void)_setAutomationSession:(_WKAutomationSession *)automationSession WK_AVAILABLE(WK_MAC_TBA, WK_IOS_TBA);
 
-// Test only. Should be called only while no web content processes are running.
-- (void)_terminateDatabaseProcess;
-
 @end
 
 #endif
