@@ -774,6 +774,7 @@ defineUnaryDoubleOpWrapper(ceil);
 
 static const double oneConstant = 1.0;
 static const double negativeHalfConstant = -0.5;
+static const double zeroConstant = 0.0;
 static const double halfConstant = 0.5;
     
 MacroAssemblerCodeRef floorThunkGenerator(VM* vm)
@@ -797,7 +798,7 @@ MacroAssemblerCodeRef floorThunkGenerator(VM* vm)
     SpecializedThunkJIT::Jump intResult;
     SpecializedThunkJIT::JumpList doubleResult;
     if (jit.supportsFloatingPointTruncate()) {
-        jit.moveZeroToDouble(SpecializedThunkJIT::fpRegT1);
+        jit.loadDouble(MacroAssembler::TrustedImmPtr(&zeroConstant), SpecializedThunkJIT::fpRegT1);
         doubleResult.append(jit.branchDouble(MacroAssembler::DoubleEqual, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT1));
         SpecializedThunkJIT::JumpList slowPath;
         // Handle the negative doubles in the slow path for now.
@@ -853,7 +854,7 @@ MacroAssemblerCodeRef roundThunkGenerator(VM* vm)
     SpecializedThunkJIT::Jump intResult;
     SpecializedThunkJIT::JumpList doubleResult;
     if (jit.supportsFloatingPointTruncate()) {
-        jit.moveZeroToDouble(SpecializedThunkJIT::fpRegT1);
+        jit.loadDouble(MacroAssembler::TrustedImmPtr(&zeroConstant), SpecializedThunkJIT::fpRegT1);
         doubleResult.append(jit.branchDouble(MacroAssembler::DoubleEqual, SpecializedThunkJIT::fpRegT0, SpecializedThunkJIT::fpRegT1));
         SpecializedThunkJIT::JumpList slowPath;
         // Handle the negative doubles in the slow path for now.

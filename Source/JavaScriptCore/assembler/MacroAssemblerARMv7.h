@@ -929,12 +929,6 @@ public:
             m_assembler.vmov(dest, src);
     }
 
-    void moveZeroToDouble(FPRegisterID reg)
-    {
-        static double zeroConstant = 0.;
-        loadDouble(TrustedImmPtr(&zeroConstant), reg);
-    }
-
     void loadDouble(TrustedImmPtr address, FPRegisterID dest)
     {
         move(address, addressTempRegister);
