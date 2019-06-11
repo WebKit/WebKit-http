@@ -159,7 +159,7 @@ for my $dir (@projects) {
     }
 }
 
-if ((isAppleWebKit() || isWinCairo()) && !-d "WebKitLibraries") {
+if (!isIOSWebKit() && !-d "WebKitLibraries") {
     die "Error: No WebKitLibraries directory found. Please do a fresh checkout.\n";
 }
 
