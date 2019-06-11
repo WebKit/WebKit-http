@@ -389,7 +389,7 @@ my @features = (
       define => "ENABLE_RESOURCE_TIMING", default => isGtk(), value => \$resourceTimingSupport },
 
     { option => "request-animation-frame", desc => "Toggle Request Animation Frame support",
-      define => "ENABLE_REQUEST_ANIMATION_FRAME", default => 1, value => \$requestAnimationFrameSupport },
+      define => "ENABLE_REQUEST_ANIMATION_FRAME", default => (isAppleMacWebKit() || isGtk() || isEfl()), value => \$requestAnimationFrameSupport },
 
     { option => "sampling-profiler", desc => "Toggle JSC Sampling Profiler",
       define => "ENABLE_SAMPLING_PROFILER", default => 1, value => \$samplingProfilerSupport },
