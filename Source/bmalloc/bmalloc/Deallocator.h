@@ -51,6 +51,7 @@ private:
     bool deallocateFastCase(void*);
     void deallocateSlowCase(void*);
 
+    void deallocateLarge(void*);
     void deallocateXLarge(void*);
 
     FixedVector<void*, deallocatorLogCapacity> m_objectLog;
@@ -59,9 +60,10 @@ private:
 
 inline bool Deallocator::deallocateFastCase(void* object)
 {
-    BASSERT(isXLarge(nullptr));
-    if (isXLarge(object))
+    if (!isSmall(object))
         return false;
+
+    BASSERT(object);
 
     if (m_objectLog.size() == m_objectLog.capacity())
         return false;

@@ -114,32 +114,39 @@ void* Allocator::reallocate(void* object, size_t newSize)
 
     size_t oldSize = 0;
     switch (objectType(object)) {
-    case ObjectType::Small: {
+    case Small: {
         size_t sizeClass = Object(object).page()->sizeClass();
         oldSize = objectSize(sizeClass);
         break;
     }
-    case ObjectType::Large: {
+    case Large: {
+        std::unique_lock<StaticMutex> lock(PerProcess<Heap>::mutex());
         LargeObject largeObject(object);
         oldSize = largeObject.size();
 
         if (newSize < oldSize && newSize > smallMax) {
+            newSize = roundUpToMultipleOf<largeAlignment>(newSize);
             if (oldSize - newSize >= largeMin) {
-                std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
-                newSize = roundUpToMultipleOf<largeAlignment>(newSize);
-                PerProcess<Heap>::getFastCase()->shrinkLarge(lock, largeObject, newSize);
-                return object;
+                std::pair<LargeObject, LargeObject> split = largeObject.split(newSize);
+                
+                lock.unlock();
+                m_deallocator.deallocate(split.second.begin());
+                lock.lock();
             }
+            return object;
         }
         break;
     }
-    case ObjectType::XLarge: {
-        BASSERT(objectType(nullptr) == ObjectType::XLarge);
+    case XLarge: {
+        BASSERT(objectType(nullptr) == XLarge);
         if (!object)
             break;
 
         std::unique_lock<StaticMutex> lock(PerProcess<Heap>::mutex());
         oldSize = PerProcess<Heap>::getFastCase()->xLargeSize(lock, object);
+
+        if (newSize == oldSize)
+            return object;
 
         if (newSize < oldSize && newSize > largeMax) {
             PerProcess<Heap>::getFastCase()->shrinkXLarge(lock, Range(object, oldSize), newSize);
