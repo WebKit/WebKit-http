@@ -1032,14 +1032,8 @@ RefPtr<API::Navigation> WebPageProxy::loadHTMLString(const String& htmlString, c
 
 void WebPageProxy::loadAlternateHTMLString(const String& htmlString, const String& baseURL, const String& unreachableURL, API::Object* userData)
 {
-    // When the UIProcess is in the process of handling a failing provisional load, do not attempt to
-    // start a second alternative HTML load as this will prevent the page load state from being
-    // handled properly.
-    if (m_isClosed || m_isLoadingAlternateHTMLStringForFailingProvisionalLoad)
+    if (m_isClosed)
         return;
-
-    if (!m_failingProvisionalLoadURL.isEmpty())
-        m_isLoadingAlternateHTMLStringForFailingProvisionalLoad = true;
 
     if (!isValid())
         reattachToWebProcess();
@@ -3182,8 +3176,6 @@ void WebPageProxy::didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID
 
     if (isMainFrame)
         m_pageClient.didFinishLoadForMainFrame();
-
-    m_isLoadingAlternateHTMLStringForFailingProvisionalLoad = false;
 }
 
 void WebPageProxy::didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, const ResourceError& error, const UserData& userData)
