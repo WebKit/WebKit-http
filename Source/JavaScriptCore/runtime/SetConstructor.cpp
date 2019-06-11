@@ -51,7 +51,7 @@ void SetConstructor::finishCreation(VM& vm, SetPrototype* setPrototype, GetterSe
 
 static EncodedJSValue JSC_HOST_CALL callSet(ExecState* exec)
 {
-    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "Set"));
+    return JSValue::encode(throwTypeError(exec, ASCIILiteral("Set cannot be called as a function")));
 }
 
 static EncodedJSValue JSC_HOST_CALL constructSet(ExecState* exec)

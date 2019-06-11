@@ -12,7 +12,7 @@ function testCallTypeError(item) {
     }
     if (!error)
         throw "Error: error not thrown";
-    if (String(error) !== "TypeError: calling Map constructor without new is invalid")
+    if (String(error) !== "TypeError: Map cannot be called as a function")
         throw "Error: bad error " + String(error);
 }
 

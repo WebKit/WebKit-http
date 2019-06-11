@@ -75,15 +75,13 @@ ConstructType ProxyConstructor::getConstructData(JSCell*, ConstructData& constru
     return ConstructTypeHost;
 }
 
-static EncodedJSValue JSC_HOST_CALL callProxy(ExecState* exec)
-{
-    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "Proxy"));
-}
-
 CallType ProxyConstructor::getCallData(JSCell*, CallData& callData)
 {
-    callData.native.function = callProxy;
-    return CallTypeHost;
+    // Proxy should throw a TypeError when called as a function.
+    callData.js.functionExecutable = 0;
+    callData.js.scope = 0;
+    callData.native.function = 0;
+    return CallTypeNone;
 }
 
 } // namespace JSC

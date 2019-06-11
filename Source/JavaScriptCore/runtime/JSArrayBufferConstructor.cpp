@@ -102,11 +102,6 @@ static EncodedJSValue JSC_HOST_CALL constructArrayBuffer(ExecState* exec)
     return JSValue::encode(result);
 }
 
-static EncodedJSValue JSC_HOST_CALL callArrayBuffer(ExecState* exec)
-{
-    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "ArrayBuffer"));
-}
-
 ConstructType JSArrayBufferConstructor::getConstructData(
     JSCell*, ConstructData& constructData)
 {
@@ -116,7 +111,7 @@ ConstructType JSArrayBufferConstructor::getConstructData(
 
 CallType JSArrayBufferConstructor::getCallData(JSCell*, CallData& callData)
 {
-    callData.native.function = callArrayBuffer;
+    callData.native.function = constructArrayBuffer;
     return CallTypeHost;
 }
 

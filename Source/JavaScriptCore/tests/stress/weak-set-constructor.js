@@ -12,7 +12,7 @@ function testCallTypeError(item) {
     }
     if (!error)
         throw new Error("error not thrown");
-    if (String(error) !== "TypeError: calling WeakSet constructor without new is invalid")
+    if (String(error) !== "TypeError: WeakSet cannot be called as a function")
         throw new Error("bad error " + String(error));
 }
 var obj1 = {};
